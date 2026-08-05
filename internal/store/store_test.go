@@ -172,6 +172,14 @@ func TestTxlockImmediateHonored(t *testing.T) {
 // never be the thing that proves production stays at 1.
 func TestOpenCapsMaxOpenConns(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "caps.sqlite")
+	// Open now enforces the schema_version guard (plan 02), so this must
+	// go through Init first rather than Open on a never-initialized path.
+	if s, err := Init(path); err != nil {
+		t.Fatal(err)
+	} else if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+
 	s, err := Open(path, OpenOptions{})
 	if err != nil {
 		t.Fatal(err)
@@ -192,7 +200,9 @@ func TestWithTxCommitsAndRollsBack(t *testing.T) {
 	ctx := context.Background()
 	path := filepath.Join(t.TempDir(), "tx.sqlite")
 
-	s, err := Open(path, OpenOptions{})
+	// Open now enforces the schema_version guard (plan 02), so this must
+	// go through Init first rather than Open on a never-initialized path.
+	s, err := Init(path)
 	if err != nil {
 		t.Fatal(err)
 	}
