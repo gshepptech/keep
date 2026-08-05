@@ -1,0 +1,12 @@
+# build output
+/rounce
+/dist/
+
+# the store itself
+.rounce/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+# macOS
+.DS_Store
