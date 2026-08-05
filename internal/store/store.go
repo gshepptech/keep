@@ -53,21 +53,31 @@ type Store struct {
 	db *sql.DB
 }
 
-// Open opens (or creates) the SQLite database at path and returns a *Store
-// wrapping it. It does not read schema_version here — the meta table does
-// not exist until plan 02 creates it; plan 02 adds that guard to this
-// function.
+// Open opens an existing store at path and returns a *Store wrapping it,
+// after confirming its on-disk schema_version matches this binary's
+// schemaVersion constant (schema.go). This check exists alongside Init's
+// idempotent DDL, not instead of it: CREATE TABLE IF NOT EXISTS is a name
+// check, not a shape check (01-RESEARCH.md Pitfall 4) -- it will silently
+// accept a pre-existing table with entirely different columns. The DDL
+// gives Init its idempotency; only this check gives drift detection.
+// Someone will eventually try to delete one of the two as redundant, and
+// this comment is what should stop them.
+//
+// Open shares its connection setup with Init via the unexported open()
+// helper (schema.go) so the two entry points cannot drift apart. A caller
+// that receives an error here is not handed a *Store it could still use,
+// and the underlying *sql.DB is closed before returning -- no leaked
+// connection on the failure path.
 func Open(path string, opts OpenOptions) (*Store, error) {
-	db, err := sql.Open("sqlite", dsn(path, opts))
+	s, err := open(path, opts)
 	if err != nil {
-		return nil, fmt.Errorf("open store %s: %w", path, err)
+		return nil, err
 	}
-	// STORE-09: one rounce process, one connection. Go's database/sql pool
-	// defaults assume a network database with many concurrent backends;
-	// SQLite is embedded and single-writer, so the pool must never be
-	// allowed to open a second physical connection in production.
-	db.SetMaxOpenConns(1)
-	return &Store{db: db}, nil
+	if err := s.checkSchemaVersion(context.Background()); err != nil {
+		s.db.Close()
+		return nil, err
+	}
+	return s, nil
 }
 
 // Close closes the underlying connection.
