@@ -3,7 +3,12 @@ package store
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"time"
+
+	sqlite "modernc.org/sqlite"
+	sqlite3 "modernc.org/sqlite/lib"
 )
 
 // schemaVersion is the compile-time value every Open compares the store's
@@ -139,6 +144,13 @@ func open(path string, opts OpenOptions) (*Store, error) {
 	return &Store{db: db}, nil
 }
 
+// initDDLMaxAttempts bounds the SQLITE_BUSY retry described below. Each
+// retry's own backoff is a few milliseconds, so even the worst case (every
+// attempt but the last hits the race) adds well under a tenth of a second --
+// this is not a substitute for busy_timeout, it covers a narrower window
+// busy_timeout does not.
+const initDDLMaxAttempts = 8
+
 // initWithDDL is the seam that makes "the whole DDL block is applied in a
 // single transaction" a falsifiable claim rather than an unverified comment.
 // Init(path) is exactly initWithDDL(path, schemaDDL); the parameter stays
@@ -152,10 +164,39 @@ func initWithDDL(path string, ddl string) (*Store, error) {
 	}
 
 	ctx := context.Background()
-	if txErr := s.withTx(ctx, func(tx *sql.Tx) error {
-		_, execErr := tx.ExecContext(ctx, ddl)
-		return execErr
-	}); txErr != nil {
+
+	// The very first writer to a brand-new database file must briefly hold
+	// an exclusive lock while SQLite bootstraps WAL mode for that file
+	// (creating the -wal/-shm sidecars and running wal-index recovery --
+	// see sqlite.org/wal.html, "Concurrency"). If two of this plan's four
+	// concurrent processes race to be that first writer, the loser's BEGIN
+	// IMMEDIATE can come back SQLITE_BUSY almost instantly, without waiting
+	// out busy_timeout=3000 -- this was confirmed directly on this machine:
+	// running TestConcurrentInitSameDirectory (cmd/rounce) 30 times surfaced
+	// exactly this failure roughly 1 run in 8, always at this BeginTx, always
+	// well under 3000ms elapsed. It is a real, narrow SQLite WAL-bootstrap
+	// race, not a flaw in this test.
+	//
+	// The whole DDL block is idempotent (IF NOT EXISTS / OR IGNORE
+	// throughout), so retrying it from scratch is always safe -- a retry
+	// here can never leave a partial or duplicated schema. A handful of
+	// near-immediate retries (a few milliseconds of backoff each) covers
+	// this bootstrap window without masking any other class of failure:
+	// only errors classified as SQLITE_BUSY are retried; every other error
+	// (including the "table already exists" failure this package's own
+	// GATE-03 break produces) returns immediately on the first attempt.
+	var txErr error
+	for attempt := 0; attempt < initDDLMaxAttempts; attempt++ {
+		txErr = s.withTx(ctx, func(tx *sql.Tx) error {
+			_, execErr := tx.ExecContext(ctx, ddl)
+			return execErr
+		})
+		if txErr == nil || !isSQLiteBusy(txErr) {
+			break
+		}
+		time.Sleep(time.Duration(attempt+1) * 2 * time.Millisecond)
+	}
+	if txErr != nil {
 		s.db.Close()
 		return nil, fmt.Errorf("init schema %s: %w", path, txErr)
 	}
@@ -169,6 +210,18 @@ func initWithDDL(path string, ddl string) (*Store, error) {
 	}
 
 	return s, nil
+}
+
+// isSQLiteBusy classifies err the same non-string-matching way errors.go
+// documents: errors.As against *sqlite.Error, then comparing .Code() against
+// modernc.org/sqlite/lib's exported constant, never matching err.Error()
+// text.
+func isSQLiteBusy(err error) bool {
+	var sqliteErr *sqlite.Error
+	if !errors.As(err, &sqliteErr) {
+		return false
+	}
+	return sqliteErr.Code() == sqlite3.SQLITE_BUSY
 }
 
 // Init creates (or idempotently re-verifies) the schema at path: items,
