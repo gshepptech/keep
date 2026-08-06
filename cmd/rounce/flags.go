@@ -20,10 +20,14 @@ func addDBFlag(fs *flag.FlagSet) *string {
 	return fs.String("db", "", "path to the store (overrides ROUNCE_DB and discovery)")
 }
 
-// addJSONFlag registers --json, present only on read commands (CLI-01:
-// show, list, ready, blocked -- plans 08/09). Mutating commands (add, dep,
-// start, close, drop, update) do not register it -- an advertised flag that
-// does nothing is worse than an absent one.
+// addJSONFlag registers --json (CLI-01): every read command (show, list,
+// ready, blocked -- plan 08), add (plan 07), and the two mutating commands
+// whose success output is genuinely useful as structured data, start and
+// update (plan 09) -- all three return the item just created or changed,
+// which a caller may want to inspect programmatically. dep, close, and drop
+// deliberately do NOT register it: their only output is a one-line
+// confirmation, and a --json flag that only ever echoed back an id or
+// status the caller already knows would be a flag that does nothing.
 func addJSONFlag(fs *flag.FlagSet) *bool {
 	return fs.Bool("json", false, "emit machine-parseable JSON on stdout")
 }
