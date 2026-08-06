@@ -61,8 +61,10 @@ discovered item came from. No Beads code is used; the design was read and
 reimplemented.
 
 The item scoring model (`value` / `confidence` / `effort` → `score`) and the
-convention that an item's rationale cites `file:line` come from the Hollis
-plugin in `the-tavern`.
+convention that an item's rationale cites `file:line` are derived from the
+Ranger plugin in `the-tavern`, which scores on four factors, not three:
+rounce has no `consequence` term, and puts effort on a 0-10 scale rather than
+Hollis's 0-5.
 
 ## License
 
