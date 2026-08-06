@@ -87,6 +87,19 @@ func readyIDs(t *testing.T, s *Store) []string {
 	return out
 }
 
+// mustAdd calls s.AddItem and fails the test immediately on error, for
+// tests that only need a valid fixture item and do not care about AddItem's
+// own error path. Added once items.go's AddItem exists (this plan's task 2)
+// rather than in task 1, since it necessarily depends on AddItemInput.
+func mustAdd(t *testing.T, s *Store, in AddItemInput) model.Item {
+	t.Helper()
+	item, err := s.AddItem(context.Background(), in)
+	if err != nil {
+		t.Fatalf("mustAdd: AddItem(%+v): %v", in, err)
+	}
+	return item
+}
+
 // execSQL runs a raw fixture statement directly against the store's
 // database, bypassing any store method. This lets a test build fixtures
 // (e.g. a raw `blocks` deps row) that a later plan's not-yet-written store
