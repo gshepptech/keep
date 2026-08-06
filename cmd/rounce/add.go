@@ -17,6 +17,16 @@ import (
 // flag.NewFlagSet(..., flag.ContinueOnError), fs.SetOutput(stderr), return 2
 // on parse failure.
 //
+// Invocation shape is `rounce add [flags] <title>`, flags BEFORE the title,
+// not after: stdlib flag.Parse stops consuming flags at the first
+// non-flag argument and treats everything from there on as fs.Args() (a
+// deliberate, unavoidable stdlib flag limitation -- verified directly
+// against this exact FlagSet before writing this comment, not assumed).
+// runAdd exploits that same stopping point on purpose: everything left in
+// fs.Args() after flags are consumed is joined with a space into the title,
+// so a title needs no quoting even when it has multiple words, as long as
+// it comes last.
+//
 // cmd/rounce must never import a database driver package, must never
 // contain a SQL string, and must never receive a raw DB handle or a row
 // (STORE-10) -- runAdd builds exactly one store.AddItemInput and makes
@@ -59,7 +69,7 @@ func runAdd(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if fs.NArg() < 1 {
-		fmt.Fprintln(stderr, "usage: rounce add <title> [flags]")
+		fmt.Fprintln(stderr, "usage: rounce add [flags] <title>")
 		return 2
 	}
 	title := strings.Join(fs.Args(), " ")
