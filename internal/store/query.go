@@ -120,3 +120,78 @@ func queryEvents(ctx context.Context, db *sql.DB, itemID string) ([]model.Event,
 	}
 	return out, nil
 }
+
+// ListFilter's zero value means "no filter" -- an empty field is omitted
+// from the WHERE clause entirely rather than bound as ''. Filters compose as
+// AND (02-CONTEXT.md "Claude's Discretion": yes, the obvious reading).
+type ListFilter struct {
+	Stage    string
+	Status   string
+	Type     string
+	ParentID string
+	Repo     string
+	Limit    int
+}
+
+// ListItems queries items directly -- never the ready view -- so list (ITEM-
+// 05) can show raw items and closed/dropped items alike, which ready/blocked
+// deliberately cannot. Each of Stage/Status/Type/ParentID/Repo, when
+// non-empty, is bound as one `col = ?` condition; all present conditions
+// join with AND. Filter values are never validated against the closed
+// vocabularies here -- that belongs at the CLI boundary (plan 08); an
+// unrecognized value here is simply a filter that matches nothing, which is
+// the honest answer to the question asked.
+//
+// Results are ordered score DESC, created_at ASC, id ASC. The trailing id
+// ASC matters: two children added inside one transaction share a created_at
+// (plan 02's single-nowFunc()-per-transaction rule), and without a final
+// tiebreak SQLite's row order for equal (score, created_at) pairs is
+// unspecified -- that would make list's output differ between runs.
+func (s *Store) ListItems(ctx context.Context, f ListFilter) ([]model.Item, error) {
+	var conds []string
+	var args []any
+
+	if f.Stage != "" {
+		conds = append(conds, "stage = ?")
+		args = append(args, f.Stage)
+	}
+	if f.Status != "" {
+		conds = append(conds, "status = ?")
+		args = append(args, f.Status)
+	}
+	if f.Type != "" {
+		conds = append(conds, "type = ?")
+		args = append(args, f.Type)
+	}
+	if f.ParentID != "" {
+		conds = append(conds, "parent_id = ?")
+		args = append(args, f.ParentID)
+	}
+	if f.Repo != "" {
+		conds = append(conds, "repo = ?")
+		args = append(args, f.Repo)
+	}
+
+	query := `SELECT ` + itemColumns + ` FROM items`
+	for i, c := range conds {
+		if i == 0 {
+			query += " WHERE "
+		} else {
+			query += " AND "
+		}
+		query += c
+	}
+	query += " ORDER BY score DESC, created_at ASC, id ASC"
+	if f.Limit > 0 {
+		query += " LIMIT ?"
+		args = append(args, f.Limit)
+	}
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("ListItems: %w", err)
+	}
+	defer rows.Close()
+
+	return scanItems(rows)
+}
