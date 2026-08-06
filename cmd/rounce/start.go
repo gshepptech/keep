@@ -27,9 +27,9 @@ import (
 // (ErrInvalidTransition), and restating any of that here would only risk
 // drifting from what the store actually decided.
 //
-// There is deliberately no --force flag: claim stealing belongs to
+// There is deliberately no flag to steal an existing claim: that belongs to
 // Interlock's lease work (02-CONTEXT.md decision 3's "Claude's Discretion"
-// / deferred list), not here. Do not add it "for testing".
+// / deferred list), not here. Do not add one "for testing".
 func runStart(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("start", flag.ContinueOnError)
 	fs.SetOutput(stderr)

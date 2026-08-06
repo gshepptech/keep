@@ -42,6 +42,10 @@ commands:
               --reason      required; records why (exit 2 if empty/absent)
   drop      drop an item: rounce drop [flags] <id> --reason <text>
               --reason      required; records why (exit 2 if empty/absent)
+  update    change fields on an existing item: rounce update [flags] <id>
+              --title/--body/--acceptance/--why/--score/--type/--stage
+              --repo/--paths/--assignee (at least one required)
+              status cannot be changed here -- see start/close/drop
   version   print the version
 
 See ROADMAP.md.
@@ -74,6 +78,8 @@ func main() {
 		os.Exit(runClose(os.Args[2:], os.Stdout, os.Stderr))
 	case "drop":
 		os.Exit(runDrop(os.Args[2:], os.Stdout, os.Stderr))
+	case "update":
+		os.Exit(runUpdate(os.Args[2:], os.Stdout, os.Stderr))
 	case "version", "--version":
 		fmt.Println(version)
 	case "help", "--help", "-h":
