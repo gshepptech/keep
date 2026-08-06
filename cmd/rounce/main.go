@@ -34,6 +34,14 @@ commands:
   list      list items with filters, composed as AND
               --stage/--status/--type/--parent/--repo/--limit
               --json        machine-parseable output
+  start     claim an item: rounce start [flags] <id>
+              session comes from $ROUNCE_SESSION, not a flag; same-session
+              repeat is a silent no-op, a different session's claim exits 1
+              --json        machine-parseable output
+  close     close an item: rounce close [flags] <id> --reason <text>
+              --reason      required; records why (exit 2 if empty/absent)
+  drop      drop an item: rounce drop [flags] <id> --reason <text>
+              --reason      required; records why (exit 2 if empty/absent)
   version   print the version
 
 See ROADMAP.md.
@@ -60,6 +68,12 @@ func main() {
 		os.Exit(runShow(os.Args[2:], os.Stdout, os.Stderr))
 	case "list":
 		os.Exit(runList(os.Args[2:], os.Stdout, os.Stderr))
+	case "start":
+		os.Exit(runStart(os.Args[2:], os.Stdout, os.Stderr))
+	case "close":
+		os.Exit(runClose(os.Args[2:], os.Stdout, os.Stderr))
+	case "drop":
+		os.Exit(runDrop(os.Args[2:], os.Stdout, os.Stderr))
 	case "version", "--version":
 		fmt.Println(version)
 	case "help", "--help", "-h":
