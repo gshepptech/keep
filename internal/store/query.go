@@ -1,0 +1,122 @@
+package store
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+
+	"github.com/gshepptech/rounce/internal/model"
+)
+
+// GetItem returns id's full detail: the item itself, its dependency edges in
+// both directions, and its complete event history oldest first. This is the
+// read surface `show` (ITEM-04) is built on.
+//
+// Direction, fixed in plan 02 and unchanged here (02-05-PLAN.md
+// <interfaces>): deps(item_id = A, depends_on_id = B) reads "A depends on
+// B". So for item X:
+//   - DependsOn = rows WHERE item_id = X -- what X is waiting on, what X is
+//     a child of, what X was derived from.
+//   - DependedOnBy = rows WHERE depends_on_id = X -- what is waiting on X,
+//     X's children, what was derived from X.
+//
+// An unknown id returns ErrNotFound wrapped with the id, not a zero
+// ItemDetail and a nil error -- the latter is the failure mode that would
+// make `show` print an empty block and exit 0.
+func (s *Store) GetItem(ctx context.Context, id string) (model.ItemDetail, error) {
+	var out model.ItemDetail
+
+	itemRows, err := s.db.QueryContext(ctx, `SELECT `+itemColumns+` FROM items WHERE id = ?`, id)
+	if err != nil {
+		return model.ItemDetail{}, fmt.Errorf("GetItem: %w", err)
+	}
+	items, err := scanItems(itemRows)
+	itemRows.Close()
+	if err != nil {
+		return model.ItemDetail{}, fmt.Errorf("GetItem: %w", err)
+	}
+	if len(items) == 0 {
+		return model.ItemDetail{}, fmt.Errorf("item %q: %w", id, ErrNotFound)
+	}
+	out.Item = items[0]
+
+	// DependsOn: what this item is item_id for -- what it is waiting on,
+	// what it is a child of, what it was derived from.
+	dependsOn, err := queryDeps(ctx, s.db,
+		`SELECT item_id, depends_on_id, type, created_at, created_by FROM deps WHERE item_id = ? ORDER BY type, depends_on_id`, id)
+	if err != nil {
+		return model.ItemDetail{}, fmt.Errorf("GetItem: DependsOn: %w", err)
+	}
+	out.DependsOn = dependsOn
+
+	// DependedOnBy: what this item is depends_on_id for -- what is waiting
+	// on it, its children, what was derived from it.
+	dependedOnBy, err := queryDeps(ctx, s.db,
+		`SELECT item_id, depends_on_id, type, created_at, created_by FROM deps WHERE depends_on_id = ? ORDER BY type, item_id`, id)
+	if err != nil {
+		return model.ItemDetail{}, fmt.Errorf("GetItem: DependedOnBy: %w", err)
+	}
+	out.DependedOnBy = dependedOnBy
+
+	// Ordered by id, not by at. id is INTEGER PRIMARY KEY AUTOINCREMENT and
+	// is monotonic within a store; at is a TEXT column that can tie when two
+	// events land in the same transaction (nothing in this phase writes two
+	// events in one transaction, but a later phase might), and a tied sort
+	// on at would make the history's order between those two rows
+	// non-deterministic -- id has no such tie, ever.
+	events, err := queryEvents(ctx, s.db, id)
+	if err != nil {
+		return model.ItemDetail{}, fmt.Errorf("GetItem: Events: %w", err)
+	}
+	out.Events = events
+
+	return out, nil
+}
+
+// queryDeps runs one of GetItem's two direction-specific deps queries and
+// scans the results into []model.Dep. Both directions share this scanner
+// rather than each writing its own rows.Scan call.
+func queryDeps(ctx context.Context, db *sql.DB, query, id string) ([]model.Dep, error) {
+	rows, err := db.QueryContext(ctx, query, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []model.Dep
+	for rows.Next() {
+		var d model.Dep
+		if err := rows.Scan(&d.ItemID, &d.DependsOnID, &d.Type, &d.CreatedAt, &d.CreatedBy); err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// queryEvents returns itemID's full event history, ordered oldest first by
+// id ascending (see GetItem's doc comment for why id, not at).
+func queryEvents(ctx context.Context, db *sql.DB, itemID string) ([]model.Event, error) {
+	rows, err := db.QueryContext(ctx,
+		`SELECT id, item_id, kind, actor, session_id, at, payload FROM events WHERE item_id = ? ORDER BY id ASC`, itemID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []model.Event
+	for rows.Next() {
+		var e model.Event
+		if err := rows.Scan(&e.ID, &e.ItemID, &e.Kind, &e.Actor, &e.SessionID, &e.At, &e.Payload); err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
