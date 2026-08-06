@@ -22,6 +22,8 @@ commands:
   init      create a store in this repository
               --db <path>   create the store at exactly this path
               --global      create the store at ~/.rounce/db.sqlite
+  add       create an item: rounce add <title> [flags]
+  dep       create a dependency edge: rounce dep <item-id> <type> <depends-on-id>
   version   print the version
 
 See ROADMAP.md.
@@ -36,6 +38,10 @@ func main() {
 	switch os.Args[1] {
 	case "init":
 		os.Exit(runInit(os.Args[2:], os.Stdout, os.Stderr))
+	case "add":
+		os.Exit(runAdd(os.Args[2:], os.Stdout, os.Stderr))
+	case "dep":
+		os.Exit(runDep(os.Args[2:], os.Stdout, os.Stderr))
 	case "version", "--version":
 		fmt.Println(version)
 	case "help", "--help", "-h":
