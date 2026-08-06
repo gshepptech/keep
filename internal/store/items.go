@@ -101,17 +101,57 @@ func itemExists(ctx context.Context, tx *sql.Tx, id string) (bool, error) {
 	return true, nil
 }
 
+// parentChildCycleCheckSQL is the recursive-CTE cycle guard, verified
+// against a real 4-node tree (02-RESEARCH.md Pattern 4, positive and
+// negative case both confirmed) -- used verbatim, not re-derived. :b (first
+// placeholder) is the prospective PARENT, :a (second placeholder) the
+// prospective CHILD: it asks "is the prospective child already an ancestor
+// of the prospective parent?" -- if so, the candidate edge would close the
+// loop. The argument order is the whole test; swapping it silently allows
+// every cycle it exists to catch (this is this plan's GATE-03 break 1). The
+// depth < 50 bound matches the ready view's own guard (schema.go) and stays
+// for the same reason: the cost of being wrong is an infinite loop inside a
+// user's shell.
+const parentChildCycleCheckSQL = `
+WITH RECURSIVE ancestors(id, depth) AS (
+  SELECT depends_on_id, 1 FROM deps WHERE item_id = ? AND type = 'parent-child'
+  UNION ALL
+  SELECT d.depends_on_id, anc.depth + 1
+  FROM ancestors anc
+  JOIN deps d ON d.item_id = anc.id AND d.type = 'parent-child'
+  WHERE anc.depth < 50
+)
+SELECT 1 FROM ancestors WHERE id = ? LIMIT 1`
+
 // insertParentChildEdge writes the deps row that makes a parent-child
 // relationship visible to the ready view. THE SHIPPED ready VIEW READS ONLY
 // deps (WHERE type = 'parent-child'); IT NEVER CONSULTS items.parent_id
 // (02-RESEARCH.md Pattern 3). AddItem sets items.parent_id/ordinal for id
 // derivation and ordinal allocation ONLY -- omitting this row leaves
 // items.parent_id looking correct while READY-02's blocking propagation
-// silently does nothing for this child, with no error anywhere. add --parent
-// must be this helper's single caller; plan 03 adds a cycle guard to this
-// same helper rather than duplicating the insert at a second call site.
+// silently does nothing for this child, with no error anywhere.
+//
+// Before writing, it runs parentChildCycleCheckSQL and returns ErrCycle,
+// writing nothing, if childID is already an ancestor of parentID. This guard
+// is reachable ONLY through add --parent today: CreateDep (deps.go) refuses
+// to write parent-child edges directly (ErrParentChildViaDep), which is
+// exactly what makes this the only call site that can ever place a
+// parent-child row. If a reparent command is ever added, the guard must move
+// with this helper, not be re-derived at a second call site. BEGIN IMMEDIATE
+// (this Store's DSN) fully serializes writers, so there is no TOCTOU window
+// between this check and the insert below -- both run inside the same
+// transaction the caller's withTx provides.
 func insertParentChildEdge(ctx context.Context, tx *sql.Tx, childID, parentID, actor, createdAt string) error {
-	_, err := tx.ExecContext(ctx,
+	var found int
+	err := tx.QueryRowContext(ctx, parentChildCycleCheckSQL, parentID, childID).Scan(&found)
+	if err == nil {
+		return fmt.Errorf("insertParentChildEdge: %s as parent of %s would close a parent-child cycle: %w", parentID, childID, ErrCycle)
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+
+	_, err = tx.ExecContext(ctx,
 		`INSERT INTO deps (item_id, depends_on_id, type, created_at, created_by) VALUES (?, ?, 'parent-child', ?, ?)`,
 		childID, parentID, createdAt, actor,
 	)
