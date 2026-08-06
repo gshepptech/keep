@@ -5,21 +5,39 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/gshepptech/rounce/internal/model"
+	"github.com/gshepptech/rounce/internal/rank"
 )
+
+// ErrNoFieldsToUpdate is returned by UpdateItem when the caller sets no
+// fields at all. 02-CONTEXT.md decision 4 requires a no-flag update to be a
+// caller error, not a silent no-op -- the CLI (plan 09) maps this to a usage
+// error (exit 2), the same treatment `add` with no title would get.
+var ErrNoFieldsToUpdate = errors.New("update: no fields supplied")
 
 // nullableString converts "" to a driver NULL and anything else to itself,
 // the same "unset flag means SQL NULL, not empty string" convention
 // insertItem (items.go) uses for repo/paths. StartItem uses it for
 // claimed_by_session (an empty ROUNCE_SESSION means "no session", not a
-// session literally named ""); UpdateItem (task 2) uses it for
-// repo/paths/assignee.
+// session literally named ""); UpdateItem uses it for repo/paths/assignee.
 func nullableString(s string) any {
 	if s == "" {
 		return nil
 	}
 	return s
+}
+
+// derefIntPtr converts a possibly-nil *int into a driver value: nil becomes
+// SQL NULL, a non-nil pointer becomes its dereferenced value. Used by
+// UpdateItem's score-input columns, which are cleared (set NULL) rather than
+// zeroed when the caller supplies an explicit nil inner pointer.
+func derefIntPtr(p *int) any {
+	if p == nil {
+		return nil
+	}
+	return *p
 }
 
 // isBlockedTx is the tx-scoped twin of IsBlocked (ready.go). StartItem must
@@ -63,10 +81,10 @@ LIMIT 1`
 
 // getItemForUpdateTx reads id's full row via itemColumns/scanItems inside an
 // already-open transaction, returning ErrNotFound on no rows. StartItem,
-// closeOrDrop (task 2), and UpdateItem (task 2) all read-then-write the same
-// row inside one withTx (02-RESEARCH.md Pitfall 2: never split the read from
-// the write across two transactions), so they share this one query shape
-// rather than each writing its own SELECT.
+// closeOrDrop, and UpdateItem all read-then-write the same row inside one
+// withTx (02-RESEARCH.md Pitfall 2: never split the read from the write
+// across two transactions), so they share this one query shape rather than
+// each writing its own SELECT.
 func getItemForUpdateTx(ctx context.Context, tx *sql.Tx, id string) (model.Item, error) {
 	rows, err := tx.QueryContext(ctx, `SELECT `+itemColumns+` FROM items WHERE id = ?`, id)
 	if err != nil {
@@ -199,6 +217,239 @@ func (s *Store) StartItem(ctx context.Context, in StartItemInput) (model.Item, e
 
 		payload := startEventPayload{SessionID: in.SessionID}
 		return writeEvent(ctx, tx, in.ID, "start", in.Actor, in.SessionID, payload)
+	})
+	if err != nil {
+		return model.Item{}, err
+	}
+	return out, nil
+}
+
+// CloseItemInput is the argument to CloseItem.
+type CloseItemInput struct {
+	ID, Reason, Actor, SessionID string
+}
+
+// DropItemInput is the argument to DropItem.
+type DropItemInput struct {
+	ID, Reason, Actor, SessionID string
+}
+
+// closeDropEventPayload is the JSON body of the one `close` or `drop` event
+// closeOrDrop writes, carrying the caller-supplied reason.
+type closeDropEventPayload struct {
+	Reason string `json:"reason"`
+}
+
+// CloseItem marks id closed, recording reason. See closeOrDrop for the
+// shared implementation; CloseItem and DropItem differ only in the status
+// and event kind they pass.
+func (s *Store) CloseItem(ctx context.Context, in CloseItemInput) (model.Item, error) {
+	return s.closeOrDrop(ctx, in.ID, model.StatusClosed, "close", in.Reason, in.Actor, in.SessionID)
+}
+
+// DropItem marks id dropped, recording reason. See closeOrDrop for the
+// shared implementation; CloseItem and DropItem differ only in the status
+// and event kind they pass.
+func (s *Store) DropItem(ctx context.Context, in DropItemInput) (model.Item, error) {
+	return s.closeOrDrop(ctx, in.ID, model.StatusDropped, "drop", in.Reason, in.Actor, in.SessionID)
+}
+
+// closeOrDrop is CloseItem's and DropItem's shared implementation. ITEM-08
+// exists so abandoned work is never counted as done -- that only holds if
+// `close` and `drop` stay distinguishable in both items.status and
+// events.kind, which is exactly the two parameters (status, kind) the two
+// exported wrappers vary. Two independent near-duplicate implementations is
+// how `close` and `drop` would eventually drift into doing the same thing;
+// one shared body parameterized by the two constants that must never match
+// is what keeps that from happening.
+//
+// Closing (or dropping) an item that is already closed or dropped returns
+// ErrInvalidTransition -- terminal states do not transition again, in
+// either direction, through either verb.
+func (s *Store) closeOrDrop(ctx context.Context, id, status, kind, reason, actor, sessionID string) (model.Item, error) {
+	if actor == "" {
+		return model.Item{}, fmt.Errorf("%s: Actor is required", kind)
+	}
+
+	var out model.Item
+	err := s.withTx(ctx, func(tx *sql.Tx) error {
+		item, err := getItemForUpdateTx(ctx, tx, id)
+		if err != nil {
+			return fmt.Errorf("%s: %w", kind, err)
+		}
+
+		if item.Status == model.StatusClosed || item.Status == model.StatusDropped {
+			return fmt.Errorf("%s: item %q: already %s: %w", kind, id, item.Status, ErrInvalidTransition)
+		}
+
+		now := nowFunc()
+		if _, err := tx.ExecContext(ctx,
+			`UPDATE items SET status = ?, closed_at = ?, updated_at = ? WHERE id = ?`,
+			status, now, now, id,
+		); err != nil {
+			return err
+		}
+
+		item.Status = status
+		closedAt := now
+		item.ClosedAt = &closedAt
+		item.UpdatedAt = now
+		out = item
+
+		payload := closeDropEventPayload{Reason: reason}
+		return writeEvent(ctx, tx, id, kind, actor, sessionID, payload)
+	})
+	if err != nil {
+		return model.Item{}, err
+	}
+	return out, nil
+}
+
+// UpdateItemInput is the argument to UpdateItem. Every field is a pointer
+// so "not supplied" (nil) and "supplied" (non-nil, even if the pointed-to
+// value is the zero value) are different requests -- clearing a title to ""
+// and leaving the title alone are not the same operation.
+//
+// There is deliberately no Status field: open -> in_progress ->
+// closed/dropped moves only through StartItem/CloseItem/DropItem, so the
+// event log always records WHY a status changed (02-CONTEXT.md decision 4).
+// There is deliberately no ParentID field either: nothing reparents an
+// item, which is what lets AddItem's --parent handling (insertParentChildEdge,
+// items.go) stay the single writer of parent-child structure (02-RESEARCH.md
+// Open Question 1).
+//
+// Value/Confidence/Effort are double pointers: the outer pointer is
+// "touched or not" (nil = leave this scoring input alone); the inner
+// pointer is the value itself, which may legitimately be nil (clear this
+// input back to unscored) -- RANK-02 requires "unscored" (column NULL) and
+// "scored 0" to remain distinguishable, and a single *int cannot express
+// both "leave it" and "clear it" at once. This encoding is what plan 09's
+// `update` CLI is written against; if it ever changes, that CLI's `--score`
+// handling must change with it.
+type UpdateItemInput struct {
+	ID               string
+	Actor, SessionID string
+
+	Title, Body, Acceptance *string
+	Why, Type, Stage        *string
+	Repo, Paths, Assignee   *string
+
+	Value, Confidence, Effort **int
+}
+
+// updateEventPayload is the JSON body of the one `update` event UpdateItem
+// writes. It names the CHANGED FIELDS, not their values -- the values are
+// already in the items row the event refers to (02-CONTEXT.md decision 4).
+type updateEventPayload struct {
+	Fields []string `json:"fields"`
+}
+
+// UpdateItem applies only the fields the caller set, leaves every other
+// column untouched, always bumps updated_at, and writes one `update` event
+// naming the changed fields. Score is recomputed (RANK-01) in the same
+// transaction whenever any of value/confidence/effort was supplied -- using
+// rank.Score on the item's POST-UPDATE triple, not on the raw deltas the
+// caller passed, since a caller may set only one of the three and expect
+// the other two to keep contributing to the recomputed score.
+//
+// Supplying no fields at all is a caller error (ErrNoFieldsToUpdate), not a
+// silent no-op (02-CONTEXT.md decision 4) -- checked, and returned, before
+// any write is attempted.
+func (s *Store) UpdateItem(ctx context.Context, in UpdateItemInput) (model.Item, error) {
+	if in.Actor == "" {
+		return model.Item{}, fmt.Errorf("UpdateItem: Actor is required")
+	}
+
+	var out model.Item
+	err := s.withTx(ctx, func(tx *sql.Tx) error {
+		item, err := getItemForUpdateTx(ctx, tx, in.ID)
+		if err != nil {
+			return fmt.Errorf("UpdateItem: %w", err)
+		}
+
+		var setClauses []string
+		var args []any
+		var changed []string
+
+		addStringSet := func(col string, val *string, target *string, name string) {
+			if val == nil {
+				return
+			}
+			setClauses = append(setClauses, col+" = ?")
+			args = append(args, *val)
+			*target = *val
+			changed = append(changed, name)
+		}
+		addStringSet("title", in.Title, &item.Title, "title")
+		addStringSet("body", in.Body, &item.Body, "body")
+		addStringSet("acceptance", in.Acceptance, &item.Acceptance, "acceptance")
+		addStringSet("why", in.Why, &item.Why, "why")
+		addStringSet("type", in.Type, &item.Type, "type")
+		addStringSet("stage", in.Stage, &item.Stage, "stage")
+
+		addNullableStringSet := func(col string, val *string, target **string, name string) {
+			if val == nil {
+				return
+			}
+			setClauses = append(setClauses, col+" = ?")
+			args = append(args, nullableString(*val))
+			if *val == "" {
+				*target = nil
+			} else {
+				v := *val
+				*target = &v
+			}
+			changed = append(changed, name)
+		}
+		addNullableStringSet("repo", in.Repo, &item.Repo, "repo")
+		addNullableStringSet("paths", in.Paths, &item.Paths, "paths")
+		addNullableStringSet("assignee", in.Assignee, &item.Assignee, "assignee")
+
+		scoreTouched := in.Value != nil || in.Confidence != nil || in.Effort != nil
+		if in.Value != nil {
+			setClauses = append(setClauses, "value = ?")
+			args = append(args, derefIntPtr(*in.Value))
+			item.Value = *in.Value
+			changed = append(changed, "value")
+		}
+		if in.Confidence != nil {
+			setClauses = append(setClauses, "confidence = ?")
+			args = append(args, derefIntPtr(*in.Confidence))
+			item.Confidence = *in.Confidence
+			changed = append(changed, "confidence")
+		}
+		if in.Effort != nil {
+			setClauses = append(setClauses, "effort = ?")
+			args = append(args, derefIntPtr(*in.Effort))
+			item.Effort = *in.Effort
+			changed = append(changed, "effort")
+		}
+
+		if len(setClauses) == 0 {
+			return fmt.Errorf("UpdateItem: item %q: %w", in.ID, ErrNoFieldsToUpdate)
+		}
+
+		if scoreTouched {
+			newScore := rank.Score(item.Value, item.Confidence, item.Effort)
+			setClauses = append(setClauses, "score = ?")
+			args = append(args, newScore)
+			item.Score = newScore
+		}
+
+		now := nowFunc()
+		setClauses = append(setClauses, "updated_at = ?")
+		args = append(args, now)
+		item.UpdatedAt = now
+
+		args = append(args, in.ID)
+		query := `UPDATE items SET ` + strings.Join(setClauses, ", ") + ` WHERE id = ?`
+		if _, err := tx.ExecContext(ctx, query, args...); err != nil {
+			return err
+		}
+
+		out = item
+		payload := updateEventPayload{Fields: changed}
+		return writeEvent(ctx, tx, in.ID, "update", in.Actor, in.SessionID, payload)
 	})
 	if err != nil {
 		return model.Item{}, err
