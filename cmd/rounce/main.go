@@ -29,6 +29,11 @@ commands:
               --json        machine-parseable output
   blocked   list blocked items, each naming the item blocking it
               --json        machine-parseable output
+  show      show one item's full detail: rounce show [flags] <id>
+              --json        machine-parseable output
+  list      list items with filters, composed as AND
+              --stage/--status/--type/--parent/--repo/--limit
+              --json        machine-parseable output
   version   print the version
 
 See ROADMAP.md.
@@ -51,6 +56,10 @@ func main() {
 		os.Exit(runReady(os.Args[2:], os.Stdout, os.Stderr))
 	case "blocked":
 		os.Exit(runBlocked(os.Args[2:], os.Stdout, os.Stderr))
+	case "show":
+		os.Exit(runShow(os.Args[2:], os.Stdout, os.Stderr))
+	case "list":
+		os.Exit(runList(os.Args[2:], os.Stdout, os.Stderr))
 	case "version", "--version":
 		fmt.Println(version)
 	case "help", "--help", "-h":
