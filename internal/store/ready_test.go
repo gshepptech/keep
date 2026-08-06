@@ -166,3 +166,297 @@ func TestReadyLimit(t *testing.T) {
 		t.Fatalf("Ready(2) = %v, want %v (the first two of the full order)", got, wantLimited)
 	}
 }
+
+// openTicketIDs queries the raw universe of open tickets directly -- not
+// through Ready or Blocked -- so TestReadyAndBlockedPartitionOpenTickets has
+// an independently-derived reference set to check the partition claim
+// against.
+func openTicketIDs(t *testing.T, s *Store) []string {
+	t.Helper()
+	rows, err := s.db.QueryContext(context.Background(), `SELECT id FROM items WHERE stage = 'ticket' AND status = 'open'`)
+	if err != nil {
+		t.Fatalf("openTicketIDs: %v", err)
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			t.Fatalf("openTicketIDs: scan: %v", err)
+		}
+		out = append(out, id)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("openTicketIDs: rows: %v", err)
+	}
+	return out
+}
+
+// TestBlockingPropagatesThreeLevels builds epic -> child -> grandchild via
+// AddItem --parent (mustAdd's ParentID), then proves READY-02 at real depth
+// from BOTH sides of the ready/blocked pair: blocking the epic removes all
+// three from ready AND surfaces all three in Blocked, each naming epic as
+// the nearest blocked ancestor (child and grandchild) or blocker directly
+// (epic itself) -- matching 02-RESEARCH.md Pattern 5's naming rule. Closing
+// the blocker (via a raw UPDATE -- CloseItem does not exist until plan 06)
+// returns all three to ready and empties them out of Blocked. Asserting
+// through Blocked() here, not just readyIDs, is deliberate: readyIDs queries
+// the shipped `ready` view directly and is therefore blind to a bug confined
+// to blockedTreeCTE (Go-only) -- this is what makes this test, not just
+// TestBlockedNamesTheBlocker, sensitive to that constant.
+func TestBlockingPropagatesThreeLevels(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	blocker := mustAdd(t, s, AddItemInput{Title: "blocker", Actor: "tester"})
+	epic := mustAdd(t, s, AddItemInput{Title: "epic", Actor: "tester"})
+	child := mustAdd(t, s, AddItemInput{Title: "child", Actor: "tester", ParentID: epic.ID})
+	grandchild := mustAdd(t, s, AddItemInput{Title: "grandchild", Actor: "tester", ParentID: child.ID})
+
+	before := readyIDs(t, s)
+	for _, id := range []string{blocker.ID, epic.ID, child.ID, grandchild.ID} {
+		if !containsID(before, id) {
+			t.Fatalf("before blocking, ready = %v, want %s present", before, id)
+		}
+	}
+
+	if err := s.CreateDep(ctx, DepInput{ItemID: epic.ID, DependsOnID: blocker.ID, Type: model.DepBlocks, Actor: "tester"}); err != nil {
+		t.Fatalf("CreateDep(epic blocks blocker): %v", err)
+	}
+
+	afterBlock := readyIDs(t, s)
+	for _, id := range []string{epic.ID, child.ID, grandchild.ID} {
+		if containsID(afterBlock, id) {
+			t.Fatalf("after blocking epic, ready = %v, want %s absent (blocking must propagate at any depth)", afterBlock, id)
+		}
+	}
+	if !containsID(afterBlock, blocker.ID) {
+		t.Fatalf("after blocking epic, ready = %v, want blocker %s still present", afterBlock, blocker.ID)
+	}
+
+	blockedAfterBlock, err := s.Blocked(ctx)
+	if err != nil {
+		t.Fatalf("Blocked: %v", err)
+	}
+	gotBlockedBy := map[string]string{}
+	for _, b := range blockedAfterBlock {
+		gotBlockedBy[b.ID] = b.BlockedBy
+	}
+	wantBlockedBy := map[string]string{
+		epic.ID:       blocker.ID,
+		child.ID:      epic.ID,
+		grandchild.ID: epic.ID,
+	}
+	for id, want := range wantBlockedBy {
+		if got, ok := gotBlockedBy[id]; !ok {
+			t.Fatalf("Blocked() after blocking epic = %v, want %s present", gotBlockedBy, id)
+		} else if got != want {
+			t.Fatalf("Blocked()[%s].BlockedBy = %q, want %q", id, got, want)
+		}
+	}
+
+	execSQL(t, s, `UPDATE items SET status = 'closed' WHERE id = ?`, blocker.ID)
+
+	afterClose := readyIDs(t, s)
+	for _, id := range []string{epic.ID, child.ID, grandchild.ID} {
+		if !containsID(afterClose, id) {
+			t.Fatalf("after closing blocker, ready = %v, want %s present again", afterClose, id)
+		}
+	}
+
+	blockedAfterClose, err := s.Blocked(ctx)
+	if err != nil {
+		t.Fatalf("Blocked: %v", err)
+	}
+	for _, b := range blockedAfterClose {
+		for _, id := range []string{epic.ID, child.ID, grandchild.ID} {
+			if b.ID == id {
+				t.Fatalf("Blocked() after closing blocker still contains %s, want it gone", id)
+			}
+		}
+	}
+}
+
+// TestBlockedNamesTheBlocker reproduces 02-RESEARCH.md Pattern 5's fixture
+// exactly (blocker; epic blocked by blocker; child1 under epic; grandchild
+// under child1; lonebug also blocked by blocker but NOT in the tree) and
+// asserts against the query's actual executed output verbatim, rather than
+// recomputing what it "should" be. lonebug is what proves a directly-blocked
+// item names its actual `blocks` target while a descendant names its
+// nearest blocked ancestor -- a fixture without it cannot tell the two
+// apart.
+func TestBlockedNamesTheBlocker(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	blocker := mustAdd(t, s, AddItemInput{Title: "blocker", Actor: "tester"})
+	epic := mustAdd(t, s, AddItemInput{Title: "epic", Actor: "tester"})
+	child1 := mustAdd(t, s, AddItemInput{Title: "child1", Actor: "tester", ParentID: epic.ID})
+	grandchild := mustAdd(t, s, AddItemInput{Title: "grandchild", Actor: "tester", ParentID: child1.ID})
+	lonebug := mustAdd(t, s, AddItemInput{Title: "lonebug", Actor: "tester"})
+
+	if err := s.CreateDep(ctx, DepInput{ItemID: epic.ID, DependsOnID: blocker.ID, Type: model.DepBlocks, Actor: "tester"}); err != nil {
+		t.Fatalf("CreateDep(epic blocks blocker): %v", err)
+	}
+	if err := s.CreateDep(ctx, DepInput{ItemID: lonebug.ID, DependsOnID: blocker.ID, Type: model.DepBlocks, Actor: "tester"}); err != nil {
+		t.Fatalf("CreateDep(lonebug blocks blocker): %v", err)
+	}
+
+	blocked, err := s.Blocked(ctx)
+	if err != nil {
+		t.Fatalf("Blocked: %v", err)
+	}
+
+	got := map[string]string{}
+	for _, b := range blocked {
+		got[b.ID] = b.BlockedBy
+	}
+	want := map[string]string{
+		child1.ID:     epic.ID,
+		epic.ID:       blocker.ID,
+		grandchild.ID: epic.ID,
+		lonebug.ID:    blocker.ID,
+	}
+	if len(got) != len(want) {
+		t.Fatalf("Blocked returned %d items %v, want exactly %d %v", len(got), got, len(want), want)
+	}
+	for id, wantBlockedBy := range want {
+		if got[id] != wantBlockedBy {
+			t.Fatalf("Blocked[%s].BlockedBy = %q, want %q", id, got[id], wantBlockedBy)
+		}
+	}
+}
+
+// TestReadyAndBlockedPartitionOpenTickets is the structural claim: for a
+// fixture containing scored, unscored, raw, directly-blocked,
+// transitively-blocked, in-progress, and closed items, every
+// stage='ticket' AND status='open' item appears in EXACTLY ONE of Ready and
+// Blocked -- asserted as a set property over an independently-queried
+// reference set (openTicketIDs), not as a hand-listed expectation, so it
+// keeps working as later plans add fixtures.
+func TestReadyAndBlockedPartitionOpenTickets(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	scored := mustAdd(t, s, AddItemInput{Title: "scored", Actor: "tester", Value: intPtr(5), Confidence: intPtr(5), Effort: intPtr(2)})
+	unscored := mustAdd(t, s, AddItemInput{Title: "unscored", Actor: "tester"})
+	mustAdd(t, s, AddItemInput{Title: "raw", Actor: "tester", Stage: model.StageRaw}) // not a ticket at all -- outside the universe
+	blocker := mustAdd(t, s, AddItemInput{Title: "blocker", Actor: "tester"})
+	blockedDirect := mustAdd(t, s, AddItemInput{Title: "blocked-direct", Actor: "tester"})
+	blockedParent := mustAdd(t, s, AddItemInput{Title: "blocked-parent", Actor: "tester"})
+	blockedChild := mustAdd(t, s, AddItemInput{Title: "blocked-child", Actor: "tester", ParentID: blockedParent.ID})
+	inProgress := mustAdd(t, s, AddItemInput{Title: "in-progress", Actor: "tester"})
+	closedItem := mustAdd(t, s, AddItemInput{Title: "closed", Actor: "tester"})
+
+	if err := s.CreateDep(ctx, DepInput{ItemID: blockedDirect.ID, DependsOnID: blocker.ID, Type: model.DepBlocks, Actor: "tester"}); err != nil {
+		t.Fatalf("CreateDep(blockedDirect blocks blocker): %v", err)
+	}
+	if err := s.CreateDep(ctx, DepInput{ItemID: blockedParent.ID, DependsOnID: blocker.ID, Type: model.DepBlocks, Actor: "tester"}); err != nil {
+		t.Fatalf("CreateDep(blockedParent blocks blocker): %v", err)
+	}
+
+	execSQL(t, s, `UPDATE items SET status = 'in_progress' WHERE id = ?`, inProgress.ID)
+	execSQL(t, s, `UPDATE items SET status = 'closed' WHERE id = ?`, closedItem.ID)
+
+	openTickets := openTicketIDs(t, s)
+
+	readyItems, err := s.Ready(ctx, 0)
+	if err != nil {
+		t.Fatalf("Ready: %v", err)
+	}
+	blockedItems, err := s.Blocked(ctx)
+	if err != nil {
+		t.Fatalf("Blocked: %v", err)
+	}
+
+	readySet := map[string]bool{}
+	for _, it := range readyItems {
+		readySet[it.ID] = true
+	}
+	blockedSet := map[string]bool{}
+	for _, it := range blockedItems {
+		blockedSet[it.ID] = true
+	}
+
+	for _, id := range openTickets {
+		inReady := readySet[id]
+		inBlocked := blockedSet[id]
+		if inReady == inBlocked {
+			t.Fatalf("open ticket %s: inReady=%v inBlocked=%v, want exactly one true (union+disjoint)", id, inReady, inBlocked)
+		}
+	}
+
+	openSet := map[string]bool{}
+	for _, id := range openTickets {
+		openSet[id] = true
+	}
+	for id := range readySet {
+		if !openSet[id] {
+			t.Fatalf("Ready contains %s, which is not in the independently-queried open-ticket set", id)
+		}
+	}
+	for id := range blockedSet {
+		if !openSet[id] {
+			t.Fatalf("Blocked contains %s, which is not in the independently-queried open-ticket set", id)
+		}
+	}
+
+	// Sanity: the fixture actually exercises both sides, or the partition
+	// assertion above would be vacuous.
+	if !readySet[scored.ID] || !readySet[unscored.ID] {
+		t.Fatalf("sanity: scored/unscored should both be ready, readySet=%v", readySet)
+	}
+	if !blockedSet[blockedDirect.ID] || !blockedSet[blockedParent.ID] || !blockedSet[blockedChild.ID] {
+		t.Fatalf("sanity: blockedDirect/blockedParent/blockedChild should all be blocked, blockedSet=%v", blockedSet)
+	}
+}
+
+// TestIsBlockedNamesBlocker proves IsBlocked agrees with Blocked for every
+// entry Blocked reports (both directly- and transitively-blocked), and
+// returns blocked=false for a ready item.
+func TestIsBlockedNamesBlocker(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	blocker := mustAdd(t, s, AddItemInput{Title: "blocker", Actor: "tester"})
+	epic := mustAdd(t, s, AddItemInput{Title: "epic", Actor: "tester"})
+	child1 := mustAdd(t, s, AddItemInput{Title: "child1", Actor: "tester", ParentID: epic.ID})
+	readyItem := mustAdd(t, s, AddItemInput{Title: "ready-item", Actor: "tester"})
+
+	if err := s.CreateDep(ctx, DepInput{ItemID: epic.ID, DependsOnID: blocker.ID, Type: model.DepBlocks, Actor: "tester"}); err != nil {
+		t.Fatalf("CreateDep: %v", err)
+	}
+
+	blocked, err := s.Blocked(ctx)
+	if err != nil {
+		t.Fatalf("Blocked: %v", err)
+	}
+
+	foundChild1 := false
+	for _, b := range blocked {
+		if b.ID == child1.ID {
+			foundChild1 = true
+		}
+		gotBlockedBy, gotBlocked, err := s.IsBlocked(ctx, b.ID)
+		if err != nil {
+			t.Fatalf("IsBlocked(%s): %v", b.ID, err)
+		}
+		if !gotBlocked {
+			t.Fatalf("IsBlocked(%s) = blocked=false, want true (Blocked() already reports it blocked by %s)", b.ID, b.BlockedBy)
+		}
+		if gotBlockedBy != b.BlockedBy {
+			t.Fatalf("IsBlocked(%s) = %q, want %q (agree with Blocked())", b.ID, gotBlockedBy, b.BlockedBy)
+		}
+	}
+	if !foundChild1 {
+		t.Fatalf("sanity: child1 %s should appear in Blocked (transitively blocked via epic), got %v", child1.ID, blocked)
+	}
+
+	blockedBy, isBlocked, err := s.IsBlocked(ctx, readyItem.ID)
+	if err != nil {
+		t.Fatalf("IsBlocked(%s): %v", readyItem.ID, err)
+	}
+	if isBlocked {
+		t.Fatalf("IsBlocked(%s) = blocked=true (by %q), want false", readyItem.ID, blockedBy)
+	}
+}
