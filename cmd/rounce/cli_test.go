@@ -58,17 +58,23 @@ func run(t *testing.T, bin, dir string, env []string, args ...string) (stdout, s
 }
 
 // env returns a minimal, explicit environment for a subprocess: PATH, HOME,
-// and ROUNCE_DB when non-empty. Deliberately not os.Environ() plus
+// USER, and ROUNCE_DB when non-empty, plus any extra entries appended
+// verbatim (e.g. "ROUNCE_SESSION=s1"). Deliberately not os.Environ() plus
 // overrides -- inheriting the developer's real HOME or a real ROUNCE_DB is
 // exactly the leak that makes these tests pass on one machine and fail on
-// another.
-func env(home, rounceDB string) []string {
+// another. USER is part of the base set (not left to extra) because plan
+// 07 onward's mutating commands resolve an actor via resolveActor, which
+// falls back to $USER -- every existing call site up through plan 06's
+// CLI tests keeps compiling unchanged because extra is variadic.
+func env(home, rounceDB string, extra ...string) []string {
 	e := []string{
 		"PATH=/usr/bin:/bin:/usr/local/bin",
 		"HOME=" + home,
+		"USER=rounce-test",
 	}
 	if rounceDB != "" {
 		e = append(e, "ROUNCE_DB="+rounceDB)
 	}
+	e = append(e, extra...)
 	return e
 }

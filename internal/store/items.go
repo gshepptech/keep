@@ -52,6 +52,12 @@ type AddItemInput struct {
 	Body        string
 	Repo        string
 	Paths       string
+	// Assignee is stored via the same "" -> SQL NULL convention insertItem
+	// already uses for Repo/Paths (02-07: plan 07's `add --assignee` flag
+	// needs somewhere to land; the assignee column has existed since Phase
+	// 1's schema, and UpdateItemInput already supports setting it -- AddItem
+	// lacking it was a gap, not a deliberate omission).
+	Assignee string
 }
 
 // generateRootID derives a root item's id from a hash of its title,
@@ -253,7 +259,7 @@ func (s *Store) AddItem(ctx context.Context, in AddItemInput) (model.Item, error
 					return fmt.Errorf("AddItem: generate root id: exhausted %d attempts: %w", maxIDAttempts, ErrConflict)
 				}
 				id = generateRootID(in.Title, now, attempt)
-				execErr := insertItem(ctx, tx, id, nil, nil, stage, itemType, in.Title, in.Body, in.Acceptance, in.Value, in.Confidence, in.Effort, score, in.Why, in.Repo, in.Paths, now)
+				execErr := insertItem(ctx, tx, id, nil, nil, stage, itemType, in.Title, in.Body, in.Acceptance, in.Value, in.Confidence, in.Effort, score, in.Why, in.Repo, in.Paths, in.Assignee, now)
 				if execErr == nil {
 					break
 				}
@@ -287,7 +293,7 @@ func (s *Store) AddItem(ctx context.Context, in AddItemInput) (model.Item, error
 				}
 				ordinal = &next
 				id = fmt.Sprintf("%s.%d", in.ParentID, next)
-				execErr := insertItem(ctx, tx, id, &in.ParentID, ordinal, stage, itemType, in.Title, in.Body, in.Acceptance, in.Value, in.Confidence, in.Effort, score, in.Why, in.Repo, in.Paths, now)
+				execErr := insertItem(ctx, tx, id, &in.ParentID, ordinal, stage, itemType, in.Title, in.Body, in.Acceptance, in.Value, in.Confidence, in.Effort, score, in.Why, in.Repo, in.Paths, in.Assignee, now)
 				if execErr == nil {
 					break
 				}
@@ -348,6 +354,10 @@ func (s *Store) AddItem(ctx context.Context, in AddItemInput) (model.Item, error
 			paths := in.Paths
 			out.Paths = &paths
 		}
+		if in.Assignee != "" {
+			assignee := in.Assignee
+			out.Assignee = &assignee
+		}
 
 		payload := addEventPayload{
 			ParentID:    in.ParentID,
@@ -363,16 +373,19 @@ func (s *Store) AddItem(ctx context.Context, in AddItemInput) (model.Item, error
 }
 
 // insertItem is the one INSERT INTO items statement AddItem uses for both
-// the root and child cases -- parentID/ordinal are nil for a root. repo and
-// paths are converted from "" to a driver nil so an unset flag stores SQL
-// NULL rather than the empty string.
-func insertItem(ctx context.Context, tx *sql.Tx, id string, parentID *string, ordinal *int, stage, itemType, title, body, acceptance string, value, confidence, effort *int, score int, why, repo, paths, now string) error {
-	var repoVal, pathsVal any
+// the root and child cases -- parentID/ordinal are nil for a root. repo,
+// paths, and assignee are converted from "" to a driver nil so an unset
+// flag stores SQL NULL rather than the empty string.
+func insertItem(ctx context.Context, tx *sql.Tx, id string, parentID *string, ordinal *int, stage, itemType, title, body, acceptance string, value, confidence, effort *int, score int, why, repo, paths, assignee, now string) error {
+	var repoVal, pathsVal, assigneeVal any
 	if repo != "" {
 		repoVal = repo
 	}
 	if paths != "" {
 		pathsVal = paths
+	}
+	if assignee != "" {
+		assigneeVal = assignee
 	}
 	_, err := tx.ExecContext(ctx, `
 INSERT INTO items (
@@ -380,9 +393,9 @@ INSERT INTO items (
     value, confidence, effort, score, why, repo, paths,
     claimed_by_session, claimed_at, assignee, external_ref,
     created_at, updated_at, closed_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, ?, ?, NULL)`,
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, NULL, ?, ?, NULL)`,
 		id, parentID, ordinal, stage, itemType, title, body, acceptance,
-		value, confidence, effort, score, why, repoVal, pathsVal,
+		value, confidence, effort, score, why, repoVal, pathsVal, assigneeVal,
 		now, now,
 	)
 	return err
