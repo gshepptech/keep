@@ -227,6 +227,7 @@ var (
 		"ListItems": true,
 		"IsBlocked": true,
 		"Close":     true,
+		"Backlog":   true,
 	}
 )
 
