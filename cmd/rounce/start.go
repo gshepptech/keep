@@ -38,7 +38,7 @@ func runStart(args []string, stdout, stderr io.Writer) int {
 	jsonFlag := addJSONFlag(fs)
 	actorFlag := addActorFlag(fs)
 
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(permuteArgs(fs, args)); err != nil {
 		return 2
 	}
 	if fs.NArg() != 1 {

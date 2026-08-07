@@ -29,7 +29,7 @@ func runClose(args []string, stdout, stderr io.Writer) int {
 	actorFlag := addActorFlag(fs)
 	reasonFlag := fs.String("reason", "", "why this item is being closed (required)")
 
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(permuteArgs(fs, args)); err != nil {
 		return 2
 	}
 	if fs.NArg() != 1 {

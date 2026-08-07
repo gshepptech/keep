@@ -22,7 +22,7 @@ commands:
   init      create a store in this repository
               --db <path>   create the store at exactly this path
               --global      create the store at ~/.rounce/db.sqlite
-  add       create an item: rounce add [flags] <title>  (flags before the title)
+  add       create an item: rounce add [flags] <title>
   dep       create a dependency edge: rounce dep <item-id> <type> <depends-on-id>
   ready     list workable items, ranked
               --limit <n>   at most n items

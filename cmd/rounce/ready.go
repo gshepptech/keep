@@ -26,7 +26,7 @@ func runReady(args []string, stdout, stderr io.Writer) int {
 	jsonFlag := addJSONFlag(fs)
 	limitFlag := fs.Int("limit", 0, "maximum number of items to return (default: no limit)")
 
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(permuteArgs(fs, args)); err != nil {
 		return 2
 	}
 	if fs.NArg() != 0 {

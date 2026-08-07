@@ -29,7 +29,7 @@ func runDep(args []string, stdout, stderr io.Writer) int {
 	dbFlag := addDBFlag(fs)
 	actorFlag := addActorFlag(fs)
 
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(permuteArgs(fs, args)); err != nil {
 		return 2
 	}
 

@@ -17,15 +17,18 @@ import (
 // flag.NewFlagSet(..., flag.ContinueOnError), fs.SetOutput(stderr), return 2
 // on parse failure.
 //
-// Invocation shape is `rounce add [flags] <title>`, flags BEFORE the title,
-// not after: stdlib flag.Parse stops consuming flags at the first
-// non-flag argument and treats everything from there on as fs.Args() (a
-// deliberate, unavoidable stdlib flag limitation -- verified directly
-// against this exact FlagSet before writing this comment, not assumed).
-// runAdd exploits that same stopping point on purpose: everything left in
-// fs.Args() after flags are consumed is joined with a space into the title,
-// so a title needs no quoting even when it has multiple words, as long as
-// it comes last.
+// Invocation shape is `rounce add [flags] <title>`, and flags are also
+// accepted AFTER the title (03-CONTEXT.md decision 1a) -- stdlib
+// flag.Parse itself still stops consuming flags at the first non-flag
+// argument, unchanged, and that is still what lets a multi-word unquoted
+// title work: everything left in fs.Args() after flags are consumed is
+// joined with a space into the title, so a title needs no quoting even
+// when it has multiple words, as long as it comes last. What changed is
+// that fs.Parse(permuteArgs(fs, args)) runs on a pre-pass that moves every
+// well-formed flag ahead of the title first, so both orders now reach
+// flag.Parse identically -- see permuteArgs's doc comment
+// (cmd/rounce/flags.go) for the mechanism and the silent-corruption failure
+// mode it avoids.
 //
 // cmd/rounce must never import a database driver package, must never
 // contain a SQL string, and must never receive a raw DB handle or a row
@@ -64,7 +67,7 @@ func runAdd(args []string, stdout, stderr io.Writer) int {
 	repoFlag := fs.String("repo", "", "repository this item belongs to")
 	assigneeFlag := fs.String("assignee", "", "assignee")
 
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(permuteArgs(fs, args)); err != nil {
 		return 2
 	}
 

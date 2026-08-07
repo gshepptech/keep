@@ -54,7 +54,7 @@ func runUpdate(args []string, stdout, stderr io.Writer) int {
 	pathsFlag := fs.String("paths", "", "change fields on an existing item: new paths")
 	assigneeFlag := fs.String("assignee", "", "change fields on an existing item: new assignee")
 
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(permuteArgs(fs, args)); err != nil {
 		return 2
 	}
 	if fs.NArg() != 1 {

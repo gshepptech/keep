@@ -26,7 +26,7 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 	fs.SetOutput(stderr)
 	dbFlag := fs.String("db", "", "create the store at exactly this path")
 	globalFlag := fs.Bool("global", false, "create the store at ~/.rounce/db.sqlite instead of ./.rounce/db.sqlite")
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(permuteArgs(fs, args)); err != nil {
 		return 2
 	}
 
