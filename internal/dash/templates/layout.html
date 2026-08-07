@@ -1,0 +1,42 @@
+{{/*
+  head/foot -- the chrome every view template wraps around its own content.
+
+  DEVIATION FROM THE PLAN'S LITERAL "{{define "layout"}} ... {{template
+  "content" .}}" SHAPE, RECORDED HERE FOR THE NEXT READER: html/template
+  parses every *.html file in templates/ into ONE shared associated set.
+  When two files each {{define}} a block with the SAME name (e.g. every
+  view defining its own "content"), the set does not error and does not
+  keep both -- the LAST one parsed silently wins, globally, for every
+  caller of that name. Verified live during execution: a two-file "content"
+  collision reproduced exactly this (the second file's definition answered
+  every {{template "content" .}} call, including from the first file's own
+  page). A single shared "layout" calling a same-named "content" block
+  therefore cannot select which view's content to render -- there is no way
+  to parameterize {{template}}'s name argument at execution time either; it
+  must be a string constant, also verified live (a $variable or a
+  pipeline-derived name fails to parse).
+
+  The fix: give each view its own uniquely-named top-level template
+  ("ready", "backlog", "item", "tree" -- see the other four files in this
+  directory) and have it call these two shared, uniquely-named blocks
+  directly. Same composition, no collision, and each render.go function
+  calls tmpl.ExecuteTemplate by the view's own template name rather than by
+  "layout".
+*/}}
+{{define "head"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.}} — rounce</title>
+<style>{{style}}</style>
+</head>
+<body>
+<nav>
+<a href="/">queue</a>
+<a href="/backlog">backlog</a>
+</nav>
+{{end}}
+{{define "foot"}}</body>
+</html>
+{{end}}
