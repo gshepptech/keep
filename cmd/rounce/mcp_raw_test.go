@@ -5,12 +5,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os/exec"
 	"sort"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/gshepptech/rounce/internal/model"
 )
 
 // rawMCPConn drives a real `rounce mcp` subprocess over its own stdin and
@@ -64,6 +67,19 @@ type rawResponse struct {
 		Code    int64  `json:"code"`
 		Message string `json:"message"`
 	} `json:"error"`
+}
+
+// toolCallResult is a tools/call response's Result payload, decoded from
+// rawResponse.Result. Every tool call this file makes (successful ones,
+// isError ones) shares this shape; a protocol error never has a Result at
+// all (rawResponse.Error is set instead), so this type is never applied to
+// that case.
+type toolCallResult struct {
+	Content []struct {
+		Type string `json:"type"`
+		Text string `json:"text"`
+	} `json:"content"`
+	IsError bool `json:"isError"`
 }
 
 // startRawMCP starts a real `rounce mcp` subprocess (bin built by
@@ -309,5 +325,169 @@ func TestRawMCPHandshake(t *testing.T) {
 	code := conn.closeAndWait(t)
 	if code != 0 {
 		t.Fatalf("rounce mcp exit code = %d, want 0 (stderr: %s)", code, conn.stderr.String())
+	}
+}
+
+// TestMCPPipelinedCallsDoNotRace proves MCP-06: the MCP process serializes
+// its own store access, so pipelined tools/call requests within one session
+// cannot race.
+//
+// --- GATE-04's reading for this requirement (settled during planning; see
+// 04-06-PLAN.md's objective, copied verbatim here so the reasoning travels
+// with the test rather than living only in a planning doc) ---
+//
+// GATE-04's "spawns the real binary at least twice" does not apply to
+// MCP-06's shape, and the correct proof is one process with two pipelined
+// requests. GATE-04 exists for a specific reason, stated in
+// REQUIREMENTS.md next to ITEM-03: "OS-level fcntl/flock locking is
+// structurally invisible to in-process tests." That rationale is about
+// INTER-process contention -- two rounce processes, two *Store values, two
+// *sql.DB pools, arbitrated by SQLite's file locks. MCP-06 is the opposite
+// hazard: INTRA-process, one *Store, one connection pool, one *sql.DB, with
+// the SDK dispatching handlers concurrently. Two `rounce mcp` processes
+// would not share a *Store and so would not exercise MCP-06 at all -- the
+// literal reading of GATE-04 would test the wrong thing here. The reading
+// adopted is the one that carries GATE-04's other half: against the real
+// compiled binary, never a goroutine simulation. One real spawned
+// `rounce mcp`, two requests written before either response is read, over
+// its real stdio pipes -- not mcp.NewInMemoryTransports(), which is an
+// in-process net.Pipe and would prove nothing. GATE-04's literal
+// two-process form remains satisfied for this store by Phase 2's
+// TestConcurrentAddChildrenNoOrdinalCollision (cmd/rounce/concurrent_test.go,
+// eight real `rounce add --parent` processes), which still passes; MCP-06
+// adds the axis GATE-04 does not cover rather than replacing it. This test
+// spawns ONE real `rounce mcp` binary and writes FOUR requests before
+// reading any response -- four rather than two, because two pipelined
+// requests can pass by accident on a machine that happens to serialize
+// them, and the ordinal invariant this test asserts only bites with real
+// contention.
+func TestMCPPipelinedCallsDoNotRace(t *testing.T) {
+	bin := buildRounce(t, "")
+	dir := t.TempDir()
+	environ := env(dir, "", "ROUNCE_SESSION=pipeline-session")
+
+	if _, _, code := run(t, bin, dir, environ, "init"); code != 0 {
+		t.Fatalf("init exit code = %d, want 0", code)
+	}
+
+	parentOut, parentErr, code := run(t, bin, dir, environ, "add", "--type", "epic", "parent")
+	if code != 0 {
+		t.Fatalf("add parent (fixture): exit %d, stderr=%s", code, parentErr)
+	}
+	parentID := strings.TrimSpace(parentOut)
+
+	conn := startRawMCP(t, bin, dir, environ)
+	conn.handshake(t)
+
+	// Serialization here is SetMaxOpenConns(1) (internal/store/schema.go's
+	// open()), and nothing else -- no package-level mutex anywhere in this
+	// codebase. 04-CONTEXT.md left the choice to discretion "provided the
+	// choice is deliberate and tested"; 04-RESEARCH.md tested it: 40
+	// goroutines on AddItem, then 40 more mixing StartItem (which nests a
+	// second query inside its own transaction, via isBlockedTx) with plain
+	// Ready reads, against one *Store -- zero corruption, zero deadlock,
+	// -race clean, both under 200ms. A package-level mutex would add
+	// nothing the pool does not already guarantee, and would be a second,
+	// weaker place someone could later "optimise" the guarantee away. This
+	// test is what makes that a TESTED decision rather than an assumption.
+	//
+	// The hazard is not hypothetical: the SDK dispatches every tools/call
+	// concurrently (jsonrpc2.Async, called on every request). Observed
+	// live, six pipelined requests answered in the order 1, 2, 4, 5, 3, 6
+	// -- which is also why awaitID (above) files responses by id instead
+	// of assuming arrival order.
+
+	// Write all four requests to stdin with NO read between them. This
+	// loop is the whole point of the test: inserting a readLine/awaitID
+	// call between these four sends would silently turn this into four
+	// SEQUENTIAL calls and prove nothing about concurrent dispatch --
+	// GATE-03 break 3 (verification section, 04-06-PLAN.md) exercises
+	// exactly that and records it as the deliberate non-catch it is.
+	for i, id := range []int{10, 11, 12, 13} {
+		conn.send(t, map[string]any{
+			"jsonrpc": "2.0",
+			"id":      id,
+			"method":  "tools/call",
+			"params": map[string]any{
+				"name": "add",
+				"arguments": map[string]any{
+					"title":     fmt.Sprintf("child %d", i),
+					"parent_id": parentID,
+				},
+			},
+		})
+	}
+
+	responses := conn.awaitID(t, 10, 11, 12, 13)
+
+	ordinals := map[int]bool{}
+	ids := map[string]bool{}
+	for _, reqID := range []int{10, 11, 12, 13} {
+		resp := responses[reqID]
+		if resp.Error != nil {
+			t.Fatalf("tools/call add (raw id %d): protocol error: code=%d message=%s", reqID, resp.Error.Code, resp.Error.Message)
+		}
+		var result toolCallResult
+		if err := json.Unmarshal(resp.Result, &result); err != nil {
+			t.Fatalf("decode tools/call result for raw id %d: %v (raw result: %s)", reqID, err, resp.Result)
+		}
+		if result.IsError {
+			t.Fatalf("tools/call add (raw id %d): isError = true, content = %+v", reqID, result.Content)
+		}
+		if len(result.Content) != 1 {
+			t.Fatalf("tools/call add (raw id %d): len(content) = %d, want 1", reqID, len(result.Content))
+		}
+		var item model.Item
+		if err := json.Unmarshal([]byte(result.Content[0].Text), &item); err != nil {
+			t.Fatalf("decode item for raw id %d: %v (text: %s)", reqID, err, result.Content[0].Text)
+		}
+		if item.Ordinal == nil {
+			t.Fatalf("raw id %d: item %s has a nil ordinal, want one of 1..4", reqID, item.ID)
+		}
+		// Assert as SETS (map[int]bool, map[string]bool), not as a count or
+		// a maximum -- Phase 2's TestConcurrentAddChildrenNoOrdinalCollision
+		// (cmd/rounce/concurrent_test.go) established this and the reason
+		// holds here identically: a count of 4 also passes if two children
+		// share an ordinal and a third is missing entirely.
+		ordinals[*item.Ordinal] = true
+		ids[item.ID] = true
+	}
+
+	if len(ordinals) != 4 {
+		t.Fatalf("got %d distinct ordinals %v from four responses, want 4 distinct values {1,2,3,4} -- no gaps, no duplicates", len(ordinals), ordinals)
+	}
+	for i := 1; i <= 4; i++ {
+		if !ordinals[i] {
+			t.Fatalf("ordinal %d missing from the set %v -- want exactly {1,2,3,4}", i, ordinals)
+		}
+	}
+	if len(ids) != 4 {
+		t.Fatalf("got %d distinct ids %v, want 4", len(ids), ids)
+	}
+	for i := 1; i <= 4; i++ {
+		wantID := fmt.Sprintf("%s.%d", parentID, i)
+		if !ids[wantID] {
+			t.Fatalf("id %q missing from the set %v -- want exactly {%s.1 .. %s.4}", wantID, ids, parentID, parentID)
+		}
+	}
+
+	// Confirm the rows are really on disk, not just present in four
+	// optimistic tools/call responses: an ordinary CLI invocation,
+	// afterwards, over the same store.
+	listOut, listErr, listCode := run(t, bin, dir, environ, "list", "--parent", parentID, "--json")
+	if listCode != 0 {
+		t.Fatalf("list --parent %s --json: exit %d, stderr=%s", parentID, listCode, listErr)
+	}
+	var onDisk []model.Item
+	if err := json.Unmarshal([]byte(listOut), &onDisk); err != nil {
+		t.Fatalf("decode list --json: %v (raw: %s)", err, listOut)
+	}
+	if len(onDisk) != 4 {
+		t.Fatalf("list --parent %s --json returned %d items, want exactly 4", parentID, len(onDisk))
+	}
+
+	code2 := conn.closeAndWait(t)
+	if code2 != 0 {
+		t.Fatalf("rounce mcp exit code = %d, want 0 (stderr: %s)", code2, conn.stderr.String())
 	}
 }
