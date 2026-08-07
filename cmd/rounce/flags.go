@@ -195,6 +195,39 @@ tokenLoop:
 	return out
 }
 
+// resolveBody implements --body -'s "read from stdin" contract, shared by
+// add and capture (03-CONTEXT.md decision 3: "having --body - mean two
+// different things in two commands would be worse than either meaning
+// alone" -- there is exactly one definition of this function, and add.go/
+// capture.go are its only two call sites).
+//
+// It reads os.Stdin directly rather than taking an io.Reader parameter,
+// because every runX in this package has the fixed signature
+// (args []string, stdout, stderr io.Writer) int, and threading a reader
+// through all twelve of them to serve two would be a large, unrelated
+// change. Every test in this package drives the real binary through
+// os/exec (cli_test.go), so a real pipe is what gets exercised either way
+// regardless of which shape resolveBody's own signature takes -- there is
+// no test-only reason to prefer an injected reader here.
+//
+// The read is gated STRICTLY on bodyFlag being the literal string "-",
+// never on "is stdin non-empty" or a TTY check (03-RESEARCH.md Pitfall 4):
+// an unconditional read would make a plain, interactive `rounce add
+// "title"` (no --body at all) block forever waiting for EOF a real
+// terminal never sends. Any other value, including "", is returned
+// unchanged and never touches stdin. Empty piped stdin is success, not an
+// error -- io.ReadAll on an immediately-EOF reader returns ("", nil).
+func resolveBody(bodyFlag string) (string, error) {
+	if bodyFlag != "-" {
+		return bodyFlag, nil
+	}
+	b, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
 // stringSlice implements flag.Value for a repeatable string flag: each
 // -flag <value> occurrence appends, rather than the flag package's default
 // last-one-wins behaviour for a *string. Used by add's --blocks/

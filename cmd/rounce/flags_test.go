@@ -2,8 +2,10 @@ package main
 
 import (
 	"flag"
+	"os"
 	"reflect"
 	"testing"
+	"time"
 )
 
 // newTestFlagSet registers the same three flag shapes 03-RESEARCH.md Pattern
@@ -120,6 +122,74 @@ func TestPermuteArgs(t *testing.T) {
 		}
 		if got, want := []string(*blocksFlag), []string{"a", "b"}; !reflect.DeepEqual(got, want) {
 			t.Errorf("blocks = %v, want %v", got, want)
+		}
+	})
+}
+
+// TestResolveBody exercises resolveBody as a pure function against a real
+// os.Stdin swap -- the process-level proof that a real pipe round-trips
+// through the real binary lives in capture_test.go's
+// TestAddBodyDashReadsStdin, but this table proves resolveBody's own gating
+// logic directly and fast, including the "never touches stdin unless the
+// flag is literally -" contract (03-RESEARCH.md Pitfall 4).
+func TestResolveBody(t *testing.T) {
+	t.Run(`"-" reads everything from stdin, byte for byte`, func(t *testing.T) {
+		r, w, err := os.Pipe()
+		if err != nil {
+			t.Fatalf("os.Pipe: %v", err)
+		}
+		orig := os.Stdin
+		os.Stdin = r
+		defer func() { os.Stdin = orig }()
+
+		want := "line one\nline two, no trailing newline"
+		go func() {
+			w.WriteString(want)
+			w.Close()
+		}()
+
+		got, err := resolveBody("-")
+		if err != nil {
+			t.Fatalf("resolveBody(\"-\"): %v", err)
+		}
+		if got != want {
+			t.Fatalf("resolveBody(\"-\") = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("non-dash values are returned unchanged and never touch stdin", func(t *testing.T) {
+		// A pipe whose writer is deliberately never closed: any real read
+		// from it blocks forever. If resolveBody touched stdin for a
+		// non-"-" value, this test would hang rather than fail cleanly --
+		// exactly the signal that matters here.
+		r, w, err := os.Pipe()
+		if err != nil {
+			t.Fatalf("os.Pipe: %v", err)
+		}
+		defer w.Close()
+		orig := os.Stdin
+		os.Stdin = r
+		defer func() { os.Stdin = orig }()
+
+		for _, in := range []string{"some text", ""} {
+			done := make(chan struct{})
+			var got string
+			var gotErr error
+			go func() {
+				got, gotErr = resolveBody(in)
+				close(done)
+			}()
+			select {
+			case <-done:
+			case <-time.After(2 * time.Second):
+				t.Fatalf("resolveBody(%q) blocked -- it touched stdin", in)
+			}
+			if gotErr != nil {
+				t.Fatalf("resolveBody(%q): %v", in, gotErr)
+			}
+			if got != in {
+				t.Fatalf("resolveBody(%q) = %q, want %q", in, got, in)
+			}
 		}
 	})
 }

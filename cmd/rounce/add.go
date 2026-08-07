@@ -63,7 +63,7 @@ func runAdd(args []string, stdout, stderr io.Writer) int {
 	whyFlag := fs.String("why", "", "why this item matters")
 	acceptanceFlag := fs.String("acceptance", "", "acceptance criteria")
 	pathsFlag := fs.String("paths", "", "paths this item touches")
-	bodyFlag := fs.String("body", "", "full body text")
+	bodyFlag := fs.String("body", "", "full body text, or - to read it from stdin")
 	repoFlag := fs.String("repo", "", "repository this item belongs to")
 	assigneeFlag := fs.String("assignee", "", "assignee")
 
@@ -102,6 +102,14 @@ func runAdd(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
+	// Resolved before the store is opened, so a stdin read failure exits
+	// without leaving an open store behind (03-03-PLAN.md task 1).
+	body, err := resolveBody(*bodyFlag)
+	if err != nil {
+		fmt.Fprintf(stderr, "rounce: add: %v\n", err)
+		return 1
+	}
+
 	s, err := openStore(*dbFlag)
 	if err != nil {
 		fmt.Fprintf(stderr, "rounce: %v\n", err)
@@ -123,7 +131,7 @@ func runAdd(args []string, stdout, stderr io.Writer) int {
 		Effort:      effort,
 		Why:         *whyFlag,
 		Acceptance:  *acceptanceFlag,
-		Body:        *bodyFlag,
+		Body:        body,
 		Repo:        *repoFlag,
 		Paths:       *pathsFlag,
 		Assignee:    *assigneeFlag,
