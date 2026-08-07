@@ -67,73 +67,97 @@ func runBacklog(args []string, stdout, stderr io.Writer) int {
 		return exitFor(stderr, err)
 	}
 
-	// Newest first, with a deterministic tiebreak: sort.Slice is not
-	// stable, and two items created in one second are not the tie risk a
-	// missing tiebreak making output differ between runs is (03-CONTEXT.md
-	// decision 4 / the plan's own <constraints>). CreatedAt sorts lexically
-	// because model.TimeFormat is fixed-width UTC.
-	sort.Slice(items, func(i, j int) bool {
-		if items[i].CreatedAt != items[j].CreatedAt {
-			return items[i].CreatedAt > items[j].CreatedAt
-		}
-		return items[i].ID < items[j].ID
-	})
+	// orderBacklog groups by type in schema-enum order, sorting each group
+	// newest first with a deterministic tiebreak, and flattens the result
+	// into ONE ordered slice -- the single source of order for both the
+	// rendered text (which re-derives its group boundaries from
+	// consecutive equal Types, since orderBacklog already grouped them) and
+	// --json's flat array. --json must be "the same order the rendered
+	// output uses" (the plan's own <behavior>/<constraints>): a plain
+	// CreatedAt-only sort across all types would NOT match the rendered
+	// order once two different types interleave in time, so both outputs
+	// share this one ordering instead of computing it twice and risking
+	// drift between them.
+	ordered := orderBacklog(items)
 
 	if *jsonFlag {
-		if items == nil {
-			items = []model.Item{}
+		if ordered == nil {
+			ordered = []model.Item{}
 		}
-		if err := emitJSON(stdout, items); err != nil {
+		if err := emitJSON(stdout, ordered); err != nil {
 			fmt.Fprintf(stderr, "rounce: backlog: %v\n", err)
 			return 1
 		}
 		return 0
 	}
 
-	renderBacklog(stdout, items)
+	renderBacklog(stdout, ordered)
 	return 0
+}
+
+// orderBacklog groups items by Type in backlogTypeOrder (schema-enum order,
+// never alphabetical or map-iteration order), sorts each group newest first
+// -- CreatedAt descending, ID ascending as a deterministic tiebreak, since
+// sort.Slice is not stable and a missing tiebreak would make output differ
+// between runs -- and returns the concatenation of the non-empty groups in
+// that order. This single ordering is what both the rendered text and
+// --json's flat array walk.
+func orderBacklog(items []model.Item) []model.Item {
+	byType := make(map[string][]model.Item, len(backlogTypeOrder))
+	for _, it := range items {
+		byType[it.Type] = append(byType[it.Type], it)
+	}
+
+	var out []model.Item
+	for _, typ := range backlogTypeOrder {
+		group := byType[typ]
+		if len(group) == 0 {
+			continue
+		}
+		sort.Slice(group, func(i, j int) bool {
+			if group[i].CreatedAt != group[j].CreatedAt {
+				return group[i].CreatedAt > group[j].CreatedAt
+			}
+			return group[i].ID < group[j].ID
+		})
+		out = append(out, group...)
+	}
+	return out
 }
 
 // renderBacklog writes the locked output shape (03-CONTEXT.md decision 4):
 // a bare, unadorned header line per non-empty type group in schema-enum
 // order, a blank line BETWEEN groups (never after the last one), and one
 // "id  created  title" line per item, newest first within its group. Empty
-// groups print nothing at all -- not even an empty header.
-func renderBacklog(w io.Writer, items []model.Item) {
-	if len(items) == 0 {
+// groups print nothing at all -- not even an empty header. ordered must
+// already be grouped-then-sorted (orderBacklog's output) -- a new group
+// boundary is detected by Type changing between consecutive items, since
+// backlogTypeOrder guarantees each type's rows are contiguous.
+func renderBacklog(w io.Writer, ordered []model.Item) {
+	if len(ordered) == 0 {
 		return
 	}
 
 	// Id column width computed across ALL groups, not per group, so the
 	// columns line up down the whole page.
 	idW := 0
-	for _, it := range items {
+	for _, it := range ordered {
 		if l := len(it.ID); l > idW {
 			idW = l
 		}
 	}
 
-	byType := make(map[string][]model.Item, len(backlogTypeOrder))
-	for _, it := range items {
-		byType[it.Type] = append(byType[it.Type], it)
-	}
-
 	budget := titleWidth(w)
-	first := true
-	for _, typ := range backlogTypeOrder {
-		group := byType[typ]
-		if len(group) == 0 {
-			continue
+	currentType := ""
+	for i, it := range ordered {
+		if it.Type != currentType {
+			if i > 0 {
+				fmt.Fprintln(w)
+			}
+			fmt.Fprintln(w, it.Type)
+			currentType = it.Type
 		}
-		if !first {
-			fmt.Fprintln(w)
-		}
-		first = false
-
-		fmt.Fprintln(w, typ)
-		for _, it := range group {
-			fmt.Fprintf(w, "%-*s  %s  %s\n", idW, it.ID, createdDate(it.CreatedAt), truncateTitle(it.Title, budget))
-		}
+		fmt.Fprintf(w, "%-*s  %s  %s\n", idW, it.ID, createdDate(it.CreatedAt), truncateTitle(it.Title, budget))
 	}
 }
 
