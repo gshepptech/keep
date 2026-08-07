@@ -1,11 +1,17 @@
 package dash
 
 import (
+	"context"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"golang.org/x/net/html"
+
+	"github.com/gshepptech/rounce/internal/model"
+	"github.com/gshepptech/rounce/internal/store"
 )
 
 // resourceAttrs are the attributes whose values a browser resolves as a URL
@@ -202,4 +208,160 @@ func stripCSSComments(s string) string {
 		s = s[start+end+2:]
 	}
 	return b.String()
+}
+
+// The six hostile values below are planted into a real store fixture's
+// Title/Body/Why/Acceptance/Repo fields (never into a struct literal --
+// see newOffhostFixture's own comment for why that distinction matters
+// here specifically). hostileImgTagMarker is checked for presence using a
+// metachar-free substring ("evil.example/z.png") rather than the literal
+// tag text, because html/template's own escaping of "<img src=\"...\">"
+// inside a <pre> turns the angle brackets and quotes into entities --
+// which is the correct, desired behaviour (the tag must render as inert
+// text, not become a live element), so the presence check must survive
+// that escaping rather than defeat the point of the test by asserting
+// against unescaped markup.
+const (
+	hostileHTTP          = "http://evil.example/x.png"
+	hostileProtoRelative = "//evil.example/y.png"
+	hostileImgTag        = `<img src="http://evil.example/z.png">`
+	hostileImgTagMarker  = "evil.example/z.png"
+	hostileImportCSS     = "@import url(https://evil.example/a.css)"
+	hostileStyleURL      = "background:url(http://evil.example/b.png)"
+	hostileJS            = "javascript:alert(1)"
+)
+
+// offhostFixtureIDs names every id newOffhostFixture's fixture produces.
+type offhostFixtureIDs struct {
+	epic, child, grandchild, readyItem, rawNote string
+}
+
+// newOffhostFixture builds a Server backed by a REAL store.Store, with every
+// hostile value planted through the real store.AddItem/CreateDep API --
+// never as model.Item/model.TreeNode struct literals.
+//
+// This is the opposite fixture strategy from 05-02's DASH-06 golden test,
+// and deliberately so, for a reason worth recording rather than letting a
+// future reader "clean up" into one consistent choice: DASH-06 needs
+// byte-stable output, so it fixtures with literal, stable ids and never
+// touches a live store or a clock. DASH-05 needs the opposite proof --
+// that data which genuinely travelled through AddItem and back out of a
+// real query (wall-clock-derived rnc- ids, the real column round-trip,
+// the real html/template execution against real model.Item/model.ItemDetail/
+// model.TreeNode values) cannot produce an off-host reference at render
+// time. A struct-literal fixture here would only prove the template is
+// safe against values Go can construct in a test file, not against values
+// that actually survived a store round-trip -- and nothing in this test
+// compares byte-for-byte, so the wall-clock-derived ids are harmless.
+//
+// The fixture is also the three-level blocked subtree the tree route (and
+// DASH-06) already uses: epic (blocked, root) -> child -> grandchild, plus
+// a separate blocker and one ready item and one raw-backlog item so all
+// four views have hostile content to render.
+func newOffhostFixture(t *testing.T) (*Server, offhostFixtureIDs) {
+	t.Helper()
+	st := openTestStore(t)
+	ctx := context.Background()
+	const actor = "hostile-tester"
+
+	epic := mustAdd(t, st, store.AddItemInput{Title: "Epic root " + hostileHTTP, Actor: actor})
+	child := mustAdd(t, st, store.AddItemInput{
+		Title: "Child " + hostileProtoRelative, Actor: actor, ParentID: epic.ID,
+	})
+	// grandchild carries every remaining hostile field (Body/Why/Acceptance/
+	// Repo) so a single /item/{id} route exercises Body, Why, Acceptance,
+	// and Repo all at once, per this task's own <behavior>. hostileJS lands
+	// in Body, not Title: item.html (05-02) deliberately renders no title
+	// row at all (05-03-SUMMARY.md's own precedent), so a hostile value
+	// planted only in Title would never appear in this view's output.
+	grandchild := mustAdd(t, st, store.AddItemInput{
+		Title: "Grandchild", Actor: actor, ParentID: child.ID,
+		Body:       hostileImgTag + " " + hostileStyleURL + " " + hostileJS,
+		Why:        hostileImportCSS,
+		Acceptance: hostileHTTP,
+		Repo:       hostileProtoRelative,
+	})
+	blocker := mustAdd(t, st, store.AddItemInput{Title: "Blocker", Actor: actor})
+	if err := st.CreateDep(ctx, store.DepInput{ItemID: epic.ID, DependsOnID: blocker.ID, Type: model.DepBlocks, Actor: actor}); err != nil {
+		t.Fatalf("CreateDep: %v", err)
+	}
+	readyItem := mustAdd(t, st, store.AddItemInput{Title: "Ready item " + hostileHTTP, Actor: actor})
+	rawNote := mustAdd(t, st, store.AddItemInput{
+		Title: "Raw note " + hostileProtoRelative, Actor: actor,
+		Stage: model.StageRaw, Type: model.TypeNote,
+	})
+
+	s, err := NewServer(st, "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("NewServer: %v", err)
+	}
+	t.Cleanup(func() { s.Close() })
+
+	return s, offhostFixtureIDs{
+		epic: epic.ID, child: child.ID, grandchild: grandchild.ID,
+		readyItem: readyItem.ID, rawNote: rawNote.ID,
+	}
+}
+
+// TestNoExternalReferencesInRenderedViews is DASH-05's exit-gate proof: all
+// four rendered views, driven through the real Handler() via httptest (real
+// HTTP responses, not template source), scan clean -- and the hostile text
+// is confirmed PRESENT in each body first, so a view that silently dropped
+// a field could not make the scan pass vacuously.
+func TestNoExternalReferencesInRenderedViews(t *testing.T) {
+	s, ids := newOffhostFixture(t)
+
+	cases := []struct {
+		name           string
+		path           string
+		wantSubstrings []string
+	}{
+		{"ready queue", "/", []string{hostileHTTP}},
+		{"backlog", "/backlog", []string{hostileProtoRelative}},
+		{
+			"item detail", "/item/" + ids.grandchild,
+			[]string{hostileJS, hostileImgTagMarker, hostileStyleURL, hostileImportCSS, hostileHTTP, hostileProtoRelative},
+		},
+		// tree.html renders only Title (never Body/Why/Acceptance/Repo) --
+		// epic's and child's titles carry hostileHTTP/hostileProtoRelative;
+		// grandchild's own hostile fields (checked above, under item detail)
+		// are Body-only and therefore not expected to appear in this view.
+		{"tree", "/tree/" + ids.epic, []string{hostileHTTP, hostileProtoRelative}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tc.path, nil))
+			if rec.Code != http.StatusOK {
+				t.Fatalf("%s: status = %d, want 200", tc.path, rec.Code)
+			}
+			body := rec.Body.String()
+			if body == "" {
+				t.Fatalf("%s: empty response body", tc.path)
+			}
+
+			// Confirm the hostile text is actually present (escaped, as
+			// inert text) BEFORE trusting a clean scan -- a view that
+			// silently dropped the field would pass the scan vacuously.
+			for _, want := range tc.wantSubstrings {
+				if !strings.Contains(body, want) {
+					t.Errorf("%s: hostile text %q not present in rendered body -- scan would pass vacuously", tc.path, want)
+				}
+			}
+
+			if v := scanRenderedHTML(body); len(v) != 0 {
+				t.Errorf("%s: off-host references in rendered output:\n%s", tc.path, strings.Join(v, "\n"))
+			}
+		})
+	}
+
+	// The tree route's fixture is the three-level blocked subtree -- confirm
+	// the DASH-06 view under scan here is also the blocked one, so this
+	// test is not accidentally scanning an all-workable tree.
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/tree/"+ids.epic, nil))
+	if !strings.Contains(rec.Body.String(), "blocked") {
+		t.Fatalf("/tree/%s: body does not contain the word \"blocked\" -- fixture is not exercising DASH-06's blocked-subtree shape", ids.epic)
+	}
 }
