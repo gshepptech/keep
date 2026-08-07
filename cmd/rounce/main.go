@@ -23,6 +23,10 @@ commands:
               --db <path>   create the store at exactly this path
               --global      create the store at ~/.rounce/db.sqlite
   add       create an item: rounce add [flags] <title>
+  capture   capture a raw note or document: rounce capture [flags] <title>
+              --type <t>    item type, default note (roadmap/epic/task/bug/note)
+              --body -      read the body from stdin
+              stage is always raw -- there is no --stage flag
   dep       create a dependency edge: rounce dep <item-id> <type> <depends-on-id>
   ready     list workable items, ranked
               --limit <n>   at most n items
@@ -62,6 +66,8 @@ func main() {
 		os.Exit(runInit(os.Args[2:], os.Stdout, os.Stderr))
 	case "add":
 		os.Exit(runAdd(os.Args[2:], os.Stdout, os.Stderr))
+	case "capture":
+		os.Exit(runCapture(os.Args[2:], os.Stdout, os.Stderr))
 	case "dep":
 		os.Exit(runDep(os.Args[2:], os.Stdout, os.Stderr))
 	case "ready":
