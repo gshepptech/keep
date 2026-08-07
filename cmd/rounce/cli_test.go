@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -38,6 +39,46 @@ func run(t *testing.T, bin, dir string, env []string, args ...string) (stdout, s
 	cmd := exec.Command(bin, args...)
 	cmd.Dir = dir
 	cmd.Env = env
+
+	var outBuf, errBuf bytes.Buffer
+	cmd.Stdout = &outBuf
+	cmd.Stderr = &errBuf
+
+	err := cmd.Run()
+	stdout = outBuf.String()
+	stderr = errBuf.String()
+
+	if err == nil {
+		return stdout, stderr, 0
+	}
+	if exitErr, ok := err.(*exec.ExitError); ok {
+		return stdout, stderr, exitErr.ExitCode()
+	}
+	t.Fatalf("running %s failed to even start: %v", bin, err)
+	return "", "", -1
+}
+
+// runStdin is run's stdin-aware sibling, needed because no command before
+// this phase reads stdin (03-RESEARCH.md Pitfall 3): args is variadic-last
+// in run's signature, so a stdin parameter cannot be inserted into it
+// without touching every existing call site, and an unset cmd.Stdin
+// correctly defaults to os.DevNull for every other command's test -- so run
+// itself needs no change and stays correct.
+//
+// A non-*os.File io.Reader (strings.NewReader here) is copied to the
+// child's stdin via an internal os/exec goroutine, so Wait() (inside
+// cmd.Run()) blocks until copying finishes -- no manual pipe/goroutine
+// plumbing is needed here, confirmed against os/exec's own documentation
+// and 03-RESEARCH.md's live proof that a 5MB payload round-trips
+// byte-identically through a real os/exec-spawned process with no
+// truncation.
+func runStdin(t *testing.T, bin, dir string, env []string, stdin string, args ...string) (stdout, stderr string, code int) {
+	t.Helper()
+
+	cmd := exec.Command(bin, args...)
+	cmd.Dir = dir
+	cmd.Env = env
+	cmd.Stdin = strings.NewReader(stdin)
 
 	var outBuf, errBuf bytes.Buffer
 	cmd.Stdout = &outBuf
