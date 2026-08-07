@@ -237,6 +237,64 @@ func TestListItemsFilters(t *testing.T) {
 	}
 }
 
+// TestListItemsExcludeClosed proves ListFilter.ExcludeClosed's scope: given
+// four raw items, one each in status open/in_progress/closed/dropped (the
+// latter two set through the real CloseItem/DropItem methods, not raw SQL,
+// so the test exercises the same rows the CLI will), ExcludeClosed: true
+// returns exactly the open and in_progress items, the zero value (unset)
+// still returns all four, and ExcludeClosed composes with Type/Stage as AND
+// like every other ListFilter field.
+func TestListItemsExcludeClosed(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	open := mustAdd(t, s, AddItemInput{Title: "open-raw", Actor: "tester", Stage: model.StageRaw})
+	inProgress := mustAdd(t, s, AddItemInput{Title: "in-progress-raw", Actor: "tester", Stage: model.StageRaw})
+	closedItem := mustAdd(t, s, AddItemInput{Title: "closed-raw", Actor: "tester", Stage: model.StageRaw})
+	dropped := mustAdd(t, s, AddItemInput{Title: "dropped-raw", Actor: "tester", Stage: model.StageRaw})
+
+	execSQL(t, s, `UPDATE items SET status = ? WHERE id = ?`, model.StatusInProgress, inProgress.ID)
+	if _, err := s.CloseItem(ctx, CloseItemInput{ID: closedItem.ID, Reason: "done", Actor: "tester"}); err != nil {
+		t.Fatalf("CloseItem: %v", err)
+	}
+	if _, err := s.DropItem(ctx, DropItemInput{ID: dropped.ID, Reason: "no longer relevant", Actor: "tester"}); err != nil {
+		t.Fatalf("DropItem: %v", err)
+	}
+
+	got, err := s.ListItems(ctx, ListFilter{Stage: model.StageRaw, ExcludeClosed: true})
+	if err != nil {
+		t.Fatalf("ListItems(ExcludeClosed: true): %v", err)
+	}
+	wantIDs := sortedStrings([]string{open.ID, inProgress.ID})
+	gotIDs := idsOfItems(got)
+	if !equalStringSlices(gotIDs, wantIDs) {
+		t.Fatalf("ListItems(Stage: raw, ExcludeClosed: true) ids = %v, want %v", gotIDs, wantIDs)
+	}
+
+	// The zero value (ExcludeClosed unset) must change nothing for every
+	// existing caller -- all four raw items still come back.
+	allGot, err := s.ListItems(ctx, ListFilter{Stage: model.StageRaw})
+	if err != nil {
+		t.Fatalf("ListItems(Stage: raw): %v", err)
+	}
+	allWant := sortedStrings([]string{open.ID, inProgress.ID, closedItem.ID, dropped.ID})
+	allGotIDs := idsOfItems(allGot)
+	if !equalStringSlices(allGotIDs, allWant) {
+		t.Fatalf("ListItems(Stage: raw) ids = %v, want %v (zero value must change nothing)", allGotIDs, allWant)
+	}
+
+	// ExcludeClosed composes with Type as AND: a Type filter that matches
+	// none of the fixture's items combined with ExcludeClosed must return
+	// nothing, not fall back to ignoring the Type filter.
+	none, err := s.ListItems(ctx, ListFilter{Stage: model.StageRaw, Type: model.TypeBug, ExcludeClosed: true})
+	if err != nil {
+		t.Fatalf("ListItems(Type: bug, ExcludeClosed: true): %v", err)
+	}
+	if len(none) != 0 {
+		t.Fatalf("ListItems(Type: bug, ExcludeClosed: true) = %v, want empty (fixture has no bug-type items)", idsOfItems(none))
+	}
+}
+
 // TestListItemsUnfilteredIncludesRaw proves a raw item is present with no
 // filter, and absent when Stage: "ticket" is applied -- ListItems must query
 // items directly, never the ready view, or a raw item would silently never

@@ -130,7 +130,21 @@ type ListFilter struct {
 	Type     string
 	ParentID string
 	Repo     string
-	Limit    int
+
+	// ExcludeClosed adds `status NOT IN ('closed', 'dropped')` to the WHERE
+	// clause when true -- CAP-03's caller (backlog, cmd/rounce/backlog.go)
+	// is the first ListItems caller that needs an exclusion rather than an
+	// equality filter: "every raw item still parked" means "not explicitly
+	// discarded", which Status (a single `col = ?`) cannot express. The zero
+	// value (false) changes nothing for every existing caller.
+	//
+	// This is the exact literal already shipped in schema.go's `ready` view
+	// (`blocked_directly`'s `b.status NOT IN ('closed', 'dropped')`) --
+	// copied verbatim, not re-derived, so the two predicates cannot drift
+	// apart unnoticed (03-RESEARCH.md Pitfall 5).
+	ExcludeClosed bool
+
+	Limit int
 }
 
 // ListItems queries items directly -- never the ready view -- so list (ITEM-
@@ -170,6 +184,11 @@ func (s *Store) ListItems(ctx context.Context, f ListFilter) ([]model.Item, erro
 	if f.Repo != "" {
 		conds = append(conds, "repo = ?")
 		args = append(args, f.Repo)
+	}
+	if f.ExcludeClosed {
+		// A constant predicate with no bind parameter -- appends to conds
+		// only, never to args.
+		conds = append(conds, "status NOT IN ('closed', 'dropped')")
 	}
 
 	query := `SELECT ` + itemColumns + ` FROM items`
