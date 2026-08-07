@@ -25,8 +25,9 @@ import (
 // The trailing `id ASC` is not decoration. Two items added inside one
 // transaction share a created_at (this package's one-nowFunc-per-
 // transaction rule), and SQLite's row order for a tie is unspecified --
-// cmd/rounce/backlog.go's orderBacklog carried an ID-ascending tiebreak for
-// this exact reason and it must not be lost on the way down here.
+// cmd/rounce/backlog.go's now-removed CLI-side grouping helper carried an
+// ID-ascending tiebreak for this exact reason and it must not be lost on
+// the way down here.
 func (s *Store) Backlog(ctx context.Context, typeFilter string) ([]model.Item, error) {
 	query := `SELECT ` + itemColumns + ` FROM items
 WHERE stage = 'raw' AND status NOT IN ('closed', 'dropped')`

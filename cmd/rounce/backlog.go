@@ -5,29 +5,24 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"sort"
 
 	"github.com/gshepptech/rounce/internal/model"
-	"github.com/gshepptech/rounce/internal/store"
 )
-
-// backlogTypeOrder is the schema's type enum, in schema order -- NOT
-// alphabetical, and NEVER map-iteration order (03-CONTEXT.md decision 4).
-// This is the same order validTypesList() (add.go) already encodes for the
-// identical reason: map iteration would make a demo transcript flaky.
-var backlogTypeOrder = []string{model.TypeRoadmap, model.TypeEpic, model.TypeTask, model.TypeBug, model.TypeNote}
 
 // runBacklog implements the `backlog` subcommand (CAP-03) -- the pen: every
 // raw item still parked, grouped by type in schema-enum order, newest first
 // within each group, filterable by --type.
 //
-// One ListItems call -- Stage: model.StageRaw, Type: *typeFlag,
-// ExcludeClosed: true -- exactly the scope 03-CONTEXT.md decision 4 locks:
-// "stage = 'raw' AND status NOT IN ('closed', 'dropped')". Grouping and
-// within-group ordering are CLI-side concerns over that one flat result
-// (03-RESEARCH.md Pattern 4), not a new store method: raw items are never
-// scored, so ListItems' own `ORDER BY score DESC, created_at ASC, id ASC` is
-// irrelevant here and the CLI re-sorts locally.
+// Grouping and ordering now live entirely in store.Backlog (04-01-PLAN.md
+// task 2/3), not here: `rounce backlog` and the MCP `backlog` tool both call
+// the same store method, so the two surfaces walk one order by construction
+// rather than by two implementations agreeing -- Phase 3 wave 5 already
+// shipped and fixed exactly this class of disagreement once, between
+// backlog's own rendered and --json output, where it escaped notice until
+// two types interleaved in time. renderBacklog still derives its group
+// boundaries from Type changing between consecutive rows, which continues
+// to work only because store.Backlog guarantees each type's rows are
+// contiguous.
 func runBacklog(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("backlog", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -58,27 +53,10 @@ func runBacklog(args []string, stdout, stderr io.Writer) int {
 	}
 	defer s.Close()
 
-	items, err := s.ListItems(context.Background(), store.ListFilter{
-		Stage:         model.StageRaw,
-		Type:          *typeFlag,
-		ExcludeClosed: true,
-	})
+	ordered, err := s.Backlog(context.Background(), *typeFlag)
 	if err != nil {
 		return exitFor(stderr, err)
 	}
-
-	// orderBacklog groups by type in schema-enum order, sorting each group
-	// newest first with a deterministic tiebreak, and flattens the result
-	// into ONE ordered slice -- the single source of order for both the
-	// rendered text (which re-derives its group boundaries from
-	// consecutive equal Types, since orderBacklog already grouped them) and
-	// --json's flat array. --json must be "the same order the rendered
-	// output uses" (the plan's own <behavior>/<constraints>): a plain
-	// CreatedAt-only sort across all types would NOT match the rendered
-	// order once two different types interleave in time, so both outputs
-	// share this one ordering instead of computing it twice and risking
-	// drift between them.
-	ordered := orderBacklog(items)
 
 	if *jsonFlag {
 		if ordered == nil {
@@ -95,44 +73,14 @@ func runBacklog(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-// orderBacklog groups items by Type in backlogTypeOrder (schema-enum order,
-// never alphabetical or map-iteration order), sorts each group newest first
-// -- CreatedAt descending, ID ascending as a deterministic tiebreak, since
-// sort.Slice is not stable and a missing tiebreak would make output differ
-// between runs -- and returns the concatenation of the non-empty groups in
-// that order. This single ordering is what both the rendered text and
-// --json's flat array walk.
-func orderBacklog(items []model.Item) []model.Item {
-	byType := make(map[string][]model.Item, len(backlogTypeOrder))
-	for _, it := range items {
-		byType[it.Type] = append(byType[it.Type], it)
-	}
-
-	var out []model.Item
-	for _, typ := range backlogTypeOrder {
-		group := byType[typ]
-		if len(group) == 0 {
-			continue
-		}
-		sort.Slice(group, func(i, j int) bool {
-			if group[i].CreatedAt != group[j].CreatedAt {
-				return group[i].CreatedAt > group[j].CreatedAt
-			}
-			return group[i].ID < group[j].ID
-		})
-		out = append(out, group...)
-	}
-	return out
-}
-
 // renderBacklog writes the locked output shape (03-CONTEXT.md decision 4):
 // a bare, unadorned header line per non-empty type group in schema-enum
 // order, a blank line BETWEEN groups (never after the last one), and one
 // "id  created  title" line per item, newest first within its group. Empty
 // groups print nothing at all -- not even an empty header. ordered must
-// already be grouped-then-sorted (orderBacklog's output) -- a new group
+// already be grouped-then-sorted (store.Backlog's output) -- a new group
 // boundary is detected by Type changing between consecutive items, since
-// backlogTypeOrder guarantees each type's rows are contiguous.
+// store.Backlog guarantees each type's rows are contiguous.
 func renderBacklog(w io.Writer, ordered []model.Item) {
 	if len(ordered) == 0 {
 		return

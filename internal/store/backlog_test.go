@@ -139,8 +139,9 @@ func TestBacklogNewestFirstWithinGroup(t *testing.T) {
 
 // TestBacklogCreatedAtTieBrokenByIDAscending pins nowFunc so two items share
 // an identical created_at, then proves the tie is broken by id ASC,
-// deterministically on every run -- the exact reason orderBacklog carried an
-// ID-ascending tiebreak in cmd/rounce/backlog.go, now expressed in SQL.
+// deterministically on every run -- the exact reason cmd/rounce/backlog.go's
+// now-removed CLI-side grouping helper carried an ID-ascending tiebreak,
+// now expressed in SQL.
 func TestBacklogCreatedAtTieBrokenByIDAscending(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
