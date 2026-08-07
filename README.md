@@ -12,13 +12,14 @@ No account, no server, no SaaS. The store is a file in your repository.
 
 ## Status
 
-Phases 0-3 are built: the versioned SQLite store; the thirteen-verb CLI
+Phases 0-4 are built: the versioned SQLite store; the thirteen-verb CLI
 (items, dependencies, `ready`/`blocked`, `start`/`close`/`drop`/`update`);
-capture and refine (`capture`, `backlog`, provenance via `derived-from`); and
+capture and refine (`capture`, `backlog`, provenance via `derived-from`);
 `rounce mcp`, exposing ten of those verbs as MCP tools over stdio with no
-logic of its own. Not yet built: the loopback dashboard (Phase 4) and the
-multi-repo registry (Phase 5). See [ROADMAP.md](ROADMAP.md) and
-`docs/design/`.
+logic of its own; and the loopback dashboard (`rounce board`, terminal or
+`--web`) — read-only, binds to `127.0.0.1` only, and proven never to disagree
+with `rounce ready`. Not yet built: the multi-repo registry (Phase 5). See
+[ROADMAP.md](ROADMAP.md) and `docs/design/`.
 
 ## Principles
 
