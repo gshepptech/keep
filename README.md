@@ -12,8 +12,13 @@ No account, no server, no SaaS. The store is a file in your repository.
 
 ## Status
 
-Pre-implementation. The schema and phases are settled; nothing is built. See
-[ROADMAP.md](ROADMAP.md) and `docs/design/`.
+Phases 0-3 are built: the versioned SQLite store; the thirteen-verb CLI
+(items, dependencies, `ready`/`blocked`, `start`/`close`/`drop`/`update`);
+capture and refine (`capture`, `backlog`, provenance via `derived-from`); and
+`rounce mcp`, exposing ten of those verbs as MCP tools over stdio with no
+logic of its own. Not yet built: the loopback dashboard (Phase 4) and the
+multi-repo registry (Phase 5). See [ROADMAP.md](ROADMAP.md) and
+`docs/design/`.
 
 ## Principles
 
