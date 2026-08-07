@@ -55,6 +55,11 @@ commands:
               --title/--body/--acceptance/--why/--score/--type/--stage
               --repo/--paths/--assignee (at least one required)
               status cannot be changed here -- see start/close/drop
+  mcp       serve the MCP protocol over stdio (stdin/stdout are the
+              protocol channel -- do not run this interactively)
+              --db <path>   the store to serve
+              actor defaults to $ROUNCE_ACTOR then $USER; session comes
+              from $ROUNCE_SESSION, both read once at start
   version   print the version
 
 See ROADMAP.md.
@@ -93,6 +98,8 @@ func main() {
 		os.Exit(runDrop(os.Args[2:], os.Stdout, os.Stderr))
 	case "update":
 		os.Exit(runUpdate(os.Args[2:], os.Stdout, os.Stderr))
+	case "mcp":
+		os.Exit(runMCP(os.Args[2:], os.Stdout, os.Stderr))
 	case "version", "--version":
 		fmt.Println(version)
 	case "help", "--help", "-h":

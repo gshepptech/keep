@@ -36,7 +36,7 @@ func addJSONFlag(fs *flag.FlagSet) *bool {
 // (EVENT-01 needs an actor on every events row). resolveActor supplies the
 // $USER fallback below.
 func addActorFlag(fs *flag.FlagSet) *string {
-	return fs.String("actor", "", "actor recorded on the events row (default: $USER)")
+	return fs.String("actor", "", "actor recorded on the events row (default: $ROUNCE_ACTOR, then $USER)")
 }
 
 // resolveActor applies CLI-01/EVENT-01's precedence: --actor, then
