@@ -106,6 +106,95 @@ func exitFor(stderr io.Writer, err error) int {
 	}
 }
 
+// permuteArgs reorders args so every well-formed flag (and its value, when
+// it takes one) moves ahead of the first positional argument, before
+// fs.Parse ever runs (03-CONTEXT.md decision 1a) -- Go's flag.Parse stops
+// consuming flags at the first non-flag argument, so without this pre-pass
+// every command taking a positional id or title would reject flags placed
+// after it, including the canonical `rounce capture "Q3 roadmap" --type
+// roadmap --body -` docs/design/phase-2.md documents.
+//
+// fs MUST already have every flag registered on it before this is called:
+// permuteArgs asks fs (via fs.VisitAll + each flag's IsBoolFlag() bool)
+// which registered flags take a value, NEVER a hard-coded list -- a name
+// alone cannot say whether a flag takes a value, because the same name can
+// mean different things on different commands in this exact binary: --body
+// is a string flag on add/capture and a bool flag on show (plan 04). Called
+// before flags are registered, fs.VisitAll sees an empty set and
+// mis-permutes everything.
+//
+// If a value-taking flag has no following token to serve as its value,
+// permutation stops there and the remainder (including that flag) is left
+// in original order as trailing "positionals" -- this is load-bearing, not
+// defensive padding. The naive alternative (unconditionally inserting a
+// synthetic "--" ahead of positionals regardless of whether every
+// value-taking flag actually got a value) was reproduced live during
+// 03-RESEARCH.md: `rounce add "title" --body` (--body missing its value)
+// permutes to ["--body", "--", "title"], and flag.Parse's own unconditional
+// "next token is the value" behavior sets body = "--" with exit 0 and no
+// error -- silent corruption, not a bug in flag.Parse. Leaving the malformed
+// tail un-permuted instead makes fs.Parse's native behavior handle it
+// exactly as it does today (folded into runAdd's title join, or a native
+// "flag needs an argument" error).
+//
+// "--" still terminates flag parsing: once seen, everything after it is a
+// positional and is never re-examined as a flag, so
+// `rounce add -- --weird-title` keeps working.
+func permuteArgs(fs *flag.FlagSet, args []string) []string {
+	boolFlags := map[string]bool{}
+	fs.VisitAll(func(f *flag.Flag) {
+		if bf, ok := f.Value.(interface{ IsBoolFlag() bool }); ok && bf.IsBoolFlag() {
+			boolFlags[f.Name] = true
+		}
+	})
+
+	var flags, positionals []string
+	i, sawDashDash := 0, false
+tokenLoop:
+	for i < len(args) {
+		a := args[i]
+		switch {
+		case sawDashDash:
+			positionals = append(positionals, a)
+			i++
+		case a == "--":
+			sawDashDash = true
+			i++
+		case len(a) > 1 && a[0] == '-':
+			name := strings.TrimLeft(a, "-")
+			base, hasEq := name, strings.Contains(name, "=")
+			if hasEq {
+				base = name[:strings.IndexByte(name, '=')]
+			}
+			if !hasEq && !boolFlags[base] {
+				if i+1 >= len(args) {
+					// No value available -- stop permuting; dump the rest
+					// verbatim so fs.Parse's native behaviour takes over.
+					// This is the silent-corruption regression lock: without
+					// this branch, the naive "-- always follows" alternative
+					// sets a missing value to the literal string "--".
+					positionals = append(positionals, args[i:]...)
+					break tokenLoop
+				}
+				flags = append(flags, a, args[i+1])
+				i += 2
+				continue
+			}
+			flags = append(flags, a)
+			i++
+		default:
+			positionals = append(positionals, a)
+			i++
+		}
+	}
+	out := append([]string{}, flags...)
+	if len(positionals) > 0 {
+		out = append(out, "--")
+		out = append(out, positionals...)
+	}
+	return out
+}
+
 // stringSlice implements flag.Value for a repeatable string flag: each
 // -flag <value> occurrence appends, rather than the flag package's default
 // last-one-wins behaviour for a *string. Used by add's --blocks/
