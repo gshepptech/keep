@@ -74,14 +74,17 @@ func TestWriteEventEmptySessionIsNull(t *testing.T) {
 	}
 }
 
-// wantMutatingMethods guards the table in
-// TestEveryMutationWritesExactlyOneEvent: bump it deliberately, and add a
-// row to the table below, whenever a new mutating store method is added.
-// Without this guard, forgetting to add a new verb here would silently
-// leave it outside EVENT-01's enumeration -- the same shape as plan 01's
-// wantCases guard and plan 05's zero-file guard.
-const wantMutatingMethods = 6
-
+// TestEveryMutationWritesExactlyOneEvent's cases table is guarded by SET
+// EQUALITY against mutatingStoreMethods(t) (mutating_scan_test.go), not by a
+// hand-maintained count -- 02-VERIFICATION.md found a genuine seventh
+// mutating method that skipped the event write, touched this file not at
+// all, and the whole suite still passed under the count-based guard this
+// replaced. A method the scan finds that this table does not enumerate now
+// fails by name; a stale row naming a method the scan no longer finds
+// (renamed or deleted) fails the other way, also by name. Add a row here --
+// and nothing else -- whenever a new mutating store method is added; the
+// scan is what notices if you forget.
+//
 // TestEveryMutationWritesExactlyOneEvent is EVENT-01's enforcement: a
 // table enumerating every mutating method in this package, each asserting
 // a before/after event-count delta of exactly 1. A second subtest asserts
@@ -135,8 +138,23 @@ func TestEveryMutationWritesExactlyOneEvent(t *testing.T) {
 		}},
 	}
 
-	if len(cases) != wantMutatingMethods {
-		t.Fatalf("enumerated %d mutating methods, want %d -- bump wantMutatingMethods deliberately (and add a row above) when a verb is added", len(cases), wantMutatingMethods)
+	// Set-equality against the scan, not a count: a wrong-number failure
+	// ("enumerated 6, want 7") sends a reader to the wrong file, while a
+	// named-method failure sends them straight to the fix.
+	scanned := mutatingStoreMethods(t)
+	enumerated := make(map[string]bool, len(cases))
+	for _, tc := range cases {
+		enumerated[tc.name] = true
+	}
+	for name := range scanned {
+		if !enumerated[name] {
+			t.Fatalf("%s mutates the store but is not enumerated in EVENT-01's table -- add a row asserting it writes exactly one event", name)
+		}
+	}
+	for name := range enumerated {
+		if !scanned[name] {
+			t.Fatalf("cases enumerates %q, but mutatingStoreMethods no longer finds it -- the method was renamed or deleted; remove or update this stale row", name)
+		}
 	}
 
 	for _, tc := range cases {
