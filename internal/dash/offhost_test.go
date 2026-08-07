@@ -53,9 +53,10 @@ func scanRenderedHTML(page string) []string {
 			for _, a := range n.Attr {
 				name := strings.ToLower(a.Key)
 				switch {
-				// TODO(RED): inline style="" is not yet checked here --
-				// deliberately, for this task's own RED step. Added in the
-				// immediately following GREEN commit.
+				case name == "style":
+					if reason, bad := valueViolates(a.Val); bad {
+						violations = append(violations, fmt.Sprintf("<%s style=%q>: %s", n.Data, a.Val, reason))
+					}
 				case name == "srcset":
 					for _, candidate := range strings.Split(a.Val, ",") {
 						fields := strings.Fields(strings.TrimSpace(candidate))
