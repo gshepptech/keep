@@ -350,8 +350,8 @@ func TestRawMCPHandshake(t *testing.T) {
 // adopted is the one that carries GATE-04's other half: against the real
 // compiled binary, never a goroutine simulation. One real spawned
 // `rounce mcp`, two requests written before either response is read, over
-// its real stdio pipes -- not mcp.NewInMemoryTransports(), which is an
-// in-process net.Pipe and would prove nothing. GATE-04's literal
+// its real stdio pipes -- not the SDK's in-memory-transports constructor,
+// which is an in-process net.Pipe and would prove nothing. GATE-04's literal
 // two-process form remains satisfied for this store by Phase 2's
 // TestConcurrentAddChildrenNoOrdinalCollision (cmd/rounce/concurrent_test.go,
 // eight real `rounce add --parent` processes), which still passes; MCP-06
