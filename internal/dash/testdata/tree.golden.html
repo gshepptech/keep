@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tree — rounce</title>
+<style>/* internal/dash/style.css -- go:embed-ed, inlined into every page's <style>
+   block by layout.html. Hand-written, no framework, no reset library, no
+   at-rule import, and no CSS resource-fetching function of any kind, not
+   even a data URI -- there are no images on this page, and this file is
+   scanned by DASH-05's exit-gate grep, so it must never contain any of the
+   four forbidden shapes itself.
+
+   Exactly three semantic colours, defined once below as custom properties,
+   used nowhere in this sheet except the tree/queue "state" cell. Everything
+   else -- status text, type, score -- is carried by weight, alignment, and
+   rule, never colour (docs/design/phase-4.md's "Look" section). Closed and
+   dropped rows are dimmed with opacity, never a fourth colour. */
+
+:root {
+  --rnc-bg: #ffffff;
+  --rnc-fg: #14171a;
+  --rnc-muted: #5b6570;
+  --rnc-border: #d5dbe0;
+  --rnc-workable: #1a7f37;
+  --rnc-claimed: #9a6700;
+  --rnc-blocked: #b32428;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --rnc-bg: #14171a;
+    --rnc-fg: #e6e9ec;
+    --rnc-muted: #9aa4ae;
+    --rnc-border: #343b42;
+    --rnc-workable: #3fb950;
+    --rnc-claimed: #d29922;
+    --rnc-blocked: #f85149;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--rnc-bg);
+  color: var(--rnc-fg);
+}
+
+body {
+  padding: 1.5rem;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+nav {
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--rnc-border);
+}
+
+nav a {
+  margin-right: 1.5rem;
+  color: inherit;
+  text-decoration: none;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+}
+
+nav a:hover {
+  text-decoration: underline;
+}
+
+h1,
+h2 {
+  margin: 1.75rem 0 0.5rem 0;
+  color: var(--rnc-muted);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+}
+
+h1:first-child,
+h2:first-child {
+  margin-top: 0;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+}
+
+th,
+td {
+  padding: 0.32rem 0.6rem;
+  border-bottom: 1px solid var(--rnc-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+thead th {
+  font-family: system-ui, -apple-system, sans-serif;
+  color: var(--rnc-muted);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 0.68rem;
+}
+
+tr.group th {
+  padding-top: 0.9rem;
+  color: var(--rnc-muted);
+  font-family: system-ui, -apple-system, sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.68rem;
+  border-bottom: 1px solid var(--rnc-border);
+}
+
+a {
+  color: inherit;
+}
+
+.state {
+  font-weight: 700;
+}
+
+.state-workable {
+  color: var(--rnc-workable);
+}
+
+.state-claimed {
+  color: var(--rnc-claimed);
+}
+
+.state-blocked {
+  color: var(--rnc-blocked);
+}
+
+.dimmed {
+  opacity: 0.45;
+}
+
+/* Tree-view indentation: a capped set of depth-N classes, never an inline
+   style="padding-left:..." -- inline style is one of the surfaces DASH-05's
+   scan inspects, and keeping it out of rendered output entirely is cheaper
+   than proving each generated value safe. depthClass (render.go) caps at
+   depth-12; deeper rows share depth-12's indent rather than growing an
+   unbounded rule set. */
+.depth-0 {
+  padding-left: 0;
+}
+.depth-1 {
+  padding-left: 1.25rem;
+}
+.depth-2 {
+  padding-left: 2.5rem;
+}
+.depth-3 {
+  padding-left: 3.75rem;
+}
+.depth-4 {
+  padding-left: 5rem;
+}
+.depth-5 {
+  padding-left: 6.25rem;
+}
+.depth-6 {
+  padding-left: 7.5rem;
+}
+.depth-7 {
+  padding-left: 8.75rem;
+}
+.depth-8 {
+  padding-left: 10rem;
+}
+.depth-9 {
+  padding-left: 11.25rem;
+}
+.depth-10 {
+  padding-left: 12.5rem;
+}
+.depth-11 {
+  padding-left: 13.75rem;
+}
+.depth-12 {
+  padding-left: 15rem;
+}
+
+table.fields td,
+table.fields th {
+  border-bottom: none;
+  padding: 0.18rem 0.6rem;
+}
+
+table.fields th {
+  width: 8rem;
+  color: var(--rnc-muted);
+  font-family: system-ui, -apple-system, sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.68rem;
+}
+
+pre {
+  margin: 0;
+  padding: 0.9rem;
+  border: 1px solid var(--rnc-border);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--rnc-fg);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+</style>
+</head>
+<body>
+<nav>
+<a href="/">queue</a>
+<a href="/backlog">backlog</a>
+</nav>
+
+<h1>tree</h1>
+<table class="tree">
+<thead><tr><th>id</th><th>type</th><th>title</th><th>state</th></tr></thead>
+<tbody>
+<tr>
+<td class="depth-0"><a href="/item/rnc-epic">rnc-epic</a></td>
+<td>epic</td>
+<td>Epic root</td>
+<td class="state state-blocked">blocked ← blocked by rnc-blocker</td>
+</tr>
+<tr>
+<td class="depth-1"><a href="/item/rnc-epic.1">rnc-epic.1</a></td>
+<td>task</td>
+<td>Task A</td>
+<td class="state state-blocked">blocked ← blocked by rnc-epic</td>
+</tr>
+<tr>
+<td class="depth-2"><a href="/item/rnc-epic.1.1">rnc-epic.1.1</a></td>
+<td>task</td>
+<td>Subtask under A</td>
+<td class="state state-blocked">blocked ← blocked by rnc-epic</td>
+</tr>
+<tr class="dimmed">
+<td class="depth-1"><a href="/item/rnc-epic.2">rnc-epic.2</a></td>
+<td>task</td>
+<td>Task B (dropped)</td>
+<td class="state state-blocked">blocked ← blocked by rnc-epic</td>
+</tr>
+</tbody>
+</table>
+</body>
+</html>
