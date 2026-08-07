@@ -4,6 +4,7 @@ go 1.26.1
 
 require (
 	github.com/google/jsonschema-go v0.4.3
+	golang.org/x/net v0.57.0
 	modernc.org/sqlite v1.56.0
 )
 
