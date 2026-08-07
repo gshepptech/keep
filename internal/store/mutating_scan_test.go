@@ -228,6 +228,7 @@ var (
 		"IsBlocked": true,
 		"Close":     true,
 		"Backlog":   true,
+		"Tree":      true,
 	}
 )
 

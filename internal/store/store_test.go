@@ -236,6 +236,82 @@ func TestWithTxCommitsAndRollsBack(t *testing.T) {
 	assertCanaryCount(t, ctx, s, 2, 0)
 }
 
+// TestReadOnlyOpenServesReadsAndRefusesWrites proves the dashboard's whole
+// mechanism (05-CONTEXT.md decision 4): OpenOptions{ReadOnly: true} coexists
+// with this DSN's _txlock=immediate, serves every read method the dashboard
+// needs, and refuses a write. This is the first test in the codebase that
+// uses ReadOnly: true -- OpenOptions has carried the field unused since
+// Phase 1.
+//
+// Confirmed live against this repository during 05 planning:
+//
+//	RO open err=<nil>
+//	RO Ready err=<nil> n=1
+//	RO Backlog err=<nil> n=0
+//	RO GetItem err=<nil>
+//	RO Blocked err=<nil> n=0
+//	RO ListItems err=<nil> n=0
+//	RO AddItem err=attempt to write a readonly database (8)
+//
+// The write's failure is asserted by err != nil plus an unchanged
+// len(ListItems(...)) -- never strings.Contains(err.Error(), "readonly").
+// Driver message text is not a contract (errors.go's standing
+// classification rule). The extended code (8, SQLITE_READONLY) is recorded
+// above for the SUMMARY's benefit only, not asserted on here.
+func TestReadOnlyOpenServesReadsAndRefusesWrites(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "readonly.sqlite")
+
+	rw, err := Init(path)
+	if err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	seed := mustAdd(t, rw, AddItemInput{Title: "Seed ticket", Actor: "tester"})
+	if err := rw.Close(); err != nil {
+		t.Fatalf("Close read-write handle: %v", err)
+	}
+
+	ro, err := Open(path, OpenOptions{ReadOnly: true})
+	if err != nil {
+		t.Fatalf("Open(ReadOnly: true): %v", err)
+	}
+	defer ro.Close()
+
+	if _, err := ro.Ready(ctx, 0); err != nil {
+		t.Errorf("read-only Ready: %v", err)
+	}
+	if _, err := ro.Backlog(ctx, ""); err != nil {
+		t.Errorf("read-only Backlog: %v", err)
+	}
+	if _, err := ro.Blocked(ctx); err != nil {
+		t.Errorf("read-only Blocked: %v", err)
+	}
+	before, err := ro.ListItems(ctx, ListFilter{})
+	if err != nil {
+		t.Errorf("read-only ListItems: %v", err)
+	}
+	if _, err := ro.GetItem(ctx, seed.ID); err != nil {
+		t.Errorf("read-only GetItem: %v", err)
+	}
+	if _, err := ro.Tree(ctx, seed.ID); err != nil {
+		t.Errorf("read-only Tree: %v", err)
+	}
+
+	if _, err := ro.AddItem(ctx, AddItemInput{Title: "Should not be written", Actor: "tester"}); err == nil {
+		t.Fatal("read-only AddItem: got nil error, want a write failure")
+	} else {
+		t.Logf("read-only AddItem correctly failed: %v", err)
+	}
+
+	after, err := ro.ListItems(ctx, ListFilter{})
+	if err != nil {
+		t.Fatalf("read-only ListItems (after): %v", err)
+	}
+	if len(after) != len(before) {
+		t.Fatalf("item count changed after a refused write: before=%d after=%d", len(before), len(after))
+	}
+}
+
 func assertCanaryCount(t *testing.T, ctx context.Context, s *Store, n, wantCount int) {
 	t.Helper()
 	var got int
