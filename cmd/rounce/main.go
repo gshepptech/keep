@@ -27,6 +27,9 @@ commands:
               --type <t>    item type, default note (roadmap/epic/task/bug/note)
               --body -      read the body from stdin
               stage is always raw -- there is no --stage flag
+  backlog   list every raw item still parked, grouped by type, newest first
+              --type <t>    show only this type (roadmap/epic/task/bug/note)
+              --json        machine-parseable output (flat array, not grouped)
   dep       create a dependency edge: rounce dep <item-id> <type> <depends-on-id>
   ready     list workable items, ranked
               --limit <n>   at most n items
@@ -70,6 +73,8 @@ func main() {
 		os.Exit(runAdd(os.Args[2:], os.Stdout, os.Stderr))
 	case "capture":
 		os.Exit(runCapture(os.Args[2:], os.Stdout, os.Stderr))
+	case "backlog":
+		os.Exit(runBacklog(os.Args[2:], os.Stdout, os.Stderr))
 	case "dep":
 		os.Exit(runDep(os.Args[2:], os.Stdout, os.Stderr))
 	case "ready":
