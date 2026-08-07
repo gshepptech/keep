@@ -32,8 +32,8 @@ func newHandlerFixture(t *testing.T) (*Server, handlerFixtureIDs) {
 	const actor = "tester"
 
 	epic := mustAdd(t, st, store.AddItemInput{Title: "Epic root", Actor: actor})
-	child := mustAdd(t, st, store.AddItemInput{Title: "Child task", Actor: actor, ParentID: epic.ID})
-	grandchild := mustAdd(t, st, store.AddItemInput{Title: "Grandchild task", Actor: actor, ParentID: child.ID})
+	child := mustAdd(t, st, store.AddItemInput{Title: "Child task", Actor: actor, ParentID: epic.ID, Body: "onlyChildBodyText"})
+	grandchild := mustAdd(t, st, store.AddItemInput{Title: "Grandchild task", Actor: actor, ParentID: child.ID, Body: "onlyGrandchildBodyText"})
 	blocker := mustAdd(t, st, store.AddItemInput{Title: "Blocker", Actor: actor})
 	if err := st.CreateDep(ctx, store.DepInput{ItemID: epic.ID, DependsOnID: blocker.ID, Type: model.DepBlocks, Actor: actor}); err != nil {
 		t.Fatalf("CreateDep: %v", err)
@@ -95,14 +95,25 @@ func TestHandlerBacklogRendersGroupedByType(t *testing.T) {
 	}
 }
 
+// item.html (shipped by plan 02) deliberately carries no title row --
+// 02-08-SUMMARY.md's precedent for `show`, which item.html follows exactly
+// (id/stage/type/status/score/parent/repo/paths/why/acceptance/created/
+// updated, then deps/events, then the body). These tests therefore assert
+// against the rendered id and each fixture item's own unique body-text
+// marker, which the template does render, rather than a title it does not.
+
 func TestHandlerItemRendersOneItem(t *testing.T) {
 	s, ids := newHandlerFixture(t)
 	rec := get(t, s.Handler(), "/item/"+ids.grandchild)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /item/%s: status = %d, want 200", ids.grandchild, rec.Code)
 	}
-	if !strings.Contains(rec.Body.String(), "Grandchild task") {
-		t.Errorf("GET /item/%s: body does not contain the item's own title", ids.grandchild)
+	body := rec.Body.String()
+	if !strings.Contains(body, ids.grandchild) {
+		t.Errorf("GET /item/%s: body does not contain the item's own id", ids.grandchild)
+	}
+	if !strings.Contains(body, "onlyGrandchildBodyText") {
+		t.Errorf("GET /item/%s: body does not contain the item's own body text", ids.grandchild)
 	}
 }
 
@@ -117,11 +128,11 @@ func TestHandlerItemDotContainingIDRoutesToTheRightChild(t *testing.T) {
 		t.Fatalf("GET /item/%s (two-dot id): status = %d, want 200", ids.grandchild, rec.Code)
 	}
 	body := rec.Body.String()
-	if !strings.Contains(body, "Grandchild task") {
-		t.Errorf("GET /item/%s: rendered the wrong item, not its own title", ids.grandchild)
+	if !strings.Contains(body, "onlyGrandchildBodyText") {
+		t.Errorf("GET /item/%s: rendered the wrong item, not its own body text", ids.grandchild)
 	}
-	if strings.Contains(body, "Child task") {
-		t.Errorf("GET /item/%s: rendered its ancestor's title too -- id was not captured whole", ids.grandchild)
+	if strings.Contains(body, "onlyChildBodyText") {
+		t.Errorf("GET /item/%s: rendered its ancestor's body text too -- id was not captured whole", ids.grandchild)
 	}
 }
 

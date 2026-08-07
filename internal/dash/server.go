@@ -101,12 +101,3 @@ func (s *Server) Shutdown(ctx context.Context) error {
 func (s *Server) Close() error {
 	return s.ln.Close()
 }
-
-// routes is a placeholder returning an empty mux, so NewServer and this
-// task's own tests build and pass in isolation. Task 2 (handlers.go)
-// replaces this function with the real five-route table; it is not called
-// from anywhere but NewServer, so there is exactly one definition to
-// replace, not two to keep in sync.
-func (s *Server) routes() *http.ServeMux {
-	return http.NewServeMux()
-}
