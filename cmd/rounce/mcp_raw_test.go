@@ -491,3 +491,212 @@ func TestMCPPipelinedCallsDoNotRace(t *testing.T) {
 		t.Fatalf("rounce mcp exit code = %d, want 0 (stderr: %s)", code2, conn.stderr.String())
 	}
 }
+
+// TestMCPStdoutIsProtocolBytesOnly proves MCP-07: every byte the
+// `rounce mcp` process writes to stdout is a complete JSON-RPC 2.0 message
+// on its own line, and every diagnostic lands on stderr instead --
+// asserted at the byte level, over conn.rawOut (the tee'd copy of every
+// byte actually read from stdout), never through readLine's already-parsed
+// return value and never through the SDK client. The point is to see what
+// the process actually wrote, before anything tolerant had a chance to
+// normalise it.
+//
+// Verified about everything ELSE in this process that could write to
+// stdout, so a future reader does not need to re-derive it
+// (04-RESEARCH.md Pitfall 4): the SDK's mcp package references os.Stdout in
+// exactly one place (StdioTransport.Connect's own wiring); the pinned
+// modernc.org/sqlite v1.56.0 references it nowhere; the pinned
+// modernc.org/libc v1.74.4's four references are C-library emulation
+// unreachable for this project's usage; Go's log package defaults to
+// os.Stderr. The one plausible accidental vector is a bare fmt.Println in
+// code this project writes -- which is precisely what this test catches
+// (see GATE-03 break 1, 04-06-PLAN.md's verification section).
+func TestMCPStdoutIsProtocolBytesOnly(t *testing.T) {
+	bin := buildRounce(t, "")
+	dir := t.TempDir()
+	environ := env(dir, "", "ROUNCE_SESSION=stdout-purity-session")
+
+	if _, _, code := run(t, bin, dir, environ, "init"); code != 0 {
+		t.Fatalf("init exit code = %d, want 0", code)
+	}
+
+	conn := startRawMCP(t, bin, dir, environ)
+	conn.handshake(t) // id 1
+
+	nextID := 1
+	send := func(method string, params map[string]any) int {
+		nextID++
+		msg := map[string]any{"jsonrpc": "2.0", "id": nextID, "method": method}
+		if params != nil {
+			msg["params"] = params
+		}
+		conn.send(t, msg)
+		return nextID
+	}
+
+	// tools/list -- exercises the handler-free SDK dispatch path.
+	listID := send("tools/list", nil)
+	if resp := conn.awaitID(t, listID)[listID]; resp.Error != nil {
+		t.Fatalf("tools/list: protocol error: code=%d message=%s", resp.Error.Code, resp.Error.Message)
+	}
+
+	// A successful capture.
+	captureID := send("tools/call", map[string]any{
+		"name":      "capture",
+		"arguments": map[string]any{"title": "stdout purity doc", "body": "hello"},
+	})
+	captureResp := conn.awaitID(t, captureID)[captureID]
+	if captureResp.Error != nil {
+		t.Fatalf("tools/call capture: protocol error: code=%d message=%s", captureResp.Error.Code, captureResp.Error.Message)
+	}
+	var captureResult toolCallResult
+	if err := json.Unmarshal(captureResp.Result, &captureResult); err != nil {
+		t.Fatalf("decode capture result: %v (raw: %s)", err, captureResp.Result)
+	}
+	if captureResult.IsError || len(captureResult.Content) != 1 {
+		t.Fatalf("tools/call capture: isError=%v content=%+v, want a clean single-content success", captureResult.IsError, captureResult.Content)
+	}
+
+	// A successful add.
+	addID := send("tools/call", map[string]any{
+		"name":      "add",
+		"arguments": map[string]any{"title": "stdout purity ticket"},
+	})
+	addResp := conn.awaitID(t, addID)[addID]
+	if addResp.Error != nil {
+		t.Fatalf("tools/call add: protocol error: code=%d message=%s", addResp.Error.Code, addResp.Error.Message)
+	}
+	var addResult toolCallResult
+	if err := json.Unmarshal(addResp.Result, &addResult); err != nil {
+		t.Fatalf("decode add result: %v (raw: %s)", err, addResp.Result)
+	}
+	if addResult.IsError || len(addResult.Content) != 1 {
+		t.Fatalf("tools/call add: isError=%v content=%+v, want a clean single-content success", addResult.IsError, addResult.Content)
+	}
+	var ticket model.Item
+	if err := json.Unmarshal([]byte(addResult.Content[0].Text), &ticket); err != nil {
+		t.Fatalf("decode added ticket: %v (text: %s)", err, addResult.Content[0].Text)
+	}
+
+	// A successful start.
+	startID := send("tools/call", map[string]any{
+		"name":      "start",
+		"arguments": map[string]any{"id": ticket.ID},
+	})
+	if resp := conn.awaitID(t, startID)[startID]; resp.Error != nil {
+		t.Fatalf("tools/call start: protocol error: code=%d message=%s", resp.Error.Code, resp.Error.Message)
+	}
+
+	// An isError result: show on a missing id.
+	showID := send("tools/call", map[string]any{
+		"name":      "show",
+		"arguments": map[string]any{"id": "rnc-doesnotexist"},
+	})
+	showResp := conn.awaitID(t, showID)[showID]
+	if showResp.Error != nil {
+		t.Fatalf("tools/call show (missing id): unexpected protocol error, want a nil error with isError=true: code=%d message=%s", showResp.Error.Code, showResp.Error.Message)
+	}
+	var showResult toolCallResult
+	if err := json.Unmarshal(showResp.Result, &showResult); err != nil {
+		t.Fatalf("decode show result: %v (raw: %s)", err, showResp.Result)
+	}
+	if !showResult.IsError {
+		t.Fatalf("tools/call show (missing id): isError = false, want true")
+	}
+
+	// A protocol error: add with title sent as a number, not a string.
+	badID := send("tools/call", map[string]any{
+		"name":      "add",
+		"arguments": map[string]any{"title": 123},
+	})
+	badResp := conn.awaitID(t, badID)[badID]
+	if badResp.Error == nil {
+		t.Fatalf("tools/call add {\"title\":123}: got a result, want a protocol error")
+	}
+
+	exitCode := conn.closeAndWait(t)
+	if exitCode != 0 {
+		t.Fatalf("rounce mcp exit code = %d, want 0 (stdin closed with nothing in flight)", exitCode)
+	}
+
+	// --- The byte-level assertions, over conn.rawOut ---
+
+	// Every id-bearing request this test sent, in the order sent. The
+	// initialize handshake's id (1) is included: rawOut is a tee'd copy of
+	// EVERY byte ever read from stdout, including bytes read during
+	// handshake(), which ran before this test took over sending ids
+	// itself.
+	sentIDs := []int{1, listID, captureID, addID, startID, showID, badID}
+
+	rawBytes := conn.rawOut.String()
+	lines := strings.Split(rawBytes, "\n")
+	parsedResponseCount := 0
+
+	for i, rawLine := range lines {
+		line := strings.TrimRight(rawLine, "\r")
+		if line == "" {
+			// The trailing newline after the final message produces one
+			// empty trailing element from strings.Split; every other
+			// empty line would itself be pollution (an actually-blank
+			// line is not a valid JSON-RPC message), but strings.Split
+			// cannot distinguish "trailing newline" from "blank line in
+			// the middle" by position alone here -- so this loop counts
+			// non-empty lines only, and separately below asserts the
+			// EXACT expected id-bearing count, which a spurious blank
+			// line in the middle would silently violate by making the
+			// message-count-vs-response-count arithmetic not line up
+			// with what was actually sent.
+			continue
+		}
+
+		var probe struct {
+			JSONRPC string          `json:"jsonrpc"`
+			ID      *int            `json:"id"`
+			Result  json.RawMessage `json:"result"`
+			Error   json.RawMessage `json:"error"`
+		}
+		if err := json.Unmarshal([]byte(line), &probe); err != nil {
+			t.Fatalf("stdout line %d is not valid JSON (protocol pollution): %q: %v", i, line, err)
+		}
+		if probe.JSONRPC != "2.0" {
+			t.Fatalf("stdout line %d is valid JSON but jsonrpc = %q, want \"2.0\": %q", i, probe.JSONRPC, line)
+		}
+		if probe.ID == nil {
+			// A notification from the server -- none expected in this
+			// session, but not itself a violation of MCP-07's "protocol
+			// bytes only" claim if one arrived; only a non-JSON or
+			// non-jsonrpc-2.0 line is pollution.
+			continue
+		}
+
+		hasResult := len(probe.Result) > 0 && string(probe.Result) != "null"
+		hasError := len(probe.Error) > 0 && string(probe.Error) != "null"
+		if hasResult == hasError {
+			t.Fatalf("stdout line %d (id=%d) has result-present=%v error-present=%v, want exactly one -- a complete but malformed message: %q", i, *probe.ID, hasResult, hasError, line)
+		}
+		parsedResponseCount++
+	}
+
+	if parsedResponseCount != len(sentIDs) {
+		t.Fatalf("stdout carried %d id-bearing responses, want %d (one per id-bearing request sent: %v) -- a silently dropped or duplicated response is as much a protocol failure as an extra line", parsedResponseCount, len(sentIDs), sentIDs)
+	}
+
+	// stderr is only read now, after closeAndWait's cmd.Wait has returned
+	// -- see the rawMCPConn doc comment for why this ordering is what
+	// makes the read race-free.
+	stderrText := conn.stderr.String()
+	if stderrText == "" {
+		t.Fatalf("stderr is empty -- the server's diagnostics never landed anywhere, so MCP-07's \"diagnostics go to stderr\" half is unproven")
+	}
+	// slog.NewTextHandler's own output format (cmd/rounce/mcp.go's runMCP
+	// sets one explicitly, pointed at stderr) -- a distinctive substring,
+	// not the whole buffer, since the whole buffer also contains
+	// timestamps that would never appear verbatim anyway.
+	const slogMarker = "level=INFO"
+	if !strings.Contains(stderrText, slogMarker) {
+		t.Errorf("stderr does not contain %q -- expected slog.NewTextHandler output naming the server's own diagnostics", slogMarker)
+	}
+	if strings.Contains(rawBytes, slogMarker) {
+		t.Fatalf("stdout contains %q -- a stderr byte leaked onto stdout", slogMarker)
+	}
+}
