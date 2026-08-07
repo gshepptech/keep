@@ -97,7 +97,8 @@ func depTypesForWire() []string {
 }
 
 // BuildSchemas generates the ten tools' InputSchema values via
-// jsonschema.For[T] -- the same reflection helper mcp.AddTool[In,Out] uses
+// jsonschema.For[T] -- the same reflection helper the SDK's generic
+// AddTool[In,Out] uses
 // internally -- and decorates every closed-vocabulary property with its
 // enum, read from internal/model's ordered slices (never a local literal
 // list, never a range over a Valid* map, whose iteration order differs per
