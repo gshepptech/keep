@@ -81,11 +81,30 @@ func resolveSession() string {
 // the store.Resolve/store.Open pairing lives in exactly this one place so it
 // cannot drift between commands.
 func openStore(flagDB string) (*store.Store, error) {
+	return openStoreWith(flagDB, store.OpenOptions{})
+}
+
+// openStoreReadOnly is the dashboard's opener. `board` is read-only by
+// design (docs/design/phase-4.md's first non-goal: "Editing from the page.
+// Read-only in this phase; the store is the CLI's job"), and mode=ro makes
+// that true by construction rather than by review. Phase 1 added
+// OpenOptions.ReadOnly and deliberately left it unused; this is its first
+// consumer. Confirmed live during 05 planning that a read-only open
+// coexists with the DSN's _txlock=immediate: a bare BEGIN succeeds and only
+// an actual write fails, with SQLITE_READONLY.
+func openStoreReadOnly(flagDB string) (*store.Store, error) {
+	return openStoreWith(flagDB, store.OpenOptions{ReadOnly: true})
+}
+
+// openStoreWith is the one place store.Resolve and store.Open are paired,
+// for every caller regardless of OpenOptions -- openStore and
+// openStoreReadOnly are its only two callers.
+func openStoreWith(flagDB string, opts store.OpenOptions) (*store.Store, error) {
 	path, err := store.Resolve(flagDB)
 	if err != nil {
 		return nil, err
 	}
-	return store.Open(path, store.OpenOptions{})
+	return store.Open(path, opts)
 }
 
 // exitFor prints a diagnostic for err on stderr and returns the process exit

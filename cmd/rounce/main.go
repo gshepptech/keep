@@ -60,6 +60,12 @@ commands:
               --db <path>   the store to serve
               actor defaults to $ROUNCE_ACTOR then $USER; session comes
               from $ROUNCE_SESSION, both read once at start
+  board     the status glance, or the loopback dashboard
+              --limit <n>   queue rows after the counts (default 10, 0 = all)
+              --json        one object: the counts and the items
+              --web         serve the dashboard on 127.0.0.1 and print the URL
+              --port <n>    a fixed port instead of an OS-assigned one
+              read-only: the page cannot change the store
   version   print the version
 
 See ROADMAP.md.
@@ -100,6 +106,8 @@ func main() {
 		os.Exit(runUpdate(os.Args[2:], os.Stdout, os.Stderr))
 	case "mcp":
 		os.Exit(runMCP(os.Args[2:], os.Stdout, os.Stderr))
+	case "board":
+		os.Exit(runBoard(os.Args[2:], os.Stdout, os.Stderr))
 	case "version", "--version":
 		fmt.Println(version)
 	case "help", "--help", "-h":
