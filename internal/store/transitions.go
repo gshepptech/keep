@@ -106,10 +106,17 @@ func getItemForUpdateTx(ctx context.Context, tx *sql.Tx, id string) (model.Item,
 // actor can be silently empty). SessionID is the caller's ROUNCE_SESSION,
 // which may legitimately be empty -- there is no requirement that an agent
 // set one.
+//
+// json tags (04-02): this struct doubles as the `start` MCP tool's wire type
+// directly (internal/mcp). SessionID is `json:"-"` -- session is a
+// server-lifetime property (resolved once from ROUNCE_SESSION at server
+// start), never a per-call argument, matching every other mutating *Input
+// struct in this package. Tags are additive and behaviourally inert for Go
+// callers, all of which construct this struct with named fields.
 type StartItemInput struct {
-	ID        string
-	Actor     string
-	SessionID string
+	ID        string `json:"id"`
+	Actor     string `json:"actor,omitempty"`
+	SessionID string `json:"-"`
 }
 
 // startEventPayload is the JSON body of the one `start` event StartItem
@@ -225,13 +232,27 @@ func (s *Store) StartItem(ctx context.Context, in StartItemInput) (model.Item, e
 }
 
 // CloseItemInput is the argument to CloseItem.
+//
+// json tags (04-02): this struct doubles as the `close` MCP tool's wire type
+// directly (internal/mcp). SessionID is `json:"-"`, same reason as every
+// other mutating *Input struct in this package -- session is a
+// server-lifetime property, never a per-call argument. Split into one field
+// per line (rather than the previous combined declaration) so each can carry
+// its own tag; tags are additive and behaviourally inert for Go callers.
 type CloseItemInput struct {
-	ID, Reason, Actor, SessionID string
+	ID        string `json:"id"`
+	Reason    string `json:"reason"`
+	Actor     string `json:"actor,omitempty"`
+	SessionID string `json:"-"`
 }
 
-// DropItemInput is the argument to DropItem.
+// DropItemInput is the argument to DropItem. See CloseItemInput's doc
+// comment -- identical shape, identical json-tag reasoning.
 type DropItemInput struct {
-	ID, Reason, Actor, SessionID string
+	ID        string `json:"id"`
+	Reason    string `json:"reason"`
+	Actor     string `json:"actor,omitempty"`
+	SessionID string `json:"-"`
 }
 
 // closeDropEventPayload is the JSON body of the one `close` or `drop` event

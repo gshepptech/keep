@@ -35,29 +35,45 @@ const maxIDAttempts = 8
 // doing any work. Type defaults to "task" and Stage to "ticket" when left
 // unset: this phase creates tickets directly; Phase 3's `capture` is what
 // creates stage=raw items.
+//
+// json tags (04-02): this struct doubles as the `add`/`capture` MCP tools'
+// wire type directly (internal/mcp), which is why every field carries a
+// snake_case tag. This changes nothing for Go callers -- every construction
+// site in this module and cmd/rounce uses named fields, which struct tags do
+// not affect. Two tags are `json:"-"`, deliberately: SessionID is a
+// server-lifetime property (one MCP server process serves one agent
+// session), never a per-call argument, so it can never be supplied over the
+// wire under any spelling. Stage is also `json:"-"` because the VERB chooses
+// the stage, not an argument: `capture` pre-seeds Stage: model.StageRaw;
+// `add` leaves it zero and AddItem defaults it to "ticket". If `stage` were
+// wire-settable, `capture` -- whose whole contract is "this is raw" -- could
+// be told to make a ticket, collapsing the two tools into one with a mode
+// argument. This is an accepted CLI/MCP surface difference: the CLI's `add`
+// has a `--stage` flag; the MCP `add` tool does not. An agent that wants a
+// raw item calls `capture`, which is the verb for it.
 type AddItemInput struct {
-	Title       string
-	Actor       string
-	SessionID   string
-	ParentID    string
-	Type        string
-	Stage       string
-	Blocks      []string
-	DerivedFrom []string
-	Value       *int
-	Confidence  *int
-	Effort      *int
-	Why         string
-	Acceptance  string
-	Body        string
-	Repo        string
-	Paths       string
+	Title       string   `json:"title"`
+	Actor       string   `json:"actor,omitempty"`
+	SessionID   string   `json:"-"`
+	ParentID    string   `json:"parent_id,omitempty"`
+	Type        string   `json:"type,omitempty"`
+	Stage       string   `json:"-"`
+	Blocks      []string `json:"blocks,omitempty"`
+	DerivedFrom []string `json:"derived_from,omitempty"`
+	Value       *int     `json:"value,omitempty"`
+	Confidence  *int     `json:"confidence,omitempty"`
+	Effort      *int     `json:"effort,omitempty"`
+	Why         string   `json:"why,omitempty"`
+	Acceptance  string   `json:"acceptance,omitempty"`
+	Body        string   `json:"body,omitempty"`
+	Repo        string   `json:"repo,omitempty"`
+	Paths       string   `json:"paths,omitempty"`
 	// Assignee is stored via the same "" -> SQL NULL convention insertItem
 	// already uses for Repo/Paths (02-07: plan 07's `add --assignee` flag
 	// needs somewhere to land; the assignee column has existed since Phase
 	// 1's schema, and UpdateItemInput already supports setting it -- AddItem
 	// lacking it was a gap, not a deliberate omission).
-	Assignee string
+	Assignee string `json:"assignee,omitempty"`
 }
 
 // generateRootID derives a root item's id from a hash of its title,

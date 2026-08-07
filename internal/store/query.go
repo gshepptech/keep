@@ -124,12 +124,18 @@ func queryEvents(ctx context.Context, db *sql.DB, itemID string) ([]model.Event,
 // ListFilter's zero value means "no filter" -- an empty field is omitted
 // from the WHERE clause entirely rather than bound as ''. Filters compose as
 // AND (02-CONTEXT.md "Claude's Discretion": yes, the obvious reading).
+//
+// json tags (04-02): this struct doubles as the `list` MCP tool's wire type
+// directly (internal/mcp). Every field is optional -- a bare `list` with no
+// arguments is legal and matches every existing caller's zero-value use.
+// Tags are additive and behaviourally inert for Go callers, all of which
+// construct this struct with named fields.
 type ListFilter struct {
-	Stage    string
-	Status   string
-	Type     string
-	ParentID string
-	Repo     string
+	Stage    string `json:"stage,omitempty"`
+	Status   string `json:"status,omitempty"`
+	Type     string `json:"type,omitempty"`
+	ParentID string `json:"parent_id,omitempty"`
+	Repo     string `json:"repo,omitempty"`
 
 	// ExcludeClosed adds `status NOT IN ('closed', 'dropped')` to the WHERE
 	// clause when true -- CAP-03's caller (backlog, cmd/rounce/backlog.go)
@@ -142,9 +148,9 @@ type ListFilter struct {
 	// (`blocked_directly`'s `b.status NOT IN ('closed', 'dropped')`) --
 	// copied verbatim, not re-derived, so the two predicates cannot drift
 	// apart unnoticed (03-RESEARCH.md Pitfall 5).
-	ExcludeClosed bool
+	ExcludeClosed bool `json:"exclude_closed,omitempty"`
 
-	Limit int
+	Limit int `json:"limit,omitempty"`
 }
 
 // ListItems queries items directly -- never the ready view -- so list (ITEM-

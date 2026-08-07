@@ -42,12 +42,18 @@ var (
 // DepInput is the argument to CreateDep. Actor is required, same rule as
 // AddItemInput (items.go) -- EVENT-01 is unfalsifiable if actor can be
 // silently empty.
+//
+// json tags (04-02): this struct doubles as the `dep` MCP tool's wire type
+// directly (internal/mcp). SessionID is `json:"-"` for the same reason as
+// AddItemInput's: session is a server-lifetime property, never a per-call
+// argument. Tags are additive and behaviourally inert for Go callers, all of
+// which construct this struct with named fields.
 type DepInput struct {
-	ItemID      string
-	DependsOnID string
-	Type        string
-	Actor       string
-	SessionID   string
+	ItemID      string `json:"item_id"`
+	DependsOnID string `json:"depends_on_id"`
+	Type        string `json:"type"`
+	Actor       string `json:"actor,omitempty"`
+	SessionID   string `json:"-"`
 }
 
 // depEventPayload is the JSON body of the one `dep` event CreateDep writes,
