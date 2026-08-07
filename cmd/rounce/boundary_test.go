@@ -63,6 +63,7 @@ func TestNoSQLAboveStore(t *testing.T) {
 
 	fset := token.NewFileSet()
 	filesWalked := 0
+	coveredPkgs := map[string]int{}
 
 	walkErr := filepath.WalkDir(moduleRoot, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
@@ -89,6 +90,7 @@ func TestNoSQLAboveStore(t *testing.T) {
 		if relErr != nil {
 			return relErr
 		}
+		coveredPkgs[filepath.Dir(rel)]++
 
 		// internal/store is *supposed* to contain all of this, including
 		// its own test files (which legitimately contain SQL) -- skip the
@@ -120,6 +122,20 @@ func TestNoSQLAboveStore(t *testing.T) {
 	// way a repository-scanning test rots into a permanent pass.
 	if filesWalked == 0 {
 		t.Fatal("walked zero .go files -- the walk root is broken; treat this as a failure, not a vacuous pass")
+	}
+
+	// The walk root reaches every package by construction, so this loop
+	// should never fire -- which is exactly why it is here. A walk that
+	// silently stops reaching a package would pass forever. internal/dash in
+	// particular was never added to this file: it fell inside the walk
+	// automatically the moment the directory existed (confirmed by reading
+	// the WalkDir root during 05 planning, and again by this assertion).
+	// Naming the four packages explicitly is what turns "it happens to be
+	// covered" into "it is required to be covered".
+	for _, pkg := range []string{"cmd/rounce", "internal/mcp", "internal/model", "internal/dash"} {
+		if coveredPkgs[filepath.FromSlash(pkg)] == 0 {
+			t.Errorf("STORE-10 walk visited zero .go files in %s -- the walk's reach has shrunk", pkg)
+		}
 	}
 }
 
