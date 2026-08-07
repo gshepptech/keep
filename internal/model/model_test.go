@@ -2,6 +2,7 @@ package model
 
 import (
 	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -114,4 +115,67 @@ func keysOf(m map[string]json.RawMessage) []string {
 		keys = append(keys, k)
 	}
 	return keys
+}
+
+// TestOrderedVocabulariesMatchTheirMaps is the guard that matters (task 1's
+// own <behavior>): a fifth value added to a Valid* map but not its matching
+// *Ordered slice would otherwise silently vanish from every enum and every
+// ordering built on it. For each of the four pairs, this asserts set
+// equality in both directions plus equal length, AND the literal expected
+// order -- so a reordering is a test failure, not a silent behaviour change.
+func TestOrderedVocabulariesMatchTheirMaps(t *testing.T) {
+	cases := []struct {
+		name      string
+		ordered   []string
+		valid     map[string]bool
+		wantOrder []string
+	}{
+		{
+			name:      "types",
+			ordered:   TypesOrdered,
+			valid:     ValidTypes,
+			wantOrder: []string{"roadmap", "epic", "task", "bug", "note"},
+		},
+		{
+			name:      "stages",
+			ordered:   StagesOrdered,
+			valid:     ValidStages,
+			wantOrder: []string{"raw", "ticket"},
+		},
+		{
+			name:      "statuses",
+			ordered:   StatusesOrdered,
+			valid:     ValidStatuses,
+			wantOrder: []string{"open", "in_progress", "closed", "dropped"},
+		},
+		{
+			name:      "dep types",
+			ordered:   DepTypesOrdered,
+			valid:     ValidDepTypes,
+			wantOrder: []string{"blocks", "parent-child", "related", "derived-from"},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if !reflect.DeepEqual(c.ordered, c.wantOrder) {
+				t.Fatalf("%s: ordered = %v, want literal order %v", c.name, c.ordered, c.wantOrder)
+			}
+			if len(c.ordered) != len(c.valid) {
+				t.Fatalf("%s: len(ordered) = %d, len(valid map) = %d, want equal", c.name, len(c.ordered), len(c.valid))
+			}
+			seen := make(map[string]bool, len(c.ordered))
+			for _, v := range c.ordered {
+				seen[v] = true
+				if !c.valid[v] {
+					t.Errorf("%s: ordered slice has %q, which is not a key of the Valid* map", c.name, v)
+				}
+			}
+			for k := range c.valid {
+				if !seen[k] {
+					t.Errorf("%s: Valid* map has key %q, which is not in the ordered slice", c.name, k)
+				}
+			}
+		})
+	}
 }

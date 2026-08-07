@@ -119,6 +119,12 @@ var ValidStages = map[string]bool{
 	StageTicket: true,
 }
 
+// StagesOrdered is the stage vocabulary in schema-enum order. See
+// TypesOrdered's doc comment for why an ordered slice exists alongside the
+// map: an ORDER is needed, not just a set, and this is the one place it is
+// spelled out.
+var StagesOrdered = []string{StageRaw, StageTicket}
+
 // Item types.
 const (
 	TypeRoadmap = "roadmap"
@@ -138,6 +144,16 @@ var ValidTypes = map[string]bool{
 	TypeNote:    true,
 }
 
+// TypesOrdered is the type vocabulary in schema-enum order. It exists
+// because two things need an ORDER, not just a set: backlog's grouping
+// (internal/store/backlog.go's CASE expression) and the MCP tools' JSON
+// Schema `enum` decoration (internal/mcp). Ranging over ValidTypes to build
+// either would emit a different order on every process, which makes a demo
+// transcript and a tools/list assertion flaky -- the same reason
+// cmd/rounce/add.go's validTypesList() has always spelled the order out by
+// hand. This is now the ONE place it is spelled out.
+var TypesOrdered = []string{TypeRoadmap, TypeEpic, TypeTask, TypeBug, TypeNote}
+
 // Item statuses.
 const (
 	StatusOpen       = "open"
@@ -155,6 +171,10 @@ var ValidStatuses = map[string]bool{
 	StatusDropped:    true,
 }
 
+// StatusesOrdered is the status vocabulary in schema-enum order. See
+// TypesOrdered's doc comment for why.
+var StatusesOrdered = []string{StatusOpen, StatusInProgress, StatusClosed, StatusDropped}
+
 // Dep types.
 const (
 	DepBlocks      = "blocks"
@@ -171,3 +191,7 @@ var ValidDepTypes = map[string]bool{
 	DepRelated:     true,
 	DepDerivedFrom: true,
 }
+
+// DepTypesOrdered is the dep type vocabulary in schema-enum order. See
+// TypesOrdered's doc comment for why.
+var DepTypesOrdered = []string{DepBlocks, DepParentChild, DepRelated, DepDerivedFrom}

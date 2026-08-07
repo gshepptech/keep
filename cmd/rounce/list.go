@@ -91,10 +91,10 @@ func runList(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-// validStatusesList renders model.ValidStatuses as a stable, ordered,
-// human-readable list -- same reasoning as add.go's validTypesList/
-// validStagesList: ranging over the map itself would produce a different
-// order on every process.
+// validStatusesList renders model.StatusesOrdered as a stable, human-
+// readable list -- same reasoning as add.go's validTypesList/
+// validStagesList: ranging over the ValidStatuses map itself would produce a
+// different order on every process.
 func validStatusesList() string {
-	return strings.Join([]string{model.StatusOpen, model.StatusInProgress, model.StatusClosed, model.StatusDropped}, ", ")
+	return strings.Join(model.StatusesOrdered, ", ")
 }

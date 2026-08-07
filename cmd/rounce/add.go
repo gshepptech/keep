@@ -155,16 +155,18 @@ func runAdd(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-// validTypesList and validStagesList render model.ValidTypes/ValidStages as
-// a stable, ordered, human-readable list for usage/error text -- ranging
-// over the map itself would produce a different order on every process,
-// which would make a captured test assertion or a demo transcript flaky.
+// validTypesList and validStagesList render model.TypesOrdered/StagesOrdered
+// as a stable, human-readable list for usage/error text -- ranging over
+// ValidTypes/ValidStages (maps) would produce a different order on every
+// process, which would make a captured test assertion or a demo transcript
+// flaky. model.TypesOrdered/StagesOrdered are the one place this order is
+// spelled out (04-01-PLAN.md task 1); this function only joins it.
 func validTypesList() string {
-	return strings.Join([]string{model.TypeRoadmap, model.TypeEpic, model.TypeTask, model.TypeBug, model.TypeNote}, ", ")
+	return strings.Join(model.TypesOrdered, ", ")
 }
 
 func validStagesList() string {
-	return strings.Join([]string{model.StageRaw, model.StageTicket}, ", ")
+	return strings.Join(model.StagesOrdered, ", ")
 }
 
 // parseScore validates and splits "v/c/e" into three ints, each in [0,10].
