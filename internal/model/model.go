@@ -101,6 +101,21 @@ type BlockedItem struct {
 	BlockedBy string `json:"blocked_by"`
 }
 
+// TreeNode is one row of a parent-child subtree walk (store.Tree): the item,
+// how deep beneath the requested root it sits, and whether it is blocked.
+// It lives here, beside BlockedItem, for the same reason BlockedItem does --
+// it is an Item plus one annotation, returned by a store method and rendered
+// by a caller. Keeping it in internal/model is what lets internal/dash's
+// render functions be pure (model in, HTML out) with no internal/store
+// import at all, which is what makes DASH-06's golden test possible without
+// a live database.
+type TreeNode struct {
+	Item
+	Depth     int    `json:"depth"`
+	Blocked   bool   `json:"blocked"`
+	BlockedBy string `json:"blocked_by"`
+}
+
 // The four closed vocabularies below mirror the CHECK constraints in
 // internal/store/schema.go's schemaDDL exactly. The DDL is authoritative;
 // these constants exist so the CLI can validate a flag value without a SQL
