@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"os"
 	"reflect"
@@ -192,4 +193,123 @@ func TestResolveBody(t *testing.T) {
 			}
 		}
 	})
+}
+
+// TestResolveActor proves --actor > $ROUNCE_ACTOR > $USER, including the
+// ""-set-but-empty-behaves-as-unset case every nullable convention in this
+// codebase already uses, and the terminal error case with no third
+// fallback (04-01-PLAN.md task 4's five in-process cases).
+func TestResolveActor(t *testing.T) {
+	cases := []struct {
+		name       string
+		flagActor  string
+		roundActor string
+		user       string
+		want       string
+		wantErr    bool
+	}{
+		{
+			name:       "--actor wins over both env vars",
+			flagActor:  "alice",
+			roundActor: "bob",
+			user:       "carol",
+			want:       "alice",
+		},
+		{
+			name:       "no --actor: ROUNCE_ACTOR wins over USER",
+			flagActor:  "",
+			roundActor: "bob",
+			user:       "carol",
+			want:       "bob",
+		},
+		{
+			name:       "no --actor, no ROUNCE_ACTOR: falls back to USER",
+			flagActor:  "",
+			roundActor: "",
+			user:       "carol",
+			want:       "carol",
+		},
+		{
+			name:       "nothing set: error, no third fallback",
+			flagActor:  "",
+			roundActor: "",
+			user:       "",
+			wantErr:    true,
+		},
+		{
+			name:       "ROUNCE_ACTOR set but empty behaves as unset, falls to USER",
+			flagActor:  "",
+			roundActor: "",
+			user:       "carol",
+			want:       "carol",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("ROUNCE_ACTOR", tc.roundActor)
+			t.Setenv("USER", tc.user)
+
+			got, err := resolveActor(tc.flagActor)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("resolveActor(%q) = %q, nil, want an error", tc.flagActor, got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("resolveActor(%q): %v", tc.flagActor, err)
+			}
+			if got != tc.want {
+				t.Fatalf("resolveActor(%q) = %q, want %q", tc.flagActor, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestResolveActorReadsROUNCE_ACTORCrossProcess drives the real compiled
+// binary -- an in-process table test can prove resolveActor's own logic but
+// cannot prove the real binary actually reads the variable end to end. It
+// sets ROUNCE_ACTOR=mcp-actor (USER is "rounce-test", per env()'s base set)
+// and asserts the add event's actor field is "mcp-actor", not "rounce-test".
+func TestResolveActorReadsROUNCE_ACTORCrossProcess(t *testing.T) {
+	bin := buildRounce(t, "")
+	repo := t.TempDir()
+	home := t.TempDir()
+	e := env(home, "", "ROUNCE_ACTOR=mcp-actor")
+	mustInit(t, bin, repo, e)
+
+	id := mustAdd(t, bin, repo, e, "an item added with ROUNCE_ACTOR set")
+
+	stdout, stderr, code := run(t, bin, repo, e, "show", id, "--json")
+	if code != 0 {
+		t.Fatalf("show %s --json: exit %d, stderr=%q", id, code, stderr)
+	}
+
+	var detail struct {
+		Events []struct {
+			Kind  string `json:"kind"`
+			Actor string `json:"actor"`
+		} `json:"events"`
+	}
+	if err := json.Unmarshal([]byte(stdout), &detail); err != nil {
+		t.Fatalf("json.Unmarshal(%q): %v", stdout, err)
+	}
+
+	var addEvent *struct {
+		Kind  string `json:"kind"`
+		Actor string `json:"actor"`
+	}
+	for i := range detail.Events {
+		if detail.Events[i].Kind == "add" {
+			addEvent = &detail.Events[i]
+			break
+		}
+	}
+	if addEvent == nil {
+		t.Fatalf("show %s --json: no %q event in %v", id, "add", detail.Events)
+	}
+	if addEvent.Actor != "mcp-actor" {
+		t.Fatalf("add event actor = %q, want %q (ROUNCE_ACTOR, not $USER=%q)", addEvent.Actor, "mcp-actor", "rounce-test")
+	}
 }

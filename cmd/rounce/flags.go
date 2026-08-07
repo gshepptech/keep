@@ -39,18 +39,33 @@ func addActorFlag(fs *flag.FlagSet) *string {
 	return fs.String("actor", "", "actor recorded on the events row (default: $USER)")
 }
 
-// resolveActor applies CLI-01/EVENT-01's precedence: --actor, then $USER.
-// Returns a usage-shaped error (caller maps it to exit 2) when neither is
-// set -- there is no third fallback, because a silently-empty actor would
-// make EVENT-01's audit trail unfalsifiable.
+// resolveActor applies CLI-01/EVENT-01's precedence: --actor, then
+// $ROUNCE_ACTOR, then $USER. Returns a usage-shaped error (caller maps it to
+// exit 2) when none of the three is set -- there is no fourth fallback,
+// because a silently-empty actor would make EVENT-01's audit trail
+// unfalsifiable. $ROUNCE_ACTOR set but empty ("") behaves as unset and
+// falls through to $USER -- the same ""-means-absent convention
+// resolveSession and every nullable column in this codebase already use.
+//
+// The middle rule exists for 04-CONTEXT.md decision 3: the MCP server's
+// default actor is fixed at $ROUNCE_ACTOR, else $USER, resolved once at
+// server start. Plan 04's runMCP resolves that default through this same
+// function rather than reading the environment itself, which is what makes
+// MCP-03's identical-events-rows claim a property of shared code instead of
+// two implementations independently agreeing. A --actor-only CLI and a
+// ROUNCE_ACTOR-aware MCP would be exactly the divergence phase-3.md's "if a
+// capability is worth having, both surfaces get it" forbids.
 func resolveActor(flagActor string) (string, error) {
 	if flagActor != "" {
 		return flagActor, nil
 	}
+	if a := os.Getenv("ROUNCE_ACTOR"); a != "" {
+		return a, nil
+	}
 	if u := os.Getenv("USER"); u != "" {
 		return u, nil
 	}
-	return "", fmt.Errorf("no --actor given and $USER is not set")
+	return "", fmt.Errorf("no --actor given and neither $ROUNCE_ACTOR nor $USER is set")
 }
 
 // resolveSession returns $ROUNCE_SESSION, or "" when it is unset. There is
