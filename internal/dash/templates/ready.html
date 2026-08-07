@@ -1,0 +1,17 @@
+{{/* ready.html -- the queue view (DASH-04). Data: []model.Item, already
+     ranked by store.Ready; this template does not sort. */}}
+{{define "ready"}}{{template "head" "queue"}}
+<h1>ready queue</h1>
+<table class="queue">
+<thead><tr><th>id</th><th>score</th><th>type</th><th>title</th></tr></thead>
+<tbody>
+{{range .}}<tr>
+<td><a href="/item/{{.ID}}">{{.ID}}</a></td>
+<td>{{.Score}}</td>
+<td>{{.Type}}</td>
+<td>{{.Title}}</td>
+</tr>
+{{else}}<tr><td colspan="4">the queue is empty</td></tr>
+{{end}}</tbody>
+</table>
+{{template "foot"}}{{end}}

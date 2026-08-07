@@ -1,0 +1,51 @@
+{{/* item.html -- the single-item view (DASH-04). Data: model.ItemDetail.
+     Field order follows show's own precedent (cmd/rounce/show.go): id,
+     stage, type, status, score, parent, repo, paths, why, acceptance,
+     created, updated -- then deps both directions, event history
+     oldest-first (already ordered by store.GetItem), then the body last,
+     verbatim, inside <pre> as plain text -- never markdown-to-HTML, never
+     template.HTML. A parent id and each dep's other end are links built
+     from the id field alone, never from title/body/why. */}}
+{{define "item"}}{{template "head" "item"}}
+<h1>item</h1>
+<table class="fields">
+<tbody>
+<tr><th>id</th><td>{{.ID}}</td></tr>
+<tr><th>stage</th><td>{{.Stage}}</td></tr>
+<tr><th>type</th><td>{{.Type}}</td></tr>
+<tr><th>status</th><td>{{.Status}}</td></tr>
+<tr><th>score</th><td>{{.Score}}</td></tr>
+{{if .ParentID}}<tr><th>parent</th><td><a href="/item/{{.ParentID}}">{{.ParentID}}</a></td></tr>
+{{end}}{{if .Repo}}<tr><th>repo</th><td>{{.Repo}}</td></tr>
+{{end}}{{if .Paths}}<tr><th>paths</th><td>{{.Paths}}</td></tr>
+{{end}}{{if .Why}}<tr><th>why</th><td>{{.Why}}</td></tr>
+{{end}}{{if .Acceptance}}<tr><th>acceptance</th><td>{{.Acceptance}}</td></tr>
+{{end}}<tr><th>created</th><td>{{.CreatedAt}}</td></tr>
+<tr><th>updated</th><td>{{.UpdatedAt}}</td></tr>
+</tbody>
+</table>
+
+{{if .DependsOn}}<h2>depends on</h2>
+<table class="deps">
+<tbody>
+{{range .DependsOn}}<tr><td>{{.Type}}</td><td><a href="/item/{{.DependsOnID}}">{{.DependsOnID}}</a></td></tr>
+{{end}}</tbody>
+</table>
+{{end}}
+{{if .DependedOnBy}}<h2>depended on by</h2>
+<table class="deps">
+<tbody>
+{{range .DependedOnBy}}<tr><td>{{.Type}}</td><td><a href="/item/{{.ItemID}}">{{.ItemID}}</a></td></tr>
+{{end}}</tbody>
+</table>
+{{end}}
+{{if .Events}}<h2>events</h2>
+<table class="events">
+<tbody>
+{{range .Events}}<tr><td>{{.At}}</td><td>{{.Kind}}</td><td>{{.Actor}}</td></tr>
+{{end}}</tbody>
+</table>
+{{end}}
+<h2>body</h2>
+<pre>{{.Body}}</pre>
+{{template "foot"}}{{end}}

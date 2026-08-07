@@ -1,0 +1,26 @@
+{{/* tree.html -- the tree view (DASH-04, and DASH-06's golden subject).
+     Data: []model.TreeNode, already depth-first ordered by store.Tree's own
+     ORDER BY path; this template does not sort.
+
+     Indentation is a class (depthClass, templates.go), never an inline
+     style attribute -- inline style is one of the surfaces DASH-05's scan
+     inspects. Closed/dropped rows get the "dimmed" class (opacity), never a
+     fourth colour. The state cell's class comes from the shared `state`
+     helper; a blocked row ALSO carries the literal word "blocked" in text,
+     per docs/design/phase-4.md ("the page says 'blocked', not a metaphor
+     for blocked") and because colour alone fails colourblind readers. */}}
+{{define "tree"}}{{template "head" "tree"}}
+<h1>tree</h1>
+<table class="tree">
+<thead><tr><th>id</th><th>type</th><th>title</th><th>state</th></tr></thead>
+<tbody>
+{{range .}}<tr{{if or (eq .Status "closed") (eq .Status "dropped")}} class="dimmed"{{end}}>
+<td class="{{depthClass .Depth}}"><a href="/item/{{.ID}}">{{.ID}}</a></td>
+<td>{{.Type}}</td>
+<td>{{.Title}}</td>
+<td class="state state-{{state .Status .Blocked}}">{{state .Status .Blocked}}{{if .Blocked}} ← blocked by {{.BlockedBy}}{{end}}</td>
+</tr>
+{{else}}<tr><td colspan="4">no items beneath this root</td></tr>
+{{end}}</tbody>
+</table>
+{{template "foot"}}{{end}}

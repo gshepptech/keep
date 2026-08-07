@@ -1,0 +1,21 @@
+{{/* backlog.html -- the raw backlog view (DASH-04). Data: []backlogRow
+     (render.go), already grouped-then-sorted by store.Backlog; a group
+     header row is emitted whenever a row's NewGroup is true. This template
+     does not sort or re-group -- it only reads the boundary render.go
+     already detected. */}}
+{{define "backlog"}}{{template "head" "backlog"}}
+<h1>backlog</h1>
+<table class="backlog">
+<thead><tr><th>id</th><th>score</th><th>type</th><th>title</th></tr></thead>
+<tbody>
+{{range .}}{{if .NewGroup}}<tr class="group"><th colspan="4">{{.Type}}</th></tr>
+{{end}}<tr>
+<td><a href="/item/{{.ID}}">{{.ID}}</a></td>
+<td>{{.Score}}</td>
+<td>{{.Type}}</td>
+<td>{{.Title}}</td>
+</tr>
+{{else}}<tr><td colspan="4">the backlog is empty</td></tr>
+{{end}}</tbody>
+</table>
+{{template "foot"}}{{end}}
