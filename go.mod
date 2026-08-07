@@ -5,6 +5,11 @@ go 1.26.1
 require modernc.org/sqlite v1.56.0
 
 require (
+	github.com/google/jsonschema-go v0.4.3 // indirect
+	github.com/modelcontextprotocol/go-sdk v1.7.0 // indirect
+)
+
+require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
