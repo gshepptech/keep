@@ -2,9 +2,15 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/gshepptech/rounce/internal/dash"
 	"github.com/gshepptech/rounce/internal/model"
@@ -149,22 +155,50 @@ func runBoard(args []string, stdout, stderr io.Writer) int {
 }
 
 // serveWeb binds hostport 127.0.0.1:port (port 0 means OS-assigned) via
-// dash.NewServer and prints the URL as stdout's FIRST line, then serves.
-//
-// This first cut serves synchronously with no signal handling -- task 2
-// hardens it with signal.NotifyContext + graceful Shutdown so Ctrl-C exits
-// 0 rather than leaving the process to be killed. Placeholder only for the
-// span between this commit and task 2's; not a shipped end state.
+// dash.NewServer, prints the URL as stdout's FIRST line, then serves until
+// SIGINT/SIGTERM. The host is the literal string "127.0.0.1" here and
+// nowhere else -- there is no flag between the user and this constant;
+// dash.NewServer's loopback validation is the backstop for a future flag,
+// not the primary gate today (05-CONTEXT.md decision 4).
 func serveWeb(st *store.Store, port int, stdout, stderr io.Writer) int {
 	srv, err := dash.NewServer(st, fmt.Sprintf("127.0.0.1:%d", port))
 	if err != nil {
 		fmt.Fprintf(stderr, "rounce board: %v\n", err)
 		return 1
 	}
+
+	// The URL is the first line of stdout, before anything else is written
+	// there -- the demo script and board_test.go's --web tests both read
+	// exactly one line and expect a working URL. No "serving..." banner, no
+	// request log, ever on stdout: diagnostics go to stderr.
 	fmt.Fprintln(stdout, srv.URL())
-	if err := srv.Serve(); err != nil {
-		fmt.Fprintf(stderr, "rounce board: %v\n", err)
-		return 1
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	errCh := make(chan error, 1)
+	go func() { errCh <- srv.Serve() }()
+
+	select {
+	case <-ctx.Done():
+		sctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		// return 0 here is the whole point: a clean shutdown is not an
+		// error. rounce mcp shipped exiting 1 on an ordinary client
+		// disconnect once already (codeServerClosing, cmd/rounce/mcp.go) --
+		// this is the second application of the identical fix, applied to
+		// a different mechanism (http.Server.Shutdown rather than a
+		// JSON-RPC close code) for the identical shape of mistake.
+		if err := srv.Shutdown(sctx); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			fmt.Fprintf(stderr, "rounce board: shutdown: %v\n", err)
+			return 1
+		}
+		return 0
+	case err := <-errCh:
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			fmt.Fprintf(stderr, "rounce board: %v\n", err)
+			return 1
+		}
+		return 0
 	}
-	return 0
 }
