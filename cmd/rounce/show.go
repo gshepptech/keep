@@ -25,6 +25,7 @@ func runShow(args []string, stdout, stderr io.Writer) int {
 
 	dbFlag := addDBFlag(fs)
 	jsonFlag := addJSONFlag(fs)
+	bodyFlag := fs.Bool("body", false, "print only the stored body, verbatim, and nothing else")
 
 	if err := fs.Parse(permuteArgs(fs, args)); err != nil {
 		return 2
@@ -34,6 +35,15 @@ func runShow(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	id := fs.Arg(0)
+
+	// --body and --json are two different output contracts -- one raw
+	// bytes, one a labelled structure -- and combining them means nothing
+	// (03-CONTEXT.md decision 2). Checked before the store is opened, same
+	// as every other CLI-boundary validation in this package.
+	if *bodyFlag && *jsonFlag {
+		fmt.Fprintln(stderr, "rounce: show: --body and --json are mutually exclusive")
+		return 2
+	}
 
 	s, err := openStore(*dbFlag)
 	if err != nil {
@@ -45,6 +55,17 @@ func runShow(args []string, stdout, stderr io.Writer) int {
 	detail, err := s.GetItem(context.Background(), id)
 	if err != nil {
 		return exitFor(stderr, err)
+	}
+
+	// The byte-identical surface CAP-02 rests on: no header, no label, no
+	// newline added, none stripped, nothing printed before or after it --
+	// `rounce show <id> --body | diff - <original>` must be silent. Reached
+	// only after a successful GetItem, so an unknown id already exits 1
+	// with nothing on stdout by construction (03-RESEARCH.md Open
+	// Question 3) -- no special-case handling needed here.
+	if *bodyFlag {
+		io.WriteString(stdout, detail.Body)
+		return 0
 	}
 
 	if *jsonFlag {

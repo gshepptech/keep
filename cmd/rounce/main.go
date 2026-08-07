@@ -35,6 +35,8 @@ commands:
               --json        machine-parseable output
   show      show one item's full detail: rounce show [flags] <id>
               --json        machine-parseable output
+              --body        print only the stored body, verbatim, and
+                            nothing else (cannot combine with --json)
   list      list items with filters, composed as AND
               --stage/--status/--type/--parent/--repo/--limit
               --json        machine-parseable output
