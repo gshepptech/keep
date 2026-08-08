@@ -34,6 +34,9 @@ commands:
   ready     list workable items, ranked
               --limit <n>   at most n items
               --json        machine-parseable output
+              --all         merge every registered store's ready queue,
+                            ranked across all of them (see rounce repos);
+                            cannot combine with --db
   blocked   list blocked items, each naming the item blocking it
               --json        machine-parseable output
   show      show one item's full detail: rounce show [flags] <id>
