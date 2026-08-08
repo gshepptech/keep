@@ -4,11 +4,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gshepptech/rounce/internal/model"
+	"github.com/gshepptech/rounce/internal/registry"
 	"github.com/gshepptech/rounce/internal/store"
 )
 
@@ -266,6 +270,131 @@ func TestConcurrentAddChildrenNoOrdinalCollision(t *testing.T) {
 		wantID := fmt.Sprintf("%s.%d", epicID, i)
 		if !gotIDs[wantID] {
 			t.Fatalf("id %q missing from the set %v -- want exactly {%s.1 .. %s.%d}", wantID, gotIDs, epicID, epicID, n)
+		}
+	}
+}
+
+// TestConcurrentInitDifferentRepositoriesLeavesRegistryValid is GATE-04 for
+// Phase 6: six real `rounce init` processes, in six different directories,
+// sharing one HOME, all Start()-ed before any is Wait()-ed on, contending
+// over one ~/.rounce/repos.json.
+//
+// WHAT THIS ASSERTS, AND WHY IT STOPS THERE. registry.Save writes a temp
+// file in the destination directory and renames it over repos.json. POSIX
+// rename(2) guarantees any concurrent reader sees either the old file or the
+// new file, never a partial write -- so the registry is never torn, never
+// half-written, and never left in a state that breaks every future `rounce
+// repos` call. That is the guarantee this test checks.
+//
+// It deliberately does NOT assert that all six registrations survive.
+// Atomicity of the WRITE does not imply isolation of the read-modify-write
+// sequence around it: two processes registering two DIFFERENT new repos,
+// each having read the registry before the other's rename landed, will have
+// one rename replace the other's addition. That is a lost update, not
+// corruption, and 06-CONTEXT.md decision 2 accepts it explicitly ("a
+// half-written registry that breaks every future `repos` call is a much
+// worse failure than a lost registration"). A set-equality assertion here
+// would be testing a guarantee this design does not make, and would flake on
+// process scheduling.
+//
+// Contrast TestConcurrentInitSameDirectory and
+// TestConcurrentAddChildrenNoOrdinalCollision above, which DO assert set
+// equality -- correctly, because the store-level constraints they cover
+// (UNIQUE(parent_id, ordinal), _txlock=immediate) genuinely provide it.
+func TestConcurrentInitDifferentRepositoriesLeavesRegistryValid(t *testing.T) {
+	bin := buildRounce(t, "")
+	home := t.TempDir()
+	e := env(home, "")
+
+	const n = 6
+
+	type proc struct {
+		dir    string
+		want   string
+		cmd    *exec.Cmd
+		stdout bytes.Buffer
+		stderr bytes.Buffer
+	}
+
+	base := t.TempDir()
+	procs := make([]*proc, n)
+	wantPaths := make(map[string]bool, n)
+
+	// Start() all six before Wait()-ing on any of them -- the same discipline
+	// as TestConcurrentInitSameDirectory and
+	// TestConcurrentAddChildrenNoOrdinalCollision above. Goroutine simulation
+	// does not satisfy GATE-04.
+	for i := 0; i < n; i++ {
+		dir := filepath.Join(base, fmt.Sprintf("repo-%d", i))
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", dir, err)
+		}
+		p := &proc{dir: dir, want: store.StorePathIn(dir)}
+		cmd := exec.Command(bin, "init")
+		cmd.Dir = dir
+		cmd.Env = e
+		cmd.Stdout = &p.stdout
+		cmd.Stderr = &p.stderr
+		p.cmd = cmd
+		if err := cmd.Start(); err != nil {
+			t.Fatalf("process %d failed to start: %v", i, err)
+		}
+		procs[i] = p
+		wantPaths[p.want] = true
+	}
+
+	for i, p := range procs {
+		if err := p.cmd.Wait(); err != nil {
+			t.Fatalf("process %d exited non-zero: %v\nstdout=%q\nstderr=%q",
+				i, err, p.stdout.String(), p.stderr.String())
+		}
+	}
+
+	envelope := readRegistry(t, home)
+	if envelope.Version != registry.Version {
+		t.Fatalf("registry version = %d, want %d", envelope.Version, registry.Version)
+	}
+
+	seenPaths := make(map[string]bool, len(envelope.Repos))
+	for _, r := range envelope.Repos {
+		if r.Path == "" {
+			t.Fatalf("registry row has empty path: %+v", r)
+		}
+		if r.Name == "" {
+			t.Fatalf("registry row has empty name: %+v", r)
+		}
+		if _, err := time.Parse(model.TimeFormat, r.LastSeen); err != nil {
+			t.Fatalf("registry row last_seen = %q does not parse with model.TimeFormat: %v", r.LastSeen, err)
+		}
+		if seenPaths[r.Path] {
+			t.Fatalf("registry has a duplicate path: %q", r.Path)
+		}
+		seenPaths[r.Path] = true
+		if !wantPaths[r.Path] {
+			t.Fatalf("registry row path %q is not one of the six expected store paths %v", r.Path, wantPaths)
+		}
+	}
+
+	// Report the observed survivor count on every run, pass or fail -- it is
+	// the only visibility into how wide the read-modify-write window
+	// actually is on this machine.
+	t.Logf("TestConcurrentInitDifferentRepositoriesLeavesRegistryValid: %d/%d registrations survived", len(envelope.Repos), n)
+
+	if len(envelope.Repos) < 1 {
+		t.Fatalf("registry has zero repos, want at least one survivor")
+	}
+
+	// Not asserted, deliberately: that all six survived. See the doc comment
+	// above.
+
+	registryDir := filepath.Dir(registry.PathIn(home))
+	entries, err := os.ReadDir(registryDir)
+	if err != nil {
+		t.Fatalf("reading %s: %v", registryDir, err)
+	}
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), "."+registry.FileName+".tmp-") {
+			t.Fatalf("%s contains a leftover temp file: %s", registryDir, entry.Name())
 		}
 	}
 }
