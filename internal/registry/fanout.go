@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -115,4 +116,82 @@ func withStore(path string, fn func(*store.Store) error) error {
 	}
 	defer st.Close()
 	return fn(st)
+}
+
+// FetchReady opens every registered store read-only, in sequence, and
+// collects each one's ready queue.
+//
+// Sequential by decision (06-CONTEXT.md decision 4, quoting phase-5.md):
+// "Opening ~20 SQLite files per request is fine at this scale. If it stops
+// being fine, the fix is a cache with an mtime check, not a combined
+// database." Concurrency here would buy little and would reintroduce exactly
+// the one-connection-per-process reasoning Phase 1 settled.
+//
+// Each store is queried with s.Ready(ctx, 0) -- UNLIMITED, deliberately.
+// Limiting per store before the merge would let each store's own tiebreak
+// (created_at, which is not comparable across stores) decide which rows even
+// reach the cross-store ranking. The caller limits the MERGED result. This
+// is the same discipline board.go already applies with its one unlimited
+// Ready call feeding both the count and the rows.
+//
+// The ready query itself is store.Ready, never a reimplementation: a second
+// "what is workable" query in Go is Anti-Pattern 1 in
+// .planning/research/ARCHITECTURE.md, and calling the shipped one is what
+// makes `ready --all`'s per-repo view structurally unable to disagree with
+// that repository's own single-store `rounce ready`.
+func FetchReady(ctx context.Context, repos []Repo) []RepoResult {
+	out := make([]RepoResult, 0, len(repos))
+	for _, r := range repos {
+		res := RepoResult{Repo: r.Name, Path: r.Path}
+		res.Err = withStore(r.Path, func(st *store.Store) error {
+			items, err := st.Ready(ctx, 0)
+			if err != nil {
+				return err
+			}
+			res.Items = items
+			return nil
+		})
+		out = append(out, res)
+	}
+	return out
+}
+
+// FetchCounts opens every registered store read-only and collects the row
+// `rounce repos` renders: total items, ready items, and last activity.
+//
+// The counts come from full item fetches plus len(), not from a COUNT(*)
+// method (06-RESEARCH.md Open Question 1). That matches cmd/rounce/board.go's
+// established precedent exactly -- it already calls Ready/ListItems/Blocked/
+// Backlog purely to take len() -- and README principle 6 ("correct before
+// fast") says a COUNT(*)-shaped method is a measured optimisation, not an
+// upfront design decision. LastActivity is store.LastActivity, i.e.
+// MAX(events.at), because CreateDep touches no items row and
+// MAX(items.updated_at) would therefore under-report.
+func FetchCounts(ctx context.Context, repos []Repo) []RepoResult {
+	out := make([]RepoResult, 0, len(repos))
+	for _, r := range repos {
+		res := RepoResult{Repo: r.Name, Path: r.Path}
+		res.Err = withStore(r.Path, func(st *store.Store) error {
+			items, err := st.ListItems(ctx, store.ListFilter{})
+			if err != nil {
+				return err
+			}
+			res.ItemCount = len(items)
+
+			ready, err := st.Ready(ctx, 0)
+			if err != nil {
+				return err
+			}
+			res.ReadyCount = len(ready)
+
+			last, _, err := st.LastActivity(ctx)
+			if err != nil {
+				return err
+			}
+			res.LastActivity = last
+			return nil
+		})
+		out = append(out, res)
+	}
+	return out
 }

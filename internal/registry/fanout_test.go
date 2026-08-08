@@ -229,3 +229,209 @@ func TestWithStoreMissingStoreNeverOpens(t *testing.T) {
 		t.Fatalf("withStore: a file appeared at %s after a missing-store open attempt", path)
 	}
 }
+
+// ---- FetchReady ----
+
+// TestFetchReadyOrderAndContent proves FetchReady over three registered
+// repos returns exactly three results, in input order, each carrying its
+// Repo name and Path, with the real Ready() rows attached.
+func TestFetchReadyOrderAndContent(t *testing.T) {
+	repos := make([]Repo, 3)
+	for i, name := range []string{"alpha", "beta", "gamma"} {
+		dir := t.TempDir()
+		path := filepath.Join(dir, "db.sqlite")
+		st, err := store.Init(path)
+		if err != nil {
+			t.Fatalf("store.Init: %v", err)
+		}
+		addItem(t, st, store.AddItemInput{Title: name + "-item"})
+		if err := st.Close(); err != nil {
+			t.Fatalf("Close: %v", err)
+		}
+		repos[i] = Repo{Path: path, Name: name}
+	}
+
+	results := FetchReady(context.Background(), repos)
+	if len(results) != 3 {
+		t.Fatalf("FetchReady: len = %d, want 3", len(results))
+	}
+	for i, want := range repos {
+		got := results[i]
+		if got.Repo != want.Name || got.Path != want.Path {
+			t.Fatalf("FetchReady[%d]: Repo/Path = %q/%q, want %q/%q", i, got.Repo, got.Path, want.Name, want.Path)
+		}
+		if got.Err != nil {
+			t.Fatalf("FetchReady[%d]: Err = %v, want nil", i, got.Err)
+		}
+		if len(got.Items) != 1 || got.Items[0].Title != want.Name+"-item" {
+			t.Fatalf("FetchReady[%d]: Items = %+v, want one item titled %q", i, got.Items, want.Name+"-item")
+		}
+	}
+}
+
+// TestFetchReadyIsolatesFailures proves that with the middle repo's store
+// file deleted, the first and third results still carry their items with a
+// nil Err, the middle result carries a non-nil Err and no items, and the
+// LENGTH and ORDER are unchanged -- a fan-out that returned early or skipped
+// the bad row is exactly the silent-partial-result failure this phase is
+// shaped against.
+func TestFetchReadyIsolatesFailures(t *testing.T) {
+	repos := make([]Repo, 3)
+	for i, name := range []string{"alpha", "beta", "gamma"} {
+		dir := t.TempDir()
+		path := filepath.Join(dir, "db.sqlite")
+		st, err := store.Init(path)
+		if err != nil {
+			t.Fatalf("store.Init: %v", err)
+		}
+		addItem(t, st, store.AddItemInput{Title: name + "-item"})
+		if err := st.Close(); err != nil {
+			t.Fatalf("Close: %v", err)
+		}
+		repos[i] = Repo{Path: path, Name: name}
+	}
+
+	if err := os.Remove(repos[1].Path); err != nil {
+		t.Fatalf("os.Remove(middle store): %v", err)
+	}
+
+	results := FetchReady(context.Background(), repos)
+	if len(results) != 3 {
+		t.Fatalf("FetchReady: len = %d, want 3 (isolation failed)", len(results))
+	}
+
+	if results[0].Err != nil || len(results[0].Items) != 1 {
+		t.Fatalf("FetchReady[0] (alpha): Err=%v Items=%+v, want nil err and one item", results[0].Err, results[0].Items)
+	}
+	if results[0].Repo != "alpha" {
+		t.Fatalf("FetchReady[0]: Repo = %q, want alpha (order changed)", results[0].Repo)
+	}
+
+	if results[1].Err == nil {
+		t.Fatalf("FetchReady[1] (beta, deleted): Err = nil, want non-nil")
+	}
+	if len(results[1].Items) != 0 {
+		t.Fatalf("FetchReady[1] (beta, deleted): Items = %+v, want none", results[1].Items)
+	}
+	if results[1].Repo != "beta" {
+		t.Fatalf("FetchReady[1]: Repo = %q, want beta (order changed)", results[1].Repo)
+	}
+
+	if results[2].Err != nil || len(results[2].Items) != 1 {
+		t.Fatalf("FetchReady[2] (gamma): Err=%v Items=%+v, want nil err and one item", results[2].Err, results[2].Items)
+	}
+	if results[2].Repo != "gamma" {
+		t.Fatalf("FetchReady[2]: Repo = %q, want gamma (order changed)", results[2].Repo)
+	}
+}
+
+// TestFetchReadyMissingStoreCreatesNoFile is the empty-store trap's
+// regression lock, both halves in one test. A Repo points at a path inside
+// an EXISTING directory where no store file exists. After FetchReady: (1)
+// the result's Err is non-nil, AND (2) os.Stat(path) still returns
+// fs.ErrNotExist -- no stray database file was fabricated. This is the test
+// GATE-03 break 1 (both stages) targets.
+func TestFetchReadyMissingStoreCreatesNoFile(t *testing.T) {
+	dir := t.TempDir() // exists
+	path := filepath.Join(dir, "db.sqlite")
+
+	repos := []Repo{{Path: path, Name: "ghost"}}
+	results := FetchReady(context.Background(), repos)
+
+	if len(results) != 1 {
+		t.Fatalf("FetchReady: len = %d, want 1", len(results))
+	}
+	if results[0].Err == nil {
+		t.Fatalf("FetchReady(missing store): Err = nil, want non-nil")
+	}
+
+	if _, err := os.Stat(path); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("FetchReady(missing store): a file now exists at %s (stat err = %v) -- the empty-store trap fired", path, err)
+	}
+}
+
+// ---- FetchCounts ----
+
+// TestFetchCounts proves FetchCounts on a real store returns ItemCount equal
+// to the number of items added (including raw and closed ones), ReadyCount
+// equal to the ready queue's length, and LastActivity equal to the store's
+// own LastActivity.
+func TestFetchCounts(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "db.sqlite")
+	st, err := store.Init(path)
+	if err != nil {
+		t.Fatalf("store.Init: %v", err)
+	}
+
+	// Two ready tickets.
+	addItem(t, st, store.AddItemInput{Title: "ticket-1"})
+	addItem(t, st, store.AddItemInput{Title: "ticket-2"})
+	// One raw item -- counted in ItemCount, not ReadyCount.
+	addItem(t, st, store.AddItemInput{Title: "note-1", Stage: model.StageRaw})
+
+	wantLastActivity, _, err := st.LastActivity(context.Background())
+	if err != nil {
+		t.Fatalf("LastActivity (direct): %v", err)
+	}
+	wantAll, err := st.ListItems(context.Background(), store.ListFilter{})
+	if err != nil {
+		t.Fatalf("ListItems (direct): %v", err)
+	}
+	wantReady, err := st.Ready(context.Background(), 0)
+	if err != nil {
+		t.Fatalf("Ready (direct): %v", err)
+	}
+
+	if err := st.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+
+	results := FetchCounts(context.Background(), []Repo{{Path: path, Name: "r"}})
+	if len(results) != 1 {
+		t.Fatalf("FetchCounts: len = %d, want 1", len(results))
+	}
+	got := results[0]
+	if got.Err != nil {
+		t.Fatalf("FetchCounts: Err = %v, want nil", got.Err)
+	}
+	if got.ItemCount != len(wantAll) {
+		t.Fatalf("FetchCounts: ItemCount = %d, want %d", got.ItemCount, len(wantAll))
+	}
+	if got.ReadyCount != len(wantReady) {
+		t.Fatalf("FetchCounts: ReadyCount = %d, want %d", got.ReadyCount, len(wantReady))
+	}
+	if got.LastActivity != wantLastActivity {
+		t.Fatalf("FetchCounts: LastActivity = %q, want %q", got.LastActivity, wantLastActivity)
+	}
+}
+
+// TestFetchCountsEmptyStoreIsNormalRow proves FetchCounts on a store with
+// zero events returns LastActivity == "" and a nil Err -- an empty store is
+// a normal row, not a failed one.
+func TestFetchCountsEmptyStoreIsNormalRow(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "db.sqlite")
+	st, err := store.Init(path)
+	if err != nil {
+		t.Fatalf("store.Init: %v", err)
+	}
+	if err := st.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+
+	results := FetchCounts(context.Background(), []Repo{{Path: path, Name: "empty"}})
+	if len(results) != 1 {
+		t.Fatalf("FetchCounts: len = %d, want 1", len(results))
+	}
+	got := results[0]
+	if got.Err != nil {
+		t.Fatalf("FetchCounts(empty store): Err = %v, want nil", got.Err)
+	}
+	if got.LastActivity != "" {
+		t.Fatalf("FetchCounts(empty store): LastActivity = %q, want empty", got.LastActivity)
+	}
+	if got.ItemCount != 0 || got.ReadyCount != 0 {
+		t.Fatalf("FetchCounts(empty store): ItemCount=%d ReadyCount=%d, want 0/0", got.ItemCount, got.ReadyCount)
+	}
+}
