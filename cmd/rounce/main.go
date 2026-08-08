@@ -66,6 +66,12 @@ commands:
               --web         serve the dashboard on 127.0.0.1 and print the URL
               --port <n>    a fixed port instead of an OS-assigned one
               read-only: the page cannot change the store
+  repos     the registry of known stores across repositories
+              --json        machine-parseable output
+              repos add <path>     register a repository directory or store
+              repos forget <path>  remove it; the store itself is untouched
+              a store that cannot be opened is reported on its row, not
+              fatal -- repos exits 0 even when some rows failed
   version   print the version
 
 See ROADMAP.md.
@@ -108,6 +114,8 @@ func main() {
 		os.Exit(runMCP(os.Args[2:], os.Stdout, os.Stderr))
 	case "board":
 		os.Exit(runBoard(os.Args[2:], os.Stdout, os.Stderr))
+	case "repos":
+		os.Exit(runRepos(os.Args[2:], os.Stdout, os.Stderr))
 	case "version", "--version":
 		fmt.Println(version)
 	case "help", "--help", "-h":
