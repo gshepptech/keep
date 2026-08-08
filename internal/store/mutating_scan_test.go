@@ -221,14 +221,15 @@ var (
 		"CreateDep":  true,
 	}
 	wantReadOnly = map[string]bool{
-		"Ready":     true,
-		"Blocked":   true,
-		"GetItem":   true,
-		"ListItems": true,
-		"IsBlocked": true,
-		"Close":     true,
-		"Backlog":   true,
-		"Tree":      true,
+		"Ready":        true,
+		"Blocked":      true,
+		"GetItem":      true,
+		"ListItems":    true,
+		"IsBlocked":    true,
+		"Close":        true,
+		"Backlog":      true,
+		"Tree":         true,
+		"LastActivity": true,
 	}
 )
 
