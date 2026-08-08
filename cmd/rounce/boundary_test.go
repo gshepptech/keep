@@ -132,7 +132,12 @@ func TestNoSQLAboveStore(t *testing.T) {
 	// the WalkDir root during 05 planning, and again by this assertion).
 	// Naming the four packages explicitly is what turns "it happens to be
 	// covered" into "it is required to be covered".
-	for _, pkg := range []string{"cmd/rounce", "internal/mcp", "internal/model", "internal/dash"} {
+	//
+	// internal/registry (Phase 6) is reached by the walk automatically, exactly
+	// as internal/dash was before it was named here. 06-CONTEXT.md's
+	// carried-forward decision requires it be named explicitly anyway, so a walk
+	// whose reach shrinks fails by name rather than by accident.
+	for _, pkg := range []string{"cmd/rounce", "internal/mcp", "internal/model", "internal/dash", "internal/registry"} {
 		if coveredPkgs[filepath.FromSlash(pkg)] == 0 {
 			t.Errorf("STORE-10 walk visited zero .go files in %s -- the walk's reach has shrunk", pkg)
 		}

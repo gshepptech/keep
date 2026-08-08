@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/gshepptech/rounce/internal/model"
+	"github.com/gshepptech/rounce/internal/registry"
 	"github.com/gshepptech/rounce/internal/store"
 )
 
@@ -110,6 +112,25 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 		if absEnv, err := filepath.Abs(envDB); err == nil && absEnv != target {
 			fmt.Fprintf(stderr, "rounce: warning: ROUNCE_DB=%s will take precedence over the store just created at %s\n", envDB, target)
 		}
+	}
+
+	// REPO-01: register the store just created in ~/.rounce/repos.json.
+	//
+	// Best-effort by decision (06-CONTEXT.md decision 3). The store this command
+	// was asked to create WAS created; a bookkeeping failure -- a read-only home,
+	// a full disk, a HOME that is not a directory -- warns on stderr and leaves
+	// the exit code at 0. Failing init over the registry would let a convenience
+	// feature break the core one. There is deliberately no `return` inside this
+	// block.
+	//
+	// registry.NameFor derives the label from the repository directory, never
+	// from the store's own filename, which is always "db.sqlite". --global is
+	// not special-cased: ~/.rounce/db.sqlite is registered like any other store,
+	// and lands in the same directory as the registry file itself.
+	if home, err := os.UserHomeDir(); err != nil {
+		fmt.Fprintf(stderr, "rounce: warning: could not locate a home directory to register %s: %v\n", target, err)
+	} else if err := registry.Register(home, target, registry.NameFor(target), model.Now()); err != nil {
+		fmt.Fprintf(stderr, "rounce: warning: could not register %s in the repo list: %v\n", target, err)
 	}
 
 	// Exactly one line to stdout: the absolute target path, marked
