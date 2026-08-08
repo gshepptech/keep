@@ -12,13 +12,16 @@ No account, no server, no SaaS. The store is a file in your repository.
 
 ## Status
 
-Phases 0-4 are built: the versioned SQLite store; the thirteen-verb CLI
+Phases 0-5 are built: the versioned SQLite store; the thirteen-verb CLI
 (items, dependencies, `ready`/`blocked`, `start`/`close`/`drop`/`update`);
 capture and refine (`capture`, `backlog`, provenance via `derived-from`);
 `rounce mcp`, exposing ten of those verbs as MCP tools over stdio with no
-logic of its own; and the loopback dashboard (`rounce board`, terminal or
+logic of its own; the loopback dashboard (`rounce board`, terminal or
 `--web`) — read-only, binds to `127.0.0.1` only, and proven never to disagree
-with `rounce ready`. Not yet built: the multi-repo registry (Phase 5). See
+with `rounce ready`; and the multi-repo registry — `~/.rounce/repos.json`,
+registered on `init`, `rounce repos` (with `add`/`forget`), and
+`rounce ready --all`, with every fan-out read-only so a deleted or moved
+store is a visible row-level error rather than a fabricated empty one. See
 [ROADMAP.md](ROADMAP.md) and `docs/design/`.
 
 ## Principles
