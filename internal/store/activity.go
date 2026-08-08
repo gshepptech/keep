@@ -9,16 +9,16 @@ import (
 // LastActivity returns the timestamp of the most recent events row in this
 // store, and whether there is one at all.
 //
-// It reads MAX(at) FROM events, NOT MAX(updated_at) FROM items, and that
+// It reads MAX(at) FROM events, NOT items' own last-write column, and that
 // choice is load-bearing rather than incidental. CreateDep (deps.go) writes
 // exactly one events row and zero UPDATE statements against items --
 // confirmed by reading the method, and locked by activity_test.go's
 // dep-only fixture. A repository whose most recent work was `rounce dep <a>
 // blocks <b>` would therefore show a stale last-activity if this query read
-// items.updated_at. The events table is already EVENT-01's complete,
-// append-only log of every mutation in the system; deriving "last activity"
-// from anything else re-derives a strict subset of what events already
-// guarantees.
+// items' own last-write column instead. The events table is already
+// EVENT-01's complete, append-only log of every mutation in the system;
+// deriving "last activity" from anything else re-derives a strict subset of
+// what events already guarantees.
 //
 // An empty events table is not an error: SQLite's MAX over zero rows
 // returns one row containing NULL, which scans into a sql.NullString whose
