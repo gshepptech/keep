@@ -1,8 +1,12 @@
 package registry
 
 import (
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -169,6 +173,206 @@ func TestNameFor(t *testing.T) {
 		if got := NameFor(c.path); got != c.want {
 			t.Errorf("NameFor(%q) = %q, want %q", c.path, got, c.want)
 		}
+	}
+}
+
+// TestRegisterAddsOneRowOnEmptyRegistry proves Register on an empty registry
+// adds one row carrying all three values.
+func TestRegisterAddsOneRowOnEmptyRegistry(t *testing.T) {
+	home := t.TempDir()
+
+	if err := Register(home, "/a/repo/.rounce/db.sqlite", "repo", "2026-08-07T12:00:00.000000000Z"); err != nil {
+		t.Fatalf("Register: %v", err)
+	}
+
+	env, err := Load(home)
+	if err != nil {
+		t.Fatalf("Load after Register: %v", err)
+	}
+	if len(env.Repos) != 1 {
+		t.Fatalf("Register on empty registry: %d rows, want 1", len(env.Repos))
+	}
+	got := env.Repos[0]
+	want := Repo{Path: "/a/repo/.rounce/db.sqlite", Name: "repo", LastSeen: "2026-08-07T12:00:00.000000000Z"}
+	if got != want {
+		t.Fatalf("Register: row = %+v, want %+v", got, want)
+	}
+}
+
+// TestRegisterSamePathTwiceUpdatesNotAppends proves registering the SAME
+// path a second time with a later lastSeen leaves exactly ONE row, whose
+// LastSeen is the newer value. The row count is asserted explicitly -- an
+// append-instead-of-update bug leaves the newest value reachable and only
+// the count wrong.
+func TestRegisterSamePathTwiceUpdatesNotAppends(t *testing.T) {
+	home := t.TempDir()
+	path := "/a/repo/.rounce/db.sqlite"
+
+	if err := Register(home, path, "repo", "2026-08-07T12:00:00.000000000Z"); err != nil {
+		t.Fatalf("Register (first): %v", err)
+	}
+	if err := Register(home, path, "repo", "2026-08-07T13:00:00.000000000Z"); err != nil {
+		t.Fatalf("Register (second): %v", err)
+	}
+
+	env, err := Load(home)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if len(env.Repos) != 1 {
+		t.Fatalf("Register(path) twice: %d rows, want exactly 1", len(env.Repos))
+	}
+	if env.Repos[0].LastSeen != "2026-08-07T13:00:00.000000000Z" {
+		t.Fatalf("Register(path) twice: LastSeen = %q, want the newer value", env.Repos[0].LastSeen)
+	}
+}
+
+// TestRegisterSecondDifferentPathLeavesTwoRows proves registering a second,
+// different path leaves two rows.
+func TestRegisterSecondDifferentPathLeavesTwoRows(t *testing.T) {
+	home := t.TempDir()
+
+	if err := Register(home, "/a/repo1/.rounce/db.sqlite", "repo1", "2026-08-07T12:00:00.000000000Z"); err != nil {
+		t.Fatalf("Register (repo1): %v", err)
+	}
+	if err := Register(home, "/a/repo2/.rounce/db.sqlite", "repo2", "2026-08-07T12:00:00.000000000Z"); err != nil {
+		t.Fatalf("Register (repo2): %v", err)
+	}
+
+	env, err := Load(home)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if len(env.Repos) != 2 {
+		t.Fatalf("Register two different paths: %d rows, want 2", len(env.Repos))
+	}
+}
+
+// TestForgetRegisteredPathRemovesRowLeavesFileAlone proves Forget on a
+// registered path returns (true, nil), removes the row, and leaves any file
+// at that path untouched on disk.
+func TestForgetRegisteredPathRemovesRowLeavesFileAlone(t *testing.T) {
+	home := t.TempDir()
+	storeDir := t.TempDir()
+	storePath := filepath.Join(storeDir, "db.sqlite")
+	if err := os.WriteFile(storePath, []byte("pretend sqlite bytes"), 0o644); err != nil {
+		t.Fatalf("seeding store file: %v", err)
+	}
+	before, err := os.Stat(storePath)
+	if err != nil {
+		t.Fatalf("stat store file before Forget: %v", err)
+	}
+
+	if err := Register(home, storePath, "repo", "2026-08-07T12:00:00.000000000Z"); err != nil {
+		t.Fatalf("Register: %v", err)
+	}
+
+	found, err := Forget(home, storePath)
+	if err != nil {
+		t.Fatalf("Forget: %v", err)
+	}
+	if !found {
+		t.Fatalf("Forget(registered path): found = false, want true")
+	}
+
+	env, err := Load(home)
+	if err != nil {
+		t.Fatalf("Load after Forget: %v", err)
+	}
+	if len(env.Repos) != 0 {
+		t.Fatalf("Load after Forget: %d rows remain, want 0", len(env.Repos))
+	}
+
+	after, err := os.Stat(storePath)
+	if err != nil {
+		t.Fatalf("stat store file after Forget: %v", err)
+	}
+	if before.ModTime() != after.ModTime() || before.Size() != after.Size() {
+		t.Fatalf("Forget modified the store file on disk: before=%+v after=%+v", before, after)
+	}
+}
+
+// TestForgetUnregisteredPathReturnsFalseNotError proves Forget on an
+// unregistered path returns (false, nil) -- not an error -- and leaves the
+// registry unchanged.
+func TestForgetUnregisteredPathReturnsFalseNotError(t *testing.T) {
+	home := t.TempDir()
+	if err := Register(home, "/a/repo/.rounce/db.sqlite", "repo", "2026-08-07T12:00:00.000000000Z"); err != nil {
+		t.Fatalf("Register: %v", err)
+	}
+
+	found, err := Forget(home, "/a/never-registered/.rounce/db.sqlite")
+	if err != nil {
+		t.Fatalf("Forget(unregistered): unexpected error: %v", err)
+	}
+	if found {
+		t.Fatalf("Forget(unregistered): found = true, want false")
+	}
+
+	env, err := Load(home)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if len(env.Repos) != 1 {
+		t.Fatalf("Forget(unregistered): registry now has %d rows, want unchanged 1", len(env.Repos))
+	}
+}
+
+// This package takes `home` as a parameter everywhere and never asks the OS
+// for it. That is not a style preference -- it is the single mechanism that
+// makes every test in this package hermetic. The stdlib home-directory
+// lookup this test forbids (see the AST check below) respects $HOME on
+// Darwin and Linux (verified live during 06 research), so a package that
+// called it would still be testable by setting $HOME, but only as long as
+// every test remembered to. Making home a parameter removes the possibility
+// of forgetting: there is no code path here that could reach the
+// developer's real ~/.rounce/repos.json. cmd/rounce is the one place that
+// lookup is used, and cmd/rounce's tests run the real binary with an
+// explicit HOME (cli_test.go's env helper).
+func TestRegistryNeverCallsUserHomeDir(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("cannot locate this test's own file to derive internal/registry's directory")
+	}
+	dir := filepath.Dir(thisFile)
+
+	fset := token.NewFileSet()
+	filesWalked := 0
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("ReadDir(%s): %v", dir, err)
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		path := filepath.Join(dir, name)
+		f, err := parser.ParseFile(fset, path, nil, 0)
+		if err != nil {
+			t.Fatalf("parse %s: %v", path, err)
+		}
+		filesWalked++
+
+		ast.Inspect(f, func(n ast.Node) bool {
+			sel, ok := n.(*ast.SelectorExpr)
+			if !ok {
+				return true
+			}
+			ident, ok := sel.X.(*ast.Ident)
+			if !ok {
+				return true
+			}
+			if ident.Name == "os" && sel.Sel.Name == "UserHomeDir" {
+				t.Errorf("%s calls the os package's home-directory lookup -- internal/registry must take home as a parameter everywhere, or its tests are no longer hermetic", path)
+			}
+			return true
+		})
+	}
+
+	if filesWalked == 0 {
+		t.Fatal("TestRegistryNeverCallsUserHomeDir walked zero non-test .go files -- the directory layout is broken; treat this as a failure, not a vacuous pass")
 	}
 }
 

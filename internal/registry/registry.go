@@ -158,3 +158,63 @@ func Save(home string, env Envelope) error {
 	}
 	return nil
 }
+
+// Register adds storePath to home's registry, or updates its last_seen if it
+// is already there. It is idempotent by requirement (06-CONTEXT.md decision
+// 3): re-registering never appends a second row, so `rounce init` run twice
+// in one repository leaves one entry, not two.
+//
+// storePath is stored exactly as given. Register does not absolutize it --
+// filepath.Abs consults the process's working directory, which is a property
+// of the caller, not of the registry. Every caller in cmd/rounce passes an
+// already-absolute path; matching here is plain string equality on that
+// value.
+func Register(home, storePath, name, lastSeen string) error {
+	// Load's error is deliberately ignored here, not propagated: the
+	// never-fatal contract means a corrupted registry must not make every
+	// future `rounce init` fail to register. Register proceeds with the
+	// empty envelope Load hands back on any failure, effectively rebuilding
+	// the registry from this one entry rather than refusing to write.
+	env, _ := Load(home)
+
+	found := false
+	for i := range env.Repos {
+		if env.Repos[i].Path == storePath {
+			env.Repos[i].Name = name
+			env.Repos[i].LastSeen = lastSeen
+			found = true
+			break
+		}
+	}
+	if !found {
+		env.Repos = append(env.Repos, Repo{Path: storePath, Name: name, LastSeen: lastSeen})
+	}
+
+	return Save(home, env)
+}
+
+// Forget removes storePath from home's registry and reports whether a row
+// was actually there. It never touches the store itself -- forgetting is not
+// deleting, and the CLI's message says so.
+func Forget(home, storePath string) (bool, error) {
+	// Same never-fatal reasoning as Register: proceed with the empty
+	// envelope on a Load failure rather than propagating it.
+	env, _ := Load(home)
+
+	idx := -1
+	for i := range env.Repos {
+		if env.Repos[i].Path == storePath {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		return false, nil
+	}
+	env.Repos = append(env.Repos[:idx], env.Repos[idx+1:]...)
+
+	if err := Save(home, env); err != nil {
+		return true, err
+	}
+	return true, nil
+}
