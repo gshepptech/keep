@@ -6,10 +6,14 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 
+	"github.com/gshepptech/rounce/internal/model"
 	"github.com/gshepptech/rounce/internal/registry"
+	"github.com/gshepptech/rounce/internal/store"
 )
 
 // runRepos is the project's first command with a sub-subcommand. The literal
@@ -174,14 +178,111 @@ func renderRepos(w io.Writer, rows []registry.RepoResult) {
 	}
 }
 
-// runReposAdd is implemented in task 2 of this plan.
-func runReposAdd(args []string, stdout, stderr io.Writer) int {
-	fmt.Fprintln(stderr, "rounce: repos add: not yet implemented")
-	return 2
+// normaliseStorePath turns a user-supplied argument into an absolute store
+// path. A path already ending in .rounce/db.sqlite is taken as-is; anything
+// else is treated as a repository directory and passed through
+// store.StorePathIn. The single definition both `repos add` and
+// `repos forget` call, so the two cannot disagree about what a path means.
+//
+// It deliberately does NOT check that the path exists or that it holds a
+// real rounce store (06-RESEARCH.md Open Question 3, settled). A
+// registered-but-currently-broken store is REPO-05's normal case, not an
+// error state at registration time -- validating here would make `repos add`
+// refuse exactly the situation the rest of this phase exists to handle
+// gracefully, and would make re-registering a store on a disconnected volume
+// impossible.
+func normaliseStorePath(arg string) (string, error) {
+	clean := filepath.Clean(arg)
+	suffix := filepath.Join(store.StoreDirName, store.StoreFileName)
+
+	var path string
+	if strings.HasSuffix(clean, suffix) {
+		path = clean
+	} else {
+		path = store.StorePathIn(clean)
+	}
+	return filepath.Abs(path)
 }
 
-// runReposForget is implemented in task 2 of this plan.
+// runReposAdd implements `repos add <path>`.
+func runReposAdd(args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("repos add", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	// No flags today beyond the implicit -h/--help; permuteArgs still needed
+	// because fs must be fully registered before it is called, per its own
+	// doc comment, even with zero registered flags.
+	if err := fs.Parse(permuteArgs(fs, args)); err != nil {
+		return 2
+	}
+	if fs.NArg() != 1 {
+		fmt.Fprintln(stderr, "usage: rounce repos add <path>")
+		return 2
+	}
+
+	path, err := normaliseStorePath(fs.Arg(0))
+	if err != nil {
+		fmt.Fprintf(stderr, "rounce: %v\n", err)
+		return 1
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Fprintf(stderr, "rounce: %v\n", err)
+		return 1
+	}
+
+	// Unlike `init`, a registry write failure here IS fatal (exit 1). init
+	// warns and exits 0 because the store it was asked to create WAS
+	// created -- there is a core operation behind the bookkeeping.
+	// `repos add` has none: the registry write is the entire command, and
+	// reporting success after failing to do the only thing asked would be a
+	// lie. The asymmetry is deliberate; do not "fix" it into consistency.
+	if err := registry.Register(home, path, registry.NameFor(path), model.Now()); err != nil {
+		fmt.Fprintf(stderr, "rounce: %v\n", err)
+		return 1
+	}
+	fmt.Fprintln(stdout, path)
+	return 0
+}
+
+// runReposForget implements `repos forget <path>`.
 func runReposForget(args []string, stdout, stderr io.Writer) int {
-	fmt.Fprintln(stderr, "rounce: repos forget: not yet implemented")
-	return 2
+	fs := flag.NewFlagSet("repos forget", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	if err := fs.Parse(permuteArgs(fs, args)); err != nil {
+		return 2
+	}
+	if fs.NArg() != 1 {
+		fmt.Fprintln(stderr, "usage: rounce repos forget <path>")
+		return 2
+	}
+
+	path, err := normaliseStorePath(fs.Arg(0))
+	if err != nil {
+		fmt.Fprintf(stderr, "rounce: %v\n", err)
+		return 1
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Fprintf(stderr, "rounce: %v\n", err)
+		return 1
+	}
+
+	removed, err := registry.Forget(home, path)
+	if err != nil {
+		fmt.Fprintf(stderr, "rounce: %v\n", err)
+		return 1
+	}
+	if !removed {
+		// Matches every other command's treatment of a named-but-absent
+		// thing (store.ErrNotFound -> exit 1 via exitFor); silently
+		// succeeding would hide a typo.
+		fmt.Fprintf(stderr, "rounce: not registered: %s\n", path)
+		return 1
+	}
+	// Forgetting is not deleting, and the message says so -- 06-CONTEXT.md
+	// decision 4 asks for exactly this.
+	fmt.Fprintf(stdout, "forgotten: %s (the store itself was not touched)\n", path)
+	return 0
 }
