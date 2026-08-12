@@ -78,11 +78,16 @@ flowchart LR
 ## Quickstart
 
 ```bash
-go install github.com/gshepptech/rounce/cmd/rounce@latest
+git clone git@github.com:gshepptech/rounce.git
+cd rounce && go install ./cmd/rounce      # → $(go env GOPATH)/bin/rounce
 
 cd ~/Projects/your-repo
-rounce init                    # → .rounce/db.sqlite
+rounce init                               # → .rounce/db.sqlite
 ```
+
+<sub>Private repository, so `go install …@latest` needs
+<code>GOPRIVATE=github.com/gshepptech/*</code> and git credentials. Cloning is
+simpler.</sub>
 
 **Give your agents the tools:**
 
