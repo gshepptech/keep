@@ -1,28 +1,177 @@
-# rounce
+<div align="center">
 
-A local work store for AI coding agents. Tickets, backlog, roadmaps, and a
-dependency graph, in one SQLite file and one static binary.
+```
+ ██▀███   ▒█████   █    ██  ███▄    █  ▄████▄  ▓█████
+▓██ ▒ ██▒▒██▒  ██▒ ██  ▓██▒ ██ ▀█   █ ▒██▀ ▀█  ▓█   ▀
+▓██ ░▄█ ▒▒██░  ██▒▓██  ▒██░▓██  ▀█ ██▒▒▓█    ▄ ▒███
+▒██▀▀█▄  ▒██   ██░▓▓█  ░██░▓██▒  ▐▌██▒▒▓▓▄ ▄██▒▒▓█  ▄
+░██▓ ▒██▒░ ████▓▒░▒▒█████▓ ▒██░   ▓██░▒ ▓███▀ ░░▒████▒
+░ ▒▓ ░▒▓░░ ▒░▒░▒░ ░▒▓▒ ▒ ▒ ░ ▒░   ▒ ▒ ░ ░▒ ▒  ░░░ ▒░ ░
+```
 
-You tell an agent to save a roadmap. You tell another agent to make tickets off
-it. You point any plugin at rounce and it picks up workable items and gets on
-with them. Work an agent surfaces that you do not want yet goes to the backlog
-instead of the queue, and stays there until you ask for it to be refined.
+### the place work lives for AI coding agents
 
-No account, no server, no SaaS. The store is a file in your repository.
+Tickets, backlog, roadmaps, and a dependency graph —
+in **one SQLite file** and **one static binary**.
 
-## Status
+<br>
 
-Phases 0-5 are built: the versioned SQLite store; the thirteen-verb CLI
-(items, dependencies, `ready`/`blocked`, `start`/`close`/`drop`/`update`);
-capture and refine (`capture`, `backlog`, provenance via `derived-from`);
-`rounce mcp`, exposing ten of those verbs as MCP tools over stdio with no
-logic of its own; the loopback dashboard (`rounce board`, terminal or
-`--web`) — read-only, binds to `127.0.0.1` only, and proven never to disagree
-with `rounce ready`; and the multi-repo registry — `~/.rounce/repos.json`,
-registered on `init`, `rounce repos` (with `add`/`forget`), and
-`rounce ready --all`, with every fan-out read-only so a deleted or moved
-store is a visible row-level error rather than a fabricated empty one. See
-[ROADMAP.md](ROADMAP.md) and `docs/design/`.
+![Go](https://img.shields.io/badge/go-1.26-00ADD8?style=for-the-badge&logo=go&logoColor=white)
+![SQLite](https://img.shields.io/badge/sqlite-pure_go%2C_no_cgo-003B57?style=for-the-badge&logo=sqlite&logoColor=white)
+![MCP](https://img.shields.io/badge/MCP-10_tools-6E56CF?style=for-the-badge)
+![Runtime deps](https://img.shields.io/badge/runtime_deps-2-2ea043?style=for-the-badge)
+![Network calls](https://img.shields.io/badge/network_calls-0-b32428?style=for-the-badge)
+
+**`no account`** · **`no server`** · **`no SaaS`** · **`no JavaScript`** · **`no telemetry`**
+
+</div>
+
+---
+
+## The one thing it does that nothing else does
+
+Block an epic. **Its entire subtree leaves the queue.**
+
+```console
+$ rounce ready
+rnc-d0b096.1  26  task  High value child
+rnc-28b866    24  bug   Retry drops last error
+rnc-d0b096    21  epic  Ship the store
+rnc-d0b096.2  13  task  Low value child
+
+$ rounce dep rnc-d0b096 blocks rnc-28b866      # the epic waits on the bug
+
+$ rounce ready
+rnc-28b866    24  bug   Retry drops last error      ← everything else is gone
+
+$ rounce blocked
+rnc-d0b096.1  26  task  High value child ← blocked by rnc-d0b096
+rnc-d0b096    21  epic  Ship the store   ← blocked by rnc-28b866
+rnc-d0b096.2  13  task  Low value child  ← blocked by rnc-d0b096
+```
+
+That propagation lives **inside the SQL view**, not in a caller. No surface can
+forget to apply it, and every surface — CLI, MCP, dashboard — is provably
+reading the same query.
+
+---
+
+## The loop
+
+You are not meant to type `rounce` all day. **Agents are.**
+
+```mermaid
+flowchart LR
+    A["agent scouts<br/>the codebase"] -->|capture · add| B[("rounce<br/>one SQLite file")]
+    B -->|ready| C["agent picks<br/>the top item"]
+    C -->|start · close| B
+    B -->|board --web| D["you, occasionally"]
+    style B fill:#14171a,stroke:#6E56CF,stroke-width:3px,color:#e6e9ec
+```
+
+> **rounce never calls a model.** It is a store. Refinement, triage, and
+> estimation are things an agent does *using* rounce — which is exactly why any
+> agent, any plugin, any editor works with it.
+
+---
+
+## Quickstart
+
+```bash
+go install github.com/gshepptech/rounce/cmd/rounce@latest
+
+cd ~/Projects/your-repo
+rounce init                    # → .rounce/db.sqlite
+```
+
+**Give your agents the tools:**
+
+```bash
+claude mcp add rounce -e ROUNCE_ACTOR="$USER" -- rounce mcp
+```
+
+Then just talk to them:
+
+| you say | the agent calls |
+|---|---|
+| *"scout this repo and file what's worth fixing"* | `capture` · `add` |
+| *"what should I pick up?"* | `ready` |
+| *"take the top one"* | `start` |
+| *"done — merged in #42"* | `close --reason` |
+| *"park that, not yet"* | `capture` → the backlog |
+
+---
+
+## Four surfaces, one store
+
+<table>
+<tr>
+<td width="25%" align="center"><h3>CLI</h3>13 verbs<br/><code>--json</code> on every read</td>
+<td width="25%" align="center"><h3>MCP</h3>10 tools over stdio<br/>zero logic of its own</td>
+<td width="25%" align="center"><h3>Dashboard</h3>loopback only<br/>no JS, no assets</td>
+<td width="25%" align="center"><h3>Registry</h3>every repo<br/>on one board</td>
+</tr>
+</table>
+
+```console
+$ rounce board
+ready 3   in progress 0   blocked 0   backlog 1
+
+rnc-6b813d.1  26  task  Wire the tree view
+rnc-6b813d    23  epic  Ship the dashboard
+rnc-8746bb    22  bug   Fix the flake
+
+$ rounce board --web
+http://127.0.0.1:63688
+```
+
+<details>
+<summary><b>Cross-repo — one queue over everything you are working on</b></summary>
+
+<br>
+
+```console
+$ rounce ready --all
+rounce      rnc-0a4518  26  task  Wire the tree view
+interlock   rnc-fc4427  23  task  Lease renewal backoff     ← different repository
+rounce      rnc-e80b39  14  task  Tidy the flag help
+
+$ rounce repos
+rounce      41  187  2026-08-12T01:47:51Z  /Users/you/Projects/rounce/.rounce/db.sqlite
+interlock   12   64  2026-08-11T18:02:11Z  /Users/you/Projects/interlock/.rounce/db.sqlite
+old-thing   error: store not found (deleted or moved): …
+```
+
+A deleted store **reports on its row and is skipped** — never a crash, never a
+failed render for the others. Stores open read-only, so a missing one fails
+cleanly instead of being silently recreated as an empty database.
+
+</details>
+
+<details>
+<summary><b>Capture a document verbatim, refine it into tickets later</b></summary>
+
+<br>
+
+```console
+$ rounce capture "Q3 roadmap" --type roadmap --body - < ROADMAP.md
+rnc-5d5874
+
+$ rounce show rnc-5d5874 --body | diff - ROADMAP.md
+                                       # silent — byte-identical, 11,874 bytes
+
+$ rounce ready                         # the roadmap never appears here
+$ rounce backlog                       # it waits in the pen until refined
+```
+
+Refinement is not a command. An agent reads `show` and issues
+`add --parent … --derived-from …`, which records **structure** and **history**
+as two separate edges. Six weeks later, *"why does this ticket exist"* still has
+an answer.
+
+</details>
+
+---
 
 ## Principles
 
@@ -30,51 +179,83 @@ store is a visible row-level error rather than a fabricated empty one. See
    estimation are things an agent does *using* rounce. This is why any plugin
    or any agent works with it, and why the binary stays small.
 2. **One core, three surfaces.** The CLI, the MCP server, and the dashboard are
-   thin wrappers over `internal/store`. No surface carries behaviour of its own.
-3. **A new concept gets a new table, never a new column on `items`.** Enforced
-   socially, not mechanically; an escape-hatch JSON column does not prevent
-   this and has been observed not to.
+   thin wrappers over `internal/store`. No surface carries behaviour of its own
+   — enforced by an AST test, not by discipline.
+3. **A new concept gets a new table, never a new column on `items`.** Beads'
+   `issues` type reached roughly five dozen fields by absorbing an event bus and
+   a scheduler. An escape-hatch JSON column does not prevent this and has been
+   observed not to.
 4. **Raw is not workable.** Parking an item has to actually remove it from the
-   work queue, or "not yet" means nothing.
+   work queue, or "not yet" means nothing. Enforced in the view, not in callers.
 5. **Local and private by default.** The dashboard binds to loopback, fetches
-   no external assets, and ships no JavaScript.
+   no external assets, and ships no JavaScript — asserted over *rendered*
+   output, because `html/template` does not enforce same-host on its own.
 6. **Correct before fast.** Materialize a computed column only after measuring
    that the query is too slow, not in anticipation.
 
-## What rounce is not, as of 2026-08-05
+---
 
-This list exists because every item on it will one day arrive as a reasonable
-ten-minute change. Adding one is a decision to be made deliberately and dated
-here, not a patch.
+## What rounce is not, as of 2026-08-12
 
-- **No multi-machine sync.** No JSONL export, no Dolt, no CRDT, no merge
-  resolution. Sharing a store means sharing a repository.
-- **No external tracker bridges.** No Jira, Linear, GitHub Issues, GitLab,
-  Azure DevOps, or Notion. `items.external_ref` is a string nobody reads.
-- **No HTTP API** beyond the loopback dashboard. No federation, no remote.
-- **No orchestration primitives in `items`.** No awaits, no timeouts, no
-  waiters, no agent state, no roles. Coordination belongs in Interlock, which
-  observes agents deterministically through hooks; rounce says what needs
-  doing, Interlock says who is doing what and where.
-- **No model calls, no embeddings, no semantic search.**
-- **No migration framework** beyond a `schema_version` integer, until there is
-  data worth not breaking.
+> This list exists because every item on it will one day arrive as a reasonable
+> ten-minute change. Adding one is a decision to be made deliberately and dated
+> here, not a patch.
+
+| | why |
+|---|---|
+| **No multi-machine sync** | No JSONL export, no Dolt, no CRDT, no merge resolution. Sharing a store means sharing a repository |
+| **No external tracker bridges** | No Jira, Linear, GitHub Issues, GitLab, Azure DevOps, or Notion. `items.external_ref` is a string nobody reads |
+| **No HTTP API** | Beyond the loopback dashboard. No federation, no remote |
+| **No orchestration primitives in `items`** | No awaits, timeouts, waiters, agent state, or roles. Coordination belongs in Interlock, which observes agents deterministically through hooks — rounce says *what needs doing*, Interlock says *who is doing what and where* |
+| **No model calls** | No embeddings, no semantic search |
+| **No migration framework** | Beyond a `schema_version` integer, until there is data worth not breaking |
+
+---
+
+## Built the hard way
+
+<div align="center">
+
+| | |
+|---|---|
+| **59** requirements | every one closed with named evidence |
+| **6** phases | each with a machine-checkable exit gate |
+| **220** demo checks | run against a real built binary |
+| **225** tests | every one deliberately broken once to prove it fails |
+| **2** runtime dependencies | `modernc.org/sqlite`, `modelcontextprotocol/go-sdk` |
+| **0** cgo | `go build` gives you one static file |
+
+</div>
+
+Every test here was broken on purpose and confirmed to fail before it was
+believed. That discipline caught, among other things: an AST scan that would
+have reported **zero** mutating methods while appearing to enforce a rule, a
+tree query that silently returned one row instead of erroring, and a demo
+assertion whose `awk` could never fail.
+
+---
 
 ## Prior art
 
 The `ready` query design — dependency blocking that propagates down a
 parent-child tree, so blocking an epic hides its whole subtree — is taken from
-[Beads](https://github.com/steveyegge/beads) (MIT, Copyright (c) 2025 Beads
+[**Beads**](https://github.com/steveyegge/beads) (MIT, Copyright © 2025 Beads
 Contributors), as is the idea of typed dependency edges and recording where a
-discovered item came from. No Beads code is used; the design was read and
+discovered item came from. **No Beads code is used**; the design was read and
 reimplemented.
 
 The item scoring model (`value` / `confidence` / `effort` → `score`) and the
 convention that an item's rationale cites `file:line` are derived from the
-Ranger plugin in `the-tavern`, which scores on four factors, not three:
+**Ranger** plugin in `the-tavern`, which scores on four factors, not three:
 rounce has no `consequence` term, and puts effort on a 0-10 scale rather than
 Hollis's 0-5.
 
-## License
+---
 
-All rights reserved.
+<div align="center">
+
+**[Roadmap](ROADMAP.md)** · **[Design docs](docs/design/)** · **[Data model](ROADMAP.md#data-model)**
+
+<sub>All rights reserved.</sub>
+
+</div>
