@@ -75,6 +75,12 @@ commands:
               repos forget <path>  remove it; the store itself is untouched
               a store that cannot be opened is reported on its row, not
               fatal -- repos exits 0 even when some rows failed
+  codex     the Codex side of the plugin
+              codex trust    grant Codex the hook trust its plugin needs,
+                             using the hash Codex itself reports
+                             --dry-run  report, change nothing
+              codex status   what Codex says about rounce's hooks
+                             --all      every hook, not just rounce's
   version   print the version
 
 See ROADMAP.md.
@@ -119,6 +125,8 @@ func main() {
 		os.Exit(runBoard(os.Args[2:], os.Stdout, os.Stderr))
 	case "repos":
 		os.Exit(runRepos(os.Args[2:], os.Stdout, os.Stderr))
+	case "codex":
+		os.Exit(runCodex(os.Args[2:], os.Stdout, os.Stderr))
 	case "version", "--version":
 		fmt.Println(version)
 	case "help", "--help", "-h":

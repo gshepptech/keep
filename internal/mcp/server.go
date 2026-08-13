@@ -39,11 +39,28 @@ type Options struct {
 	// Version is reported in the initialize handshake.
 	Version string
 
-	// Instructions is returned in the initialize handshake, where every MCP
-	// client sees it -- Claude Code, Codex, and anything else that speaks
-	// the protocol -- without a hook, a plugin, or a per-agent instruction
-	// file. It carries the ranked queue as of server start, which is
-	// session start: one MCP server process serves one agent session.
+	// Instructions is returned in the initialize handshake. It carries the
+	// ranked queue as of server start, which is session start: one MCP
+	// server process serves one agent session.
+	//
+	// # Which clients actually show it to the model
+	//
+	// Sending it is one thing; a client putting it in the model's prompt is
+	// another, and they do not agree. Measured 2026-08-13:
+	//
+	//   - Claude Code renders it under an "MCP Server Instructions" block.
+	//     A headless session with no tool calls quoted the first sentence
+	//     back verbatim.
+	//   - Codex 0.147.0-alpha.6.5 does NOT. `codex debug prompt-input`
+	//     renders the model-visible prompt, and this text is absent from
+	//     it -- every occurrence of "rounce" in those 26KB is a filesystem
+	//     path. Codex still calls `ready` unprompted, but from the tool's
+	//     name and description, not from this.
+	//
+	// So this field is the whole delivery mechanism on Claude Code and no
+	// delivery at all on Codex. Do not treat it as cross-client parity; it
+	// was proposed as exactly that and the measurement said otherwise.
+	// Codex parity needs the plugin-carried SessionStart hook (rnc-069e8a).
 	//
 	// Built by the caller, never here. Rendering a queue needs loops and
 	// branches, and internal/mcp's structure_test.go permits neither

@@ -23,15 +23,18 @@ const instructionRows = 5
 // plugin/README.md's argument for the SessionStart hook was that an
 // instruction to a model can be ignored while a hook fires regardless. That
 // is true, and it is also not the whole picture: the hook and this field
-// both inject text, and neither compels the model to act on it. What this
-// field has that the hook does not is reach -- it is part of the MCP spec,
-// so every client that speaks the protocol receives it, whereas a hook must
-// be installed, per agent, in that agent's own format, and (on Codex)
-// trusted before it will run at all.
+// both inject text, and neither compels the model to act on it.
 //
-// So this is the cheap channel that covers everything, and the hook is the
-// early channel that covers the two agents rounce ships plugins for. They
-// are not alternatives.
+// This was proposed as the cheap channel that covers every MCP client and
+// so makes the per-agent hook work optional. Measurement killed half of
+// that (see internal/mcp's Options.Instructions for the detail): Claude
+// Code renders it under an "MCP Server Instructions" block, and Codex
+// 0.147 does not put it in the model's prompt at all. It is the whole
+// delivery mechanism on one agent and nothing on the other.
+//
+// It stays because it earns its hour on the Claude Code side and costs
+// nothing elsewhere -- an MCP server that receives it but hides it is the
+// client's choice, not a bug here. It does not replace the hook.
 //
 // # Why it returns "" rather than an error
 //

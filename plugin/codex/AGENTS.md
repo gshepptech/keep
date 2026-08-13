@@ -1,22 +1,21 @@
 # rounce — snippet for Codex
 
-Codex gets the same ten tools, and for now an instruction rather than a hook.
+**Codex gets the hook now. This snippet is the fallback, not the plan.**
 
-**An earlier version of this file said Codex hooks cannot fire. That was wrong.**
-Measured on `codex-cli 0.147.0-alpha.6.5`: a `.codex/hooks.json` `SessionStart`
-hook runs whenever `~/.codex/config.toml` carries the matching
-`[hooks.state."<abs path>:session_start:0:0"] trusted_hash`, and does not run
-when that entry is removed. Trust is required and grantable — it is not a wall.
+An earlier version of this file said Codex hooks cannot fire. That was wrong.
+`plugin/` ships a Codex plugin carrying a `SessionStart` hook, and three
+commands install it:
 
-So the gap below is rounce's, not Codex's. The fix is a Codex plugin carrying
-the hook. Installing it does not trust the hook by itself — `hooks/list` over
-`codex app-server` reports the hook's `key` and `currentHash`, and writing that
-pair into `config.toml` grants the trust. Reading the hash beats computing it:
-Interlock computed its own and broke silently when `0.146.0-alpha.9.2` changed
-the format. Tracked as `rnc-069e8a`.
+```bash
+codex plugin marketplace add <path to the rounce repo>
+codex plugin add rounce@rounce
+rounce codex trust
+```
 
-Until then: Claude Code cannot *not* see the queue; Codex is being asked to
-look. Do not assume parity **yet**.
+See [`../README.md`](../README.md) for what that does and why the trust step
+exists. What follows is still worth having: section 1 registers the tools (the
+plugin does not do that for you), and section 2 is the instruction to paste when
+you would rather not install a plugin at all.
 
 ## 1. Register the tools
 

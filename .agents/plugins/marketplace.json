@@ -1,0 +1,19 @@
+{
+  "name": "rounce",
+  "interface": {
+    "displayName": "rounce"
+  },
+  "plugins": [
+    {
+      "name": "rounce",
+      "source": {
+        "source": "local",
+        "path": "./plugin"
+      },
+      "policy": {
+        "installation": "AVAILABLE"
+      },
+      "category": "Engineering"
+    }
+  ]
+}

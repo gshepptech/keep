@@ -69,49 +69,77 @@ is worse than a hook that does nothing.
 
 ## Codex
 
-Codex gets the same ten tools, and today an `AGENTS.md` instruction rather than
-a hook. That is a gap in this plugin, **not a limit of Codex** — an earlier
-version of this file claimed otherwise and was wrong.
+**Codex gets the same hook.** Three commands:
 
-**What was actually measured**, on `codex-cli 0.147.0-alpha.6.5`:
+```bash
+codex plugin marketplace add <path to this repo>
+codex plugin add rounce@rounce
+rounce codex trust
+```
 
-- A `.codex/hooks.json` `SessionStart` hook **fires**, provided
-  `~/.codex/config.toml` carries a matching `[hooks.state."…"] trusted_hash`.
-  Codex prints `hook: SessionStart` and the command runs.
-- With the identical `hooks.json` and the trust entry removed, it does **not**
-  fire. So trust is required, and it is grantable.
+No launcher flag, no `AGENTS.md` rule, no bypass. An earlier version of this
+file said Codex hooks could not fire at all; that was wrong, and the rest of
+this section is what replaced the guess.
+
+`plugin/` is both plugins in one directory. They share
+`scripts/session-queue.py` — the queue an agent sees is the same text, from the
+same script, on both.
+
+| | Claude Code | Codex |
+|---|---|---|
+| manifest | `.claude-plugin/plugin.json` | `.codex-plugin/plugin.json` |
+| hooks | `hooks/hooks.json`, `${CLAUDE_PLUGIN_ROOT}` | `codex/hooks.json`, `${PLUGIN_ROOT}` |
+| marketplace | `.claude-plugin/marketplace.json` | `.agents/plugins/marketplace.json` |
+| hook script | `scripts/session-queue.py` | the same file |
+
+### Why `rounce codex trust` exists
+
+Codex will not run a hook it has not been told to trust, and installing a plugin
+does not grant that — a freshly installed rounce plugin reports
+`trustStatus: "untrusted"` and stays silent until the trust entry exists. That
+is a security control working correctly, and this command grants it deliberately
+rather than routing around it. It is the same consent `claude plugin install`
+takes; Codex just makes it a separate step.
+
+**It asks Codex for the hash rather than computing one.** `hooks/list` over
+`codex app-server` returns each hook's `key` and `currentHash`, and
+`config/batchWrite` has Codex write them into its own `config.toml` — so rounce
+needs no TOML parser and cannot drift from Codex's format. Interlock computed
+its own hash and it broke silently when `0.146.0-alpha.9.2` changed how trust is
+recorded, while its doctor kept reporting the trust as healthy because it was
+verifying its own bookkeeping.
+
+`rounce codex trust --dry-run` reports without changing anything.
+`rounce codex status` asks Codex what it thinks of rounce's hooks.
+
+### What is not claimed
+
+The hook is proven to **fire** — `hook: SessionStart` in a live session, on a
+clean install, reproduced. That the injected text then reaches the model has not
+been observed, on either agent.
+
+### What was measured, on `codex-cli 0.147.0-alpha.6.5`
+
+- A `SessionStart` hook fires only when `config.toml` carries a matching
+  `[hooks.state."…"] trusted_hash`. Remove that entry, change nothing else, and
+  it stays silent — so trust is required, and it is grantable.
+- A plugin-carried hook is recognised (`source: "plugin"`, `enabled: true`) and
+  installs as `trustStatus: "untrusted"`. An earlier draft of this file guessed
+  it would be auto-trusted; it is not.
+- `${PLUGIN_ROOT}` expands to the installed plugin's cache directory, which is
+  how one script serves both plugins.
 - `codex mcp add rounce --env ROUNCE_ACTOR=codex -- rounce mcp` produces exactly
   the config block [`codex/AGENTS.md`](codex/AGENTS.md) documents.
+- Codex's hook event set is comparable to Claude Code's — `sessionStart`,
+  `sessionEnd`, `preToolUse`, `postToolUse`, `permissionRequest`,
+  `userPromptSubmit`, `preCompact`, `postCompact`, `subagentStart`,
+  `subagentStop`, `stop`.
 
-Codex's own protocol schema (`codex app-server generate-json-schema`) also shows
-a hook event set at parity with Claude Code's — `sessionStart`, `sessionEnd`,
-`preToolUse`, `postToolUse`, `permissionRequest`, `userPromptSubmit`,
-`preCompact`, `postCompact`, `subagentStart`, `subagentStop`, `stop` — and a
-plugin system that can carry hooks (`PluginDetail.hooks`, `HookSource: plugin`,
-`HookTrustStatus: managed`).
-
-**The fix is a Codex plugin**, mirroring this one. Built and run end to end on
-2026-08-13:
-
-- A plugin can carry `hooks/hooks.json`. Codex reports it as
-  `source: "plugin"`, `eventName: "sessionStart"`, `enabled: true`.
-- Installing the plugin does **not** trust the hook — `hooks/list` reports
-  `trustStatus: "untrusted"`. An earlier draft of this file guessed it would be
-  auto-trusted; that is wrong.
-- `hooks/list` returns the hook's `key` and `currentHash`. Writing that pair
-  into `config.toml` as `[hooks.state."<key>"] trusted_hash = "<currentHash>"`
-  flips it to `trusted`, and the hook then fires — `hook: SessionStart` in a
-  live session, reproduced on clean runs.
-
-Reading the hash beats computing it. Interlock computed its own and broke
-silently when `0.146.0-alpha.9.2` changed the format; asking Codex cannot drift.
-
-**Trust is not bypassable, and should not be.** It is the same consent you gave
-Claude Code by running `claude plugin install`. app-server makes it verifiable,
-not optional.
-
-**Parity is not claimed yet.** Claude Code cannot *not* see the queue. Codex is
-still being asked to look. The difference is now a to-do, not a ceiling.
+One asymmetry that is **not** fixed by the plugin: MCP `instructions`. rounce
+returns the ranked queue in the initialize handshake, Claude Code renders it
+under an "MCP Server Instructions" block, and Codex does not put it in the
+model's prompt at all (`codex debug prompt-input` shows it absent). The hook is
+what closes that gap, which is why it is worth the trust step.
 
 ## What it deliberately does not do
 
