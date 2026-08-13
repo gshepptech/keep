@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "rounce": {
+      "command": "rounce",
+      "args": ["mcp"],
+      "env": {}
+    }
+  }
+}

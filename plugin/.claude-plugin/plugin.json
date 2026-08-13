@@ -1,0 +1,18 @@
+{
+  "name": "rounce",
+  "version": "0.1.0",
+  "description": "Puts the work queue in front of your agents instead of hoping they ask for it. Registers rounce's ten MCP tools, and a SessionStart hook injects the ranked ready queue into context before the agent reads your first message — so it starts every session already knowing what is workable, what is blocked, and what is parked, without an instruction it can ignore. Adds /rounce:ready, /rounce:board, and /rounce:file. Silent in repositories that have no store, so it costs nothing where it is not used. Claude Code gets enforcement via the hook; Codex gets the same tools plus an AGENTS.md snippet, because as of codex-cli 0.146 it offers no way to grant hook trust — that asymmetry is real and documented rather than papered over.",
+  "author": {
+    "name": "gshepptech"
+  },
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/gshepptech/rounce/blob/main/plugin/README.md",
+  "repository": "https://github.com/gshepptech/rounce",
+  "keywords": [
+    "work-tracking",
+    "backlog",
+    "mcp",
+    "session-context",
+    "agents"
+  ]
+}
