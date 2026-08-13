@@ -30,6 +30,7 @@ func (s *Server) routes() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", s.handleReady)
 	mux.HandleFunc("GET /backlog", s.handleBacklog)
+	mux.HandleFunc("GET /all", s.handleAll)
 	mux.HandleFunc("GET /item/{id}", s.handleItem)
 	mux.HandleFunc("GET /tree/{id}", s.handleTree)
 	return mux

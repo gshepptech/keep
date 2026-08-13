@@ -41,7 +41,7 @@ func newHandlerFixture(t *testing.T) (*Server, handlerFixtureIDs) {
 	ready := mustAdd(t, st, store.AddItemInput{Title: "Ready ticket", Actor: actor})
 	note := mustAdd(t, st, store.AddItemInput{Title: "Raw note", Actor: actor, Stage: model.StageRaw, Type: model.TypeNote})
 
-	s, err := NewServer(st, "127.0.0.1:0")
+	s, err := NewServer(st, "127.0.0.1:0", "")
 	if err != nil {
 		t.Fatalf("NewServer: %v", err)
 	}

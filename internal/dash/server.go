@@ -44,7 +44,15 @@ func validateLoopback(hostport string) (*net.TCPAddr, error) {
 // Server is rounce's dashboard HTTP server: a bound, loopback-only listener
 // and the route table (handlers.go) that answers requests against it.
 type Server struct {
-	st  *store.Store
+	st *store.Store
+
+	// home is the directory holding the cross-repo registry
+	// (~/.rounce/repos.json). Empty means no registry was supplied, which
+	// leaves /all rendering its own empty state rather than 404ing -- the
+	// nav link is unconditional, so a route that vanished would be a dead
+	// link that only some builds have.
+	home string
+
 	ln  net.Listener
 	srv *http.Server
 }
@@ -54,7 +62,7 @@ type Server struct {
 // `--web` binds port 0 and must print the OS-assigned port before it starts
 // serving (DASH-02). Validation runs before net.Listen, so a refused
 // address never opens a socket at all.
-func NewServer(st *store.Store, hostport string) (*Server, error) {
+func NewServer(st *store.Store, hostport, home string) (*Server, error) {
 	if _, err := validateLoopback(hostport); err != nil {
 		return nil, err
 	}
@@ -62,7 +70,7 @@ func NewServer(st *store.Store, hostport string) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("listen %q: %w", hostport, err)
 	}
-	s := &Server{st: st, ln: ln}
+	s := &Server{st: st, home: home, ln: ln}
 	s.srv = &http.Server{Handler: s.routes()}
 	return s, nil
 }

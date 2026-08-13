@@ -1,0 +1,97 @@
+package dash
+
+import (
+	"bytes"
+	"context"
+	"fmt"
+	"net/http"
+
+	"github.com/gshepptech/rounce/internal/registry"
+)
+
+// allPage is /all's page data.
+//
+// It lives here rather than in render.go because render.go states, and a
+// reader relies on, that its only non-stdlib import is internal/model --
+// which is what makes every function there fixturable from struct literals
+// with no database and no wall clock. The cross-repo view genuinely needs
+// registry's types, so it takes its own file rather than quietly widening
+// that claim.
+type allPage struct {
+	// Items is already merged and ranked ACROSS stores by registry.Merge.
+	// This package does not re-sort it, the same rule renderReady follows
+	// for store.Ready.
+	Items []registry.MergedItem
+
+	// Errors are the repositories that could not be read. They are page
+	// content, not a failure: REPO-04's requirement is a visible row-level
+	// error and the other repositories rendered anyway, so a store that has
+	// been deleted or chmod-ed to nothing costs you one row, never the
+	// page.
+	Errors []repoError
+
+	// RepoCount is every registered repository, readable or not, so the
+	// heading does not quietly shrink when one of them breaks.
+	RepoCount int
+}
+
+// repoError is one unreadable repository, flattened for the template.
+// Carrying the error value itself would put an error string built from a
+// filesystem path in front of html/template as an error rather than as a
+// string; flattening it here keeps the template's data plain and keeps the
+// escaping ordinary.
+type repoError struct {
+	Repo    string
+	Message string
+}
+
+// handleAll renders the ready queue merged across every registered store.
+//
+// It is the one handler that does not make exactly one store call, because
+// it makes none: it never opens this repository's store at all. The fan-out
+// opens each registered store read-only through internal/registry, which is
+// where REPO-04 and REPO-05's classification already lives -- duplicating
+// any of that here would be a second implementation of the rule that a
+// missing store must not be fabricated as an empty one.
+func (s *Server) handleAll(w http.ResponseWriter, r *http.Request) {
+	b, err := s.renderAllFor(r.Context())
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	writeHTML(w, b)
+}
+
+// renderAllFor loads the registry, fans out, and renders. Split from the
+// handler so a test can assert on the bytes without a listener.
+//
+// A registry that will not load is a genuine failure of this page and is
+// reported as one -- unlike a single unreadable store, which is a row. The
+// distinction matters: an unreadable registry means the page cannot know
+// what it is missing, and rendering an empty queue would be a lie in
+// exactly the shape REPO-05 exists to prevent.
+func (s *Server) renderAllFor(ctx context.Context) ([]byte, error) {
+	env, err := registry.Load(s.home)
+	if err != nil {
+		return nil, err
+	}
+
+	results := registry.FetchReady(ctx, env.Repos)
+
+	page := allPage{
+		Items:     registry.Merge(results),
+		RepoCount: len(env.Repos),
+	}
+	for _, res := range results {
+		if res.Err == nil {
+			continue
+		}
+		page.Errors = append(page.Errors, repoError{Repo: res.Repo, Message: res.Err.Error()})
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.ExecuteTemplate(&buf, "all", page); err != nil {
+		return nil, fmt.Errorf("render all: %w", err)
+	}
+	return buf.Bytes(), nil
+}

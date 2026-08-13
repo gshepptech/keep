@@ -161,7 +161,15 @@ func runBoard(args []string, stdout, stderr io.Writer) int {
 // dash.NewServer's loopback validation is the backstop for a future flag,
 // not the primary gate today (05-CONTEXT.md decision 4).
 func serveWeb(st *store.Store, port int, stdout, stderr io.Writer) int {
-	srv, err := dash.NewServer(st, fmt.Sprintf("127.0.0.1:%d", port))
+	// A registry that cannot be located is not fatal to the board: the
+	// per-repository views still work, and /all renders its own empty
+	// state. Same rule runInit follows when it registers best-effort.
+	home, homeErr := os.UserHomeDir()
+	if homeErr != nil {
+		fmt.Fprintf(stderr, "rounce board: cannot locate the registry: %v\n", homeErr)
+	}
+
+	srv, err := dash.NewServer(st, fmt.Sprintf("127.0.0.1:%d", port), home)
 	if err != nil {
 		fmt.Fprintf(stderr, "rounce board: %v\n", err)
 		return 1

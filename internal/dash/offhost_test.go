@@ -291,7 +291,7 @@ func newOffhostFixture(t *testing.T) (*Server, offhostFixtureIDs) {
 		Stage: model.StageRaw, Type: model.TypeNote,
 	})
 
-	s, err := NewServer(st, "127.0.0.1:0")
+	s, err := NewServer(st, "127.0.0.1:0", "")
 	if err != nil {
 		t.Fatalf("NewServer: %v", err)
 	}
