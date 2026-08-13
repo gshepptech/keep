@@ -1,13 +1,19 @@
 # rounce — snippet for Codex
 
-Codex cannot be given the SessionStart hook this plugin uses for Claude Code.
-As of `codex-cli 0.146` it requires hook trust and offers no way to grant it, so
-its hooks do not fire. Interlock hit the same wall and named it the honest
-ceiling for an agent that cannot be intercepted.
+Codex gets the same ten tools, and for now an instruction rather than a hook.
 
-So Codex gets the same ten tools, and an instruction instead of enforcement.
-That difference is real: Claude Code cannot *not* see the queue, whereas Codex
-is being asked to look. Do not assume parity.
+**An earlier version of this file said Codex hooks cannot fire. That was wrong.**
+Measured on `codex-cli 0.147.0-alpha.6.5`: a `.codex/hooks.json` `SessionStart`
+hook runs whenever `~/.codex/config.toml` carries the matching
+`[hooks.state."<abs path>:session_start:0:0"] trusted_hash`, and does not run
+when that entry is removed. Trust is required and grantable — it is not a wall.
+
+So the gap below is rounce's, not Codex's. The intended fix is a Codex plugin
+carrying the hook, so trust follows from installing the plugin rather than from
+writing a hash into your config. Tracked as `rnc-069e8a`.
+
+Until then: Claude Code cannot *not* see the queue; Codex is being asked to
+look. Do not assume parity **yet**.
 
 ## 1. Register the tools
 
@@ -20,9 +26,14 @@ args = ["mcp"]
 env = { ROUNCE_ACTOR = "codex" }
 ```
 
-> Written from Codex CLI's documented config format. It has **not** been
-> verified against a live `codex --help` — the binary was not installed on the
-> machine this was built on. Confirm it before relying on it.
+> **Verified 2026-08-13** against `codex-cli 0.147.0-alpha.6.5`. Running
+> `codex mcp add rounce --env ROUNCE_ACTOR=codex -- rounce mcp` in an isolated
+> `CODEX_HOME` produces exactly this, with `env` as a `[mcp_servers.rounce.env]`
+> sub-table — equivalent TOML to the inline form above.
+>
+> Still unverified: that the ten tools load and answer inside a real turn. The
+> test session failed authentication before any turn ran, so the server was
+> never exercised by a model (`rnc-967360`).
 
 `ROUNCE_ACTOR` is stamped on every event so the log records who did what.
 `ROUNCE_SESSION` is optional and read once at server start, never per call.

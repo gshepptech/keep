@@ -69,19 +69,34 @@ is worse than a hook that does nothing.
 
 ## Codex
 
-Codex gets the same ten tools and **an instruction instead of enforcement**.
+Codex gets the same ten tools, and today an `AGENTS.md` instruction rather than
+a hook. That is a gap in this plugin, **not a limit of Codex** — an earlier
+version of this file claimed otherwise and was wrong.
 
-As of `codex-cli 0.146` it requires hook trust and offers no way to grant it, so
-its hooks do not fire. Interlock hit the same wall and called it the honest
-ceiling for an agent that cannot be intercepted.
+**What was actually measured**, on `codex-cli 0.147.0-alpha.6.5`:
 
-See [`codex/AGENTS.md`](codex/AGENTS.md) for the `config.toml` entry and the
-`AGENTS.md` snippet. That config block is written from Codex CLI's documented
-format and has **not** been verified against a live binary — confirm it before
-relying on it.
+- A `.codex/hooks.json` `SessionStart` hook **fires**, provided
+  `~/.codex/config.toml` carries a matching `[hooks.state."…"] trusted_hash`.
+  Codex prints `hook: SessionStart` and the command runs.
+- With the identical `hooks.json` and the trust entry removed, it does **not**
+  fire. So trust is required, and it is grantable.
+- `codex mcp add rounce --env ROUNCE_ACTOR=codex -- rounce mcp` produces exactly
+  the config block [`codex/AGENTS.md`](codex/AGENTS.md) documents.
 
-**Do not assume parity.** Claude Code cannot *not* see the queue. Codex is being
-asked to look.
+Codex's own protocol schema (`codex app-server generate-json-schema`) also shows
+a hook event set at parity with Claude Code's — `sessionStart`, `sessionEnd`,
+`preToolUse`, `postToolUse`, `permissionRequest`, `userPromptSubmit`,
+`preCompact`, `postCompact`, `subagentStart`, `subagentStop`, `stop` — and a
+plugin system that can carry hooks (`PluginDetail.hooks`, `HookSource: plugin`,
+`HookTrustStatus: managed`).
+
+**The intended fix is a Codex plugin**, mirroring this one, so trust follows from
+having installed it rather than from writing a hash into someone's config. That
+a plugin-sourced hook is auto-trusted is read from the schema and **has not been
+run** — see `rnc-069e8a`.
+
+**Parity is not claimed yet.** Claude Code cannot *not* see the queue. Codex is
+still being asked to look. The difference is now a to-do, not a ceiling.
 
 ## What it deliberately does not do
 
