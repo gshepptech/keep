@@ -38,6 +38,17 @@ env = { ROUNCE_ACTOR = "codex" }
 > never exercised by a model (`rnc-967360`).
 
 `ROUNCE_ACTOR` is stamped on every event so the log records who did what.
+**It is now optional.** rounce reads the client's own name out of the MCP
+handshake, so Codex records as Codex and Claude Code records as Claude Code with
+nothing set on either side. Setting it explicitly still wins, which is how you
+record a session as a named human or a CI identity rather than as the tool
+driving it.
+
+It used to matter, and getting it wrong was invisible: this file documented
+`ROUNCE_ACTOR=codex` while `plugin/.mcp.json` shipped `"env": {}`, so one store
+recorded Codex's work under "codex" and Claude Code's under a username, and the
+only place that surfaced was a mixed event log read afterwards.
+
 `ROUNCE_SESSION` is optional and read once at server start, never per call.
 
 ## 2. Paste this into the repository's `AGENTS.md`

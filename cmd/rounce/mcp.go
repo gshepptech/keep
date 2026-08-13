@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
 
 	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -79,12 +80,21 @@ func runMCP(args []string, stdout, stderr io.Writer) int {
 	// hard to debug.
 	logger := slog.New(slog.NewTextHandler(stderr, nil))
 
+	// $ROUNCE_ACTOR is read here rather than inside mcpActor so the
+	// "explicit wins" rule is decided once, at startup, from the process
+	// environment -- not re-read per session from whatever the client's
+	// handshake happens to contain.
+	envActor := os.Getenv("ROUNCE_ACTOR")
+
 	srv, err := internalmcp.NewServer(s, internalmcp.Options{
 		Actor:        actor,
 		Session:      session,
 		Version:      version,
 		Logger:       logger,
 		Instructions: mcpInstructions(context.Background(), s),
+		ActorFor: func(p *mcp.InitializeParams) string {
+			return mcpActor(envActor, p, actor)
+		},
 	})
 	if err != nil {
 		fmt.Fprintf(stderr, "rounce mcp: %v\n", err)

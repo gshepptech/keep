@@ -28,6 +28,32 @@ type Options struct {
 	// conditionals.
 	Actor string
 
+	// ActorFor resolves the actor from the client's own initialize
+	// handshake. Every mutating handler calls it, per call, on its own
+	// session's params. It MUST be non-nil.
+	//
+	// Per call rather than captured once at `initialized`: that was the
+	// first attempt and a test caught it. Nothing orders the SDK's
+	// InitializedHandler before the first tools/call, so the first call
+	// raced and fell back to Actor -- reproducibly, through the SDK client,
+	// while a hand-driven stdio session happened to win the race and looked
+	// correct. Reading the session that is actually making the call has no
+	// ordering to get wrong and needs no atomic.
+	//
+	// It exists because the two plugin manifests disagreed and nothing
+	// caught it: plugin/.mcp.json shipped "env": {} while the Codex
+	// registration set ROUNCE_ACTOR=codex, so the same store recorded
+	// Claude Code's work under $USER and Codex's under "codex". A default
+	// that has to be spelled out per agent is a default that will drift
+	// per agent. The handshake already says who is calling.
+	//
+	// The parameter is the raw *mcp.InitializeParams, nil and all, because
+	// deciding what to do with a nil ClientInfo needs conditionals and this
+	// package is not allowed any (structure_test.go permits *ast.IfStmt
+	// only in NewServer and resultFor). cmd/rounce/mcp.go does that part,
+	// the same way it composes Instructions and resolves Session.
+	ActorFor func(*mcp.InitializeParams) string
+
 	// Session is fixed for the process lifetime -- one MCP server process
 	// serves one agent session (04-CONTEXT.md decision 3). It is never a
 	// per-call argument: every mutating *Input struct's SessionID field is
@@ -126,7 +152,7 @@ func NewServer(st *store.Store, opts Options) (*mcp.Server, error) {
 		Description: "Store a raw note or document verbatim. Raw items never appear in `ready` until they are refined into tickets.",
 		InputSchema: sc["capture"],
 	}, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		in := store.AddItemInput{Actor: opts.Actor, SessionID: opts.Session, Stage: model.StageRaw}
+		in := store.AddItemInput{Actor: opts.ActorFor(req.Session.InitializeParams()), SessionID: opts.Session, Stage: model.StageRaw}
 		if err := json.Unmarshal(req.Params.Arguments, &in); err != nil {
 			return nil, &jsonrpc.Error{Code: jsonrpc.CodeInvalidParams, Message: err.Error()}
 		}
@@ -138,7 +164,7 @@ func NewServer(st *store.Store, opts Options) (*mcp.Server, error) {
 		Description: "Create a workable ticket. Use `parent_id` to place it in the tree and `derived_from` to record the document it was refined out of.",
 		InputSchema: sc["add"],
 	}, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		in := store.AddItemInput{Actor: opts.Actor, SessionID: opts.Session}
+		in := store.AddItemInput{Actor: opts.ActorFor(req.Session.InitializeParams()), SessionID: opts.Session}
 		if err := json.Unmarshal(req.Params.Arguments, &in); err != nil {
 			return nil, &jsonrpc.Error{Code: jsonrpc.CodeInvalidParams, Message: err.Error()}
 		}
@@ -198,7 +224,7 @@ func NewServer(st *store.Store, opts Options) (*mcp.Server, error) {
 		Description: "Create a dependency edge between two items: blocks, related, or derived-from. Parent-child structure is created by `add`'s parent_id, not this tool.",
 		InputSchema: sc["dep"],
 	}, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		in := store.DepInput{Actor: opts.Actor, SessionID: opts.Session}
+		in := store.DepInput{Actor: opts.ActorFor(req.Session.InitializeParams()), SessionID: opts.Session}
 		if err := json.Unmarshal(req.Params.Arguments, &in); err != nil {
 			return nil, &jsonrpc.Error{Code: jsonrpc.CodeInvalidParams, Message: err.Error()}
 		}
@@ -210,7 +236,7 @@ func NewServer(st *store.Store, opts Options) (*mcp.Server, error) {
 		Description: "Claim an item and mark it in progress. Refused if the item is raw, already terminal, or blocked.",
 		InputSchema: sc["start"],
 	}, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		in := store.StartItemInput{Actor: opts.Actor, SessionID: opts.Session}
+		in := store.StartItemInput{Actor: opts.ActorFor(req.Session.InitializeParams()), SessionID: opts.Session}
 		if err := json.Unmarshal(req.Params.Arguments, &in); err != nil {
 			return nil, &jsonrpc.Error{Code: jsonrpc.CodeInvalidParams, Message: err.Error()}
 		}
@@ -222,7 +248,7 @@ func NewServer(st *store.Store, opts Options) (*mcp.Server, error) {
 		Description: "Mark an item finished, recording why. Distinct from `drop`: close means done, drop means abandoned and must never be counted as done.",
 		InputSchema: sc["close"],
 	}, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		in := store.CloseItemInput{Actor: opts.Actor, SessionID: opts.Session}
+		in := store.CloseItemInput{Actor: opts.ActorFor(req.Session.InitializeParams()), SessionID: opts.Session}
 		if err := json.Unmarshal(req.Params.Arguments, &in); err != nil {
 			return nil, &jsonrpc.Error{Code: jsonrpc.CodeInvalidParams, Message: err.Error()}
 		}
@@ -234,7 +260,7 @@ func NewServer(st *store.Store, opts Options) (*mcp.Server, error) {
 		Description: "Mark an item abandoned, recording why. Distinct from `close`: drop means abandoned and must never be counted as done.",
 		InputSchema: sc["drop"],
 	}, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		in := store.DropItemInput{Actor: opts.Actor, SessionID: opts.Session}
+		in := store.DropItemInput{Actor: opts.ActorFor(req.Session.InitializeParams()), SessionID: opts.Session}
 		if err := json.Unmarshal(req.Params.Arguments, &in); err != nil {
 			return nil, &jsonrpc.Error{Code: jsonrpc.CodeInvalidParams, Message: err.Error()}
 		}

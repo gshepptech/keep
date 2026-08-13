@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+
 	"github.com/gshepptech/rounce/internal/model"
 	"github.com/gshepptech/rounce/internal/store"
 )
@@ -109,4 +111,39 @@ func mcpInstructions(ctx context.Context, s *store.Store) string {
 		"Call `ready` for the current queue.\n")
 
 	return b.String()
+}
+
+// mcpActor decides which actor an MCP session's events are stamped with.
+//
+//	explicit $ROUNCE_ACTOR  ->  the client's own name  ->  fallback ($USER)
+//
+// # Why the client's name is a better default than an env var
+//
+// It was a per-manifest default before, and the two manifests disagreed
+// without anything noticing: plugin/.mcp.json shipped "env": {} while the
+// documented Codex registration set ROUNCE_ACTOR=codex, so one store
+// recorded Claude Code's work under a username and Codex's under "codex".
+// Reading a mixed event log is the only place that surfaces, and by then it
+// is history. A default that must be restated per agent will drift per
+// agent; the handshake already carries who is calling.
+//
+// # Why explicit still wins
+//
+// $ROUNCE_ACTOR is how you say "record this as something other than the
+// tool you happen to be driving" -- a named human, a CI identity, a second
+// agent behind a proxy. A client name that overrode it would make that
+// unsayable. Existing setups that set it keep working unchanged, which
+// includes the Codex registration documented before this existed.
+//
+// This lives in cmd/rounce, not internal/mcp, for the reason that package's
+// Options.ActorFor states: it takes the raw params nil and all, and every
+// conditional needed to handle that is here.
+func mcpActor(envActor string, p *mcp.InitializeParams, fallback string) string {
+	if envActor != "" {
+		return envActor
+	}
+	if p != nil && p.ClientInfo != nil && p.ClientInfo.Name != "" {
+		return p.ClientInfo.Name
+	}
+	return fallback
 }
