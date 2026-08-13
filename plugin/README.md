@@ -112,11 +112,13 @@ verifying its own bookkeeping.
 `rounce codex trust --dry-run` reports without changing anything.
 `rounce codex status` asks Codex what it thinks of rounce's hooks.
 
-### What is not claimed
+### Proven, not assumed
 
-The hook is proven to **fire** — `hook: SessionStart` in a live session, on a
-clean install, reproduced. That the injected text then reaches the model has not
-been observed, on either agent.
+The hook fires — `hook: SessionStart` in a live session on a clean install,
+reproduced — and its text reaches the model. Asked "what is at the top of my
+rounce queue?" and told to run nothing, a fresh Codex session named the top
+item, its score, and the tie below it, cold. Claude Code shows the same block in
+the transcript at session start.
 
 ### What was measured, on `codex-cli 0.147.0-alpha.6.5`
 
