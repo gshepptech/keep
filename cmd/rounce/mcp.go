@@ -80,10 +80,11 @@ func runMCP(args []string, stdout, stderr io.Writer) int {
 	logger := slog.New(slog.NewTextHandler(stderr, nil))
 
 	srv, err := internalmcp.NewServer(s, internalmcp.Options{
-		Actor:   actor,
-		Session: session,
-		Version: version,
-		Logger:  logger,
+		Actor:        actor,
+		Session:      session,
+		Version:      version,
+		Logger:       logger,
+		Instructions: mcpInstructions(context.Background(), s),
 	})
 	if err != nil {
 		fmt.Fprintf(stderr, "rounce mcp: %v\n", err)

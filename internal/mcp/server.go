@@ -39,6 +39,25 @@ type Options struct {
 	// Version is reported in the initialize handshake.
 	Version string
 
+	// Instructions is returned in the initialize handshake, where every MCP
+	// client sees it -- Claude Code, Codex, and anything else that speaks
+	// the protocol -- without a hook, a plugin, or a per-agent instruction
+	// file. It carries the ranked queue as of server start, which is
+	// session start: one MCP server process serves one agent session.
+	//
+	// Built by the caller, never here. Rendering a queue needs loops and
+	// branches, and internal/mcp's structure_test.go permits neither
+	// outside NewServer's schema check and resultFor -- that is MCP-05's
+	// "no logic outside store" enforced mechanically, and it holds for
+	// this field too. cmd/rounce/mcpinstructions.go composes the text the
+	// same way it resolves Actor and Session.
+	//
+	// Empty is the correct value for an empty or unreachable store: the
+	// SDK omits the field entirely (json:"instructions,omitempty"), which
+	// is the same silence the SessionStart hook keeps in a repository that
+	// does not use rounce.
+	Instructions string
+
 	// Logger MUST NOT write to stdout (MCP-07) -- stdout carries protocol
 	// bytes only, and anything else on it is fatal to an MCP stdio session.
 	// A nil Logger is safe here: the SDK's own default is
@@ -78,7 +97,7 @@ func NewServer(st *store.Store, opts Options) (*mcp.Server, error) {
 
 	s := mcp.NewServer(
 		&mcp.Implementation{Name: "rounce", Version: opts.Version},
-		&mcp.ServerOptions{Logger: opts.Logger},
+		&mcp.ServerOptions{Logger: opts.Logger, Instructions: opts.Instructions},
 	)
 
 	// Registration order matches 04-CONTEXT.md decision 2's list -- the
