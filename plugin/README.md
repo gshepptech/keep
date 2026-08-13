@@ -90,10 +90,25 @@ a hook event set at parity with Claude Code's — `sessionStart`, `sessionEnd`,
 plugin system that can carry hooks (`PluginDetail.hooks`, `HookSource: plugin`,
 `HookTrustStatus: managed`).
 
-**The intended fix is a Codex plugin**, mirroring this one, so trust follows from
-having installed it rather than from writing a hash into someone's config. That
-a plugin-sourced hook is auto-trusted is read from the schema and **has not been
-run** — see `rnc-069e8a`.
+**The fix is a Codex plugin**, mirroring this one. Built and run end to end on
+2026-08-13:
+
+- A plugin can carry `hooks/hooks.json`. Codex reports it as
+  `source: "plugin"`, `eventName: "sessionStart"`, `enabled: true`.
+- Installing the plugin does **not** trust the hook — `hooks/list` reports
+  `trustStatus: "untrusted"`. An earlier draft of this file guessed it would be
+  auto-trusted; that is wrong.
+- `hooks/list` returns the hook's `key` and `currentHash`. Writing that pair
+  into `config.toml` as `[hooks.state."<key>"] trusted_hash = "<currentHash>"`
+  flips it to `trusted`, and the hook then fires — `hook: SessionStart` in a
+  live session, reproduced on clean runs.
+
+Reading the hash beats computing it. Interlock computed its own and broke
+silently when `0.146.0-alpha.9.2` changed the format; asking Codex cannot drift.
+
+**Trust is not bypassable, and should not be.** It is the same consent you gave
+Claude Code by running `claude plugin install`. app-server makes it verifiable,
+not optional.
 
 **Parity is not claimed yet.** Claude Code cannot *not* see the queue. Codex is
 still being asked to look. The difference is now a to-do, not a ceiling.

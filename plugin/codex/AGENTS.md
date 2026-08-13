@@ -8,9 +8,12 @@ hook runs whenever `~/.codex/config.toml` carries the matching
 `[hooks.state."<abs path>:session_start:0:0"] trusted_hash`, and does not run
 when that entry is removed. Trust is required and grantable — it is not a wall.
 
-So the gap below is rounce's, not Codex's. The intended fix is a Codex plugin
-carrying the hook, so trust follows from installing the plugin rather than from
-writing a hash into your config. Tracked as `rnc-069e8a`.
+So the gap below is rounce's, not Codex's. The fix is a Codex plugin carrying
+the hook. Installing it does not trust the hook by itself — `hooks/list` over
+`codex app-server` reports the hook's `key` and `currentHash`, and writing that
+pair into `config.toml` grants the trust. Reading the hash beats computing it:
+Interlock computed its own and broke silently when `0.146.0-alpha.9.2` changed
+the format. Tracked as `rnc-069e8a`.
 
 Until then: Claude Code cannot *not* see the queue; Codex is being asked to
 look. Do not assume parity **yet**.
