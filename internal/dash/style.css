@@ -6,13 +6,18 @@
    four forbidden shapes itself. That constraint is the reason there is no
    web font here: every typeface below is one the machine already has.
 
-   DESIGN NOTE, because "why is this dark and monospaced" is a fair question.
+   DESIGN NOTE, because "why are there two typefaces here" is a fair
+   question.
 
-   The subject is a work queue two agents are racing over. Everything on
-   these pages is either an identifier, a path, a score, or a timestamp --
-   data a person scans in columns rather than prose they read in lines. So
-   the interface is monospace-led: it aligns by construction, it makes an id
-   comparable at a glance, and it does not pretend a table is an article.
+   The subject is a work queue two agents are racing over, and a single row
+   of it is two kinds of text at once. An item's title is prose, read along
+   a line; its id, its paths and its counts are tokens, compared down a
+   column. So the chrome -- nav, headings, buttons, labels, prose -- takes
+   the newest grotesque the machine already has, and the tokens keep the
+   monospace, where the alignment is a property of the typeface rather than
+   something the table has to arrange. Setting the whole page in Menlo made
+   every sentence read as program output; setting the whole page in a sans
+   would make an id something you have to read twice.
 
    Colour is spent in exactly one place. Three semantic states -- workable,
    claimed, blocked -- carry the only hues on the page, and each appears as a
@@ -52,10 +57,16 @@
 
   --accent: #16161a;
 
-  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
-    "Liberation Mono", monospace;
-  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
-    Arial, sans-serif;
+  /* Both stacks name the contemporary faces first and fall back through the
+     platform ones, so a machine with Inter or Cascadia installed gets them
+     and a machine without gets its own current UI face -- ui-sans-serif and
+     ui-monospace resolve to whatever the OS ships today, which is the only
+     way to stay current without fetching a file. */
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, "Cascadia Mono",
+    "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: Inter, "SF Pro Text", ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
 
   --radius: 6px;
   --radius-lg: 10px;
@@ -112,11 +123,20 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--fg);
-  font-family: var(--mono);
+  font-family: var(--sans);
   font-size: var(--text-base);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-optical-sizing: auto;
 }
+
+/* The token surfaces. Every one of these carries an id, a path, a count or
+   a timestamp -- the things that have to line up with the row above. They
+   are listed here once rather than tagged rule by rule, so a new cell that
+   holds a token joins the set by taking one of these classes. */
+.mono, .sub, .path, code, pre, .pip,
+td[class*="depth-"] { font-family: var(--mono); }
 
 .ico { flex: none; vertical-align: -3px; }
 
@@ -167,7 +187,7 @@ body {
 
 .acts form { display: flex; gap: 6px; align-items: center; }
 .acts select { width: auto; padding: 4px 8px; font-size: var(--text-xs); }
-code { font-family: var(--mono); background: var(--line-soft); padding: 1px 5px; border-radius: 3px; }
+code { background: var(--line-soft); padding: 1px 5px; border-radius: 3px; }
 
 .nav { flex: 1; padding: 14px 10px; overflow-y: auto; }
 .nav-group + .nav-group { margin-top: 20px; }
@@ -465,7 +485,7 @@ table.fields tr:first-child th { border-top: none; }
 pre {
   margin: 0; padding: 16px; background: var(--bg);
   border-top: 1px solid var(--line); overflow-x: auto;
-  font-family: var(--mono); font-size: var(--text-sm); line-height: 1.6;
+  font-size: var(--text-sm); line-height: 1.6;
 }
 
 .depth-0 { padding-left: 16px; } .depth-1 { padding-left: 32px; }
@@ -520,4 +540,3 @@ pre {
    rather than a list. */
 .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
 .toolbar form { margin: 0; }
-.mono { font-family: var(--mono); }
