@@ -15,3 +15,10 @@
 # checking the board render. Never part of the project.
 .playwright-mcp/
 .interlock/
+
+# interlock writes .codex/hooks.json with an ABSOLUTE path to the interlock
+# binary on the machine that ran `interlock init`. It is machine-local
+# generated config, not project source: committing it hands every clone a
+# hook pointing at a home directory that does not exist for them. Run
+# `interlock init` instead -- it regenerates this file correctly.
+.codex/hooks.json
