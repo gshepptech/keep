@@ -83,6 +83,19 @@ func (s *Server) checkOrigin(r *http.Request) error {
 // It redirects rather than rendering, so a reload after acting does not
 // repeat the action -- the POST-redirect-GET shape, which matters more here
 // than usual because the actions are things like "close this item".
+// prefixOf is the URL prefix a request's own project lives under, derived
+// rather than trusted -- see the note in flashURL.
+func (s *Server) prefixOf(r *http.Request) string {
+	name := r.PostFormValue("project")
+	if name == "" || name == s.activeName() {
+		return ""
+	}
+	if _, ok := s.pathOf(name); !ok {
+		return ""
+	}
+	return "/p/" + name
+}
+
 // writablePathFor is the store a mutating request should write to: the
 // project the form was posted from, falling back to the one the board was
 // started in.
@@ -145,20 +158,20 @@ func (s *Server) mutate(w http.ResponseWriter, r *http.Request, done string, fn 
 		// The error goes back as a flash on the page the form came from,
 		// never as a bare error page: a person mid-action needs to see what
 		// happened next to the thing they were acting on.
-		http.Redirect(w, r, flashURL(r, "", "problem", err.Error()), http.StatusSeeOther)
+		http.Redirect(w, r, s.flashURL(r, "", "problem", err.Error()), http.StatusSeeOther)
 		return
 	}
 	// And a success says so. An action that reports nothing looks like an
 	// action that did nothing -- particularly here, where closing an item
 	// makes it vanish from the list you were looking at, which is
 	// indistinguishable from the click having missed.
-	http.Redirect(w, r, flashURL(r, dest, "done", done), http.StatusSeeOther)
+	http.Redirect(w, r, s.flashURL(r, dest, "done", done), http.StatusSeeOther)
 }
 
 // flashURL builds the destination, carrying one message in the query
 // string under key. A query parameter rather than a cookie: there is no
 // session here, and a cookie would outlive the one page it is meant for.
-func flashURL(r *http.Request, dest, key, msg string) string {
+func (s *Server) flashURL(r *http.Request, dest, key, msg string) string {
 	if dest == "" {
 		dest = r.PostFormValue("return")
 	}
@@ -168,7 +181,15 @@ func flashURL(r *http.Request, dest, key, msg string) string {
 	// Stay in the project the action came from. Redirecting to "/" after
 	// acting on another project's board silently moves a person somewhere
 	// else and makes their change look like it did not happen.
-	if prefix := r.PostFormValue("prefix"); prefix != "" && strings.HasPrefix(dest, "/") && !strings.HasPrefix(dest, prefix) {
+	//
+	// The prefix is DERIVED from the project name, never taken from the
+	// form. The form does carry one, and trusting it was an open redirect:
+	// a posted prefix of "//evil.example" concatenates into a
+	// protocol-relative URL that browsers follow off-host. The project name
+	// is checked against the registry before it becomes a prefix, so only a
+	// project that exists can produce one, and it can only ever be
+	// "/p/<name>".
+	if prefix := s.prefixOf(r); prefix != "" && strings.HasPrefix(dest, "/") && !strings.HasPrefix(dest, prefix) {
 		dest = prefix + dest
 	}
 	if msg == "" {
@@ -363,10 +384,10 @@ func (s *Server) doRelease(w http.ResponseWriter, r *http.Request) {
 
 	session := r.PostFormValue("session")
 	if err := interlockRelease(r.Context(), session); err != nil {
-		http.Redirect(w, r, flashURL(r, "/", "problem", err.Error()), http.StatusSeeOther)
+		http.Redirect(w, r, s.flashURL(r, "/", "problem", err.Error()), http.StatusSeeOther)
 		return
 	}
-	http.Redirect(w, r, flashURL(r, "/", "done", "Holds released."), http.StatusSeeOther)
+	http.Redirect(w, r, s.flashURL(r, "/", "done", "Holds released."), http.StatusSeeOther)
 }
 
 // doAssign records who is meant to do a piece of work.
@@ -408,14 +429,14 @@ func (s *Server) doLaunch(w http.ResponseWriter, r *http.Request) {
 	// agent started in the wrong repository is worse than one not started.
 	path, err := s.writablePathFor(r)
 	if err != nil {
-		http.Redirect(w, r, flashURL(r, "/", "problem", err.Error()), http.StatusSeeOther)
+		http.Redirect(w, r, s.flashURL(r, "/", "problem", err.Error()), http.StatusSeeOther)
 		return
 	}
 	if err := interlock.Run(r.Context(), agent, id, repoDirOf(path)); err != nil {
-		http.Redirect(w, r, flashURL(r, "/", "problem", err.Error()), http.StatusSeeOther)
+		http.Redirect(w, r, s.flashURL(r, "/", "problem", err.Error()), http.StatusSeeOther)
 		return
 	}
-	http.Redirect(w, r, flashURL(r, "/", "done",
+	http.Redirect(w, r, s.flashURL(r, "/", "done",
 		"Started "+agent+" on "+id+". Watch it in Interlock."), http.StatusSeeOther)
 }
 

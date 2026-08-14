@@ -216,3 +216,54 @@ func idFromBody(t *testing.T, body string) string {
 	rest := body[i+len("/item/"):]
 	return rest[:strings.IndexAny(rest, `"`)]
 }
+
+// TestRedirectPrefixCannotLeaveTheHost.
+//
+// The prefix used to come straight off the form and be concatenated into
+// the redirect. A posted "//evil.example" makes a protocol-relative URL,
+// which browsers follow off-host -- an open redirect, reachable by anyone
+// who can get a token-bearing form submitted. The prefix is now derived
+// from the project name, which is checked against the registry, so the only
+// value it can ever take is "/p/<a project that exists>".
+//
+// Two paths, because they fail differently. A hostile prefix alongside a
+// project this board knows must be ignored; a hostile project name must be
+// refused before it can become a prefix at all.
+func TestRedirectPrefixCannotLeaveTheHost(t *testing.T) {
+	s, _ := writableFixture(t)
+
+	hostile := []string{"//evil.example", "/\\evil.example", "https://evil.example", "/p/../../evil"}
+
+	t.Run("hostile prefix is ignored", func(t *testing.T) {
+		for _, h := range hostile {
+			rec := post(t, s, "/do/add", url.Values{
+				"title": {"redirect probe"}, "type": {"task"}, "prefix": {h},
+			})
+			loc := rec.Header().Get("Location")
+			if loc == "" {
+				t.Fatalf("prefix %q: no redirect at all (%d)", h, rec.Code)
+			}
+			if !strings.HasPrefix(loc, "/") || strings.HasPrefix(loc, "//") || strings.HasPrefix(loc, "/\\") {
+				t.Errorf("prefix %q produced an off-host redirect: %s", h, loc)
+			}
+			if strings.Contains(loc, "evil.example") {
+				t.Errorf("prefix %q reached the redirect target: %s", h, loc)
+			}
+		}
+	})
+
+	t.Run("hostile project is refused", func(t *testing.T) {
+		for _, h := range hostile {
+			rec := post(t, s, "/do/add", url.Values{
+				"title": {"redirect probe"}, "type": {"task"},
+				"project": {h}, "prefix": {h},
+			})
+			if loc := rec.Header().Get("Location"); strings.Contains(loc, "evil.example") {
+				t.Errorf("project %q reached the redirect target: %s", h, loc)
+			}
+			if rec.Code == http.StatusSeeOther {
+				t.Errorf("project %q was accepted; an unregistered project must be refused", h)
+			}
+		}
+	})
+}

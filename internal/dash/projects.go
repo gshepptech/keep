@@ -117,7 +117,7 @@ func (s *Server) doProjectAdd(w http.ResponseWriter, r *http.Request) {
 
 	dir := strings.TrimSpace(r.PostFormValue("dir"))
 	if dir == "" {
-		http.Redirect(w, r, flashURL(r, "/projects", "problem", "Name a directory."), http.StatusSeeOther)
+		http.Redirect(w, r, s.flashURL(r, "/projects", "problem", "Name a directory."), http.StatusSeeOther)
 		return
 	}
 	if strings.HasPrefix(dir, "~") {
@@ -127,7 +127,7 @@ func (s *Server) doProjectAdd(w http.ResponseWriter, r *http.Request) {
 	}
 	abs, err := filepath.Abs(dir)
 	if err != nil {
-		http.Redirect(w, r, flashURL(r, "/projects", "problem", err.Error()), http.StatusSeeOther)
+		http.Redirect(w, r, s.flashURL(r, "/projects", "problem", err.Error()), http.StatusSeeOther)
 		return
 	}
 
@@ -137,13 +137,13 @@ func (s *Server) doProjectAdd(w http.ResponseWriter, r *http.Request) {
 		// writes a file into someone's repository, which is not a thing to
 		// do because a form was submitted. The checkbox is the consent.
 		if r.PostFormValue("create") == "" {
-			http.Redirect(w, r, flashURL(r, "/projects", "problem",
+			http.Redirect(w, r, s.flashURL(r, "/projects", "problem",
 				fmt.Sprintf("No store in %s yet. Tick \"create the store\" to make one, or run `rounce init` there.", abs)),
 				http.StatusSeeOther)
 			return
 		}
 		if _, err := os.Stat(abs); err != nil {
-			http.Redirect(w, r, flashURL(r, "/projects", "problem",
+			http.Redirect(w, r, s.flashURL(r, "/projects", "problem",
 				fmt.Sprintf("There is no directory at %s.", abs)), http.StatusSeeOther)
 			return
 		}
@@ -152,21 +152,21 @@ func (s *Server) doProjectAdd(w http.ResponseWriter, r *http.Request) {
 		// it. Missing that is why the first version of this created
 		// nothing and reported success.
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-			http.Redirect(w, r, flashURL(r, "/projects", "problem", err.Error()), http.StatusSeeOther)
+			http.Redirect(w, r, s.flashURL(r, "/projects", "problem", err.Error()), http.StatusSeeOther)
 			return
 		}
 		st, err := store.Init(path)
 		if err != nil {
-			http.Redirect(w, r, flashURL(r, "/projects", "problem", err.Error()), http.StatusSeeOther)
+			http.Redirect(w, r, s.flashURL(r, "/projects", "problem", err.Error()), http.StatusSeeOther)
 			return
 		}
 		st.Close()
 	}
 	if err := registry.Register(s.home, path, registry.NameFor(path), nowStamp()); err != nil {
-		http.Redirect(w, r, flashURL(r, "/projects", "problem", err.Error()), http.StatusSeeOther)
+		http.Redirect(w, r, s.flashURL(r, "/projects", "problem", err.Error()), http.StatusSeeOther)
 		return
 	}
-	http.Redirect(w, r, flashURL(r, "/projects", "done", "Project added."), http.StatusSeeOther)
+	http.Redirect(w, r, s.flashURL(r, "/projects", "done", "Project added."), http.StatusSeeOther)
 }
 
 // doProjectForget removes a project from the list, never its store.
@@ -176,8 +176,8 @@ func (s *Server) doProjectForget(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, err := registry.Forget(s.home, r.PostFormValue("path")); err != nil {
-		http.Redirect(w, r, flashURL(r, "/projects", "problem", err.Error()), http.StatusSeeOther)
+		http.Redirect(w, r, s.flashURL(r, "/projects", "problem", err.Error()), http.StatusSeeOther)
 		return
 	}
-	http.Redirect(w, r, flashURL(r, "/projects", "done", "Removed from the list. The store itself is untouched."), http.StatusSeeOther)
+	http.Redirect(w, r, s.flashURL(r, "/projects", "done", "Removed from the list. The store itself is untouched."), http.StatusSeeOther)
 }
