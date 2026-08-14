@@ -31,9 +31,9 @@ func (s *Server) routes() *http.ServeMux {
 	mux.HandleFunc("GET /{$}", s.handleReady)
 	mux.HandleFunc("GET /backlog", s.handleBacklog)
 	mux.HandleFunc("GET /all", s.handleAll)
-	mux.HandleFunc("GET /who", s.handleInterlock)
 	mux.HandleFunc("GET /item/{id}", s.handleItem)
 	mux.HandleFunc("GET /tree/{id}", s.handleTree)
+	s.routesMutating(mux)
 	return mux
 }
 
@@ -46,17 +46,12 @@ func (s *Server) handleReady(w http.ResponseWriter, r *http.Request) {
 	// readyItems, not s.st.Ready directly: the queue and /who must apply
 	// the same Interlock filter, computed once, or the board will omit an
 	// item that /who cannot explain.
-	items, _, err := s.readyItems(r.Context())
+	data, err := s.boardData(r)
 	if err != nil {
 		s.fail(w, err)
 		return
 	}
-	b, err := renderReady(items)
-	if err != nil {
-		s.fail(w, err)
-		return
-	}
-	writeHTML(w, b)
+	s.render(w, "board", s.newPage(r, "board", data))
 }
 
 // handleBacklog renders the raw backlog, grouped by type -- store.Backlog
@@ -67,12 +62,8 @@ func (s *Server) handleBacklog(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err)
 		return
 	}
-	b, err := renderBacklog(items)
-	if err != nil {
-		s.fail(w, err)
-		return
-	}
-	writeHTML(w, b)
+	rows := backlogRows(items)
+	s.render(w, "backlog", s.newPage(r, "backlog", rows))
 }
 
 // handleItem renders one item's full detail, keyed on the path's {id}
@@ -85,12 +76,7 @@ func (s *Server) handleItem(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err)
 		return
 	}
-	b, err := renderItem(d)
-	if err != nil {
-		s.fail(w, err)
-		return
-	}
-	writeHTML(w, b)
+	s.render(w, "item", s.newPage(r, "", d))
 }
 
 // handleTree renders the subtree beneath {id}.
@@ -100,12 +86,7 @@ func (s *Server) handleTree(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err)
 		return
 	}
-	b, err := renderTree(nodes)
-	if err != nil {
-		s.fail(w, err)
-		return
-	}
-	writeHTML(w, b)
+	s.render(w, "tree", s.newPage(r, "", nodes))
 }
 
 // fail classifies err by errors.Is, never message text: store.ErrNotFound

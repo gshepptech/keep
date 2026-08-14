@@ -3,29 +3,29 @@
      registry.Merge; this template does not sort. Errors render as rows in
      their own table rather than replacing the page, because REPO-04's whole
      point is that one unreadable store must not cost you the others. */}}
-{{define "all"}}{{template "head" "all repositories"}}
-<h1>ready across {{.RepoCount}} repositor{{if eq .RepoCount 1}}y{{else}}ies{{end}}</h1>
+{{define "all"}}{{template "head" (titled . "Repositories")}}
+{{$p := .}}{{with .Data}}
+<h1>Every repository</h1>
+<p>Ranked across {{.RepoCount}} registered {{if eq .RepoCount 1}}repository{{else}}repositories{{end}}, not grouped by one.</p>
 <table class="queue">
-<thead><tr><th>repository</th><th>id</th><th>score</th><th>type</th><th>title</th></tr></thead>
+<thead><tr><th>Repository</th><th>Score</th><th>Item</th></tr></thead>
 <tbody>
 {{range .Items}}<tr>
 <td>{{.Repository}}</td>
-<td>{{.ID}}</td>
-<td>{{.Score}}</td>
-<td>{{.Type}}</td>
-<td>{{.Title}}</td>
+<td class="score">{{.Score}}</td>
+<td><span class="title">{{.Title}}</span><div class="sub">{{.ID}} · {{.Type}}</div></td>
 </tr>
-{{else}}<tr><td colspan="5">nothing is workable in any registered repository</td></tr>
+{{else}}<tr><td colspan="3" class="faint">Nothing is workable in any registered repository.</td></tr>
 {{end}}</tbody>
 </table>
 
 {{if .Errors}}
-<h2>unreadable</h2>
+<h2>Unreadable</h2>
 <table class="queue">
-<thead><tr><th>repository</th><th>problem</th></tr></thead>
+<thead><tr><th>Repository</th><th>Problem</th></tr></thead>
 <tbody>
 {{range .Errors}}<tr><td>{{.Repo}}</td><td>{{.Message}}</td></tr>
 {{end}}</tbody>
 </table>
 {{end}}
-{{template "foot"}}{{end}}
+{{end}}{{template "foot"}}{{end}}

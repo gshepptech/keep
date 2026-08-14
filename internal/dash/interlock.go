@@ -84,3 +84,8 @@ func (s *Server) readyItems(ctx context.Context) ([]model.Item, []interlock.Coll
 	kept, held := interlock.Exclude(items, st)
 	return kept, held, nil
 }
+
+// interlockRelease is the one Interlock mutation this board offers.
+func interlockRelease(ctx context.Context, session string) error {
+	return interlock.Release(ctx, session)
+}

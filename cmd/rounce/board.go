@@ -86,7 +86,7 @@ func runBoard(args []string, stdout, stderr io.Writer) int {
 	defer s.Close()
 
 	if *webFlag {
-		return serveWeb(s, *portFlag, stdout, stderr)
+		return serveWeb(s, *portFlag, *dbFlag, stdout, stderr)
 	}
 
 	ctx := context.Background()
@@ -160,7 +160,7 @@ func runBoard(args []string, stdout, stderr io.Writer) int {
 // nowhere else -- there is no flag between the user and this constant;
 // dash.NewServer's loopback validation is the backstop for a future flag,
 // not the primary gate today (05-CONTEXT.md decision 4).
-func serveWeb(st *store.Store, port int, stdout, stderr io.Writer) int {
+func serveWeb(st *store.Store, port int, dbFlag string, stdout, stderr io.Writer) int {
 	// A registry that cannot be located is not fatal to the board: the
 	// per-repository views still work, and /all renders its own empty
 	// state. Same rule runInit follows when it registers best-effort.
@@ -169,7 +169,17 @@ func serveWeb(st *store.Store, port int, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "rounce board: cannot locate the registry: %v\n", homeErr)
 	}
 
-	srv, err := dash.NewServer(st, fmt.Sprintf("127.0.0.1:%d", port), home)
+	// The board acts on the store, so it needs the path to reopen for
+	// writing. resolveStorePath is the same four-rule resolver every other
+	// command uses -- the board must not invent a fifth.
+	dbPath, pathErr := store.Resolve(dbFlag)
+	if pathErr != nil {
+		fmt.Fprintf(stderr, "rounce board: %v\n", pathErr)
+	}
+	actor, _ := resolveActor("")
+
+	srv, err := dash.NewServer(st, fmt.Sprintf("127.0.0.1:%d", port), home,
+		dash.Writable(dbPath), dash.ActingAs(actor))
 	if err != nil {
 		fmt.Fprintf(stderr, "rounce board: %v\n", err)
 		return 1

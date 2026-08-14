@@ -9,8 +9,9 @@
      helper; a blocked row ALSO carries the literal word "blocked" in text,
      per docs/design/phase-4.md ("the page says 'blocked', not a metaphor
      for blocked") and because colour alone fails colourblind readers. */}}
-{{define "tree"}}{{template "head" "tree"}}
-<h1>tree</h1>
+{{define "tree"}}{{template "head" (titled . "Tree")}}
+{{$p := .}}{{with .Data}}
+<h1>Tree</h1>
 <table class="tree">
 <thead><tr><th>id</th><th>type</th><th>title</th><th>state</th></tr></thead>
 <tbody>
@@ -23,4 +24,4 @@
 {{else}}<tr><td colspan="4">no items beneath this root</td></tr>
 {{end}}</tbody>
 </table>
-{{template "foot"}}{{end}}
+{{end}}{{template "foot"}}{{end}}

@@ -44,6 +44,15 @@ var funcMap = template.FuncMap{
 	"style":      func() template.CSS { return styleInline },
 	"state":      state,
 	"depthClass": depthClass,
+	"until":      relativeTime,
+	"ago":        agoTime,
+	"titled": func(p page, title string) titledPage {
+		return titledPage{Page: p, Title: title, Data: p.Data}
+	},
+	"act": func(p page, verb, id, label, ret string, danger bool) actionArgs {
+		return actionArgs{CSRF: p.CSRF, Verb: verb, ID: id, Label: label, Return: ret, Danger: danger}
+	},
+	"holdsFor": holdsFor,
 }
 
 // tmpl is the package's one parsed template set, built once at package

@@ -19,10 +19,14 @@ in **one SQLite file** and **one static binary**.
 ![Go](https://img.shields.io/badge/go-1.26-00ADD8?style=for-the-badge&logo=go&logoColor=white)
 ![SQLite](https://img.shields.io/badge/sqlite-pure_go%2C_no_cgo-003B57?style=for-the-badge&logo=sqlite&logoColor=white)
 ![MCP](https://img.shields.io/badge/MCP-10_tools-6E56CF?style=for-the-badge)
-![Runtime deps](https://img.shields.io/badge/runtime_deps-2-2ea043?style=for-the-badge)
+![Runtime deps](https://img.shields.io/badge/runtime_deps-4-2ea043?style=for-the-badge)
 ![Network calls](https://img.shields.io/badge/network_calls-0-b32428?style=for-the-badge)
 
 **`no account`** · **`no server`** · **`no SaaS`** · **`no JavaScript`** · **`no telemetry`**
+
+<br>
+
+<img src="docs/images/rounce-queue.png" alt="The rounce board: a ranked queue of workable items" width="880">
 
 </div>
 
@@ -175,6 +179,39 @@ as two separate edges. Six weeks later, *"why does this ticket exist"* still has
 an answer.
 
 </details>
+
+---
+
+## Two agents, one queue
+
+Install [Interlock](https://github.com/gshepptech/interlock) alongside rounce
+and the queue stops offering work another agent is already editing.
+
+Neither program imports the other. Each reads the other over a versioned CLI
+contract, and each works completely alone — a Go import would have made that a
+slogan instead of a fact.
+
+<img src="docs/images/rounce-who.png" alt="rounce's who-is-working view: two items held back, each naming the agent holding it and for how long" width="880">
+
+Two items are held back. The page names who holds them and until when; the
+queue omits exactly those two. The board and this page share one filter, so the
+board can never drop an item this page fails to explain.
+
+<img src="docs/images/interlock-panel.png" alt="Interlock's panel: what is workable next, above the files currently held" width="880">
+
+The same moment from Interlock's side. **Next** is rounce's queue, already
+filtered. **Files held**, below it, is why the two higher-scoring items are not
+in it.
+
+```bash
+rounce add --paths "internal/auth/token.go" --score 9/9/1 "Expire refresh tokens"
+```
+
+`paths` is the whole join. An item that declares none is never held back —
+rounce would rather offer work someone has quietly started than hide work
+nobody is doing.
+
+**[Full guide →](docs/interlock.md)**
 
 ---
 

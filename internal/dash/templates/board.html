@@ -1,0 +1,145 @@
+{{/* board.html -- the whole picture on one page. Data: boardData.
+
+     The queue and the agents holding it up are the same question asked from
+     two sides, so they share a page: a person who has to switch views to
+     connect them is doing the join in their head. */}}
+{{define "board"}}{{template "head" (titled . "Board")}}
+{{$p := .}}{{$d := .Data}}
+
+<section class="readout">
+  <div><b>{{$d.Counts.Ready}}</b><span>Workable</span></div>
+  <div><b>{{$d.Counts.InProgress}}</b><span>In progress</span></div>
+  <div><b>{{len $d.Held}}</b><span>Held back</span></div>
+  <div><b>{{$d.Counts.Blocked}}</b><span>Blocked</span></div>
+  <div><b>{{$d.Counts.Backlog}}</b><span>Parked</span></div>
+  {{if $d.Interlock}}<div><b>{{$d.Counts.Agents}}</b><span>Agents</span></div>{{end}}
+</section>
+
+{{if $p.Writable}}
+<details class="composer">
+  <summary>New item</summary>
+  <form method="post" action="/do/add" class="grid">
+    <input type="hidden" name="csrf" value="{{$p.CSRF}}">
+    <label class="wide">Title
+      <input name="title" required placeholder="What needs doing, in one line that stands alone">
+    </label>
+    <label>Type
+      <select name="type">{{range $d.Types}}<option value="{{.}}">{{.}}</option>{{end}}</select>
+    </label>
+    <label>Value <input name="value" type="number" min="0" max="10" placeholder="0-10"></label>
+    <label>Confidence <input name="confidence" type="number" min="0" max="10" placeholder="0-10"></label>
+    <label>Effort <input name="effort" type="number" min="0" max="10" placeholder="0-10"></label>
+    <label class="wide">Files it touches
+      <input name="paths" placeholder="internal/auth/token.go, cmd/server/main.go">
+    </label>
+    <label class="wide">Why it matters
+      <textarea name="why" rows="2" placeholder="The reason, ideally citing a file and line"></textarea>
+    </label>
+    <div class="wide row">
+      <label class="inline"><input type="checkbox" name="park" value="1"> Park it instead — not workable yet</label>
+      <button type="submit">File it</button>
+    </div>
+  </form>
+</details>
+{{end}}
+
+<h2>Workable now</h2>
+{{if $d.Ready}}
+<table class="queue">
+<thead><tr><th>Score</th><th>Item</th><th>Touches</th>{{if $p.Writable}}<th class="right">Act</th>{{end}}</tr></thead>
+<tbody>
+{{range $d.Ready}}<tr>
+<td class="score">{{.Score}}</td>
+<td><a class="title" href="/item/{{.ID}}">{{.Title}}</a><div class="sub">{{.ID}} · {{.Type}}</div></td>
+<td class="path">{{if .Paths}}{{.Paths}}{{else}}<span class="faint">not declared</span>{{end}}</td>
+{{if $p.Writable}}<td class="right"><div class="acts">
+  {{template "action" (act $p "start" .ID "Start" "/" false)}}
+  {{template "action" (act $p "close" .ID "Close" "/" false)}}
+</div></td>{{end}}
+</tr>
+{{end}}</tbody>
+</table>
+{{else}}
+<p class="empty">Nothing is workable. {{if $d.Held}}Every remaining item touches a file an agent is holding — see below.{{else if $d.Counts.Backlog}}There are {{$d.Counts.Backlog}} parked items; promote one from the <a href="/backlog">backlog</a>.{{else}}File the first item above.{{end}}</p>
+{{end}}
+
+{{if $d.Progress}}
+<h2>Being worked on</h2>
+<table>
+<thead><tr><th>Score</th><th>Item</th><th>Claimed by</th>{{if $p.Writable}}<th class="right">Act</th>{{end}}</tr></thead>
+<tbody>
+{{range $d.Progress}}<tr>
+<td class="score">{{.Score}}</td>
+<td><a class="title" href="/item/{{.ID}}">{{.Title}}</a><div class="sub">{{.ID}}</div></td>
+<td><span class="state state-claimed">{{if .Assignee}}{{.Assignee}}{{else}}unnamed{{end}}</span></td>
+{{if $p.Writable}}<td class="right"><div class="acts">
+  {{template "action" (act $p "close" .ID "Close" "/" false)}}
+  {{template "action" (act $p "drop" .ID "Drop" "/" true)}}
+</div></td>{{end}}
+</tr>
+{{end}}</tbody>
+</table>
+{{end}}
+
+{{if $d.Held}}
+<h2>Held back <em>workable, except an agent is in the file</em></h2>
+<table>
+<thead><tr><th>Score</th><th>Item</th><th>File</th><th>Held by</th><th>Until</th>{{if $p.Writable}}<th class="right">Act</th>{{end}}</tr></thead>
+<tbody>
+{{range $d.Held}}<tr>
+<td class="score">{{.Item.Score}}</td>
+<td><a class="title" href="/item/{{.Item.ID}}">{{.Item.Title}}</a><div class="sub">{{.Item.ID}}</div></td>
+<td class="path">{{.Path}}</td>
+<td><span class="state state-claimed">{{.Lease.Agent}}</span></td>
+<td class="faint">{{until .Lease.ExpiresAt}}</td>
+{{if $p.Writable}}<td class="right"><form method="post" action="/do/release">
+  <input type="hidden" name="csrf" value="{{$p.CSRF}}">
+  <input type="hidden" name="session" value="{{.Lease.SessionID}}">
+  <button type="submit" class="danger">Release</button>
+</form></td>{{end}}
+</tr>
+{{end}}</tbody>
+</table>
+{{end}}
+
+{{if $d.Blocked}}
+<h2>Blocked <em>waiting on other work, not on an agent</em></h2>
+<table>
+<thead><tr><th>Item</th><th>Waiting on</th></tr></thead>
+<tbody>
+{{range $d.Blocked}}<tr>
+<td><a class="title" href="/item/{{.Item.ID}}">{{.Item.Title}}</a><div class="sub">{{.Item.ID}}</div></td>
+<td><a href="/item/{{.BlockedBy}}">{{.BlockedBy}}</a></td>
+</tr>
+{{end}}</tbody>
+</table>
+{{end}}
+
+{{with $d.Interlock}}
+<h2>Agents <em>from Interlock</em></h2>
+<table>
+<thead><tr><th>Agent</th><th>Session</th><th>State</th><th>Last seen</th><th>Holding</th>{{if $p.Writable}}<th class="right">Act</th>{{end}}</tr></thead>
+<tbody>
+{{range .Sessions}}<tr>
+<td><b>{{.Agent}}</b></td>
+<td class="sub">{{.ID}}</td>
+<td><span class="state {{if .Expired}}state-idle{{else}}state-workable{{end}}">{{if .Expired}}gone{{else}}live{{end}}</span></td>
+<td class="faint">{{ago .LastSeen}}</td>
+<td class="path">{{holdsFor $d.Interlock .ID}}</td>
+{{if $p.Writable}}<td class="right"><form method="post" action="/do/release">
+  <input type="hidden" name="csrf" value="{{$p.CSRF}}">
+  <input type="hidden" name="session" value="{{.ID}}">
+  <button type="submit">Release holds</button>
+</form></td>{{end}}
+</tr>
+{{else}}<tr><td colspan="6" class="faint">No agents seen here yet.</td></tr>
+{{end}}</tbody>
+</table>
+{{end}}
+
+{{if not $d.Interlock}}
+<h2>Agents</h2>
+<p class="empty">Interlock is not running here, so nothing is watching which files agents have open. The queue above is unfiltered. <a href="https://github.com/gshepptech/interlock">Interlock</a> adds that.</p>
+{{end}}
+
+{{template "foot"}}{{end}}

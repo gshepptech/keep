@@ -46,6 +46,19 @@ func validateLoopback(hostport string) (*net.TCPAddr, error) {
 type Server struct {
 	st *store.Store
 
+	// csrf is this server's form token, and actor is who its actions are
+	// recorded as. Both are fixed for the process: the board has no accounts
+	// and no sessions, so a token that varied would only mean a person's
+	// open tab stopped working.
+	csrf  string
+	actor string
+
+	// dbPath is what writable() reopens. The read path keeps its read-only
+	// handle -- docs/design/phase-4.md made that true by construction and it
+	// stays true for every GET; only a POST opens for writing, and only for
+	// the length of the action.
+	dbPath string
+
 	// home is the directory holding the cross-repo registry
 	// (~/.rounce/repos.json). Empty means no registry was supplied, which
 	// leaves /all rendering its own empty state rather than 404ing -- the
@@ -62,7 +75,10 @@ type Server struct {
 // `--web` binds port 0 and must print the OS-assigned port before it starts
 // serving (DASH-02). Validation runs before net.Listen, so a refused
 // address never opens a socket at all.
-func NewServer(st *store.Store, hostport, home string) (*Server, error) {
+// NewServer builds the board. dbPath and actor are what make it writable:
+// pass an empty dbPath and every mutating route reports that the board is
+// read-only, which is what a caller that has not opted in should get.
+func NewServer(st *store.Store, hostport, home string, opts ...Option) (*Server, error) {
 	if _, err := validateLoopback(hostport); err != nil {
 		return nil, err
 	}
@@ -70,7 +86,14 @@ func NewServer(st *store.Store, hostport, home string) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("listen %q: %w", hostport, err)
 	}
-	s := &Server{st: st, home: home, ln: ln}
+	token, err := newToken()
+	if err != nil {
+		return nil, err
+	}
+	s := &Server{st: st, home: home, ln: ln, csrf: token, actor: "board"}
+	for _, opt := range opts {
+		opt(s)
+	}
 	s.srv = &http.Server{Handler: s.routes()}
 	return s, nil
 }
@@ -109,3 +132,34 @@ func (s *Server) Shutdown(ctx context.Context) error {
 func (s *Server) Close() error {
 	return s.ln.Close()
 }
+
+// Option configures a Server at construction. There are two, both about
+// writing, and both default to off: a board built without them behaves
+// exactly as the read-only one did.
+type Option func(*Server)
+
+// Writable lets the board act on the store. path is reopened per action, so
+// the long-lived read handle stays read-only and a GET still cannot write.
+func Writable(path string) Option {
+	return func(s *Server) { s.dbPath = path }
+}
+
+// ActingAs sets the actor recorded on every event the board writes. It
+// defaults to "board" rather than to $USER, because an event that says a
+// person did something they did from a web page is less true than one that
+// says the board did.
+func ActingAs(actor string) Option {
+	return func(s *Server) { s.actor = actor }
+}
+
+// writable opens a writing handle for one action.
+func (s *Server) writable() (*store.Store, error) {
+	if s.dbPath == "" {
+		return nil, fmt.Errorf("this board is read-only: start it with `rounce board --web` from the repository that owns the store")
+	}
+	return store.Open(s.dbPath, store.OpenOptions{})
+}
+
+// CSRF is the token every mutating form must carry. Exported for the
+// templates' page data, not for callers.
+func (s *Server) CSRF() string { return s.csrf }

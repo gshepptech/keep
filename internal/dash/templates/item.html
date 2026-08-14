@@ -6,15 +6,40 @@
      verbatim, inside <pre> as plain text -- never markdown-to-HTML, never
      template.HTML. A parent id and each dep's other end are links built
      from the id field alone, never from title/body/why. */}}
-{{define "item"}}{{template "head" "item"}}
-<h1>item</h1>
+{{define "item"}}{{template "head" (titled . "Item")}}
+{{$p := .}}{{with .Data}}
+<h1>{{.Title}}</h1>
+<p class="sub">{{.ID}} · {{.Type}} · {{.Stage}} · <span class="state state-{{state (printf "%s" .Status) false}}">{{.Status}}</span> · score {{.Score}}</p>
+
+{{if $p.Writable}}
+<div class="acts wide">
+  {{if eq (printf "%s" .Status) "open"}}{{template "action" (act $p "start" .ID "Start" "" false)}}{{end}}
+  {{if ne (printf "%s" .Status) "closed"}}{{template "action" (act $p "close" .ID "Close" "" false)}}
+  {{template "action" (act $p "drop" .ID "Drop" "" true)}}{{end}}
+  {{if eq (printf "%s" .Stage) "raw"}}{{template "action" (act $p "promote" .ID "Promote to the queue" "" false)}}{{end}}
+</div>
+
+<details class="composer">
+  <summary>Edit</summary>
+  <form method="post" action="/do/update" class="grid">
+    <input type="hidden" name="csrf" value="{{$p.CSRF}}">
+    <input type="hidden" name="id" value="{{.ID}}">
+    <label class="wide">Title <input name="title" value="{{.Title}}" required></label>
+    <label>Value <input name="value" type="number" min="0" max="10" value="{{with .Value}}{{.}}{{end}}"></label>
+    <label>Confidence <input name="confidence" type="number" min="0" max="10" value="{{with .Confidence}}{{.}}{{end}}"></label>
+    <label>Effort <input name="effort" type="number" min="0" max="10" value="{{with .Effort}}{{.}}{{end}}"></label>
+    <label class="wide">Files it touches <input name="paths" value="{{with .Paths}}{{.}}{{end}}"></label>
+    <label class="wide">Why it matters <textarea name="why" rows="2">{{.Why}}</textarea></label>
+    <label class="wide">Acceptance <textarea name="acceptance" rows="2">{{.Acceptance}}</textarea></label>
+    <label class="wide">Body <textarea name="body" rows="6">{{.Body}}</textarea></label>
+    <div class="wide row"><button type="submit">Save changes</button></div>
+  </form>
+</details>
+{{end}}
+
+<h2>Detail</h2>
 <table class="fields">
 <tbody>
-<tr><th>id</th><td>{{.ID}}</td></tr>
-<tr><th>stage</th><td>{{.Stage}}</td></tr>
-<tr><th>type</th><td>{{.Type}}</td></tr>
-<tr><th>status</th><td>{{.Status}}</td></tr>
-<tr><th>score</th><td>{{.Score}}</td></tr>
 {{if .ParentID}}<tr><th>parent</th><td><a href="/item/{{.ParentID}}">{{.ParentID}}</a></td></tr>
 {{end}}{{if .Repo}}<tr><th>repo</th><td>{{.Repo}}</td></tr>
 {{end}}{{if .Paths}}<tr><th>paths</th><td>{{.Paths}}</td></tr>
@@ -25,27 +50,27 @@
 </tbody>
 </table>
 
-{{if .DependsOn}}<h2>depends on</h2>
+{{if .DependsOn}}<h2>Waiting on</h2>
 <table class="deps">
 <tbody>
 {{range .DependsOn}}<tr><td>{{.Type}}</td><td><a href="/item/{{.DependsOnID}}">{{.DependsOnID}}</a></td></tr>
 {{end}}</tbody>
 </table>
 {{end}}
-{{if .DependedOnBy}}<h2>depended on by</h2>
+{{if .DependedOnBy}}<h2>Blocking</h2>
 <table class="deps">
 <tbody>
 {{range .DependedOnBy}}<tr><td>{{.Type}}</td><td><a href="/item/{{.ItemID}}">{{.ItemID}}</a></td></tr>
 {{end}}</tbody>
 </table>
 {{end}}
-{{if .Events}}<h2>events</h2>
+{{if .Events}}<h2>History</h2>
 <table class="events">
 <tbody>
 {{range .Events}}<tr><td>{{.At}}</td><td>{{.Kind}}</td><td>{{.Actor}}</td></tr>
 {{end}}</tbody>
 </table>
 {{end}}
-<h2>body</h2>
+<h2>Body</h2>
 <pre>{{.Body}}</pre>
-{{template "foot"}}{{end}}
+{{end}}{{template "foot"}}{{end}}

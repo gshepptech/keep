@@ -1,44 +1,48 @@
 {{/*
-  head/foot -- the chrome every view template wraps around its own content.
+  head/foot -- the chrome every view wraps around its own content.
 
-  DEVIATION FROM THE PLAN'S LITERAL "{{define "layout"}} ... {{template
-  "content" .}}" SHAPE, RECORDED HERE FOR THE NEXT READER: html/template
-  parses every *.html file in templates/ into ONE shared associated set.
-  When two files each {{define}} a block with the SAME name (e.g. every
-  view defining its own "content"), the set does not error and does not
-  keep both -- the LAST one parsed silently wins, globally, for every
-  caller of that name. Verified live during execution: a two-file "content"
-  collision reproduced exactly this (the second file's definition answered
-  every {{template "content" .}} call, including from the first file's own
-  page). A single shared "layout" calling a same-named "content" block
-  therefore cannot select which view's content to render -- there is no way
-  to parameterize {{template}}'s name argument at execution time either; it
-  must be a string constant, also verified live (a $variable or a
-  pipeline-derived name fails to parse).
+  DEVIATION FROM THE PLAN'S LITERAL {{define "layout"}} SHAPE, RECORDED FOR
+  THE NEXT READER: html/template parses every *.html file here into ONE
+  associated set, and two files defining the same block name silently keep
+  only the last parsed -- verified live. So each view defines its own
+  uniquely-named top-level template and calls these shared blocks directly.
 
-  The fix: give each view its own uniquely-named top-level template
-  ("ready", "backlog", "item", "tree" -- see the other four files in this
-  directory) and have it call these two shared, uniquely-named blocks
-  directly. Same composition, no collision, and each render.go function
-  calls tmpl.ExecuteTemplate by the view's own template name rather than by
-  "layout".
+  Both blocks take the page wrapper, not a string, because the nav needs to
+  know which section is current and the header needs the flash.
 */}}
 {{define "head"}}<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{.}} — rounce</title>
+<title>{{.Title}} · rounce</title>
 <style>{{style}}</style>
 </head>
 <body>
-<nav>
-<a href="/">queue</a>
-<a href="/backlog">backlog</a>
-<a href="/all">all repositories</a>
-<a href="/who">who is working</a>
-</nav>
+<div class="shell">
+<header class="masthead">
+  <a class="wordmark" href="/">rounce</a>
+  <nav>
+    <a href="/"{{if eq .Page.Nav "board"}} class="here"{{end}}>Board</a>
+    <a href="/backlog"{{if eq .Page.Nav "backlog"}} class="here"{{end}}>Backlog</a>
+    <a href="/all"{{if eq .Page.Nav "all"}} class="here"{{end}}>Repositories</a>
+  </nav>
+  {{if not .Page.Writable}}<span class="chip">read only</span>{{end}}
+</header>
+{{with .Page.Problem}}<p class="problem" role="alert">{{.}}</p>{{end}}
 {{end}}
-{{define "foot"}}</body>
+
+{{define "foot"}}</div>
+</body>
 </html>
 {{end}}
+
+{{/* action is one POST button. Every mutating control on every page goes
+     through this block, so the token can never be forgotten on one of them
+     and the markup cannot drift between pages. */}}
+{{define "action"}}<form method="post" action="/do/{{.Verb}}">
+<input type="hidden" name="csrf" value="{{.CSRF}}">
+<input type="hidden" name="id" value="{{.ID}}">
+<input type="hidden" name="return" value="{{.Return}}">
+<button type="submit"{{if .Danger}} class="danger"{{end}}>{{.Label}}</button>
+</form>{{end}}

@@ -54,12 +54,12 @@ type repoError struct {
 // any of that here would be a second implementation of the rule that a
 // missing store must not be fabricated as an empty one.
 func (s *Server) handleAll(w http.ResponseWriter, r *http.Request) {
-	b, err := s.renderAllFor(r.Context())
+	data, err := s.allData(r.Context())
 	if err != nil {
 		s.fail(w, err)
 		return
 	}
-	writeHTML(w, b)
+	s.render(w, "all", s.newPage(r, "all", data))
 }
 
 // renderAllFor loads the registry, fans out, and renders. Split from the
@@ -71,9 +71,22 @@ func (s *Server) handleAll(w http.ResponseWriter, r *http.Request) {
 // what it is missing, and rendering an empty queue would be a lie in
 // exactly the shape REPO-05 exists to prevent.
 func (s *Server) renderAllFor(ctx context.Context) ([]byte, error) {
-	env, err := registry.Load(s.home)
+	data, err := s.allData(ctx)
 	if err != nil {
 		return nil, err
+	}
+	var buf bytes.Buffer
+	if err := tmpl.ExecuteTemplate(&buf, "all", page{Data: data}); err != nil {
+		return nil, fmt.Errorf("render all: %w", err)
+	}
+	return buf.Bytes(), nil
+}
+
+// allData gathers the cross-repo queue.
+func (s *Server) allData(ctx context.Context) (allPage, error) {
+	env, err := registry.Load(s.home)
+	if err != nil {
+		return allPage{}, err
 	}
 
 	results := registry.FetchReady(ctx, env.Repos)
@@ -89,9 +102,5 @@ func (s *Server) renderAllFor(ctx context.Context) ([]byte, error) {
 		page.Errors = append(page.Errors, repoError{Repo: res.Repo, Message: res.Err.Error()})
 	}
 
-	var buf bytes.Buffer
-	if err := tmpl.ExecuteTemplate(&buf, "all", page); err != nil {
-		return nil, fmt.Errorf("render all: %w", err)
-	}
-	return buf.Bytes(), nil
+	return page, nil
 }

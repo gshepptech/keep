@@ -1,0 +1,325 @@
+package dash
+
+import (
+	"crypto/rand"
+	"encoding/base64"
+	"fmt"
+	"net"
+	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
+
+	"github.com/gshepptech/rounce/internal/model"
+	"github.com/gshepptech/rounce/internal/store"
+)
+
+// The board began read-only, deliberately: docs/design/phase-4.md's first
+// non-goal was "Editing from the page. Read-only in this phase; the store is
+// the CLI's job", and openStoreReadOnly made that true by construction
+// rather than by review.
+//
+// That decision is reversed here, on request, and the reversal is worth
+// recording rather than quietly performing. What made read-only defensible
+// was that every mutation already had a tested path through the CLI and the
+// MCP tools, so the page had nothing to add. What makes it wrong now is that
+// a person watching a queue has to leave the page to act on it, and the
+// leaving is where the work stops.
+//
+// Everything the original decision was protecting is kept:
+//
+//   - Mutations are POST only. A GET can never change the store, so no link,
+//     prefetch, or reload can either.
+//   - Every form carries a per-server token. The server is loopback-only, but
+//     "loopback" includes every other program on this machine, and a page in
+//     the user's browser can be made to POST here by any site they visit.
+//   - Origin and Referer, when present, must be this server. Together with
+//     the token that is two independent checks, because a browser that sends
+//     neither header is a browser the token still covers.
+//   - The store is still opened read-only for reads; only the mutating path
+//     opens for writing.
+
+// csrfField is the hidden input name every mutating form carries.
+const csrfField = "csrf"
+
+// newToken returns a fresh per-server CSRF token. Per server, not per
+// session: this page has no accounts, and a token that survived a restart
+// would have to be stored somewhere, which is a worse property than asking a
+// person to reload a page after restarting their own dashboard.
+func newToken() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("generate csrf token: %w", err)
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+
+// checkOrigin refuses a request whose Origin or Referer names a different
+// host. A request carrying neither is allowed through to the token check --
+// some clients omit both, and refusing them here would break `curl` against
+// a person's own dashboard while stopping no attack the token does not.
+func (s *Server) checkOrigin(r *http.Request) error {
+	for _, header := range []string{"Origin", "Referer"} {
+		raw := r.Header.Get(header)
+		if raw == "" {
+			continue
+		}
+		u, err := url.Parse(raw)
+		if err != nil {
+			return fmt.Errorf("%s is not a URL", header)
+		}
+		if u.Host != r.Host {
+			return fmt.Errorf("%s names %q, not this server", header, u.Host)
+		}
+	}
+	return nil
+}
+
+// mutate wraps every POST handler with the checks above, then redirects.
+//
+// It redirects rather than rendering, so a reload after acting does not
+// repeat the action -- the POST-redirect-GET shape, which matters more here
+// than usual because the actions are things like "close this item".
+func (s *Server) mutate(w http.ResponseWriter, r *http.Request, fn func(*store.Store) (string, error)) {
+	if err := s.checkOrigin(r); err != nil {
+		http.Error(w, "refused: "+err.Error(), http.StatusForbidden)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "refused: unreadable form", http.StatusBadRequest)
+		return
+	}
+	if r.PostFormValue(csrfField) != s.csrf {
+		http.Error(w, "refused: this form is from a different server or an older one. Reload the page.", http.StatusForbidden)
+		return
+	}
+
+	st, err := s.writable()
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	defer st.Close()
+
+	dest, err := fn(st)
+	if err != nil {
+		// The error goes back as a flash on the page the form came from,
+		// never as a bare error page: a person mid-action needs to see what
+		// happened next to the thing they were acting on.
+		http.Redirect(w, r, redirectWithFlash(r, "", err.Error()), http.StatusSeeOther)
+		return
+	}
+	http.Redirect(w, r, redirectWithFlash(r, dest, ""), http.StatusSeeOther)
+}
+
+// redirectWithFlash builds the destination, carrying a message in the query
+// string. A query parameter rather than a cookie: there is no session here,
+// and a cookie would outlive the one page it is meant for.
+func redirectWithFlash(r *http.Request, dest, problem string) string {
+	if dest == "" {
+		dest = r.PostFormValue("return")
+	}
+	if dest == "" {
+		dest = "/"
+	}
+	if problem == "" {
+		return dest
+	}
+	sep := "?"
+	if strings.Contains(dest, "?") {
+		sep = "&"
+	}
+	return dest + sep + "problem=" + url.QueryEscape(problem)
+}
+
+// routesMutating registers the POST handlers. Each one is a verb a person
+// recognises, and the URL says the same word the button does.
+func (s *Server) routesMutating(mux *http.ServeMux) {
+	mux.HandleFunc("POST /do/add", s.doAdd)
+	mux.HandleFunc("POST /do/update", s.doUpdate)
+	mux.HandleFunc("POST /do/start", s.doStart)
+	mux.HandleFunc("POST /do/close", s.doClose)
+	mux.HandleFunc("POST /do/drop", s.doDrop)
+	mux.HandleFunc("POST /do/promote", s.doPromote)
+	mux.HandleFunc("POST /do/release", s.doRelease)
+}
+
+func (s *Server) doStart(w http.ResponseWriter, r *http.Request) {
+	s.mutate(w, r, func(st *store.Store) (string, error) {
+		id := r.PostFormValue("id")
+		_, err := st.StartItem(r.Context(), store.StartItemInput{ID: id, Actor: s.actor})
+		return "", err
+	})
+}
+
+func (s *Server) doClose(w http.ResponseWriter, r *http.Request) {
+	s.mutate(w, r, func(st *store.Store) (string, error) {
+		_, err := st.CloseItem(r.Context(), store.CloseItemInput{
+			ID:     r.PostFormValue("id"),
+			Reason: reasonOr(r.PostFormValue("reason"), "closed from the board"),
+			Actor:  s.actor,
+		})
+		return "", err
+	})
+}
+
+func (s *Server) doDrop(w http.ResponseWriter, r *http.Request) {
+	s.mutate(w, r, func(st *store.Store) (string, error) {
+		_, err := st.DropItem(r.Context(), store.DropItemInput{
+			ID:     r.PostFormValue("id"),
+			Reason: reasonOr(r.PostFormValue("reason"), "dropped from the board"),
+			Actor:  s.actor,
+		})
+		return "", err
+	})
+}
+
+// reasonOr supplies a default reason. close and drop both require one,
+// deliberately -- the store will not record work as finished or abandoned
+// without saying why -- and a board that refused the action for want of a
+// sentence would just teach people to type "done".
+func reasonOr(given, fallback string) string {
+	if strings.TrimSpace(given) == "" {
+		return fallback
+	}
+	return given
+}
+
+func (s *Server) doAdd(w http.ResponseWriter, r *http.Request) {
+	s.mutate(w, r, func(st *store.Store) (string, error) {
+		in := store.AddItemInput{
+			Title:      strings.TrimSpace(r.PostFormValue("title")),
+			Type:       r.PostFormValue("type"),
+			Why:        r.PostFormValue("why"),
+			Body:       r.PostFormValue("body"),
+			Acceptance: r.PostFormValue("acceptance"),
+			Paths:      r.PostFormValue("paths"),
+			ParentID:   r.PostFormValue("parent_id"),
+			Actor:      s.actor,
+		}
+		// "park it" files a raw note instead of a ticket -- the same
+		// distinction `capture` makes on the CLI, offered as a checkbox
+		// because it is the one choice a person actually makes at filing
+		// time: is this workable, or is it something I noticed.
+		if r.PostFormValue("park") != "" {
+			in.Stage = model.StageRaw
+		}
+		v, c, e := scoreFields(r)
+		in.Value, in.Confidence, in.Effort = v, c, e
+
+		item, err := st.AddItem(r.Context(), in)
+		if err != nil {
+			return "", err
+		}
+		return "/item/" + item.ID, nil
+	})
+}
+
+func (s *Server) doUpdate(w http.ResponseWriter, r *http.Request) {
+	s.mutate(w, r, func(st *store.Store) (string, error) {
+		id := r.PostFormValue("id")
+		in := store.UpdateItemInput{ID: id, Actor: s.actor}
+
+		// Only fields the form actually submitted are changed. A form that
+		// posted every field would silently blank whatever it did not
+		// render, which is how an edit page quietly destroys a body.
+		for _, f := range []struct {
+			name string
+			dest **string
+		}{
+			{"title", &in.Title}, {"why", &in.Why}, {"body", &in.Body},
+			{"acceptance", &in.Acceptance}, {"paths", &in.Paths},
+			{"type", &in.Type}, {"assignee", &in.Assignee}, {"repo", &in.Repo},
+		} {
+			if r.PostForm.Has(f.name) {
+				v := r.PostFormValue(f.name)
+				*f.dest = &v
+			}
+		}
+		if v, c, e := scoreFields(r); v != nil {
+			in.Value, in.Confidence, in.Effort = &v, &c, &e
+		}
+		_, err := st.UpdateItem(r.Context(), in)
+		return "/item/" + id, err
+	})
+}
+
+// doPromote moves a raw item into the queue. It is its own action rather
+// than a stage field on the edit form because it is a decision, not an
+// attribute: a backlog item becomes workable when someone has refined it
+// into something whose title stands alone.
+func (s *Server) doPromote(w http.ResponseWriter, r *http.Request) {
+	s.mutate(w, r, func(st *store.Store) (string, error) {
+		id := r.PostFormValue("id")
+		stage := string(model.StageTicket)
+		_, err := st.UpdateItem(r.Context(), store.UpdateItemInput{
+			ID: id, Actor: s.actor, Stage: &stage,
+		})
+		return "/item/" + id, err
+	})
+}
+
+// scoreFields reads value/confidence/effort. All three or none: a partial
+// score is not a score, and rounce treats an unscored item as 0 that sorts
+// last rather than as something to guess at.
+func scoreFields(r *http.Request) (*int, *int, *int) {
+	v, okV := intField(r, "value")
+	c, okC := intField(r, "confidence")
+	e, okE := intField(r, "effort")
+	if !okV || !okC || !okE {
+		return nil, nil, nil
+	}
+	return v, c, e
+}
+
+func intField(r *http.Request, name string) (*int, bool) {
+	raw := strings.TrimSpace(r.PostFormValue(name))
+	if raw == "" {
+		return nil, false
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil {
+		return nil, false
+	}
+	return &n, true
+}
+
+// hostOnly strips the port, for the Interlock actions below which take a
+// session id rather than an address.
+func hostOnly(hostport string) string {
+	host, _, err := net.SplitHostPort(hostport)
+	if err != nil {
+		return hostport
+	}
+	return host
+}
+
+// doRelease releases one session's file holds, through Interlock.
+//
+// It shells out rather than reaching into Interlock's state, for the same
+// reason internal/interlock reads status over a CLI contract: rounce must
+// keep building and working with Interlock absent, and a Go import would
+// end that. The command is Interlock's own documented one, confirmation
+// argument and all -- rounce does not get to invent a gentler version of
+// another tool's guard rail.
+func (s *Server) doRelease(w http.ResponseWriter, r *http.Request) {
+	if err := s.checkOrigin(r); err != nil {
+		http.Error(w, "refused: "+err.Error(), http.StatusForbidden)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "refused: unreadable form", http.StatusBadRequest)
+		return
+	}
+	if r.PostFormValue(csrfField) != s.csrf {
+		http.Error(w, "refused: this form is from a different server or an older one. Reload the page.", http.StatusForbidden)
+		return
+	}
+
+	session := r.PostFormValue("session")
+	if err := interlockRelease(r.Context(), session); err != nil {
+		http.Redirect(w, r, redirectWithFlash(r, "/who", err.Error()), http.StatusSeeOther)
+		return
+	}
+	http.Redirect(w, r, "/who", http.StatusSeeOther)
+}

@@ -1,0 +1,112 @@
+- generic [ref=f13e2]:
+  - banner [ref=f13e3]:
+    - generic [ref=f13e4]: Interlock
+    - generic [ref=f13e5]: /private/tmp/acme-api
+    - generic [ref=f13e6]: 00:01:04
+  - main [ref=f13e7]:
+    - generic [ref=f13e8]:
+      - generic [ref=f13e9]:
+        - generic [ref=f13e10]: "2"
+        - generic [ref=f13e11]: Sessions
+      - generic [ref=f13e12]:
+        - generic [ref=f13e13]: "0"
+        - generic [ref=f13e14]: Runs
+      - generic [ref=f13e15]:
+        - generic [ref=f13e16]: "0"
+        - generic [ref=f13e17]: Files held
+      - generic [ref=f13e18]:
+        - generic [ref=f13e19]: "0"
+        - generic [ref=f13e20]: Handoffs
+      - generic [ref=f13e21]:
+        - generic [ref=f13e22]: "0"
+        - generic [ref=f13e23]: Collisions stopped
+    - heading "Runs" [level=2] [ref=f13e24]
+    - group [ref=f13e26]:
+      - generic "Start an agent" [ref=f13e27] [cursor=pointer]
+      - option "codex" [selected]
+      - option "claude"
+    - paragraph [ref=f13e28]: No agents started from here.
+    - heading [level=2] [ref=f13e29]:
+      - text: Next
+      - emphasis [ref=f13e30]: from rounce, already filtered against the files held below
+    - table [ref=f13e32]:
+      - rowgroup [ref=f13e33]:
+        - row [ref=f13e34]:
+          - columnheader "Score" [ref=f13e35]
+          - columnheader "Item" [ref=f13e36]
+          - columnheader "Touches" [ref=f13e37]
+        - row [ref=f13e38]:
+          - cell "28" [ref=f13e39]
+          - cell "Expire refresh tokens after 30 days rnc-18da17 · task" [ref=f13e40]:
+            - text: Expire refresh tokens after 30 days
+            - generic [ref=f13e41]: rnc-18da17 · task
+          - cell "internal/auth/token.go" [ref=f13e42]
+        - row [ref=f13e43]:
+          - cell "26" [ref=f13e44]
+          - cell "Fail startup with a readable error rnc-8fab33 · task" [ref=f13e45]:
+            - text: Fail startup with a readable error
+            - generic [ref=f13e46]: rnc-8fab33 · task
+          - cell "cmd/server/main.go" [ref=f13e47]
+        - row [ref=f13e48]:
+          - cell "23" [ref=f13e49]
+          - cell "Document the pagination cursor rnc-d15cac · task" [ref=f13e50]:
+            - text: Document the pagination cursor
+            - generic [ref=f13e51]: rnc-d15cac · task
+          - cell "docs/api.md" [ref=f13e52]
+        - row [ref=f13e53]:
+          - cell "18" [ref=f13e54]
+          - cell "Drop the unused session mirror rnc-190dc6 · task" [ref=f13e55]:
+            - text: Drop the unused session mirror
+            - generic [ref=f13e56]: rnc-190dc6 · task
+          - cell "internal/auth/session.go" [ref=f13e57]
+    - heading "Agents" [level=2] [ref=f13e58]
+    - table [ref=f13e60]:
+      - rowgroup [ref=f13e61]:
+        - row [ref=f13e62]:
+          - columnheader "State" [ref=f13e63]
+          - columnheader "Agent" [ref=f13e64]
+          - columnheader "Recent area" [ref=f13e65]
+          - columnheader "Holds" [ref=f13e66]
+          - columnheader "Last seen" [ref=f13e67]
+          - columnheader "Controls" [ref=f13e68]
+        - row [ref=f13e69]:
+          - cell "quiet observed" [ref=f13e70]:
+            - generic [ref=f13e71]: quiet
+            - generic [ref=f13e72]: observed
+          - cell "codex codex-2b" [ref=f13e73]:
+            - text: codex
+            - generic [ref=f13e74]: codex-2b
+          - cell "nothing yet" [ref=f13e75]
+          - cell "0" [ref=f13e76]
+          - cell "2m" [ref=f13e77]
+          - cell [ref=f13e78]:
+            - group [ref=f13e80]:
+              - generic "Request handoff" [ref=f13e81] [cursor=pointer]
+              - option "Agent" [selected]
+              - option "Team"
+        - row [ref=f13e82]:
+          - cell "quiet observed" [ref=f13e83]:
+            - generic [ref=f13e84]: quiet
+            - generic [ref=f13e85]: observed
+          - cell "claude claude-7" [ref=f13e86]:
+            - text: claude
+            - generic [ref=f13e87]: claude-7
+          - cell "nothing yet" [ref=f13e88]
+          - cell "0" [ref=f13e89]
+          - cell "2m" [ref=f13e90]
+          - cell [ref=f13e91]:
+            - group [ref=f13e93]:
+              - generic "Request handoff" [ref=f13e94] [cursor=pointer]
+              - option "Agent" [selected]
+              - option "Team"
+    - heading "Files held" [level=2] [ref=f13e95]
+    - paragraph [ref=f13e96]: Every file is clear.
+    - heading "Handoff requests" [level=2] [ref=f13e97]
+    - paragraph [ref=f13e98]: No handoff requests.
+    - heading "Installation" [level=2] [ref=f13e99]
+    - generic [ref=f13e100]:
+      - button "Check" [ref=f13e102] [cursor=pointer]
+      - button "Verify hooks" [ref=f13e104] [cursor=pointer]
+      - button "Repair" [ref=f13e106] [cursor=pointer]
+    - heading "Activity" [level=2] [ref=f13e107]
+    - paragraph [ref=f13e108]: No coordination activity recorded.

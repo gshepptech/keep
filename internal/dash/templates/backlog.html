@@ -1,21 +1,27 @@
-{{/* backlog.html -- the raw backlog view (DASH-04). Data: []backlogRow
-     (render.go), already grouped-then-sorted by store.Backlog; a group
-     header row is emitted whenever a row's NewGroup is true. This template
-     does not sort or re-group -- it only reads the boundary render.go
-     already detected. */}}
-{{define "backlog"}}{{template "head" "backlog"}}
-<h1>backlog</h1>
+{{/* backlog.html -- what has been noticed but is not workable yet.
+     Data: []backlogRow, already grouped-then-sorted by store.Backlog; a
+     group header is emitted whenever a row's NewGroup is true. This
+     template does not sort or re-group -- it only reads the boundary
+     render.go already detected. */}}
+{{define "backlog"}}{{template "head" (titled . "Backlog")}}
+{{$p := .}}{{with .Data}}
+<h1>Parked</h1>
+<p>Things worth remembering that are not ready to be worked on. Promote one
+when its title stands on its own and someone could pick it up cold.</p>
+
 <table class="backlog">
-<thead><tr><th>id</th><th>score</th><th>type</th><th>title</th></tr></thead>
+<thead><tr><th>Item</th><th>Noticed</th>{{if $p.Writable}}<th class="right">Act</th>{{end}}</tr></thead>
 <tbody>
-{{range .}}{{if .NewGroup}}<tr class="group"><th colspan="4">{{.Type}}</th></tr>
+{{range .}}{{if .NewGroup}}<tr class="group"><th colspan="3">{{.Type}}</th></tr>
 {{end}}<tr>
-<td><a href="/item/{{.ID}}">{{.ID}}</a></td>
-<td>{{.Score}}</td>
-<td>{{.Type}}</td>
-<td>{{.Title}}</td>
+<td><a class="title" href="/item/{{.ID}}">{{.Title}}</a><div class="sub">{{.ID}}</div></td>
+<td class="faint">{{ago .CreatedAt}}</td>
+{{if $p.Writable}}<td class="right"><div class="acts">
+  {{template "action" (act $p "promote" .ID "Promote" "/backlog" false)}}
+  {{template "action" (act $p "drop" .ID "Drop" "/backlog" true)}}
+</div></td>{{end}}
 </tr>
-{{else}}<tr><td colspan="4">the backlog is empty</td></tr>
+{{else}}<tr><td colspan="3" class="faint">Nothing parked. Anything an agent notices but should not act on lands here.</td></tr>
 {{end}}</tbody>
 </table>
-{{template "foot"}}{{end}}
+{{end}}{{template "foot"}}{{end}}

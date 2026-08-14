@@ -1,0 +1,82 @@
+- generic [active] [ref=f1e1]:
+  - navigation [ref=f1e2]:
+    - link "queue" [ref=f1e3] [cursor=pointer]:
+      - /url: /
+    - link "backlog" [ref=f1e4] [cursor=pointer]:
+      - /url: /backlog
+    - link "all repositories" [ref=f1e5] [cursor=pointer]:
+      - /url: /all
+    - link "who is working" [ref=f1e6] [cursor=pointer]:
+      - /url: /who
+  - heading "who is working" [level=1] [ref=f1e7]
+  - heading "held back" [level=2] [ref=f1e8]
+  - paragraph [ref=f1e9]: These are workable except that someone is editing a file they touch. They are absent from the queue for exactly as long as the lease lasts.
+  - table [ref=f1e10]:
+    - rowgroup [ref=f1e11]:
+      - row [ref=f1e12]:
+        - columnheader "id" [ref=f1e13]
+        - columnheader "score" [ref=f1e14]
+        - columnheader "title" [ref=f1e15]
+        - columnheader "path" [ref=f1e16]
+        - columnheader "held by" [ref=f1e17]
+        - columnheader "until" [ref=f1e18]
+    - rowgroup [ref=f1e19]:
+      - row [ref=f1e20]:
+        - cell [ref=f1e21]:
+          - link "rnc-07f322" [ref=f1e22] [cursor=pointer]:
+            - /url: /item/rnc-07f322
+        - cell "28" [ref=f1e23]
+        - cell "Expire refresh tokens after 30 days" [ref=f1e24]
+        - cell "internal/auth/token.go" [ref=f1e25]
+        - cell "claude" [ref=f1e26]
+        - cell "2026-08-14T03:47:06Z" [ref=f1e27]
+      - row [ref=f1e28]:
+        - cell [ref=f1e29]:
+          - link "rnc-9becfb" [ref=f1e30] [cursor=pointer]:
+            - /url: /item/rnc-9becfb
+        - cell "26" [ref=f1e31]
+        - cell "Fail startup with a readable error" [ref=f1e32]
+        - cell "cmd/server/main.go" [ref=f1e33]
+        - cell "codex" [ref=f1e34]
+        - cell "2026-08-14T03:47:06Z" [ref=f1e35]
+  - heading "files held" [level=2] [ref=f1e36]
+  - table [ref=f1e37]:
+    - rowgroup [ref=f1e38]:
+      - row [ref=f1e39]:
+        - columnheader "path" [ref=f1e40]
+        - columnheader "agent" [ref=f1e41]
+        - columnheader "session" [ref=f1e42]
+        - columnheader "kind" [ref=f1e43]
+        - columnheader "until" [ref=f1e44]
+    - rowgroup [ref=f1e45]:
+      - row [ref=f1e46]:
+        - cell "cmd/server/main.go" [ref=f1e47]
+        - cell "codex" [ref=f1e48]
+        - cell "codex-2b91" [ref=f1e49]
+        - cell "implicit" [ref=f1e50]
+        - cell "2026-08-14T03:47:06Z" [ref=f1e51]
+      - row [ref=f1e52]:
+        - cell "internal/auth/token.go" [ref=f1e53]
+        - cell "claude" [ref=f1e54]
+        - cell "claude-7f3a" [ref=f1e55]
+        - cell "implicit" [ref=f1e56]
+        - cell "2026-08-14T03:47:06Z" [ref=f1e57]
+  - heading "sessions" [level=2] [ref=f1e58]
+  - table [ref=f1e59]:
+    - rowgroup [ref=f1e60]:
+      - row [ref=f1e61]:
+        - columnheader "id" [ref=f1e62]
+        - columnheader "agent" [ref=f1e63]
+        - columnheader "state" [ref=f1e64]
+        - columnheader "last seen" [ref=f1e65]
+    - rowgroup [ref=f1e66]:
+      - row [ref=f1e67]:
+        - cell "codex-2b91" [ref=f1e68]
+        - cell "codex" [ref=f1e69]
+        - cell "live" [ref=f1e70]
+        - cell "2026-08-14T03:45:36Z" [ref=f1e71]
+      - row [ref=f1e72]:
+        - cell "claude-7f3a" [ref=f1e73]
+        - cell "claude" [ref=f1e74]
+        - cell "live" [ref=f1e75]
+        - cell "2026-08-14T03:45:36Z" [ref=f1e76]

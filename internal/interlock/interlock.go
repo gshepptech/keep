@@ -31,6 +31,8 @@ package interlock
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
@@ -220,4 +222,30 @@ func firstHeld(paths []string, held map[string]Lease) (string, Lease, bool) {
 		}
 	}
 	return "", Lease{}, false
+}
+
+// Release releases one session's file holds by running Interlock's own
+// command, confirmation argument included.
+//
+// rounce does not reach into Interlock's lease files to do this. Releasing
+// someone else's hold is a guard rail Interlock built deliberately -- it
+// takes the session id twice on purpose -- and a second implementation here
+// would be rounce deciding that guard rail is optional.
+func Release(ctx context.Context, session string) error {
+	bin, ok := binary()
+	if !ok {
+		return errors.New("interlock is not installed here, so there are no holds to release")
+	}
+	if strings.TrimSpace(session) == "" {
+		return errors.New("no session named")
+	}
+	ctx, cancel := context.WithTimeout(ctx, fetchTimeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, bin, "lease", "release", session, "--confirm", session)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("interlock lease release: %s", strings.TrimSpace(string(out)))
+	}
+	return nil
 }

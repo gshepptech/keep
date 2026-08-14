@@ -125,7 +125,7 @@ func TestAllReportsUnreadableRepositoryAsARowNotAPage(t *testing.T) {
 	if !strings.Contains(body, "alpha high") {
 		t.Errorf("alpha's rows are missing after beta broke:\n%s", body)
 	}
-	if !strings.Contains(body, "unreadable") {
+	if !strings.Contains(body, "Unreadable") {
 		t.Errorf("/all does not report beta as unreadable:\n%s", body)
 	}
 	if strings.Contains(body, "beta middle") {
@@ -134,7 +134,7 @@ func TestAllReportsUnreadableRepositoryAsARowNotAPage(t *testing.T) {
 
 	// The count is over registrations, not over readable stores: a heading
 	// that quietly shrank would hide the failure it is meant to surface.
-	if !strings.Contains(body, "2 repositories") {
+	if !strings.Contains(body, "2 registered repositories") {
 		t.Errorf("/all does not still count both registered repositories:\n%s", body)
 	}
 
@@ -155,7 +155,7 @@ func TestAllWithNoRegistryIsAnEmptyPageNotAnError(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /all with no registry: status = %d, want 200", rec.Code)
 	}
-	if body := rec.Body.String(); !strings.Contains(body, "nothing is workable") {
+	if body := rec.Body.String(); !strings.Contains(body, "Nothing is workable") {
 		t.Errorf("/all with no registry does not render its empty state:\n%s", body)
 	}
 }
@@ -261,7 +261,7 @@ func TestNoExternalReferencesInCrossRepoView(t *testing.T) {
 	if strings.Count(body, hostileHTTP) < 2 {
 		t.Errorf("the bare-URL title is not rendered, so the probe with teeth is vacuous:\n%s", body)
 	}
-	if !strings.Contains(body, "unreadable") {
+	if !strings.Contains(body, "Unreadable") {
 		t.Fatal("/all did not render the error table, so the error-string half of this scan is vacuous")
 	}
 
@@ -282,33 +282,34 @@ func TestInterlockPageSaysSoWhenInterlockIsAbsent(t *testing.T) {
 	t.Setenv(interlock.EnvBinary, "off")
 	s, _ := newHandlerFixture(t)
 
-	rec := get(t, s.Handler(), "/who")
+	rec := get(t, s.Handler(), "/")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("GET /who: status = %d, want 200", rec.Code)
+		t.Fatalf("GET /: status = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
-	if !strings.Contains(body, "not answering here") {
-		t.Errorf("/who does not say Interlock is absent:\n%s", body)
+	if !strings.Contains(body, "Interlock is not running here") {
+		t.Errorf("the board does not say Interlock is absent:\n%s", body)
 	}
 	// It must not imply the queue is filtered when it is not.
 	if !strings.Contains(body, "unfiltered") {
-		t.Errorf("/who does not say the queue is unfiltered without Interlock:\n%s", body)
+		t.Errorf("the board does not say the queue is unfiltered without Interlock:\n%s", body)
 	}
 }
 
-// TestInterlockNavLinkIsOnEveryView: the page is only reachable if every
-// view offers it, and asserting per view catches one that stops going
-// through the shared head block.
-func TestInterlockNavLinkIsOnEveryView(t *testing.T) {
-	s, ids := newHandlerFixture(t)
+// TestBoardIsOnePage is the shape the redesign committed to: the queue and
+// the agents holding it up are on ONE page. There is no separate view to
+// switch to, which is the whole reason the old /who is gone.
+func TestBoardIsOnePage(t *testing.T) {
+	t.Setenv(interlock.EnvBinary, "off")
+	s, _ := newHandlerFixture(t)
 
-	for _, path := range []string{"/", "/backlog", "/all", "/item/" + ids.ready, "/tree/" + ids.epic} {
-		rec := get(t, s.Handler(), path)
-		if rec.Code != http.StatusOK {
-			t.Fatalf("GET %s: status = %d", path, rec.Code)
-		}
-		if !strings.Contains(rec.Body.String(), `href="/who"`) {
-			t.Errorf("%s does not link to the Interlock view", path)
+	if rec := get(t, s.Handler(), "/who"); rec.Code != http.StatusNotFound {
+		t.Errorf("GET /who returned %d; the separate Interlock view was folded into the board", rec.Code)
+	}
+	body := get(t, s.Handler(), "/").Body.String()
+	for _, want := range []string{"Workable now", "Agents"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the board is missing its %q section:\n%s", want, body)
 		}
 	}
 }
@@ -355,8 +356,18 @@ func TestQueueAndInterlockViewAgree(t *testing.T) {
 	}
 	t.Cleanup(func() { s.Close() })
 
-	queue := get(t, s.Handler(), "/").Body.String()
-	who := get(t, s.Handler(), "/who").Body.String()
+	body := get(t, s.Handler(), "/").Body.String()
+
+	// One page now, so the two claims have to be read out of two sections
+	// of it. Splitting on the heading is what keeps "absent from the queue"
+	// meaningful: without it, the held item appearing in the held-back
+	// table would satisfy a whole-body Contains and the test would pass
+	// while the queue was wrong.
+	cut := strings.Index(body, "<h2>Held back")
+	if cut < 0 {
+		t.Fatalf("the board has no held-back section:\n%s", body)
+	}
+	queue, who := body[:cut], body[cut:]
 
 	if strings.Contains(queue, held.ID) {
 		t.Errorf("the queue shows %s although internal/shared.go is held:\n%s", held.ID, queue)
@@ -368,11 +379,13 @@ func TestQueueAndInterlockViewAgree(t *testing.T) {
 	// The page that exists to explain the omission must name the item the
 	// queue omitted -- that agreement is the whole point.
 	if !strings.Contains(who, held.ID) {
-		t.Errorf("/who does not name %s, which the queue omitted:\n%s", held.ID, who)
+		t.Errorf("the held-back section does not name %s, which the queue omitted:\n%s", held.ID, who)
 	}
-	for _, want := range []string{"internal/shared.go", "claude", "agent-a"} {
+	// The agent and the file, not the session id: the id only appears
+	// inside the release form, which a read-only board does not render.
+	for _, want := range []string{"internal/shared.go", "claude"} {
 		if !strings.Contains(who, want) {
-			t.Errorf("/who does not mention %q:\n%s", want, who)
+			t.Errorf("the held-back section does not mention %q:\n%s", want, who)
 		}
 	}
 }

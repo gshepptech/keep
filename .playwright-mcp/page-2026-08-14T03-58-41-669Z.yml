@@ -1,0 +1,117 @@
+- generic [ref=f10e2]:
+  - banner [ref=f10e3]:
+    - generic [ref=f10e4]: Interlock
+    - generic [ref=f10e5]: /private/tmp/acme-api
+    - generic [ref=f10e6]: 23:58:41
+  - main [ref=f10e7]:
+    - generic [ref=f10e8]:
+      - generic [ref=f10e9]:
+        - generic [ref=f10e10]: "2"
+        - generic [ref=f10e11]: Sessions
+      - generic [ref=f10e12]:
+        - generic [ref=f10e13]: "0"
+        - generic [ref=f10e14]: Runs
+      - generic [ref=f10e15]:
+        - generic [ref=f10e16]: "2"
+        - generic [ref=f10e17]: Files held
+      - generic [ref=f10e18]:
+        - generic [ref=f10e19]: "0"
+        - generic [ref=f10e20]: Handoffs
+      - generic [ref=f10e21]:
+        - generic [ref=f10e22]: "0"
+        - generic [ref=f10e23]: Collisions stopped
+    - heading "Runs" [level=2] [ref=f10e24]
+    - group [ref=f10e26]:
+      - generic "Start an agent" [ref=f10e27] [cursor=pointer]
+      - option "codex" [selected]
+      - option "claude"
+    - paragraph [ref=f10e28]: No agents started from here.
+    - heading [level=2] [ref=f10e29]:
+      - text: Next
+      - emphasis [ref=f10e30]: from rounce, already filtered against the files held below
+    - table [ref=f10e32]:
+      - rowgroup [ref=f10e33]:
+        - row [ref=f10e34]:
+          - columnheader "Score" [ref=f10e35]
+          - columnheader "Item" [ref=f10e36]
+          - columnheader "Touches" [ref=f10e37]
+        - row [ref=f10e38]:
+          - cell "23" [ref=f10e39]
+          - cell "Document the pagination cursor rnc-d15cac · task" [ref=f10e40]:
+            - text: Document the pagination cursor
+            - generic [ref=f10e41]: rnc-d15cac · task
+          - cell "docs/api.md" [ref=f10e42]
+        - row [ref=f10e43]:
+          - cell "18" [ref=f10e44]
+          - cell "Drop the unused session mirror rnc-190dc6 · task" [ref=f10e45]:
+            - text: Drop the unused session mirror
+            - generic [ref=f10e46]: rnc-190dc6 · task
+          - cell "internal/auth/session.go" [ref=f10e47]
+    - heading "Agents" [level=2] [ref=f10e48]
+    - table [ref=f10e50]:
+      - rowgroup [ref=f10e51]:
+        - row [ref=f10e52]:
+          - columnheader "State" [ref=f10e53]
+          - columnheader "Agent" [ref=f10e54]
+          - columnheader "Recent area" [ref=f10e55]
+          - columnheader "Holds" [ref=f10e56]
+          - columnheader "Last seen" [ref=f10e57]
+          - columnheader "Controls" [ref=f10e58]
+        - row [ref=f10e59]:
+          - cell "recent observed" [ref=f10e60]:
+            - generic [ref=f10e61]: recent
+            - generic [ref=f10e62]: observed
+          - cell "codex codex-2b" [ref=f10e63]:
+            - text: codex
+            - generic [ref=f10e64]: codex-2b
+          - cell "nothing yet" [ref=f10e65]
+          - cell "1" [ref=f10e66]
+          - cell "7s" [ref=f10e67]
+          - cell [ref=f10e68]:
+            - generic [ref=f10e69]:
+              - button "Release holds" [ref=f10e71] [cursor=pointer]
+              - group [ref=f10e72]:
+                - generic "Request handoff" [ref=f10e73] [cursor=pointer]
+                - option "Agent" [selected]
+                - option "Team"
+        - row [ref=f10e74]:
+          - cell "recent observed" [ref=f10e75]:
+            - generic [ref=f10e76]: recent
+            - generic [ref=f10e77]: observed
+          - cell "claude claude-7" [ref=f10e78]:
+            - text: claude
+            - generic [ref=f10e79]: claude-7
+          - cell "nothing yet" [ref=f10e80]
+          - cell "1" [ref=f10e81]
+          - cell "7s" [ref=f10e82]
+          - cell [ref=f10e83]:
+            - generic [ref=f10e84]:
+              - button "Release holds" [ref=f10e86] [cursor=pointer]
+              - group [ref=f10e87]:
+                - generic "Request handoff" [ref=f10e88] [cursor=pointer]
+                - option "Agent" [selected]
+                - option "Team"
+    - heading "Files held" [level=2] [ref=f10e89]
+    - table [ref=f10e91]:
+      - rowgroup [ref=f10e92]:
+        - row [ref=f10e93]:
+          - columnheader "File" [ref=f10e94]
+          - columnheader "Held by" [ref=f10e95]
+          - columnheader "Expires" [ref=f10e96]
+        - row [ref=f10e97]:
+          - cell "cmd/server/main.go" [ref=f10e98]
+          - cell "codex codex-2b" [ref=f10e99]
+          - cell "in 1m" [ref=f10e100]
+        - row [ref=f10e101]:
+          - cell "internal/auth/token.go" [ref=f10e102]
+          - cell "claude claude-7" [ref=f10e103]
+          - cell "in 1m" [ref=f10e104]
+    - heading "Handoff requests" [level=2] [ref=f10e105]
+    - paragraph [ref=f10e106]: No handoff requests.
+    - heading "Installation" [level=2] [ref=f10e107]
+    - generic [ref=f10e108]:
+      - button "Check" [ref=f10e110] [cursor=pointer]
+      - button "Verify hooks" [ref=f10e112] [cursor=pointer]
+      - button "Repair" [ref=f10e114] [cursor=pointer]
+    - heading "Activity" [level=2] [ref=f10e115]
+    - paragraph [ref=f10e116]: No coordination activity recorded.

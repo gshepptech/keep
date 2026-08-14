@@ -2,222 +2,420 @@
    block by layout.html. Hand-written, no framework, no reset library, no
    at-rule import, and no CSS resource-fetching function of any kind, not
    even a data URI -- there are no images on this page, and this file is
-   scanned by DASH-05's exit-gate grep, so it must never contain any of the
-   four forbidden shapes itself.
+   scanned by DASH-05's exit-gate check, so it must never contain any of the
+   four forbidden shapes itself. That constraint is the reason there is no
+   web font here: every typeface below is one the machine already has.
 
-   Exactly three semantic colours, defined once below as custom properties,
-   used nowhere in this sheet except the tree/queue "state" cell. Everything
-   else -- status text, type, score -- is carried by weight, alignment, and
-   rule, never colour (docs/design/phase-4.md's "Look" section). Closed and
-   dropped rows are dimmed with opacity, never a fourth colour. */
+   DESIGN NOTE, because "why is this dark and monospaced" is a fair question.
+
+   The subject is a work queue two agents are racing over. Everything on
+   these pages is either an identifier, a path, a score, or a timestamp --
+   data a person scans in columns rather than prose they read in lines. So
+   the interface is monospace-led: it aligns by construction, it makes an id
+   comparable at a glance, and it does not pretend a table is an article.
+
+   Colour is spent in exactly one place. Three semantic states -- workable,
+   claimed, blocked -- carry the only hues on the page, and each appears as a
+   small dot rather than a filled row, because a page that shouts at you in
+   three colours has told you nothing about which one matters. Everything
+   else is greyscale, and hierarchy comes from weight and spacing.
+
+   The score column is the signature. It is the one number the whole product
+   exists to produce, so it is set larger, in tabular figures, and it is the
+   first thing the eye lands on in every row. */
 
 :root {
-  --rnc-bg: #ffffff;
-  --rnc-fg: #14171a;
-  --rnc-muted: #5b6570;
-  --rnc-border: #d5dbe0;
-  --rnc-workable: #1a7f37;
-  --rnc-claimed: #9a6700;
-  --rnc-blocked: #b32428;
+  color-scheme: light dark;
+
+  /* Canvas, panel, and the hairline that separates them. Three greys, not
+     five: more would invite decorative boxes. */
+  --bg: #fbfbfa;
+  --panel: #ffffff;
+  --line: #e6e4e0;
+  --line-soft: #efedea;
+
+  --fg: #16161a;
+  --fg-muted: #6b6b74;
+  --fg-faint: #96969f;
+
+  /* The three states, and nothing else. Values carried forward from the
+     original stylesheet: they were already chosen for contrast on both
+     grounds, and changing them would have meant re-deriving that. */
+  --workable: #1a7f37;
+  --claimed: #9a6700;
+  --blocked: #b32428;
+
+  --accent: #16161a;
+
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
+
+  --radius: 6px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --rnc-bg: #14171a;
-    --rnc-fg: #e6e9ec;
-    --rnc-muted: #9aa4ae;
-    --rnc-border: #343b42;
-    --rnc-workable: #3fb950;
-    --rnc-claimed: #d29922;
-    --rnc-blocked: #f85149;
+    --bg: #0b0c0e;
+    --panel: #111316;
+    --line: #23262b;
+    --line-soft: #1a1d21;
+
+    --fg: #e8eaed;
+    --fg-muted: #8b9198;
+    --fg-faint: #5a6069;
+
+    --workable: #3fb950;
+    --claimed: #d29922;
+    --blocked: #f85149;
+
+    --accent: #e8eaed;
   }
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
-html,
 body {
   margin: 0;
-  padding: 0;
-  background: var(--rnc-bg);
-  color: var(--rnc-fg);
+  padding: 0 24px 64px;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
-body {
-  padding: 1.5rem;
-  font-family: system-ui, -apple-system, sans-serif;
-  font-size: 14px;
-  line-height: 1.45;
-}
-
+/* Navigation is a row of quiet labels with one live item. It sits on the
+   canvas rather than in a bar, so the page starts with content instead of
+   chrome. */
 nav {
-  margin-bottom: 1.5rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--rnc-border);
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 18px 0 22px;
+  border-bottom: 1px solid var(--line);
 }
 
 nav a {
-  margin-right: 1.5rem;
-  color: inherit;
+  color: var(--fg-muted);
   text-decoration: none;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  font-size: 0.72rem;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  padding: 5px 9px;
+  border-radius: var(--radius);
 }
 
-nav a:hover {
-  text-decoration: underline;
+nav a:hover { color: var(--fg); background: var(--line-soft); }
+nav a:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+h1 {
+  max-width: 1180px;
+  margin: 30px auto 4px;
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--fg);
 }
 
-h1,
 h2 {
-  margin: 1.75rem 0 0.5rem 0;
-  color: var(--rnc-muted);
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  max-width: 1180px;
+  margin: 34px auto 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
-  font-size: 0.72rem;
+  color: var(--fg-faint);
 }
 
-h1:first-child,
-h2:first-child {
-  margin-top: 0;
+h2 em {
+  font-style: normal;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--fg-faint);
 }
 
+/* Prose shares the tables' exact width so everything on the page starts on
+   one left edge. A narrower measure would read better in isolation and would
+   centre the block against the tables, which is worse: alignment carries
+   more here than line length, since no paragraph on these pages runs past
+   two sentences. */
+p {
+  max-width: 1180px;
+  margin: 0 auto 14px;
+  color: var(--fg-muted);
+  font-size: 12.5px;
+}
+
+/* One table style. Rows are separated by a hairline and nothing else -- no
+   zebra striping, no borders around cells, no rounded row corners. Density
+   is the point: a queue you have to scroll is a queue you stop reading. */
 table {
   width: 100%;
+  max-width: 1180px;
+  margin: 0 auto 4px;
   border-collapse: collapse;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-variant-numeric: tabular-nums;
-  font-size: 0.85rem;
-}
-
-th,
-td {
-  padding: 0.32rem 0.6rem;
-  border-bottom: 1px solid var(--rnc-border);
-  text-align: left;
-  vertical-align: top;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
 }
 
 thead th {
-  font-family: system-ui, -apple-system, sans-serif;
-  color: var(--rnc-muted);
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  font-size: 0.68rem;
-}
-
-tr.group th {
-  padding-top: 0.9rem;
-  color: var(--rnc-muted);
-  font-family: system-ui, -apple-system, sans-serif;
-  font-weight: 700;
+  text-align: left;
+  padding: 9px 14px;
+  font-size: 10.5px;
+  font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  font-size: 0.68rem;
-  border-bottom: 1px solid var(--rnc-border);
+  color: var(--fg-faint);
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
 }
 
-a {
-  color: inherit;
+td {
+  padding: 9px 14px;
+  border-top: 1px solid var(--line-soft);
+  vertical-align: top;
 }
 
-.state {
-  font-weight: 700;
-}
+tbody tr:first-child td { border-top: none; }
+tbody tr:hover td { background: var(--line-soft); }
 
-.state-workable {
-  color: var(--rnc-workable);
-}
-
-.state-claimed {
-  color: var(--rnc-claimed);
-}
-
-.state-blocked {
-  color: var(--rnc-blocked);
-}
-
-.dimmed {
-  opacity: 0.45;
-}
-
-/* Tree-view indentation: a capped set of depth-N classes, never an inline
-   style="padding-left:..." -- inline style is one of the surfaces DASH-05's
-   scan inspects, and keeping it out of rendered output entirely is cheaper
-   than proving each generated value safe. depthClass (render.go) caps at
-   depth-12; deeper rows share depth-12's indent rather than growing an
-   unbounded rule set. */
-.depth-0 {
-  padding-left: 0;
-}
-.depth-1 {
-  padding-left: 1.25rem;
-}
-.depth-2 {
-  padding-left: 2.5rem;
-}
-.depth-3 {
-  padding-left: 3.75rem;
-}
-.depth-4 {
-  padding-left: 5rem;
-}
-.depth-5 {
-  padding-left: 6.25rem;
-}
-.depth-6 {
-  padding-left: 7.5rem;
-}
-.depth-7 {
-  padding-left: 8.75rem;
-}
-.depth-8 {
-  padding-left: 10rem;
-}
-.depth-9 {
-  padding-left: 11.25rem;
-}
-.depth-10 {
-  padding-left: 12.5rem;
-}
-.depth-11 {
-  padding-left: 13.75rem;
-}
-.depth-12 {
-  padding-left: 15rem;
-}
-
-table.fields td,
-table.fields th {
-  border-bottom: none;
-  padding: 0.18rem 0.6rem;
-}
-
-table.fields th {
-  width: 8rem;
-  color: var(--rnc-muted);
-  font-family: system-ui, -apple-system, sans-serif;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+tr.group th {
+  text-align: left;
+  padding: 14px 14px 6px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  font-size: 0.68rem;
+  color: var(--fg-faint);
+  border-top: 1px solid var(--line-soft);
 }
+
+a { color: var(--fg); text-underline-offset: 3px; text-decoration-color: var(--fg-faint); }
+a:hover { text-decoration-color: var(--fg); }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+
+/* The score. Tabular figures so columns of two- and three-digit numbers line
+   up on the same stem, and a size step above everything else because it is
+   the answer the page exists to give. */
+.queue td:nth-child(2),
+td.score {
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fg);
+  white-space: nowrap;
+}
+
+/* State is a dot and a word. The dot carries the colour so the word stays
+   readable at any contrast setting, and colour is never the only signal. */
+.state {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--fg-muted);
+  white-space: nowrap;
+}
+
+.state::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+.state-workable { color: var(--workable); }
+.state-claimed { color: var(--claimed); }
+.state-blocked { color: var(--blocked); }
+
+.dimmed { opacity: 0.45; }
+
+/* Tree depth. A left rule per level rather than an indent alone, so a deep
+   child still reads as belonging to something. */
+.depth-0 { padding-left: 14px; }
+.depth-1 { padding-left: 30px; }
+.depth-2 { padding-left: 46px; }
+.depth-3 { padding-left: 62px; }
+.depth-4 { padding-left: 78px; }
+.depth-5 { padding-left: 94px; }
+.depth-6 { padding-left: 110px; }
+.depth-7 { padding-left: 126px; }
+.depth-8 { padding-left: 142px; }
+.depth-9 { padding-left: 158px; }
+.depth-10 { padding-left: 174px; }
+.depth-11 { padding-left: 190px; }
+.depth-12 { padding-left: 206px; }
+
+table.fields { max-width: 1180px; }
+table.fields th {
+  text-align: left;
+  padding: 9px 14px;
+  font-weight: 500;
+  color: var(--fg-faint);
+  white-space: nowrap;
+  border-top: 1px solid var(--line-soft);
+  width: 1%;
+}
+table.fields tr:first-child th { border-top: none; }
 
 pre {
-  margin: 0;
-  padding: 0.9rem;
-  border: 1px solid var(--rnc-border);
-  border-radius: 2px;
-  background: transparent;
-  color: var(--rnc-fg);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.85rem;
-  white-space: pre-wrap;
-  word-break: break-word;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 14px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--fg);
+}
+
+@media (max-width: 720px) {
+  body { padding: 0 14px 48px; font-size: 12.5px; }
+  td, thead th { padding: 8px 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+
+/* ---------------------------------------------------------------------
+   The shell, and the controls the board grew when it stopped being
+   read-only. Everything below follows the same rule as everything above:
+   one accent, hairline borders, and density over decoration.
+   --------------------------------------------------------------------- */
+
+.shell { max-width: 1180px; margin: 0 auto; }
+
+/* One masthead line: name, sections, state. The wordmark is set in the same
+   face as the data because this is a tool, not a brand -- a logotype here
+   would be the only thing on the page not carrying information. */
+.masthead {
+  display: flex; align-items: baseline; gap: 22px;
+  padding: 20px 0 16px; border-bottom: 1px solid var(--line);
+}
+.masthead nav { border: none; padding: 0; margin: 0; flex: 1; }
+.wordmark {
+  font-weight: 600; letter-spacing: 0.02em; color: var(--fg);
+  text-decoration: none; font-size: 13px;
+}
+nav a.here { color: var(--fg); background: var(--line-soft); }
+.chip {
+  font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--fg-faint); border: 1px solid var(--line);
+  padding: 3px 8px; border-radius: 999px;
+}
+
+/* The readout. Figures first, labels under -- the number is what a person
+   came for and the label only says which number it is. */
+.readout {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 1px; background: var(--line); border: 1px solid var(--line);
+  border-radius: var(--radius); overflow: hidden; margin: 24px 0 8px;
+}
+.readout > div { background: var(--panel); padding: 14px 16px; }
+.readout b {
+  display: block; font-size: 24px; font-weight: 500;
+  line-height: 1.1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
+}
+.readout span {
+  display: block; margin-top: 5px; font-size: 10px; font-weight: 600;
+  letter-spacing: 0.09em; text-transform: uppercase; color: var(--fg-faint);
+}
+
+h1 { margin: 26px auto 2px; }
+.sub { color: var(--fg-faint); font-size: 11.5px; margin-top: 2px; }
+.faint { color: var(--fg-faint); }
+.path { color: var(--fg-muted); font-size: 12px; }
+.right { text-align: right; }
+a.title, .title { color: var(--fg); font-weight: 500; text-decoration: none; }
+a.title:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+.problem {
+  border: 1px solid var(--blocked); border-left-width: 2px;
+  background: var(--panel); color: var(--fg);
+  padding: 11px 14px; border-radius: var(--radius); margin: 16px auto 0;
+}
+.empty {
+  border: 1px solid var(--line); background: var(--panel);
+  padding: 14px; border-radius: var(--radius); color: var(--fg-muted);
+}
+
+/* Actions sit at the end of their row and stay quiet until hovered. A row
+   of loud buttons would compete with the score for the eye, and the score
+   is what ranks the work. */
+.acts { display: flex; gap: 6px; justify-content: flex-end; }
+.acts.wide { justify-content: flex-start; margin: 14px 0 4px; }
+.acts form { margin: 0; }
+button {
+  font: inherit; font-size: 11.5px; cursor: pointer;
+  color: var(--fg-muted); background: transparent;
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 4px 10px;
+}
+button:hover { color: var(--fg); border-color: var(--fg-faint); background: var(--line-soft); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button.danger:hover { color: var(--blocked); border-color: var(--blocked); }
+
+/* The composer is closed by default. Filing work is deliberate, and a form
+   sitting open above the queue would put the empty state of a text box
+   where the answer to "what should I do" belongs. */
+.composer {
+  margin: 18px 0 6px; border: 1px solid var(--line);
+  border-radius: var(--radius); background: var(--panel);
+}
+.composer > summary {
+  cursor: pointer; padding: 11px 14px; color: var(--fg-muted);
+  font-size: 12px; list-style: none;
+}
+.composer > summary::-webkit-details-marker { display: none; }
+.composer > summary::before { content: "+ "; color: var(--fg-faint); }
+.composer[open] > summary { border-bottom: 1px solid var(--line); color: var(--fg); }
+.composer[open] > summary::before { content: "\2212 "; }
+.composer:hover > summary { color: var(--fg); }
+
+.grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px 14px; padding: 16px 14px;
+}
+.grid .wide { grid-column: 1 / -1; }
+.grid label {
+  display: flex; flex-direction: column; gap: 5px;
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--fg-faint);
+}
+.grid label.inline {
+  flex-direction: row; align-items: center; gap: 8px;
+  text-transform: none; letter-spacing: 0.02em; font-size: 12px;
+  font-weight: 400; color: var(--fg-muted);
+}
+.grid .row { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+input, select, textarea {
+  font: inherit; font-size: 12.5px; color: var(--fg);
+  background: var(--bg); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 8px 10px; width: 100%;
+}
+input[type="checkbox"] { width: auto; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--fg-faint); }
+input::placeholder, textarea::placeholder { color: var(--fg-faint); }
+textarea { resize: vertical; line-height: 1.5; }
+.grid button { padding: 7px 16px; font-size: 12px; color: var(--fg); border-color: var(--fg-faint); }
+
+.state-idle { color: var(--fg-faint); }
+
+@media (max-width: 720px) {
+  .masthead { flex-wrap: wrap; gap: 10px; }
+  .acts { justify-content: flex-start; }
 }
