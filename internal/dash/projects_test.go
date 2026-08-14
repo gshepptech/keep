@@ -275,3 +275,52 @@ func TestActionRedirectsStayInTheProject(t *testing.T) {
 		t.Errorf("redirected to %q, want somewhere under /p/there/", loc)
 	}
 }
+
+// TestAgentControlsFollowTheProject.
+//
+// The launch control used to be gated on whether the interlock binary
+// answered from the *server's* directory, which is two wrong questions at
+// once: it asked about the wrong repository, and "is Interlock installed"
+// is not "is Interlock set up here". The binary answers status from any
+// directory, including one it has never been initialised in -- so the
+// button appeared on projects where pressing it would do nothing.
+func TestAgentControlsFollowTheProject(t *testing.T) {
+	s, home := twoProjects(t)
+
+	// Neither project is set up, so neither offers to launch.
+	for _, path := range []string{"/", "/p/there"} {
+		body := get(t, s.Handler(), path).Body.String()
+		if strings.Contains(body, `action="/do/launch"`) {
+			t.Errorf("%s offers to start an agent with no coordination set up:\n%s", path, body)
+		}
+		if !strings.Contains(body, "Agent coordination is off") {
+			t.Errorf("%s does not say coordination is off", path)
+		}
+	}
+
+	// Mark one of them as set up the way `interlock init` does.
+	if err := os.MkdirAll(filepath.Join(home, "there", ".interlock"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	t.Setenv(interlock.EnvBinary, fakeInterlockBin(t))
+
+	if body := get(t, s.Handler(), "/p/there").Body.String(); !strings.Contains(body, `action="/do/launch"`) {
+		t.Errorf("/p/there does not offer to start an agent although it is set up:\n%s", body)
+	}
+	if body := get(t, s.Handler(), "/").Body.String(); strings.Contains(body, `action="/do/launch"`) {
+		t.Error("the other project offers to start an agent although only /p/there is set up")
+	}
+}
+
+// fakeInterlockBin is an interlock that exists and answers status, which is
+// all Watches needs of it beyond the state directory.
+func fakeInterlockBin(t *testing.T) string {
+	t.Helper()
+	p := filepath.Join(t.TempDir(), "interlock")
+	script := "#!/bin/sh\ncat <<'EOF_JSON'\n" +
+		`{"version":1,"repo":"/r","sessions":[],"leases":[],"errors":[]}` + "\nEOF_JSON\n"
+	if err := os.WriteFile(p, []byte(script), 0o755); err != nil {
+		t.Fatalf("write stub: %v", err)
+	}
+	return p
+}

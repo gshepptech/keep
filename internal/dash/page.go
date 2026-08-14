@@ -2,7 +2,6 @@ package dash
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"net/http"
 	"path/filepath"
@@ -63,14 +62,6 @@ type navCounts struct {
 	Ready, Backlog int
 }
 
-// interlockPresent reports whether an agent can be launched at all. The
-// launch controls are not rendered without it: a button that is going to
-// say "interlock is not installed" is worse than no button.
-func interlockPresent() bool {
-	_, ok := interlock.Fetch(context.Background(), "")
-	return ok
-}
-
 // newPage builds the wrapper for one request.
 func (s *Server) newPage(r *http.Request, nav string, data any) page {
 	return s.pageFor(r, nav, s.activeName(), data)
@@ -90,7 +81,7 @@ func (s *Server) pageFor(r *http.Request, nav, project string, data any) page {
 		Project:      project,
 		ProjectDir:   repoDirOf(s.pathFor(project)),
 		Prefix:       s.prefixFor(project),
-		HasInterlock: interlockPresent(),
+		HasInterlock: interlock.Watches(repoDirOf(s.pathFor(project))),
 		Data:         data,
 	}
 	// Best effort: a sidebar count that cannot be read is omitted, never an

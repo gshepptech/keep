@@ -152,9 +152,17 @@
   {{if not $d.Interlock}}
   <div class="blank">
     {{template "icon-agent"}}
-    <h3>Nothing is watching the files</h3>
-    <p>The queue above is unfiltered, so two agents can be handed the same work. Interlock adds the file locks that prevent it.</p>
-    <a class="btn" href="https://github.com/gshepptech/interlock">About Interlock</a>
+    <h3>Agent coordination is off for this project</h3>
+    <p>The queue above is unfiltered, so two agents can be handed the same work — and no agent can be started from here. Turning it on wires Interlock's hooks into your agents' own settings for this repository.</p>
+    {{if $p.Writable}}
+    <form method="post" action="/do/watch">
+      <input type="hidden" name="csrf" value="{{$p.CSRF}}">
+      <input type="hidden" name="project" value="{{$p.Project}}">
+      <input type="hidden" name="prefix" value="{{$p.Prefix}}">
+      <button type="submit" class="btn btn-primary">Turn on coordination</button>
+    </form>
+    <p class="hint">It edits agent config, so it is a click rather than automatic. Same as <code>interlock init</code>.</p>
+    {{end}}
   </div>
   {{end}}
 </div>

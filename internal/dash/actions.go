@@ -216,6 +216,7 @@ func (s *Server) routesMutating(mux *http.ServeMux) {
 	mux.HandleFunc("POST /do/launch", s.doLaunch)
 	mux.HandleFunc("POST /do/project-add", s.doProjectAdd)
 	mux.HandleFunc("POST /do/project-forget", s.doProjectForget)
+	mux.HandleFunc("POST /do/watch", s.doWatch)
 }
 
 func (s *Server) doStart(w http.ResponseWriter, r *http.Request) {
@@ -442,3 +443,27 @@ func (s *Server) doLaunch(w http.ResponseWriter, r *http.Request) {
 
 // nowStamp is the registry's own timestamp format.
 func nowStamp() string { return time.Now().UTC().Format(model.TimeFormat) }
+
+// doWatch sets Interlock up for one project, on request.
+//
+// Not silent, and not at startup. `interlock init` writes hook
+// registrations into each agent's own settings and trust hashes into
+// ~/.codex/config.toml -- configuration that makes agents run commands on
+// this machine. A board may offer that in one click; it may not take it.
+func (s *Server) doWatch(w http.ResponseWriter, r *http.Request) {
+	if err := s.guard(r); err != nil {
+		http.Error(w, "refused: "+err.Error(), http.StatusForbidden)
+		return
+	}
+	path, err := s.writablePathFor(r)
+	if err != nil {
+		http.Redirect(w, r, s.flashURL(r, "/", "problem", err.Error()), http.StatusSeeOther)
+		return
+	}
+	if err := interlock.Init(r.Context(), repoDirOf(path)); err != nil {
+		http.Redirect(w, r, s.flashURL(r, "/", "problem", err.Error()), http.StatusSeeOther)
+		return
+	}
+	http.Redirect(w, r, s.flashURL(r, "/", "done",
+		"Agent coordination is on for this project. Hooks are wired into your agents' own settings."), http.StatusSeeOther)
+}

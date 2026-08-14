@@ -35,6 +35,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -281,6 +282,51 @@ func Run(ctx context.Context, agent, item, dir string) error {
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("interlock run: %s", strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
+// stateDir is what `interlock init` creates in a repository it coordinates.
+const stateDir = ".interlock"
+
+// Watches reports whether Interlock is set up for this repository.
+//
+// Distinct from "is Interlock installed": the binary answers `status` from
+// any directory, including one it has never been initialised in, so a
+// present binary says nothing about whether hooks are wired here. Asking
+// the wrong question is how a board comes to offer a control that quietly
+// does nothing -- which it did.
+func Watches(dir string) bool {
+	if dir == "" {
+		return false
+	}
+	if _, ok := binary(); !ok {
+		return false
+	}
+	fi, err := os.Stat(filepath.Join(dir, stateDir))
+	return err == nil && fi.IsDir()
+}
+
+// Init runs `interlock init` in dir.
+//
+// Offered rather than done silently. It writes hook registrations into each
+// agent's own settings and trust hashes into ~/.codex/config.toml -- that
+// is configuration which makes agents execute commands on this machine, and
+// it is not a thing to do because someone opened a board. One click, not
+// zero.
+func Init(ctx context.Context, dir string) error {
+	bin, ok := binary()
+	if !ok {
+		return errors.New("interlock is not installed, so there is nothing to set up")
+	}
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, bin, "init")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("interlock init: %s", strings.TrimSpace(string(out)))
 	}
 	return nil
 }
