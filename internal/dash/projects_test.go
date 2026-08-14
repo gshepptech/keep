@@ -213,3 +213,65 @@ func TestCreateRefusesAMissingDirectory(t *testing.T) {
 		t.Error("the directory was created; only the store should ever be")
 	}
 }
+
+// TestActionsWriteToTheProjectTheyCameFrom is the bug this file exists to
+// stop coming back. Every mutating action used to resolve the store from
+// startup rather than from the form, so filing an item while looking at one
+// project's board put it in another's -- silently, since the item lands
+// somewhere real, just not where the person was looking.
+func TestActionsWriteToTheProjectTheyCameFrom(t *testing.T) {
+	s, home := twoProjects(t)
+
+	// Post the form the way /p/there renders it.
+	rec := post(t, s, "/do/add", url.Values{
+		"project": {"there"}, "prefix": {"/p/there"},
+		"title": {"filed from the other board"}, "type": {"task"},
+	})
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
+	}
+
+	there := get(t, s.Handler(), "/p/there").Body.String()
+	if !strings.Contains(there, "filed from the other board") {
+		t.Errorf("the item did not land in the project it was filed from:\n%s", there)
+	}
+	here := get(t, s.Handler(), "/").Body.String()
+	if strings.Contains(here, "filed from the other board") {
+		t.Errorf("the item landed in the started-in project instead:\n%s", here)
+	}
+	_ = home
+}
+
+// TestEveryActionFormCarriesItsProject. The fix above is only real if the
+// forms actually send the field -- one that omits it writes to the wrong
+// store and says nothing.
+func TestEveryActionFormCarriesItsProject(t *testing.T) {
+	s, _ := twoProjects(t)
+
+	for _, path := range []string{"/p/there", "/p/there/new", "/p/there/backlog"} {
+		body := get(t, s.Handler(), path).Body.String()
+		forms := strings.Count(body, `action="/do/`)
+		if forms == 0 {
+			continue
+		}
+		if got := strings.Count(body, `name="project" value="there"`); got < forms {
+			t.Errorf("%s has %d action forms but only %d carry the project", path, forms, got)
+		}
+	}
+}
+
+// TestActionRedirectsStayInTheProject: sending someone back to "/" after
+// they acted on another project's board moves them somewhere else and makes
+// their own change look like it did not happen.
+func TestActionRedirectsStayInTheProject(t *testing.T) {
+	s, _ := twoProjects(t)
+
+	rec := post(t, s, "/do/add", url.Values{
+		"project": {"there"}, "prefix": {"/p/there"},
+		"title": {"stay put"}, "type": {"task"},
+	})
+	loc := rec.Header().Get("Location")
+	if !strings.HasPrefix(loc, "/p/there/") {
+		t.Errorf("redirected to %q, want somewhere under /p/there/", loc)
+	}
+}

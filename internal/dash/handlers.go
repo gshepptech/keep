@@ -40,6 +40,7 @@ func (s *Server) routes() *http.ServeMux {
 	mux.HandleFunc("GET /p/{project}/tree/{id}", s.handleTree)
 	mux.HandleFunc("GET /all", s.handleAll)
 	mux.HandleFunc("GET /new", s.handleNew)
+	mux.HandleFunc("GET /p/{project}/new", s.handleNew)
 	mux.HandleFunc("GET /projects", s.handleProjects)
 	mux.HandleFunc("GET /item/{id}", s.handleItem)
 	mux.HandleFunc("GET /tree/{id}", s.handleTree)
@@ -149,7 +150,13 @@ func writeHTML(w http.ResponseWriter, b []byte) {
 // the board: filing is deliberate, and a form open above the queue puts an
 // empty text box where the answer to "what should I do" belongs.
 func (s *Server) handleNew(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "new", s.newPage(r, "", typeNames()))
+	_, done, name, err := s.storeFor(r)
+	if err != nil {
+		s.missOrFail(w, err)
+		return
+	}
+	done()
+	s.render(w, "new", s.pageFor(r, "", name, typeNames()))
 }
 
 // missOrFail answers 404 for a project that is not registered and 500 for

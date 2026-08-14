@@ -80,7 +80,7 @@
       {{with .Lede}}<p class="lede">{{.}}</p>{{end}}
     </div>
     <div class="topbar-actions">
-      {{if .Page.Writable}}<a class="btn btn-primary" href="/new">{{template "icon-plus"}} New item</a>{{end}}
+      {{if .Page.Writable}}<a class="btn btn-primary" href="{{.Page.Prefix}}/new">{{template "icon-plus"}} New item</a>{{end}}
     </div>
   </header>
 
@@ -104,6 +104,8 @@
 <input type="hidden" name="csrf" value="{{.CSRF}}">
 <input type="hidden" name="id" value="{{.ID}}">
 <input type="hidden" name="return" value="{{.Return}}">
+<input type="hidden" name="project" value="{{.Project}}">
+<input type="hidden" name="prefix" value="{{.Prefix}}">
 <button type="submit" class="btn btn-sm{{if .Danger}} btn-danger{{end}}">{{.Label}}</button>
 </form>{{end}}
 

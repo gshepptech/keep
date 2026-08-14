@@ -31,6 +31,7 @@
     {{if $p.HasInterlock}}
     <form method="post" action="/do/launch">
       <input type="hidden" name="csrf" value="{{$p.CSRF}}">
+<input type="hidden" name="project" value="{{$p.Project}}"><input type="hidden" name="prefix" value="{{$p.Prefix}}">
       <input type="hidden" name="id" value="{{.ID}}">
       <select name="agent" aria-label="Agent to start on {{.Title}}">
         <option value="claude">claude</option>
@@ -64,7 +65,7 @@
   {{range $d.Progress}}<tr>
   <td class="score">{{.Score}}</td>
   <td><a class="title" href="{{$p.Prefix}}/item/{{.ID}}">{{.Title}}</a><div class="sub">{{.ID}}</div></td>
-  <td><span class="state state-claimed">{{if .Assignee}}{{.Assignee}}{{else}}in progress{{end}}</span></td>
+  <td>{{if .Assignee}}<span class="state state-claimed">{{.Assignee}}</span>{{else}}<span class="faint">nobody — claimed from the board</span>{{end}}</td>
   {{if $p.Writable}}<td class="right"><div class="acts">
     {{template "action" (act $p "close" .ID "Close" "/" false)}}
     {{template "action" (act $p "drop" .ID "Drop" "/" true)}}
@@ -92,6 +93,7 @@
   <td class="faint">{{until .Lease.ExpiresAt}}</td>
   {{if $p.Writable}}<td class="right"><div class="acts"><form method="post" action="/do/release">
     <input type="hidden" name="csrf" value="{{$p.CSRF}}">
+<input type="hidden" name="project" value="{{$p.Project}}"><input type="hidden" name="prefix" value="{{$p.Prefix}}">
     <input type="hidden" name="session" value="{{.Lease.SessionID}}">
     <button type="submit" class="btn btn-sm btn-danger">Release</button>
   </form></div></td>{{end}}
@@ -136,6 +138,7 @@
   <td class="path">{{holdsFor $d.Interlock .ID}}</td>
   {{if $p.Writable}}<td class="right"><div class="acts"><form method="post" action="/do/release">
     <input type="hidden" name="csrf" value="{{$p.CSRF}}">
+<input type="hidden" name="project" value="{{$p.Project}}"><input type="hidden" name="prefix" value="{{$p.Prefix}}">
     <input type="hidden" name="session" value="{{.ID}}">
     <button type="submit" class="btn btn-sm">Release holds</button>
   </form></div></td>{{end}}

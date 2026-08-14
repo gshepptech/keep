@@ -23,6 +23,7 @@
   <div class="panel-body">
     <form method="post" action="/do/assign" class="grid">
       <input type="hidden" name="csrf" value="{{$p.CSRF}}">
+<input type="hidden" name="project" value="{{$p.Project}}"><input type="hidden" name="prefix" value="{{$p.Prefix}}">
       <input type="hidden" name="id" value="{{.ID}}">
       <label class="wide">Assignee
         <input name="assignee" value="{{with .Assignee}}{{.}}{{end}}" placeholder="A person, or claude / codex">
@@ -40,6 +41,7 @@
   <summary>Edit</summary>
   <form method="post" action="/do/update" class="grid">
     <input type="hidden" name="csrf" value="{{$p.CSRF}}">
+<input type="hidden" name="project" value="{{$p.Project}}"><input type="hidden" name="prefix" value="{{$p.Prefix}}">
     <input type="hidden" name="id" value="{{.ID}}">
     <label class="wide">Title <input name="title" value="{{.Title}}" required></label>
     <label>Value <input name="value" type="number" min="0" max="10" value="{{with .Value}}{{.}}{{end}}"></label>

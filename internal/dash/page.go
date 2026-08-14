@@ -224,7 +224,13 @@ type titledPage struct {
 // call site and silently wrong when two of them swap.
 type actionArgs struct {
 	CSRF, Verb, ID, Label, Return string
-	Danger                        bool
+
+	// Project and Prefix ride along on every action so a click on one
+	// project's board cannot act on another's store, and lands back where
+	// it was clicked.
+	Project, Prefix string
+
+	Danger bool
 }
 
 // holdsFor names the files one session is holding, for the agents table.

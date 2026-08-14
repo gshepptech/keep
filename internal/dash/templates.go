@@ -50,7 +50,10 @@ var funcMap = template.FuncMap{
 		return titledPage{Page: p, Title: title, Heading: heading, Lede: lede, Data: p.Data}
 	},
 	"act": func(p page, verb, id, label, ret string, danger bool) actionArgs {
-		return actionArgs{CSRF: p.CSRF, Verb: verb, ID: id, Label: label, Return: ret, Danger: danger}
+		return actionArgs{
+			CSRF: p.CSRF, Verb: verb, ID: id, Label: label, Return: ret,
+			Project: p.Project, Prefix: p.Prefix, Danger: danger,
+		}
 	},
 	"holdsFor": holdsFor,
 	"base":     base,

@@ -83,6 +83,26 @@ func (s *Server) checkOrigin(r *http.Request) error {
 // It redirects rather than rendering, so a reload after acting does not
 // repeat the action -- the POST-redirect-GET shape, which matters more here
 // than usual because the actions are things like "close this item".
+// writablePathFor is the store a mutating request should write to: the
+// project the form was posted from, falling back to the one the board was
+// started in.
+//
+// Every mutating form carries a hidden project field for this. A form that
+// omitted it would write to the wrong store and say nothing, so the
+// fallback is the started-in project rather than an error -- but the forms
+// all carry it, and the tests check that they do.
+func (s *Server) writablePathFor(r *http.Request) (string, error) {
+	name := r.PostFormValue("project")
+	if name == "" || name == s.activeName() {
+		return s.dbPath, nil
+	}
+	path, ok := s.pathOf(name)
+	if !ok {
+		return "", fmt.Errorf("no project named %q is registered", name)
+	}
+	return path, nil
+}
+
 // guard runs the checks every mutating request must pass, so no handler
 // can be written that forgets one.
 func (s *Server) guard(r *http.Request) error {
@@ -104,7 +124,16 @@ func (s *Server) mutate(w http.ResponseWriter, r *http.Request, done string, fn 
 		return
 	}
 
-	st, err := s.writable()
+	// The project comes from the form, not from startup. Without this a
+	// person looking at one project's board files into another's store --
+	// which is exactly what happened, and it is silent: the item lands
+	// somewhere real, just not where they were looking.
+	path, err := s.writablePathFor(r)
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	st, err := s.writableAt(path)
 	if err != nil {
 		s.fail(w, err)
 		return
@@ -135,6 +164,12 @@ func flashURL(r *http.Request, dest, key, msg string) string {
 	}
 	if dest == "" {
 		dest = "/"
+	}
+	// Stay in the project the action came from. Redirecting to "/" after
+	// acting on another project's board silently moves a person somewhere
+	// else and makes their change look like it did not happen.
+	if prefix := r.PostFormValue("prefix"); prefix != "" && strings.HasPrefix(dest, "/") && !strings.HasPrefix(dest, prefix) {
+		dest = prefix + dest
 	}
 	if msg == "" {
 		return dest
@@ -369,7 +404,14 @@ func (s *Server) doLaunch(w http.ResponseWriter, r *http.Request) {
 	}
 	agent := r.PostFormValue("agent")
 	id := r.PostFormValue("id")
-	if err := interlock.Run(r.Context(), agent, id, repoDirOf(s.dbPath)); err != nil {
+	// The agent runs in the project's own directory, not the board's. An
+	// agent started in the wrong repository is worse than one not started.
+	path, err := s.writablePathFor(r)
+	if err != nil {
+		http.Redirect(w, r, flashURL(r, "/", "problem", err.Error()), http.StatusSeeOther)
+		return
+	}
+	if err := interlock.Run(r.Context(), agent, id, repoDirOf(path)); err != nil {
 		http.Redirect(w, r, flashURL(r, "/", "problem", err.Error()), http.StatusSeeOther)
 		return
 	}
