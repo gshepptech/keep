@@ -259,7 +259,7 @@ func Release(ctx context.Context, session string) error {
 // --no-follow because the caller is an HTTP handler: the run outlives the
 // request, and Interlock is the thing watching it.
 func Run(ctx context.Context, agent, item, dir string) error {
-	return run(ctx, agent, dir, "--item", item)
+	return run(ctx, agent, dir, []string{"--item", item}, "")
 }
 
 // Prompt starts an agent on a free-text instruction rather than an item.
@@ -274,11 +274,21 @@ func Prompt(ctx context.Context, agent, text, dir string) error {
 	if strings.TrimSpace(text) == "" {
 		return errors.New("no prompt given")
 	}
-	return run(ctx, agent, dir, text)
+	return run(ctx, agent, dir, nil, text)
 }
 
 // run is the shared launcher.
-func run(ctx context.Context, agent, dir string, args ...string) error {
+//
+// flags are trusted, built here. prompt is not -- it is whatever a person
+// typed into a web form -- so it goes last, behind a "--" sentinel, and
+// every flag goes in front of it.
+//
+// Without the sentinel a prompt beginning with a dash is parsed as flags:
+// --env and --model become injectable, and the prompt itself is discarded,
+// so the run does something other than what was asked. Quoting cannot fix
+// that from this side, because argv carries no quoting. Interlock gained
+// the sentinel for this.
+func run(ctx context.Context, agent, dir string, flags []string, prompt string) error {
 	bin, ok := binary()
 	if !ok {
 		return errors.New("interlock is not installed here, so there is nothing to start an agent with")
@@ -294,9 +304,18 @@ func run(ctx context.Context, agent, dir string, args ...string) error {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	full := append([]string{"run", agent}, args...)
-	full = append(full, "--cwd", dir, "--no-follow")
+	full := append([]string{"run", agent}, flags...)
+	full = append(full, "--no-follow")
+	if prompt != "" {
+		full = append(full, "--", prompt)
+	}
 	cmd := exec.CommandContext(ctx, bin, full...)
+
+	// The working directory is set on the process, not passed as --cwd:
+	// Interlock's --cwd is relative to the repository it resolves, so an
+	// absolute path is rejected outright. Running IN the directory lets it
+	// resolve the repository the same way every other command does.
+	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("interlock run: %s", strings.TrimSpace(string(out)))

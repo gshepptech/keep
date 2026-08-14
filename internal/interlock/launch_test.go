@@ -1,0 +1,116 @@
+package interlock
+
+import (
+	"context"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+// recorder is an interlock that writes its argv, one line per invocation.
+func recorder(t *testing.T) (bin, log string) {
+	t.Helper()
+	dir := t.TempDir()
+	log = filepath.Join(dir, "argv")
+	bin = filepath.Join(dir, "interlock")
+	script := "#!/bin/sh\nfor a in \"$@\"; do printf '%s\\n' \"$a\"; done >> " + log + "\nexit 0\n"
+	if err := os.WriteFile(bin, []byte(script), 0o755); err != nil {
+		t.Fatalf("write recorder: %v", err)
+	}
+	return bin, log
+}
+
+func argv(t *testing.T, log string) []string {
+	t.Helper()
+	raw, err := os.ReadFile(log)
+	if err != nil {
+		t.Fatalf("read argv: %v", err)
+	}
+	return strings.Split(strings.TrimRight(string(raw), "\n"), "\n")
+}
+
+// TestPromptCannotSmuggleFlags is the whole reason the sentinel exists.
+//
+// A prompt is whatever a person typed into a web form. Passed as a bare
+// argument it is parsed as flags, so --env and --model become injectable
+// and the prompt itself is discarded -- the run then does something other
+// than what was asked, which is worse than refusing. Quoting cannot fix it
+// from this side: argv carries no quoting.
+func TestPromptCannotSmuggleFlags(t *testing.T) {
+	bin, log := recorder(t)
+	t.Setenv(EnvBinary, bin)
+
+	hostile := "--env SECRET_TOKEN --model evil"
+	if err := Prompt(context.Background(), "codex", hostile, t.TempDir()); err != nil {
+		t.Fatalf("Prompt: %v", err)
+	}
+
+	got := argv(t, log)
+	sentinel := -1
+	for i, a := range got {
+		if a == "--" {
+			sentinel = i
+		}
+	}
+	if sentinel < 0 {
+		t.Fatalf("no -- sentinel in argv: %v", got)
+	}
+	// Every flag ahead of the sentinel, the prompt behind it, whole.
+	if got[len(got)-1] != hostile {
+		t.Errorf("the prompt was split or reordered: %v", got)
+	}
+	if sentinel != len(got)-2 {
+		t.Errorf("something follows the prompt: %v", got)
+	}
+	for _, a := range got[:sentinel] {
+		if a == "SECRET_TOKEN" || a == "evil" {
+			t.Errorf("part of the prompt reached the flag side: %v", got)
+		}
+	}
+}
+
+// TestLaunchPassesNoPromptSentinel: an item launch has no untrusted text,
+// so it carries no sentinel and nothing after the flags.
+func TestLaunchPassesNoPromptSentinel(t *testing.T) {
+	bin, log := recorder(t)
+	t.Setenv(EnvBinary, bin)
+
+	if err := Run(context.Background(), "claude", "rnc-abc123", t.TempDir()); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	for _, a := range argv(t, log) {
+		if a == "--" {
+			t.Errorf("an item launch carries a prompt sentinel: %v", argv(t, log))
+		}
+	}
+}
+
+// TestLaunchRunsInTheProjectDirectory. Interlock's own --cwd is relative to
+// the repository it resolves, so an absolute path is rejected outright --
+// which is why the directory is set on the process instead. Discovered by
+// running it rather than by stubbing it.
+func TestLaunchRunsInTheProjectDirectory(t *testing.T) {
+	bin, log := recorder(t)
+	t.Setenv(EnvBinary, bin)
+
+	dir := t.TempDir()
+	if err := Run(context.Background(), "claude", "rnc-abc123", dir); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	for _, a := range argv(t, log) {
+		if a == "--cwd" {
+			t.Errorf("--cwd is passed as a flag; Interlock wants it relative and rejects an absolute path: %v", argv(t, log))
+		}
+	}
+}
+
+// TestUnknownAgentIsRefused before anything is spawned.
+func TestUnknownAgentIsRefused(t *testing.T) {
+	bin, _ := recorder(t)
+	t.Setenv(EnvBinary, bin)
+
+	if err := Prompt(context.Background(), "gpt5", "hello", t.TempDir()); err == nil {
+		t.Error("an unknown agent was accepted")
+	}
+}
