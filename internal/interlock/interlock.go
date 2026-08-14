@@ -249,3 +249,38 @@ func Release(ctx context.Context, session string) error {
 	}
 	return nil
 }
+
+// Run starts an agent on one item, through Interlock's own launcher.
+//
+// rounce does not start agents -- that is a stated limit, not an oversight,
+// and this does not change it. Interlock owns process lifecycle, so the
+// board asks Interlock rather than growing a supervisor of its own.
+//
+// --no-follow because the caller is an HTTP handler: the run outlives the
+// request, and Interlock is the thing watching it.
+func Run(ctx context.Context, agent, item, dir string) error {
+	bin, ok := binary()
+	if !ok {
+		return errors.New("interlock is not installed here, so there is nothing to start an agent with")
+	}
+	switch agent {
+	case "claude", "codex":
+	default:
+		return fmt.Errorf("unknown agent %q", agent)
+	}
+	if strings.TrimSpace(item) == "" {
+		return errors.New("no item named")
+	}
+
+	// Longer than fetchTimeout: launching supervises a process rather than
+	// reading a file, and two seconds is not a fair budget for that.
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, bin, "run", agent, "--item", item, "--cwd", dir, "--no-follow")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("interlock run: %s", strings.TrimSpace(string(out)))
+	}
+	return nil
+}

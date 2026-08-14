@@ -2,6 +2,7 @@ package dash
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net/http"
 	"path/filepath"
@@ -42,8 +43,17 @@ type page struct {
 	// numbers without each one having to fetch them.
 	Counts navCounts
 
-	// Repo is the store this board is serving, for the sidebar footer.
-	Repo string
+	// Project is what this board is serving: its name, and the directory a
+	// person would cd into. Both, because a name alone is ambiguous across
+	// machines and a path alone is unreadable at a glance.
+	Project      string
+	ProjectDir   string
+	HasInterlock bool
+
+	// Prefix is what every in-page link is built from: empty for the
+	// started-in project, /p/<name> for any other. Without it a link on
+	// another project's board would silently navigate back to this one.
+	Prefix string
 
 	Data any
 }
@@ -53,24 +63,46 @@ type navCounts struct {
 	Ready, Backlog int
 }
 
+// interlockPresent reports whether an agent can be launched at all. The
+// launch controls are not rendered without it: a button that is going to
+// say "interlock is not installed" is worse than no button.
+func interlockPresent() bool {
+	_, ok := interlock.Fetch(context.Background(), "")
+	return ok
+}
+
 // newPage builds the wrapper for one request.
 func (s *Server) newPage(r *http.Request, nav string, data any) page {
+	return s.pageFor(r, nav, s.activeName(), data)
+}
+
+// pageFor builds the wrapper for one request against one project. The
+// project's name and directory come from the request rather than from
+// startup, so a board looking at another project says so everywhere --
+// sidebar, links and all -- instead of naming the one it was launched in.
+func (s *Server) pageFor(r *http.Request, nav, project string, data any) page {
 	p := page{
-		Nav:      nav,
-		CSRF:     s.csrf,
-		Problem:  r.URL.Query().Get("problem"),
-		Done:     r.URL.Query().Get("done"),
-		Writable: s.dbPath != "",
-		Repo:     s.dbPath,
-		Data:     data,
+		Nav:          nav,
+		CSRF:         s.csrf,
+		Problem:      r.URL.Query().Get("problem"),
+		Done:         r.URL.Query().Get("done"),
+		Writable:     s.dbPath != "",
+		Project:      project,
+		ProjectDir:   repoDirOf(s.pathFor(project)),
+		Prefix:       s.prefixFor(project),
+		HasInterlock: interlockPresent(),
+		Data:         data,
 	}
 	// Best effort: a sidebar count that cannot be read is omitted, never an
 	// error. The page it decorates is still worth rendering.
-	if ready, err := s.st.Ready(r.Context(), 0); err == nil {
-		p.Counts.Ready = len(ready)
-	}
-	if backlog, err := s.st.Backlog(r.Context(), ""); err == nil {
-		p.Counts.Backlog = len(backlog)
+	if st, done, _, err := s.storeFor(r); err == nil {
+		defer done()
+		if ready, err := st.Ready(r.Context(), 0); err == nil {
+			p.Counts.Ready = len(ready)
+		}
+		if backlog, err := st.Backlog(r.Context(), ""); err == nil {
+			p.Counts.Backlog = len(backlog)
+		}
 	}
 	return p
 }
@@ -114,23 +146,29 @@ type boardCounts struct {
 }
 
 // boardData assembles the whole board in one pass.
-func (s *Server) boardData(r *http.Request) (boardData, error) {
+// boardDataFrom assembles the board from one project's store.
+//
+// The store is a parameter rather than read off the server, because two
+// requests can be in flight against two different projects and a field
+// swapped for the duration of one would be visible to the other. That is
+// not a hypothetical with a board someone keeps open in tabs.
+func (s *Server) boardDataFrom(r *http.Request, st *store.Store) (boardData, error) {
 	ctx := r.Context()
 	d := boardData{Types: typeNames()}
 
-	ready, held, err := s.readyItems(ctx)
+	ready, held, err := s.readyItemsFrom(ctx, st)
 	if err != nil {
 		return d, err
 	}
 	d.Ready, d.Held = ready, held
 
-	if d.Progress, err = s.st.ListItems(ctx, storeInProgress()); err != nil {
+	if d.Progress, err = st.ListItems(ctx, storeInProgress()); err != nil {
 		return d, err
 	}
-	if d.Blocked, err = s.st.Blocked(ctx); err != nil {
+	if d.Blocked, err = st.Blocked(ctx); err != nil {
 		return d, err
 	}
-	backlog, err := s.st.Backlog(ctx, "")
+	backlog, err := st.Backlog(ctx, "")
 	if err != nil {
 		return d, err
 	}
@@ -243,4 +281,24 @@ func base(p string) string {
 		return "no store"
 	}
 	return filepath.Base(p)
+}
+
+// pathFor is the store path of a named project, falling back to the one
+// this board was started in.
+func (s *Server) pathFor(project string) string {
+	if project == "" || project == s.activeName() {
+		return s.dbPath
+	}
+	if path, ok := s.pathOf(project); ok {
+		return path
+	}
+	return s.dbPath
+}
+
+// prefixFor is the URL prefix a project's own pages live under.
+func (s *Server) prefixFor(project string) string {
+	if project == "" || project == s.activeName() {
+		return ""
+	}
+	return "/p/" + project
 }

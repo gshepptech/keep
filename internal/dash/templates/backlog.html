@@ -13,7 +13,7 @@
 <tbody>
 {{range .}}{{if .NewGroup}}<tr class="group"><th colspan="3">{{.Type}}</th></tr>
 {{end}}<tr>
-<td><a class="title" href="/item/{{.ID}}">{{.Title}}</a><div class="sub">{{.ID}}</div></td>
+<td><a class="title" href="{{$p.Prefix}}/item/{{.ID}}">{{.Title}}</a><div class="sub">{{.ID}}</div></td>
 <td class="faint">{{ago .CreatedAt}}</td>
 {{if $p.Writable}}<td class="right"><div class="acts">
   {{template "action" (act $p "promote" .ID "Promote" "/backlog" false)}}

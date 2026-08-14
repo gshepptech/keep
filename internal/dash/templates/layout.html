@@ -30,23 +30,34 @@
     <span class="brand-name">rounce</span>
   </div>
 
+  {{/* Which project this board is serving, said in full. A board that does
+       not name its own project is one you can act on by mistake. */}}
+  <a class="project-card" href="/projects" title="{{.Page.ProjectDir}}">
+    <div class="project-name">{{if .Page.Project}}{{.Page.Project}}{{else}}no project{{end}}</div>
+    <div class="project-dir">{{.Page.ProjectDir}}</div>
+    <div class="project-switch">Switch project</div>
+  </a>
+
   <nav class="nav">
     <div class="nav-group">
       <div class="nav-label">Work</div>
-      <a href="/" class="nav-item{{if eq .Page.Nav "board"}} active{{end}}">
+      <a href="{{if .Page.Prefix}}{{.Page.Prefix}}{{else}}/{{end}}" class="nav-item{{if eq .Page.Nav "board"}} active{{end}}">
         {{template "icon-board"}}<span>Board</span>
         {{with .Page.Counts.Ready}}<em class="pip">{{.}}</em>{{end}}
       </a>
-      <a href="/backlog" class="nav-item{{if eq .Page.Nav "backlog"}} active{{end}}">
+      <a href="{{.Page.Prefix}}/backlog" class="nav-item{{if eq .Page.Nav "backlog"}} active{{end}}">
         {{template "icon-inbox"}}<span>Parked</span>
         {{with .Page.Counts.Backlog}}<em class="pip">{{.}}</em>{{end}}
       </a>
     </div>
 
     <div class="nav-group">
-      <div class="nav-label">Across repositories</div>
+      <div class="nav-label">Everything</div>
+      <a href="/projects" class="nav-item{{if eq .Page.Nav "projects"}} active{{end}}">
+        {{template "icon-folder"}}<span>Projects</span>
+      </a>
       <a href="/all" class="nav-item{{if eq .Page.Nav "all"}} active{{end}}">
-        {{template "icon-stack"}}<span>All repositories</span>
+        {{template "icon-stack"}}<span>Queue, all projects</span>
       </a>
     </div>
   </nav>
@@ -57,7 +68,8 @@
     {{else}}
       <div class="status-line muted">{{template "icon-lock"}} Read only</div>
     {{end}}
-    <div class="status-line muted" title="{{.Page.Repo}}">{{template "icon-folder"}} {{base .Page.Repo}}</div>
+    {{if .Page.HasInterlock}}<div class="status-line">{{template "icon-agent"}} Interlock watching</div>
+    {{else}}<div class="status-line muted">{{template "icon-agent"}} No agent watch</div>{{end}}
   </div>
 </aside>
 

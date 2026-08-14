@@ -18,6 +18,24 @@
   {{if eq (printf "%s" .Stage) "raw"}}{{template "action" (act $p "promote" .ID "Promote to the queue" "" false)}}{{end}}
 </div>
 
+<div class="panel">
+  <div class="panel-head"><h2>Assign</h2><span class="hint">Who is meant to do it — separate from claiming it</span></div>
+  <div class="panel-body">
+    <form method="post" action="/do/assign" class="grid">
+      <input type="hidden" name="csrf" value="{{$p.CSRF}}">
+      <input type="hidden" name="id" value="{{.ID}}">
+      <label class="wide">Assignee
+        <input name="assignee" value="{{with .Assignee}}{{.}}{{end}}" placeholder="A person, or claude / codex">
+        <span class="hint-text">Assigning does not start anything. Claim is what says someone picked it up.</span>
+      </label>
+      <div class="wide row">
+        <span class="hint"></span>
+        <button type="submit" class="btn">Save assignee</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <details class="composer">
   <summary>Edit</summary>
   <form method="post" action="/do/update" class="grid">
@@ -39,7 +57,7 @@
 <div class="panel"><div class="panel-head"><h2>Detail</h2></div>
 <div class="table-wrap"><table class="fields">
 <tbody>
-{{if .ParentID}}<tr><th>parent</th><td><a href="/item/{{.ParentID}}">{{.ParentID}}</a></td></tr>
+{{if .ParentID}}<tr><th>parent</th><td><a href="{{$p.Prefix}}/item/{{.ParentID}}">{{.ParentID}}</a></td></tr>
 {{end}}{{if .Repo}}<tr><th>repo</th><td>{{.Repo}}</td></tr>
 {{end}}{{if .Paths}}<tr><th>paths</th><td>{{.Paths}}</td></tr>
 {{end}}{{if .Why}}<tr><th>why</th><td>{{.Why}}</td></tr>
@@ -52,14 +70,14 @@
 {{if .DependsOn}}<h2>Waiting on</h2>
 <div class="table-wrap"><table class="deps">
 <tbody>
-{{range .DependsOn}}<tr><td>{{.Type}}</td><td><a href="/item/{{.DependsOnID}}">{{.DependsOnID}}</a></td></tr>
+{{range .DependsOn}}<tr><td>{{.Type}}</td><td><a href="{{$p.Prefix}}/item/{{.DependsOnID}}">{{.DependsOnID}}</a></td></tr>
 {{end}}</tbody>
 </table></div>
 {{end}}
 {{if .DependedOnBy}}<h2>Blocking</h2>
 <div class="table-wrap"><table class="deps">
 <tbody>
-{{range .DependedOnBy}}<tr><td>{{.Type}}</td><td><a href="/item/{{.ItemID}}">{{.ItemID}}</a></td></tr>
+{{range .DependedOnBy}}<tr><td>{{.Type}}</td><td><a href="{{$p.Prefix}}/item/{{.ItemID}}">{{.ItemID}}</a></td></tr>
 {{end}}</tbody>
 </table></div>
 {{end}}

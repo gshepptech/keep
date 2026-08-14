@@ -1,0 +1,73 @@
+{{/* projects.html -- every project rounce knows about. Data: []project.
+
+     "Project" rather than "repository": what a person switches between here
+     is a body of work, and the git repository is where it happens to live.
+     The registry keeps its own vocabulary; renaming a stored field to match
+     a page would be the tail wagging the dog. */}}
+{{define "projects"}}{{template "head" (titled . "Projects" "Projects" "Every project rounce is tracking. Each has its own board, its own queue, and its own store.")}}
+{{$p := .}}
+
+<div class="panel">
+  <div class="panel-head">
+    <h2>Tracked projects</h2>
+    <span class="hint">{{len .Data}} registered</span>
+  </div>
+  <div class="table-wrap">
+  <table>
+  <thead><tr><th>Project</th><th>Directory</th><th class="right">Workable</th><th class="right">Parked</th><th class="right">Actions</th></tr></thead>
+  <tbody>
+  {{range .Data}}<tr>
+  <td>
+    <div class="who">
+      <span class="avatar">{{initial .Name}}</span>
+      <div>
+        <b>{{.Name}}</b>{{if .Active}} <span class="state state-workable">open</span>{{end}}
+        {{if .Err}}<div class="sub">{{.Err}}</div>{{end}}
+      </div>
+    </div>
+  </td>
+  <td class="path">{{.Dir}}</td>
+  <td class="right score">{{if .Err}}<span class="faint">—</span>{{else}}{{.Ready}}{{end}}</td>
+  <td class="right">{{if .Err}}<span class="faint">—</span>{{else}}{{.Backlog}}{{end}}</td>
+  <td class="right"><div class="acts">
+    <a class="btn btn-sm" href="{{if .Active}}/{{else}}/p/{{.Name}}{{end}}">Open board</a>
+    {{if $p.Writable}}<form method="post" action="/do/project-forget">
+      <input type="hidden" name="csrf" value="{{$p.CSRF}}">
+      <input type="hidden" name="path" value="{{.Path}}">
+      <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+    </form>{{end}}
+  </div></td>
+  </tr>
+  {{else}}<tr><td colspan="5"><div class="blank">
+    {{template "icon-folder"}}
+    <h3>No projects registered</h3>
+    <p>Run <code>rounce init</code> in a repository and it registers itself. Or add one below.</p>
+  </div></td></tr>
+  {{end}}</tbody>
+  </table>
+  </div>
+</div>
+
+{{if $p.Writable}}
+<div class="panel">
+  <div class="panel-head">
+    <h2>Add a project</h2>
+    <span class="hint">The directory must already have a store</span>
+  </div>
+  <div class="panel-body">
+    <form method="post" action="/do/project-add" class="grid">
+      <input type="hidden" name="csrf" value="{{$p.CSRF}}">
+      <label class="wide">Directory
+        <input name="dir" required placeholder="~/Projects/my-app">
+        <span class="hint-text">Adding registers an existing store. It does not create one — run <code>rounce init</code> there first, so becoming a project stays your decision.</span>
+      </label>
+      <div class="wide row">
+        <span class="hint">Removing a project only forgets it. The store is never touched.</span>
+        <button type="submit" class="btn btn-primary">{{template "icon-plus"}} Add project</button>
+      </div>
+    </form>
+  </div>
+</div>
+{{end}}
+
+{{template "foot"}}{{end}}

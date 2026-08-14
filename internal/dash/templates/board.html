@@ -25,10 +25,21 @@
   <tbody>
   {{range $d.Ready}}<tr>
   <td class="score">{{.Score}}</td>
-  <td><a class="title" href="/item/{{.ID}}">{{.Title}}</a><div class="sub">{{.ID}} · {{.Type}}</div></td>
+  <td><a class="title" href="{{$p.Prefix}}/item/{{.ID}}">{{.Title}}</a><div class="sub">{{.ID}} · {{.Type}}</div></td>
   <td class="path">{{if .Paths}}{{.Paths}}{{else}}<span class="faint">not declared</span>{{end}}</td>
   {{if $p.Writable}}<td class="right"><div class="acts">
-    {{template "action" (act $p "start" .ID "Start" "/" false)}}
+    {{if $p.HasInterlock}}
+    <form method="post" action="/do/launch">
+      <input type="hidden" name="csrf" value="{{$p.CSRF}}">
+      <input type="hidden" name="id" value="{{.ID}}">
+      <select name="agent" aria-label="Agent to start on {{.Title}}">
+        <option value="claude">claude</option>
+        <option value="codex">codex</option>
+      </select>
+      <button type="submit" class="btn btn-sm">Start agent</button>
+    </form>
+    {{end}}
+    {{template "action" (act $p "start" .ID "Claim" "/" false)}}
     {{template "action" (act $p "close" .ID "Close" "/" false)}}
   </div></td>{{end}}
   </tr>
@@ -52,7 +63,7 @@
   <tbody>
   {{range $d.Progress}}<tr>
   <td class="score">{{.Score}}</td>
-  <td><a class="title" href="/item/{{.ID}}">{{.Title}}</a><div class="sub">{{.ID}}</div></td>
+  <td><a class="title" href="{{$p.Prefix}}/item/{{.ID}}">{{.Title}}</a><div class="sub">{{.ID}}</div></td>
   <td><span class="state state-claimed">{{if .Assignee}}{{.Assignee}}{{else}}in progress{{end}}</span></td>
   {{if $p.Writable}}<td class="right"><div class="acts">
     {{template "action" (act $p "close" .ID "Close" "/" false)}}
@@ -75,7 +86,7 @@
   <tbody>
   {{range $d.Held}}<tr>
   <td class="score">{{.Item.Score}}</td>
-  <td><a class="title" href="/item/{{.Item.ID}}">{{.Item.Title}}</a><div class="sub">{{.Item.ID}}</div></td>
+  <td><a class="title" href="{{$p.Prefix}}/item/{{.Item.ID}}">{{.Item.Title}}</a><div class="sub">{{.Item.ID}}</div></td>
   <td class="path">{{.Path}}</td>
   <td><span class="state state-claimed">{{.Lease.Agent}}</span></td>
   <td class="faint">{{until .Lease.ExpiresAt}}</td>
@@ -100,8 +111,8 @@
   <thead><tr><th>Item</th><th>Waiting on</th></tr></thead>
   <tbody>
   {{range $d.Blocked}}<tr>
-  <td><a class="title" href="/item/{{.Item.ID}}">{{.Item.Title}}</a><div class="sub">{{.Item.ID}}</div></td>
-  <td><a href="/item/{{.BlockedBy}}">{{.BlockedBy}}</a></td>
+  <td><a class="title" href="{{$p.Prefix}}/item/{{.Item.ID}}">{{.Item.Title}}</a><div class="sub">{{.Item.ID}}</div></td>
+  <td><a href="{{$p.Prefix}}/item/{{.BlockedBy}}">{{.BlockedBy}}</a></td>
   </tr>
   {{end}}</tbody>
   </table></div>

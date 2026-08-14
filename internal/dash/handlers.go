@@ -30,8 +30,17 @@ func (s *Server) routes() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", s.handleReady)
 	mux.HandleFunc("GET /backlog", s.handleBacklog)
+
+	// The same views, scoped to another project. One board serves every
+	// project rounce knows; the URL says which, so two tabs can hold two
+	// boards without a shared selection for them to fight over.
+	mux.HandleFunc("GET /p/{project}", s.handleReady)
+	mux.HandleFunc("GET /p/{project}/backlog", s.handleBacklog)
+	mux.HandleFunc("GET /p/{project}/item/{id}", s.handleItem)
+	mux.HandleFunc("GET /p/{project}/tree/{id}", s.handleTree)
 	mux.HandleFunc("GET /all", s.handleAll)
 	mux.HandleFunc("GET /new", s.handleNew)
+	mux.HandleFunc("GET /projects", s.handleProjects)
 	mux.HandleFunc("GET /item/{id}", s.handleItem)
 	mux.HandleFunc("GET /tree/{id}", s.handleTree)
 	s.routesMutating(mux)
@@ -47,24 +56,37 @@ func (s *Server) handleReady(w http.ResponseWriter, r *http.Request) {
 	// readyItems, not s.st.Ready directly: the queue and /who must apply
 	// the same Interlock filter, computed once, or the board will omit an
 	// item that /who cannot explain.
-	data, err := s.boardData(r)
+	st, done, name, err := s.storeFor(r)
+	if err != nil {
+		s.missOrFail(w, err)
+		return
+	}
+	defer done()
+
+	data, err := s.boardDataFrom(r, st)
 	if err != nil {
 		s.fail(w, err)
 		return
 	}
-	s.render(w, "board", s.newPage(r, "board", data))
+	s.render(w, "board", s.pageFor(r, "board", name, data))
 }
 
 // handleBacklog renders the raw backlog, grouped by type -- store.Backlog
 // already does the grouping/ordering; this handler adds nothing.
 func (s *Server) handleBacklog(w http.ResponseWriter, r *http.Request) {
-	items, err := s.st.Backlog(r.Context(), "")
+	st, done, name, err := s.storeFor(r)
+	if err != nil {
+		s.missOrFail(w, err)
+		return
+	}
+	defer done()
+
+	items, err := st.Backlog(r.Context(), "")
 	if err != nil {
 		s.fail(w, err)
 		return
 	}
-	rows := backlogRows(items)
-	s.render(w, "backlog", s.newPage(r, "backlog", rows))
+	s.render(w, "backlog", s.pageFor(r, "backlog", name, backlogRows(items)))
 }
 
 // handleItem renders one item's full detail, keyed on the path's {id}
@@ -72,22 +94,36 @@ func (s *Server) handleBacklog(w http.ResponseWriter, r *http.Request) {
 // captured whole, verified live during 05 planning and covered by this
 // package's own handlers_test.go.
 func (s *Server) handleItem(w http.ResponseWriter, r *http.Request) {
-	d, err := s.st.GetItem(r.Context(), r.PathValue("id"))
+	st, done, name, err := s.storeFor(r)
+	if err != nil {
+		s.missOrFail(w, err)
+		return
+	}
+	defer done()
+
+	d, err := st.GetItem(r.Context(), r.PathValue("id"))
 	if err != nil {
 		s.fail(w, err)
 		return
 	}
-	s.render(w, "item", s.newPage(r, "", d))
+	s.render(w, "item", s.pageFor(r, "", name, d))
 }
 
 // handleTree renders the subtree beneath {id}.
 func (s *Server) handleTree(w http.ResponseWriter, r *http.Request) {
-	nodes, err := s.st.Tree(r.Context(), r.PathValue("id"))
+	st, done, name, err := s.storeFor(r)
+	if err != nil {
+		s.missOrFail(w, err)
+		return
+	}
+	defer done()
+
+	nodes, err := st.Tree(r.Context(), r.PathValue("id"))
 	if err != nil {
 		s.fail(w, err)
 		return
 	}
-	s.render(w, "tree", s.newPage(r, "", nodes))
+	s.render(w, "tree", s.pageFor(r, "", name, nodes))
 }
 
 // fail classifies err by errors.Is, never message text: store.ErrNotFound
@@ -114,4 +150,16 @@ func writeHTML(w http.ResponseWriter, b []byte) {
 // empty text box where the answer to "what should I do" belongs.
 func (s *Server) handleNew(w http.ResponseWriter, r *http.Request) {
 	s.render(w, "new", s.newPage(r, "", typeNames()))
+}
+
+// missOrFail answers 404 for a project that is not registered and 500 for
+// anything else. A mistyped project name is an ordinary miss; treating it
+// as a server failure would send a person looking for a bug that is not
+// there.
+func (s *Server) missOrFail(w http.ResponseWriter, err error) {
+	if errors.Is(err, errNoProject) {
+		http.Error(w, "No project by that name. Check the list at /projects.", http.StatusNotFound)
+		return
+	}
+	s.fail(w, err)
 }

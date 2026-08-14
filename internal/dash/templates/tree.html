@@ -15,7 +15,7 @@
 <thead><tr><th>id</th><th>type</th><th>title</th><th>state</th></tr></thead>
 <tbody>
 {{range .}}<tr{{if or (eq .Status "closed") (eq .Status "dropped")}} class="dimmed"{{end}}>
-<td class="{{depthClass .Depth}}"><a href="/item/{{.ID}}">{{.ID}}</a></td>
+<td class="{{depthClass .Depth}}"><a href="{{$p.Prefix}}/item/{{.ID}}">{{.ID}}</a></td>
 <td>{{.Type}}</td>
 <td>{{.Title}}</td>
 <td class="state state-{{state .Status .Blocked}}">{{state .Status .Blocked}}{{if .Blocked}} ← blocked by {{.BlockedBy}}{{end}}</td>

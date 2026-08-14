@@ -10,6 +10,9 @@ import (
 	"strconv"
 	"strings"
 
+	"time"
+
+	"github.com/gshepptech/rounce/internal/interlock"
 	"github.com/gshepptech/rounce/internal/model"
 	"github.com/gshepptech/rounce/internal/store"
 )
@@ -80,17 +83,24 @@ func (s *Server) checkOrigin(r *http.Request) error {
 // It redirects rather than rendering, so a reload after acting does not
 // repeat the action -- the POST-redirect-GET shape, which matters more here
 // than usual because the actions are things like "close this item".
-func (s *Server) mutate(w http.ResponseWriter, r *http.Request, done string, fn func(*store.Store) (string, error)) {
+// guard runs the checks every mutating request must pass, so no handler
+// can be written that forgets one.
+func (s *Server) guard(r *http.Request) error {
 	if err := s.checkOrigin(r); err != nil {
-		http.Error(w, "refused: "+err.Error(), http.StatusForbidden)
-		return
+		return err
 	}
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "refused: unreadable form", http.StatusBadRequest)
-		return
+		return fmt.Errorf("unreadable form")
 	}
 	if r.PostFormValue(csrfField) != s.csrf {
-		http.Error(w, "refused: this form is from a different server or an older one. Reload the page.", http.StatusForbidden)
+		return fmt.Errorf("this form is from a different server or an older one -- reload the page")
+	}
+	return nil
+}
+
+func (s *Server) mutate(w http.ResponseWriter, r *http.Request, done string, fn func(*store.Store) (string, error)) {
+	if err := s.guard(r); err != nil {
+		http.Error(w, "refused: "+err.Error(), http.StatusForbidden)
 		return
 	}
 
@@ -146,6 +156,10 @@ func (s *Server) routesMutating(mux *http.ServeMux) {
 	mux.HandleFunc("POST /do/drop", s.doDrop)
 	mux.HandleFunc("POST /do/promote", s.doPromote)
 	mux.HandleFunc("POST /do/release", s.doRelease)
+	mux.HandleFunc("POST /do/assign", s.doAssign)
+	mux.HandleFunc("POST /do/launch", s.doLaunch)
+	mux.HandleFunc("POST /do/project-add", s.doProjectAdd)
+	mux.HandleFunc("POST /do/project-forget", s.doProjectForget)
 }
 
 func (s *Server) doStart(w http.ResponseWriter, r *http.Request) {
@@ -307,16 +321,8 @@ func hostOnly(hostport string) string {
 // argument and all -- rounce does not get to invent a gentler version of
 // another tool's guard rail.
 func (s *Server) doRelease(w http.ResponseWriter, r *http.Request) {
-	if err := s.checkOrigin(r); err != nil {
+	if err := s.guard(r); err != nil {
 		http.Error(w, "refused: "+err.Error(), http.StatusForbidden)
-		return
-	}
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "refused: unreadable form", http.StatusBadRequest)
-		return
-	}
-	if r.PostFormValue(csrfField) != s.csrf {
-		http.Error(w, "refused: this form is from a different server or an older one. Reload the page.", http.StatusForbidden)
 		return
 	}
 
@@ -327,3 +333,49 @@ func (s *Server) doRelease(w http.ResponseWriter, r *http.Request) {
 	}
 	http.Redirect(w, r, flashURL(r, "/", "done", "Holds released."), http.StatusSeeOther)
 }
+
+// doAssign records who is meant to do a piece of work.
+//
+// Assignment is a field on the item, not a claim: `start` is what says
+// someone has picked it up. Keeping them separate means a queue can be
+// divided up in advance without every assigned item reading as in
+// progress.
+func (s *Server) doAssign(w http.ResponseWriter, r *http.Request) {
+	s.mutate(w, r, "Assigned.", func(st *store.Store) (string, error) {
+		who := strings.TrimSpace(r.PostFormValue("assignee"))
+		_, err := st.UpdateItem(r.Context(), store.UpdateItemInput{
+			ID: r.PostFormValue("id"), Actor: s.actor, Assignee: &who,
+		})
+		return "", err
+	})
+}
+
+// doLaunch starts an agent on one item, through Interlock.
+//
+// rounce does not start agents. That is stated in its own README as a
+// deliberate limit -- it holds the list and never calls a model -- and this
+// does not change it: the board shells out to `interlock run`, which is the
+// tool whose job is process lifecycle. If Interlock is not installed the
+// button is not rendered, so this path is reachable only where something
+// exists to do the starting.
+//
+// --no-follow because this is a web request: the run is supervised by
+// Interlock and outlives the POST, and a handler that streamed an agent's
+// output would be holding a connection open for as long as the work takes.
+func (s *Server) doLaunch(w http.ResponseWriter, r *http.Request) {
+	if err := s.guard(r); err != nil {
+		http.Error(w, "refused: "+err.Error(), http.StatusForbidden)
+		return
+	}
+	agent := r.PostFormValue("agent")
+	id := r.PostFormValue("id")
+	if err := interlock.Run(r.Context(), agent, id, repoDirOf(s.dbPath)); err != nil {
+		http.Redirect(w, r, flashURL(r, "/", "problem", err.Error()), http.StatusSeeOther)
+		return
+	}
+	http.Redirect(w, r, flashURL(r, "/", "done",
+		"Started "+agent+" on "+id+". Watch it in Interlock."), http.StatusSeeOther)
+}
+
+// nowStamp is the registry's own timestamp format.
+func nowStamp() string { return time.Now().UTC().Format(model.TimeFormat) }

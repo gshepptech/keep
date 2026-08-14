@@ -2,10 +2,12 @@ package dash
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
 
+	"github.com/gshepptech/rounce/internal/registry"
 	"github.com/gshepptech/rounce/internal/store"
 )
 
@@ -152,12 +154,62 @@ func ActingAs(actor string) Option {
 	return func(s *Server) { s.actor = actor }
 }
 
+// errNoProject is a miss rather than a failure, so handlers can answer 404.
+var errNoProject = errors.New("no project by that name is registered here")
+
+// storeFor resolves the store this request is about.
+//
+// A board serves every project rounce knows, not only the directory it was
+// started in: switching should not mean restarting a server. The project
+// comes from the URL, so two tabs can hold two different boards without a
+// shared "current project" for them to fight over -- which is exactly the
+// bug a server-side selection would have.
+//
+// The returned closer is nil for the started-in store, whose handle is
+// long-lived and must not be closed per request.
+func (s *Server) storeFor(r *http.Request) (*store.Store, func(), string, error) {
+	name := r.PathValue("project")
+	if name == "" || name == s.activeName() {
+		return s.st, func() {}, s.activeName(), nil
+	}
+	path, ok := s.pathOf(name)
+	if !ok {
+		// Not found, not broken: a mistyped or forgotten project is an
+		// ordinary miss and must not read as the board having failed.
+		return nil, nil, "", errNoProject
+	}
+	// Read-only: a board looking at another project reads it. Mutating
+	// actions resolve their own writable handle, and only for the project
+	// they were posted from.
+	st, err := store.Open(path, store.OpenOptions{ReadOnly: true})
+	if err != nil {
+		return nil, nil, "", err
+	}
+	return st, func() { st.Close() }, name, nil
+}
+
+// pathOf finds a registered project's store by name.
+func (s *Server) pathOf(name string) (string, bool) {
+	env, _ := registry.Load(s.home)
+	for _, repo := range env.Repos {
+		if repo.Name == name {
+			return repo.Path, true
+		}
+	}
+	return "", false
+}
+
 // writable opens a writing handle for one action.
 func (s *Server) writable() (*store.Store, error) {
-	if s.dbPath == "" {
+	return s.writableAt(s.dbPath)
+}
+
+// writableAt opens a writing handle for one action against one project.
+func (s *Server) writableAt(path string) (*store.Store, error) {
+	if path == "" {
 		return nil, fmt.Errorf("this board is read-only: start it with `rounce board --web` from the repository that owns the store")
 	}
-	return store.Open(s.dbPath, store.OpenOptions{})
+	return store.Open(path, store.OpenOptions{})
 }
 
 // CSRF is the token every mutating form must carry. Exported for the

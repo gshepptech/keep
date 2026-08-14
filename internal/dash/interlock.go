@@ -8,6 +8,7 @@ import (
 
 	"github.com/gshepptech/rounce/internal/interlock"
 	"github.com/gshepptech/rounce/internal/model"
+	"github.com/gshepptech/rounce/internal/store"
 )
 
 // interlockPage is /who's page data: who is working, and what they hold.
@@ -73,15 +74,20 @@ func (s *Server) handleInterlock(w http.ResponseWriter, r *http.Request) {
 // It returns the kept items and what was held back. A caller that only
 // wants the queue ignores the second value; nothing recomputes it.
 func (s *Server) readyItems(ctx context.Context) ([]model.Item, []interlock.Collision, error) {
-	items, err := s.st.Ready(ctx, 0)
+	return s.readyItemsFrom(ctx, s.st)
+}
+
+// readyItemsFrom is the same for one named project's store.
+func (s *Server) readyItemsFrom(ctx context.Context, st *store.Store) ([]model.Item, []interlock.Collision, error) {
+	items, err := st.Ready(ctx, 0)
 	if err != nil {
 		return nil, nil, err
 	}
-	st, ok := interlock.Fetch(ctx, "")
+	status, ok := interlock.Fetch(ctx, "")
 	if !ok {
 		return items, nil, nil
 	}
-	kept, held := interlock.Exclude(items, st)
+	kept, held := interlock.Exclude(items, status)
 	return kept, held, nil
 }
 
