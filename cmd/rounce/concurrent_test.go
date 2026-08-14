@@ -286,21 +286,27 @@ func TestConcurrentAddChildrenNoOrdinalCollision(t *testing.T) {
 // half-written, and never left in a state that breaks every future `rounce
 // repos` call. That is the guarantee this test checks.
 //
-// It deliberately does NOT assert that all six registrations survive.
-// Atomicity of the WRITE does not imply isolation of the read-modify-write
-// sequence around it: two processes registering two DIFFERENT new repos,
-// each having read the registry before the other's rename landed, will have
-// one rename replace the other's addition. That is a lost update, not
-// corruption, and 06-CONTEXT.md decision 2 accepts it explicitly ("a
-// half-written registry that breaks every future `repos` call is a much
-// worse failure than a lost registration"). A set-equality assertion here
-// would be testing a guarantee this design does not make, and would flake on
-// process scheduling.
+// IT NOW ALSO ASSERTS THAT ALL SIX SURVIVE. That is a change of contract,
+// recorded here because the old comment argued at length that it must not.
 //
-// Contrast TestConcurrentInitSameDirectory and
-// TestConcurrentAddChildrenNoOrdinalCollision above, which DO assert set
-// equality -- correctly, because the store-level constraints they cover
-// (UNIQUE(parent_id, ordinal), _txlock=immediate) genuinely provide it.
+// The old reasoning was right about its premise and right to stop where it
+// did: atomicity of the WRITE does not imply isolation of the
+// read-modify-write sequence around it, so two processes registering two
+// DIFFERENT repositories -- each having read before the other's rename
+// landed -- had one rename discard the other's addition. Measured at
+// 1-of-6 survivors, 10 runs out of 10 (06-03-SUMMARY.md). Asserting set
+// equality against that design would have been testing a guarantee it did
+// not make.
+//
+// internal/registry/lock.go now makes it. Register and Forget hold an
+// exclusive lock file across Load AND Save, so the window that lost updates
+// is closed rather than narrowed. Re-measured after the change: 6-of-6, 10
+// runs out of 10, with no lock file left behind. rnc-245572.
+//
+// This now sits alongside TestConcurrentInitSameDirectory and
+// TestConcurrentAddChildrenNoOrdinalCollision, which assert set equality
+// from store-level constraints (UNIQUE(parent_id, ordinal),
+// _txlock=immediate) rather than from a lock.
 func TestConcurrentInitDifferentRepositoriesLeavesRegistryValid(t *testing.T) {
 	bin := buildRounce(t, "")
 	home := t.TempDir()
@@ -380,12 +386,26 @@ func TestConcurrentInitDifferentRepositoriesLeavesRegistryValid(t *testing.T) {
 	// actually is on this machine.
 	t.Logf("TestConcurrentInitDifferentRepositoriesLeavesRegistryValid: %d/%d registrations survived", len(envelope.Repos), n)
 
-	if len(envelope.Repos) < 1 {
-		t.Fatalf("registry has zero repos, want at least one survivor")
+	// Every one of the six must survive. Before the lock this was 1-of-6,
+	// reproducibly, so a regression here is not a flake to retry -- it is
+	// the read-modify-write window reopening.
+	if len(envelope.Repos) != n {
+		var got []string
+		for _, r := range envelope.Repos {
+			got = append(got, r.Path)
+		}
+		t.Fatalf("%d/%d registrations survived, want all %d -- the Load/Save window has reopened (internal/registry/lock.go).\nsurvivors: %v", len(envelope.Repos), n, n, got)
+	}
+	for path := range wantPaths {
+		if !seenPaths[path] {
+			t.Errorf("registration for %s was lost", path)
+		}
 	}
 
-	// Not asserted, deliberately: that all six survived. See the doc comment
-	// above.
+	// The lock must not outlive the processes that took it.
+	if _, err := os.Stat(filepath.Join(filepath.Dir(registry.PathIn(home)), "repos.json.lock")); !os.IsNotExist(err) {
+		t.Errorf("a lock file survived all six processes (stat err = %v)", err)
+	}
 
 	registryDir := filepath.Dir(registry.PathIn(home))
 	entries, err := os.ReadDir(registryDir)

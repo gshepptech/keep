@@ -170,6 +170,19 @@ func Save(home string, env Envelope) error {
 // already-absolute path; matching here is plain string equality on that
 // value.
 func Register(home, storePath, name, lastSeen string) error {
+	// The lock covers Load and Save TOGETHER. Save's temp-file-and-rename
+	// makes each write atomic, which is a different guarantee: without this
+	// lock two processes registering two different repositories each read
+	// before the other's rename landed, and one rename discarded the
+	// other's addition -- 1-of-6 survivors, 10 runs out of 10
+	// (06-03-SUMMARY.md). See internal/registry/lock.go for why failing to
+	// take the lock proceeds anyway rather than erroring.
+	return withLock(home, func() error {
+		return register(home, storePath, name, lastSeen)
+	})
+}
+
+func register(home, storePath, name, lastSeen string) error {
 	// Load's error is deliberately ignored here, not propagated: the
 	// never-fatal contract means a corrupted registry must not make every
 	// future `rounce init` fail to register. Register proceeds with the
@@ -197,6 +210,18 @@ func Register(home, storePath, name, lastSeen string) error {
 // was actually there. It never touches the store itself -- forgetting is not
 // deleting, and the CLI's message says so.
 func Forget(home, storePath string) (bool, error) {
+	// Locked for the same reason Register is: a concurrent forget and
+	// register would otherwise lose whichever one read first.
+	var found bool
+	err := withLock(home, func() error {
+		var err error
+		found, err = forget(home, storePath)
+		return err
+	})
+	return found, err
+}
+
+func forget(home, storePath string) (bool, error) {
 	// Same never-fatal reasoning as Register: proceed with the empty
 	// envelope on a Load failure rather than propagating it.
 	env, _ := Load(home)
