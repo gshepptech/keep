@@ -241,6 +241,22 @@ type actionArgs struct {
 
 // holdsFor names the files one session is holding, for the agents table.
 // Presentation only: it joins facts Interlock already reported.
+// holdCount is how many files a session is holding right now. The Agents
+// panel asks before drawing Release: a button offered against nothing
+// teaches you that the button does nothing.
+func holdCount(st *interlock.Status, session string) int {
+	if st == nil {
+		return 0
+	}
+	n := 0
+	for _, l := range st.Leases {
+		if l.SessionID == session {
+			n++
+		}
+	}
+	return n
+}
+
 func holdsFor(st *interlock.Status, session string) string {
 	if st == nil {
 		return ""

@@ -338,3 +338,50 @@ func TestUpdateRejectsEmptyChangeSet(t *testing.T) {
 			detail.Title, detail.UpdatedAt, item.Title, item.UpdatedAt)
 	}
 }
+
+// TestStartRecordsWhoClaimedIt.
+//
+// Found by looking at a real board: an item claimed from the page showed
+// "nobody -- claimed from the board" in the column headed "Claimed by". The
+// claim was recorded in the event trail but never on the item, so every
+// view that asks who is working on something had to answer "nobody" about
+// work a person had just picked up.
+func TestStartRecordsWhoClaimedIt(t *testing.T) {
+	st, ctx := openTestStore(t), context.Background()
+	item := mustAdd(t, st, AddItemInput{Title: "a thing to claim", Actor: "someone"})
+
+	got, err := st.StartItem(ctx, StartItemInput{ID: item.ID, Actor: "dev"})
+	if err != nil {
+		t.Fatalf("StartItem: %v", err)
+	}
+	if got.Assignee == nil || *got.Assignee != "dev" {
+		t.Errorf("Assignee = %v, want dev -- a claim must say who claimed it", got.Assignee)
+	}
+
+	// And it survives the round trip, rather than only being set on the
+	// returned copy.
+	reread, err := st.GetItem(ctx, item.ID)
+	if err != nil {
+		t.Fatalf("GetItem: %v", err)
+	}
+	if reread.Assignee == nil || *reread.Assignee != "dev" {
+		t.Errorf("stored Assignee = %v, want dev", reread.Assignee)
+	}
+}
+
+// TestStartLeavesAnExistingAssigneeAlone. Assigning work to someone and
+// then claiming it yourself is a real sequence; the claim must not quietly
+// reassign it. The event trail already names who did the claiming.
+func TestStartLeavesAnExistingAssigneeAlone(t *testing.T) {
+	st, ctx := openTestStore(t), context.Background()
+	assigned := "rae"
+	item := mustAdd(t, st, AddItemInput{Title: "already assigned", Actor: "someone", Assignee: assigned})
+
+	got, err := st.StartItem(ctx, StartItemInput{ID: item.ID, Actor: "dev"})
+	if err != nil {
+		t.Fatalf("StartItem: %v", err)
+	}
+	if got.Assignee == nil || *got.Assignee != "rae" {
+		t.Errorf("Assignee = %v, want rae -- claiming must not reassign", got.Assignee)
+	}
+}

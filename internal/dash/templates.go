@@ -55,10 +55,11 @@ var funcMap = template.FuncMap{
 			Project: p.Project, Prefix: p.Prefix, Danger: danger,
 		}
 	},
-	"holdsFor": holdsFor,
-	"base":     base,
-	"initial":  initial,
-	"stat":     statCardFor,
+	"holdsFor":  holdsFor,
+	"holdCount": holdCount,
+	"base":      base,
+	"initial":   initial,
+	"stat":      statCardFor,
 }
 
 // tmpl is the package's one parsed template set, built once at package

@@ -439,7 +439,7 @@ func (s *Server) doLaunch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, s.flashURL(r, "/", "done",
-		"Started "+agent+" on "+id+". Watch it in Interlock."), http.StatusSeeOther)
+		"Started "+agent+" on "+id+". It appears under Agents below once it starts."), http.StatusSeeOther)
 }
 
 // nowStamp is the registry's own timestamp format.
@@ -504,5 +504,5 @@ func (s *Server) doPrompt(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, s.flashURL(r, "/", "done",
-		"Started "+agent+". Watch it in Interlock."), http.StatusSeeOther)
+		"Started "+agent+". It appears under Agents below once it starts."), http.StatusSeeOther)
 }

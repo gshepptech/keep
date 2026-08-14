@@ -98,7 +98,7 @@
   {{range $d.Progress}}<tr>
   <td class="score">{{.Score}}</td>
   <td><a class="title" href="{{$p.Prefix}}/item/{{.ID}}">{{.Title}}</a><div class="sub">{{.ID}}</div></td>
-  <td>{{if .Assignee}}<span class="state state-claimed">{{.Assignee}}</span>{{else}}<span class="faint">nobody — claimed from the board</span>{{end}}</td>
+  <td>{{if .Assignee}}<span class="state state-claimed">{{.Assignee}}</span>{{else}}<span class="faint">claimed before rounce recorded who</span>{{end}}</td>
   {{if $p.Writable}}<td class="right"><div class="acts">
     {{template "action" (act $p "close" .ID "Close" "/" false)}}
     {{template "action" (act $p "drop" .ID "Drop" "/" true)}}
@@ -169,12 +169,12 @@
   <td><span class="state {{if .Expired}}state-idle{{else}}state-workable{{end}}">{{if .Expired}}gone{{else}}live{{end}}</span></td>
   <td class="faint">{{ago .LastSeen}}</td>
   <td class="path">{{holdsFor $d.Interlock .ID}}</td>
-  {{if $p.Writable}}<td class="right"><div class="acts"><form method="post" action="/do/release">
+  {{if $p.Writable}}<td class="right"><div class="acts">{{if holdCount $d.Interlock .ID}}<form method="post" action="/do/release">
     <input type="hidden" name="csrf" value="{{$p.CSRF}}">
 <input type="hidden" name="project" value="{{$p.Project}}"><input type="hidden" name="prefix" value="{{$p.Prefix}}">
     <input type="hidden" name="session" value="{{.ID}}">
     <button type="submit" class="btn btn-sm">Release holds</button>
-  </form></div></td>{{end}}
+  </form>{{else}}<span class="faint">nothing to release</span>{{end}}</div></td>{{end}}
   </tr>
   {{end}}</tbody>
   </table></div>

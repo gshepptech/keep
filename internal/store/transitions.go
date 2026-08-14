@@ -203,13 +203,28 @@ func (s *Store) StartItem(ctx context.Context, in StartItemInput) (model.Item, e
 		}
 
 		now := nowFunc()
+
+		// A claim says someone picked this up, so it records who. Without
+		// this the item is in progress with an empty assignee, and every
+		// view asking "who is working on this?" has to answer "nobody" for
+		// something a person just claimed -- which is how this was found.
+		//
+		// An assignee already on the item is left alone: assigning work to
+		// someone and then claiming it yourself is a real sequence, and the
+		// event trail already names who did the claiming.
+		assignee := item.Assignee
+		if assignee == nil || *assignee == "" {
+			assignee = &in.Actor
+		}
+
 		if _, err := tx.ExecContext(ctx,
-			`UPDATE items SET status = ?, claimed_by_session = ?, claimed_at = ?, updated_at = ? WHERE id = ?`,
-			model.StatusInProgress, nullableString(in.SessionID), now, now, in.ID,
+			`UPDATE items SET status = ?, claimed_by_session = ?, claimed_at = ?, assignee = ?, updated_at = ? WHERE id = ?`,
+			model.StatusInProgress, nullableString(in.SessionID), now, nullableString(*assignee), now, in.ID,
 		); err != nil {
 			return err
 		}
 
+		item.Assignee = assignee
 		item.Status = model.StatusInProgress
 		if in.SessionID != "" {
 			session := in.SessionID
