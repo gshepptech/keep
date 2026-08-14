@@ -460,8 +460,19 @@ func (s *Server) doWatch(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, s.flashURL(r, "/", "problem", err.Error()), http.StatusSeeOther)
 		return
 	}
-	if err := interlock.Init(r.Context(), repoDirOf(path)); err != nil {
+	dir := repoDirOf(path)
+	if err := interlock.Init(r.Context(), dir); err != nil {
 		http.Redirect(w, r, s.flashURL(r, "/", "problem", err.Error()), http.StatusSeeOther)
+		return
+	}
+	// Confirm rather than assume. The first version of this reported
+	// success on an exit code alone and was wrong -- it had run init
+	// against a check that tested for something init does not create, so
+	// the board said coordination was on while still showing it as off.
+	if !interlock.Watches(dir) {
+		http.Redirect(w, r, s.flashURL(r, "/", "problem",
+			"Ran interlock init, but coordination still is not active here. Run `interlock doctor` in "+dir+" to see what it is missing."),
+			http.StatusSeeOther)
 		return
 	}
 	http.Redirect(w, r, s.flashURL(r, "/", "done",

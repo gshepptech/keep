@@ -298,11 +298,9 @@ func TestAgentControlsFollowTheProject(t *testing.T) {
 		}
 	}
 
-	// Mark one of them as set up the way `interlock init` does.
-	if err := os.MkdirAll(filepath.Join(home, "there", ".interlock"), 0o755); err != nil {
-		t.Fatalf("mkdir: %v", err)
-	}
-	t.Setenv(interlock.EnvBinary, fakeInterlockBin(t))
+	// Wire one of them. The stub answers `doctor` with success only for
+	// that directory, which is the question Watches actually asks.
+	t.Setenv(interlock.EnvBinary, doctorStub(t, filepath.Join(home, "there")))
 
 	if body := get(t, s.Handler(), "/p/there").Body.String(); !strings.Contains(body, `action="/do/launch"`) {
 		t.Errorf("/p/there does not offer to start an agent although it is set up:\n%s", body)
@@ -312,15 +310,57 @@ func TestAgentControlsFollowTheProject(t *testing.T) {
 	}
 }
 
-// fakeInterlockBin is an interlock that exists and answers status, which is
-// all Watches needs of it beyond the state directory.
-func fakeInterlockBin(t *testing.T) string {
+// doctorStub is an interlock whose `doctor` succeeds in exactly one
+// directory, and whose `status` answers everywhere.
+//
+// It stubs doctor rather than a marker file because that is what Watches
+// asks -- and the two cheaper signals both proved wrong in use: a present
+// binary answers for repositories it has never touched, and .interlock
+// appears when the first lease is recorded rather than when init runs.
+func doctorStub(t *testing.T, wired string) string {
 	t.Helper()
 	p := filepath.Join(t.TempDir(), "interlock")
-	script := "#!/bin/sh\ncat <<'EOF_JSON'\n" +
+	script := "#!/bin/sh\n" +
+		"if [ \"$1\" = \"doctor\" ]; then\n" +
+		"  [ \"$PWD\" = " + strconvQuote(wired) + " ] && exit 0\n" +
+		"  exit 1\n" +
+		"fi\n" +
+		"cat <<'EOF_JSON'\n" +
 		`{"version":1,"repo":"/r","sessions":[],"leases":[],"errors":[]}` + "\nEOF_JSON\n"
 	if err := os.WriteFile(p, []byte(script), 0o755); err != nil {
 		t.Fatalf("write stub: %v", err)
 	}
 	return p
+}
+
+// strconvQuote is shell-quoting for one path.
+func strconvQuote(s string) string { return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'" }
+
+// TestTurningOnCoordinationConfirmsItWorked.
+//
+// The first version reported success on init's exit code alone. It had run
+// against a check that tested for something init does not create, so the
+// board announced coordination was on while still showing it as off --
+// which is worse than failing, because it stops you looking.
+func TestTurningOnCoordinationConfirmsItWorked(t *testing.T) {
+	s, _ := twoProjects(t)
+
+	// An interlock whose init succeeds and whose doctor never does: the
+	// shape of "it ran and it did not take". A stub that exited 0 for
+	// everything would make doctor succeed too, and prove nothing.
+	p := filepath.Join(t.TempDir(), "interlock")
+	stub := "#!/bin/sh\n[ \"$1\" = \"doctor\" ] && exit 1\nexit 0\n"
+	if err := os.WriteFile(p, []byte(stub), 0o755); err != nil {
+		t.Fatalf("write stub: %v", err)
+	}
+	t.Setenv(interlock.EnvBinary, p)
+
+	rec := post(t, s, "/do/watch", url.Values{})
+	loc := rec.Header().Get("Location")
+	if !strings.Contains(loc, "problem=") {
+		t.Errorf("reported success although coordination is still off: %s", loc)
+	}
+	if strings.Contains(loc, "done=") {
+		t.Errorf("announced success it did not verify: %s", loc)
+	}
 }

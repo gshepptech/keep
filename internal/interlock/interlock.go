@@ -35,7 +35,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -286,25 +285,37 @@ func Run(ctx context.Context, agent, item, dir string) error {
 	return nil
 }
 
-// stateDir is what `interlock init` creates in a repository it coordinates.
-const stateDir = ".interlock"
-
-// Watches reports whether Interlock is set up for this repository.
+// Watches reports whether Interlock is wired into this repository.
 //
-// Distinct from "is Interlock installed": the binary answers `status` from
-// any directory, including one it has never been initialised in, so a
-// present binary says nothing about whether hooks are wired here. Asking
-// the wrong question is how a board comes to offer a control that quietly
-// does nothing -- which it did.
+// It asks Interlock, via `doctor`, which exits 0 when the hooks are in
+// place and 1 when they are not. Two cheaper-looking checks are both wrong,
+// and both were tried:
+//
+//   - "is the binary installed" answers about the machine, not the
+//     repository. `status` succeeds from a directory Interlock has never
+//     touched, so this offers controls that quietly do nothing.
+//   - "does .interlock exist" answers about history, not configuration.
+//     That directory appears when the first session or lease is recorded,
+//     not when init runs -- so a freshly wired project reads as unwired
+//     until an agent happens to work in it.
+//
+// doctor is the only one of the three that answers the question actually
+// being asked. It costs a subprocess, which is why the result is not
+// consulted in a loop.
 func Watches(dir string) bool {
 	if dir == "" {
 		return false
 	}
-	if _, ok := binary(); !ok {
+	bin, ok := binary()
+	if !ok {
 		return false
 	}
-	fi, err := os.Stat(filepath.Join(dir, stateDir))
-	return err == nil && fi.IsDir()
+	ctx, cancel := context.WithTimeout(context.Background(), fetchTimeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, bin, "doctor")
+	cmd.Dir = dir
+	return cmd.Run() == nil
 }
 
 // Init runs `interlock init` in dir.

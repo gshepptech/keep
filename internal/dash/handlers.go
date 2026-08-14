@@ -64,7 +64,7 @@ func (s *Server) handleReady(w http.ResponseWriter, r *http.Request) {
 	}
 	defer done()
 
-	data, err := s.boardDataFrom(r, st)
+	data, err := s.boardDataFrom(r, st, s.pathFor(name))
 	if err != nil {
 		s.fail(w, err)
 		return

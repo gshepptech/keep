@@ -143,11 +143,11 @@ type boardCounts struct {
 // requests can be in flight against two different projects and a field
 // swapped for the duration of one would be visible to the other. That is
 // not a hypothetical with a board someone keeps open in tabs.
-func (s *Server) boardDataFrom(r *http.Request, st *store.Store) (boardData, error) {
+func (s *Server) boardDataFrom(r *http.Request, st *store.Store, path string) (boardData, error) {
 	ctx := r.Context()
 	d := boardData{Types: typeNames()}
 
-	ready, held, err := s.readyItemsFrom(ctx, st)
+	ready, held, err := s.readyItemsFrom(ctx, st, repoDirOf(path))
 	if err != nil {
 		return d, err
 	}
@@ -165,14 +165,22 @@ func (s *Server) boardDataFrom(r *http.Request, st *store.Store) (boardData, err
 	}
 	d.Backlog = len(backlog)
 
-	if st, ok := interlock.Fetch(ctx, ""); ok {
-		d.Interlock = &st
-		for _, sess := range st.Sessions {
-			if !sess.Expired {
-				d.Counts.Agents++
+	// Scoped to this project's directory and gated on it being set up.
+	// Fetch alone answers from any directory, including one Interlock has
+	// never been initialised in, so asking it "is there coordination here"
+	// gets a confident yes about a repository it is not watching -- which
+	// is how the board came to show an empty agents table on a project
+	// that had no coordination at all.
+	if dir := repoDirOf(path); interlock.Watches(dir) {
+		if st, ok := interlock.Fetch(ctx, dir); ok {
+			d.Interlock = &st
+			for _, sess := range st.Sessions {
+				if !sess.Expired {
+					d.Counts.Agents++
+				}
 			}
+			d.Counts.Holding = len(st.Leases)
 		}
-		d.Counts.Holding = len(st.Leases)
 	}
 
 	d.Counts.Ready = len(d.Ready)
