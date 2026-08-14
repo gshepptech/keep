@@ -124,7 +124,7 @@ func TestBoardWithoutWritableRendersNoActions(t *testing.T) {
 	if strings.Contains(body, "/do/start") {
 		t.Errorf("a read-only board rendered an action form:\n%s", body)
 	}
-	if !strings.Contains(body, "read only") {
+	if !strings.Contains(body, "Read only") {
 		t.Errorf("a read-only board does not say so:\n%s", body)
 	}
 }

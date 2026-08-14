@@ -3,13 +3,12 @@
      group header is emitted whenever a row's NewGroup is true. This
      template does not sort or re-group -- it only reads the boundary
      render.go already detected. */}}
-{{define "backlog"}}{{template "head" (titled . "Backlog")}}
+{{define "backlog"}}{{template "head" (titled . "Parked" "Parked" "Worth remembering, not ready to work on. Promote one when its title stands on its own.")}}
 {{$p := .}}{{with .Data}}
-<h1>Parked</h1>
-<p>Things worth remembering that are not ready to be worked on. Promote one
-when its title stands on its own and someone could pick it up cold.</p>
 
-<table class="backlog">
+<div class="panel">
+<div class="panel-head"><h2>Parked items</h2></div>
+<table class="backlog queue">
 <thead><tr><th>Item</th><th>Noticed</th>{{if $p.Writable}}<th class="right">Act</th>{{end}}</tr></thead>
 <tbody>
 {{range .}}{{if .NewGroup}}<tr class="group"><th colspan="3">{{.Type}}</th></tr>
@@ -24,4 +23,5 @@ when its title stands on its own and someone could pick it up cold.</p>
 {{else}}<tr><td colspan="3" class="faint">Nothing parked. Anything an agent notices but should not act on lands here.</td></tr>
 {{end}}</tbody>
 </table>
+</div>
 {{end}}{{template "foot"}}{{end}}

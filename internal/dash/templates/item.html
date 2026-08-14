@@ -6,9 +6,8 @@
      verbatim, inside <pre> as plain text -- never markdown-to-HTML, never
      template.HTML. A parent id and each dep's other end are links built
      from the id field alone, never from title/body/why. */}}
-{{define "item"}}{{template "head" (titled . "Item")}}
+{{define "item"}}{{template "head" (titled . "Item" "Item" "")}}
 {{$p := .}}{{with .Data}}
-<h1>{{.Title}}</h1>
 <p class="sub">{{.ID}} · {{.Type}} · {{.Stage}} · <span class="state state-{{state (printf "%s" .Status) false}}">{{.Status}}</span> · score {{.Score}}</p>
 
 {{if $p.Writable}}
@@ -37,7 +36,7 @@
 </details>
 {{end}}
 
-<h2>Detail</h2>
+<div class="panel"><div class="panel-head"><h2>Detail</h2></div>
 <table class="fields">
 <tbody>
 {{if .ParentID}}<tr><th>parent</th><td><a href="/item/{{.ParentID}}">{{.ParentID}}</a></td></tr>
@@ -48,7 +47,7 @@
 {{end}}<tr><th>created</th><td>{{.CreatedAt}}</td></tr>
 <tr><th>updated</th><td>{{.UpdatedAt}}</td></tr>
 </tbody>
-</table>
+</table></div>
 
 {{if .DependsOn}}<h2>Waiting on</h2>
 <table class="deps">

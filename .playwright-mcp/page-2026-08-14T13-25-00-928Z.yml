@@ -1,0 +1,78 @@
+- generic [ref=f20e2]:
+  - complementary [ref=f20e3]:
+    - generic [ref=f20e4]:
+      - generic [ref=f20e5]: ◈
+      - generic [ref=f20e6]: rounce
+    - navigation [ref=f20e7]:
+      - generic [ref=f20e8]:
+        - generic [ref=f20e9]: Work
+        - link "Board 3" [ref=f20e10] [cursor=pointer]:
+          - /url: /
+          - generic [ref=f20e13]: Board
+          - emphasis [ref=f20e14]: "3"
+        - link "Parked 1" [ref=f20e15] [cursor=pointer]:
+          - /url: /backlog
+          - generic [ref=f20e18]: Parked
+          - emphasis [ref=f20e19]: "1"
+      - generic [ref=f20e20]:
+        - generic [ref=f20e21]: Across repositories
+        - link "All repositories" [ref=f20e22] [cursor=pointer]:
+          - /url: /all
+    - generic [ref=f20e26]:
+      - generic [ref=f20e27]: Connected
+      - generic "/private/tmp/acme-api/.rounce/db.sqlite" [ref=f20e30]: db.sqlite
+  - main [ref=f20e33]:
+    - generic [ref=f20e34]:
+      - generic [ref=f20e35]:
+        - heading "New item" [level=1] [ref=f20e36]
+        - paragraph [ref=f20e37]: One line that stands on its own, so whoever picks it up needs nothing else.
+      - link "New item" [ref=f20e39] [cursor=pointer]:
+        - /url: /new
+    - generic [ref=f20e43]:
+      - generic [ref=f20e44]:
+        - heading "Details" [level=2] [ref=f20e45]
+        - generic [ref=f20e46]: Score is value plus confidence, less effort
+      - generic [ref=f20e48]:
+        - generic [ref=f20e49]:
+          - text: Title
+          - textbox "Title" [active] [ref=f20e50]:
+            - /placeholder: Expire refresh tokens after 30 days
+        - generic [ref=f20e51]:
+          - text: Type
+          - combobox "Type" [ref=f20e52]:
+            - option "roadmap" [selected]
+            - option "epic"
+            - option "task"
+            - option "bug"
+            - option "note"
+        - generic [ref=f20e53]:
+          - text: Value
+          - spinbutton "Value What it is worth" [ref=f20e54]
+          - generic [ref=f20e55]: What it is worth
+        - generic [ref=f20e56]:
+          - text: Confidence
+          - spinbutton "Confidence How sure you are" [ref=f20e57]
+          - generic [ref=f20e58]: How sure you are
+        - generic [ref=f20e59]:
+          - text: Effort
+          - spinbutton "Effort What it will cost" [ref=f20e60]
+          - generic [ref=f20e61]: What it will cost
+        - generic [ref=f20e62]:
+          - text: Files it touches
+          - textbox "Files it touches Comma separated. This is what keeps two agents off the same file." [ref=f20e63]:
+            - /placeholder: internal/auth/token.go, cmd/server/main.go
+          - generic [ref=f20e64]: Comma separated. This is what keeps two agents off the same file.
+        - generic [ref=f20e65]:
+          - text: Why it matters
+          - textbox "Why it matters Cite a file and line where you can." [ref=f20e66]:
+            - /placeholder: Tokens never expire, so a leaked one is permanent. See internal/auth/token.go:88.
+          - generic [ref=f20e67]: Cite a file and line where you can.
+        - generic [ref=f20e68]:
+          - text: How you will know it is done
+          - textbox "How you will know it is done" [ref=f20e69]:
+            - /placeholder: A token older than 30 days is refused, with a test that fails without the change.
+        - generic [ref=f20e70]:
+          - generic [ref=f20e71]:
+            - checkbox "Park it instead — worth remembering, not ready to work on" [ref=f20e72]
+            - text: Park it instead — worth remembering, not ready to work on
+          - button "File it" [ref=f20e73] [cursor=pointer]

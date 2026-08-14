@@ -31,6 +31,7 @@ func (s *Server) routes() *http.ServeMux {
 	mux.HandleFunc("GET /{$}", s.handleReady)
 	mux.HandleFunc("GET /backlog", s.handleBacklog)
 	mux.HandleFunc("GET /all", s.handleAll)
+	mux.HandleFunc("GET /new", s.handleNew)
 	mux.HandleFunc("GET /item/{id}", s.handleItem)
 	mux.HandleFunc("GET /tree/{id}", s.handleTree)
 	s.routesMutating(mux)
@@ -106,4 +107,11 @@ func (s *Server) fail(w http.ResponseWriter, err error) {
 func writeHTML(w http.ResponseWriter, b []byte) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write(b)
+}
+
+// handleNew renders the filing form. Its own page rather than a drawer on
+// the board: filing is deliberate, and a form open above the queue puts an
+// empty text box where the answer to "what should I do" belongs.
+func (s *Server) handleNew(w http.ResponseWriter, r *http.Request) {
+	s.render(w, "new", s.newPage(r, "", typeNames()))
 }

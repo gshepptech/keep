@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strings"
 
 	"github.com/gshepptech/rounce/internal/interlock"
@@ -36,18 +37,40 @@ type page struct {
 	// refused -- a button that is going to say no is worse than no button.
 	Writable bool
 
+	// Counts feed the sidebar pips, so every page shows the same two
+	// numbers without each one having to fetch them.
+	Counts navCounts
+
+	// Repo is the store this board is serving, for the sidebar footer.
+	Repo string
+
 	Data any
+}
+
+// navCounts is what the sidebar shows next to each section.
+type navCounts struct {
+	Ready, Backlog int
 }
 
 // newPage builds the wrapper for one request.
 func (s *Server) newPage(r *http.Request, nav string, data any) page {
-	return page{
+	p := page{
 		Nav:      nav,
 		CSRF:     s.csrf,
 		Problem:  r.URL.Query().Get("problem"),
 		Writable: s.dbPath != "",
+		Repo:     s.dbPath,
 		Data:     data,
 	}
+	// Best effort: a sidebar count that cannot be read is omitted, never an
+	// error. The page it decorates is still worth rendering.
+	if ready, err := s.st.Ready(r.Context(), 0); err == nil {
+		p.Counts.Ready = len(ready)
+	}
+	if backlog, err := s.st.Backlog(r.Context(), ""); err == nil {
+		p.Counts.Backlog = len(backlog)
+	}
+	return p
 }
 
 // render executes a template against a page and writes it.
@@ -146,9 +169,14 @@ func typeNames() []string {
 
 // titled pairs a page with its browser title, so "head" can take one value.
 type titledPage struct {
-	Page  page
-	Title string
-	Data  any
+	Page page
+
+	// Title is the browser tab. Heading is the page's own <h1>, and Lede is
+	// the one line under it -- separate because the tab wants "Board" while
+	// the page wants to say what a board is for.
+	Title, Heading, Lede string
+
+	Data any
 }
 
 // actionArgs is one POST button's data. A struct rather than six template
@@ -175,4 +203,42 @@ func holdsFor(st *interlock.Status, session string) string {
 		return "—"
 	}
 	return strings.Join(paths, ", ")
+}
+
+// statCard is one figure in the readout.
+type statCard struct {
+	Label, Badge, Caption, Accent string
+	Value                         int
+}
+
+// statCardFor builds one figure, and suppresses its accent at zero.
+//
+// A red 0 next to "Blocked" reads as an alarm when it is the opposite: no
+// blocked work is the good outcome. Colour here means "this many things
+// need you", so at zero there is nothing to colour.
+func statCardFor(label string, value int, badge, caption, accent string) statCard {
+	if value == 0 {
+		accent = ""
+	}
+	return statCard{Label: label, Value: value, Badge: badge, Caption: caption, Accent: accent}
+}
+
+// initial is the one letter an avatar shows. Presentation only, and
+// deliberately not a colour hash: two agents named claude and codex would
+// get different colours from the same first letter, which reads as meaning
+// when it is noise.
+func initial(name string) string {
+	if name == "" {
+		return "?"
+	}
+	return strings.ToUpper(string([]rune(name)[:1]))
+}
+
+// base is the last element of a path, for the sidebar's repository line.
+// The full path stays on the title attribute for anyone who needs it.
+func base(p string) string {
+	if p == "" {
+		return "no store"
+	}
+	return filepath.Base(p)
 }

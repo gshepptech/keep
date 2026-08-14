@@ -1,0 +1,57 @@
+{{/* new.html -- filing an item. Its own page rather than a drawer on the
+     board: filing is deliberate, and a form sitting open above the queue
+     puts an empty text box where the answer to "what should I do" belongs.
+     Data: []string, the type vocabulary. */}}
+{{define "new"}}{{template "head" (titled . "New item" "New item" "One line that stands on its own, so whoever picks it up needs nothing else.")}}
+{{$p := .}}
+
+<div class="panel">
+  <div class="panel-head">
+    <h2>Details</h2>
+    <span class="hint">Score is value plus confidence, less effort</span>
+  </div>
+  <div class="panel-body">
+    <form method="post" action="/do/add" class="grid">
+      <input type="hidden" name="csrf" value="{{$p.CSRF}}">
+
+      <label class="wide">Title
+        <input name="title" required autofocus
+               placeholder="Expire refresh tokens after 30 days">
+      </label>
+
+      <label>Type
+        <select name="type">{{range .Data}}<option value="{{.}}">{{.}}</option>{{end}}</select>
+      </label>
+      <label>Value <input name="value" type="number" min="0" max="10" placeholder="0-10">
+        <span class="hint-text">What it is worth</span></label>
+      <label>Confidence <input name="confidence" type="number" min="0" max="10" placeholder="0-10">
+        <span class="hint-text">How sure you are</span></label>
+      <label>Effort <input name="effort" type="number" min="0" max="10" placeholder="0-10">
+        <span class="hint-text">What it will cost</span></label>
+
+      <label class="wide">Files it touches
+        <input name="paths" placeholder="internal/auth/token.go, cmd/server/main.go">
+        <span class="hint-text">Comma separated. This is what keeps two agents off the same file.</span>
+      </label>
+
+      <label class="wide">Why it matters
+        <textarea name="why" rows="3" placeholder="Tokens never expire, so a leaked one is permanent. See internal/auth/token.go:88."></textarea>
+        <span class="hint-text">Cite a file and line where you can.</span>
+      </label>
+
+      <label class="wide">How you will know it is done
+        <textarea name="acceptance" rows="2" placeholder="A token older than 30 days is refused, with a test that fails without the change."></textarea>
+      </label>
+
+      <div class="wide row">
+        <label class="inline">
+          <input type="checkbox" name="park" value="1">
+          Park it instead — worth remembering, not ready to work on
+        </label>
+        <button type="submit" class="btn btn-primary">{{template "icon-plus"}} File it</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{{template "foot"}}{{end}}

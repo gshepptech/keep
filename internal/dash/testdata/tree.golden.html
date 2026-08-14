@@ -59,6 +59,13 @@
     Arial, sans-serif;
 
   --radius: 6px;
+  --radius-lg: 10px;
+
+  /* Tinted grounds for the three states. Derived from the state colours
+     rather than picked separately, so a pill and its dot cannot drift. */
+  --workable-bg: rgba(26, 127, 55, 0.10);
+  --claimed-bg: rgba(154, 103, 0, 0.12);
+  --blocked-bg: rgba(179, 36, 40, 0.10);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -84,7 +91,6 @@
 
 body {
   margin: 0;
-  padding: 0 24px 64px;
   background: var(--bg);
   color: var(--fg);
   font-family: var(--mono);
@@ -93,356 +99,345 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Navigation is a row of quiet labels with one live item. It sits on the
-   canvas rather than in a bar, so the page starts with content instead of
-   chrome. */
-nav {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 18px 0 22px;
-  border-bottom: 1px solid var(--line);
-}
+.ico { flex: none; vertical-align: -3px; }
 
-nav a {
-  color: var(--fg-muted);
-  text-decoration: none;
-  font-size: 12px;
-  letter-spacing: 0.02em;
-  padding: 5px 9px;
-  border-radius: var(--radius);
-}
+/* ---------------------------------------------------------------------
+   Shell. A fixed sidebar and a scrolling content region, because this is
+   an application a person keeps open, not a page they read once. The
+   sidebar is where you are; the region is what you are doing.
+   --------------------------------------------------------------------- */
 
-nav a:hover { color: var(--fg); background: var(--line-soft); }
-nav a:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.app { display: grid; grid-template-columns: 232px 1fr; min-height: 100vh; }
 
-h1 {
-  max-width: 1180px;
-  margin: 30px auto 4px;
-  font-size: 17px;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  color: var(--fg);
-}
-
-h2 {
-  max-width: 1180px;
-  margin: 34px auto 10px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--fg-faint);
-}
-
-h2 em {
-  font-style: normal;
-  font-weight: 400;
-  letter-spacing: 0.02em;
-  text-transform: none;
-  color: var(--fg-faint);
-}
-
-/* Prose shares the tables' exact width so everything on the page starts on
-   one left edge. A narrower measure would read better in isolation and would
-   centre the block against the tables, which is worse: alignment carries
-   more here than line length, since no paragraph on these pages runs past
-   two sentences. */
-p {
-  max-width: 1180px;
-  margin: 0 auto 14px;
-  color: var(--fg-muted);
-  font-size: 12.5px;
-}
-
-/* One table style. Rows are separated by a hairline and nothing else -- no
-   zebra striping, no borders around cells, no rounded row corners. Density
-   is the point: a queue you have to scroll is a queue you stop reading. */
-table {
-  width: 100%;
-  max-width: 1180px;
-  margin: 0 auto 4px;
-  border-collapse: collapse;
+.sidebar {
+  display: flex; flex-direction: column;
+  border-right: 1px solid var(--line);
   background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  overflow: hidden;
+  position: sticky; top: 0; height: 100vh;
 }
 
-thead th {
-  text-align: left;
-  padding: 9px 14px;
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--fg-faint);
-  background: var(--bg);
+.brand {
+  display: flex; align-items: center; gap: 9px;
+  padding: 16px 16px 15px;
   border-bottom: 1px solid var(--line);
-  white-space: nowrap;
 }
+.brand-mark { color: var(--workable); font-size: 14px; }
+.brand-name { font-weight: 600; letter-spacing: 0.01em; }
 
-td {
-  padding: 9px 14px;
-  border-top: 1px solid var(--line-soft);
-  vertical-align: top;
+.nav { flex: 1; padding: 14px 10px; overflow-y: auto; }
+.nav-group + .nav-group { margin-top: 20px; }
+.nav-label {
+  padding: 0 8px 7px; font-size: 10px; font-weight: 600;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-faint);
 }
+.nav-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 9px; border-radius: var(--radius);
+  color: var(--fg-muted); text-decoration: none; font-size: 12.5px;
+}
+.nav-item:hover { background: var(--line-soft); color: var(--fg); }
+.nav-item.active { background: var(--line-soft); color: var(--fg); font-weight: 500; }
+.nav-item .ico { color: var(--fg-faint); }
+.nav-item.active .ico { color: var(--fg); }
+.nav-item span { flex: 1; }
+.pip {
+  font-style: normal; font-size: 11px; color: var(--fg-faint);
+  font-variant-numeric: tabular-nums;
+}
+.nav-item.active .pip { color: var(--fg-muted); }
 
+.sidebar-foot {
+  padding: 12px 16px 14px; border-top: 1px solid var(--line);
+  display: grid; gap: 6px;
+}
+.status-line {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11.5px; color: var(--workable);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.status-line.muted { color: var(--fg-faint); }
+
+.main { min-width: 0; display: flex; flex-direction: column; }
+
+/* The content header carries the page's name and its one primary action.
+   One primary per page: if two things are equally important, neither is. */
+.topbar {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 24px; padding: 22px 28px 18px;
+  border-bottom: 1px solid var(--line);
+  position: sticky; top: 0; background: var(--bg); z-index: 2;
+}
+.topbar h1 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
+.lede { margin: 5px 0 0; color: var(--fg-muted); font-size: 12.5px; max-width: 74ch; }
+.topbar-actions { display: flex; gap: 8px; flex: none; }
+
+.content { padding: 22px 28px 64px; }
+
+/* ---------------------------------------------------------------------
+   Buttons. Three weights and no more: one filled primary per page, an
+   outlined default, and a destructive variant that only colours on hover
+   so a row of them does not read as a warning.
+   --------------------------------------------------------------------- */
+
+.btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  font: inherit; font-size: 12px; cursor: pointer; text-decoration: none;
+  color: var(--fg); background: var(--panel);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 7px 13px; white-space: nowrap;
+}
+.btn:hover { border-color: var(--fg-faint); background: var(--line-soft); }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn-sm { padding: 4px 10px; font-size: 11.5px; color: var(--fg-muted); }
+.btn-sm:hover { color: var(--fg); }
+.btn-primary {
+  background: var(--fg); color: var(--bg); border-color: var(--fg); font-weight: 500;
+}
+.btn-primary:hover { background: var(--fg); border-color: var(--fg); opacity: 0.88; }
+.btn-danger:hover { color: var(--blocked); border-color: var(--blocked); background: transparent; }
+
+/* ---------------------------------------------------------------------
+   Cards. Everything on the page lives in one -- a table floating on the
+   canvas reads as a document, and this is an instrument panel.
+   --------------------------------------------------------------------- */
+
+.stats {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px; margin-bottom: 22px;
+}
+.stat {
+  border: 1px solid var(--line); border-radius: var(--radius-lg);
+  background: var(--panel); padding: 15px 16px 14px;
+}
+.stat-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.09em;
+  text-transform: uppercase; color: var(--fg-faint);
+}
+.stat b {
+  display: block; margin-top: 10px; font-size: 30px; font-weight: 500;
+  line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums;
+}
+.stat p { margin: 9px 0 0; font-size: 11.5px; color: var(--fg-faint); }
+.badge {
+  font-style: normal; font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
+  padding: 2px 7px; border-radius: 999px; text-transform: none;
+  background: var(--line-soft); color: var(--fg-muted);
+}
+.badge-claimed { background: var(--claimed-bg); color: var(--claimed); }
+.badge-blocked { background: var(--blocked-bg); color: var(--blocked); }
+.badge-workable { background: var(--workable-bg); color: var(--workable); }
+.stat-claimed b { color: var(--claimed); }
+.stat-blocked b { color: var(--blocked); }
+
+.panel {
+  border: 1px solid var(--line); border-radius: var(--radius-lg);
+  background: var(--panel); margin-bottom: 18px; overflow: hidden;
+}
+.panel-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 13px 16px; border-bottom: 1px solid var(--line);
+}
+.panel-head h2 {
+  margin: 0; font-size: 12.5px; font-weight: 600; letter-spacing: 0;
+  text-transform: none; color: var(--fg);
+}
+.panel-head .hint { font-size: 11.5px; color: var(--fg-faint); }
+.panel-body { padding: 16px; }
+
+/* ---------------------------------------------------------------------
+   Tables live inside panels and carry no border of their own.
+   --------------------------------------------------------------------- */
+
+table { width: 100%; border-collapse: collapse; }
+thead th {
+  text-align: left; padding: 9px 16px;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.09em;
+  text-transform: uppercase; color: var(--fg-faint);
+  background: var(--bg); border-bottom: 1px solid var(--line); white-space: nowrap;
+}
+td { padding: 11px 16px; border-top: 1px solid var(--line-soft); vertical-align: middle; }
 tbody tr:first-child td { border-top: none; }
 tbody tr:hover td { background: var(--line-soft); }
-
 tr.group th {
-  text-align: left;
-  padding: 14px 14px 6px;
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--fg-faint);
+  text-align: left; padding: 13px 16px 7px;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.09em;
+  text-transform: uppercase; color: var(--fg-faint);
   border-top: 1px solid var(--line-soft);
 }
-
+.right { text-align: right; }
+.faint { color: var(--fg-faint); }
+.path { color: var(--fg-muted); font-size: 12px; }
+.sub { color: var(--fg-faint); font-size: 11px; margin-top: 3px; }
 a { color: var(--fg); text-underline-offset: 3px; text-decoration-color: var(--fg-faint); }
 a:hover { text-decoration-color: var(--fg); }
-a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+a.title, .title { color: var(--fg); font-weight: 500; text-decoration: none; }
+a.title:hover { text-decoration: underline; }
 
-/* The score. Tabular figures so columns of two- and three-digit numbers line
-   up on the same stem, and a size step above everything else because it is
-   the answer the page exists to give. */
-.queue td:nth-child(2),
+/* The score is the one number the product exists to produce. It anchors
+   every row it appears in. */
 td.score {
-  font-variant-numeric: tabular-nums;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--fg);
-  white-space: nowrap;
+  font-variant-numeric: tabular-nums; font-size: 16px;
+  font-weight: 600; color: var(--fg); white-space: nowrap; width: 1%;
 }
 
-/* State is a dot and a word. The dot carries the colour so the word stays
-   readable at any contrast setting, and colour is never the only signal. */
+/* Status is a pill with a tinted ground, not a bare dot: at a glance across
+   a long table the ground is what separates the rows that need you. */
 .state {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 12px;
-  color: var(--fg-muted);
-  white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11.5px; font-weight: 500; white-space: nowrap;
+  padding: 3px 9px 3px 7px; border-radius: 999px;
+  background: var(--line-soft); color: var(--fg-muted);
 }
+.state::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex: none; }
+.state-workable { background: var(--workable-bg); color: var(--workable); }
+.state-claimed { background: var(--claimed-bg); color: var(--claimed); }
+.state-blocked { background: var(--blocked-bg); color: var(--blocked); }
+.state-idle { background: var(--line-soft); color: var(--fg-faint); }
 
-.state::before {
-  content: "";
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-  flex: none;
+.avatar {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%; flex: none;
+  background: var(--line-soft); color: var(--fg-muted);
+  font-size: 10px; font-weight: 600; text-transform: uppercase;
 }
+.who { display: flex; align-items: center; gap: 9px; }
 
-.state-workable { color: var(--workable); }
-.state-claimed { color: var(--claimed); }
-.state-blocked { color: var(--blocked); }
+.acts { display: flex; gap: 6px; justify-content: flex-end; }
+.acts form { margin: 0; }
 
-.dimmed { opacity: 0.45; }
+.banner {
+  display: flex; align-items: center; gap: 10px;
+  margin: 18px 28px 0; padding: 11px 14px;
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
+}
+.banner-bad { border-color: var(--blocked); color: var(--fg); }
+.banner-bad .ico { color: var(--blocked); }
 
-/* Tree depth. A left rule per level rather than an indent alone, so a deep
-   child still reads as belonging to something. */
-.depth-0 { padding-left: 14px; }
-.depth-1 { padding-left: 30px; }
-.depth-2 { padding-left: 46px; }
-.depth-3 { padding-left: 62px; }
-.depth-4 { padding-left: 78px; }
-.depth-5 { padding-left: 94px; }
-.depth-6 { padding-left: 110px; }
-.depth-7 { padding-left: 126px; }
-.depth-8 { padding-left: 142px; }
-.depth-9 { padding-left: 158px; }
-.depth-10 { padding-left: 174px; }
-.depth-11 { padding-left: 190px; }
-.depth-12 { padding-left: 206px; }
+/* An empty state is an invitation, so it gets room and a next step rather
+   than one grey sentence in a table cell. */
+.blank { padding: 34px 16px 38px; text-align: center; }
+.blank .ico { color: var(--fg-faint); width: 22px; height: 22px; }
+.blank h3 { margin: 12px 0 5px; font-size: 13px; font-weight: 600; }
+.blank p { margin: 0 auto 14px; max-width: 46ch; color: var(--fg-muted); font-size: 12.5px; }
 
-table.fields { max-width: 1180px; }
+/* ---------------------------------------------------------------------
+   Forms.
+   --------------------------------------------------------------------- */
+
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px 16px; }
+.grid .wide { grid-column: 1 / -1; }
+.grid label {
+  display: flex; flex-direction: column; gap: 6px;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.09em;
+  text-transform: uppercase; color: var(--fg-faint);
+}
+.grid label.inline {
+  flex-direction: row; align-items: center; gap: 9px;
+  text-transform: none; letter-spacing: 0; font-size: 12.5px;
+  font-weight: 400; color: var(--fg-muted);
+}
+.grid .row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.hint-text { font-size: 11px; color: var(--fg-faint); text-transform: none; letter-spacing: 0; font-weight: 400; }
+input, select, textarea {
+  font: inherit; font-size: 12.5px; color: var(--fg);
+  background: var(--bg); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 9px 11px; width: 100%;
+}
+input[type="checkbox"] { width: auto; accent-color: var(--fg); }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--fg-faint); }
+input::placeholder, textarea::placeholder { color: var(--fg-faint); }
+textarea { resize: vertical; line-height: 1.55; }
+
 table.fields th {
-  text-align: left;
-  padding: 9px 14px;
-  font-weight: 500;
-  color: var(--fg-faint);
-  white-space: nowrap;
-  border-top: 1px solid var(--line-soft);
-  width: 1%;
+  text-align: left; padding: 10px 16px; font-weight: 500;
+  color: var(--fg-faint); white-space: nowrap; width: 1%;
+  border-top: 1px solid var(--line-soft); text-transform: none;
+  letter-spacing: 0; font-size: 12px; background: transparent;
 }
 table.fields tr:first-child th { border-top: none; }
 
 pre {
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 14px;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  overflow-x: auto;
-  font-family: var(--mono);
-  font-size: 12.5px;
-  line-height: 1.6;
-  color: var(--fg);
+  margin: 0; padding: 16px; background: var(--bg);
+  border-top: 1px solid var(--line); overflow-x: auto;
+  font-family: var(--mono); font-size: 12.5px; line-height: 1.6;
 }
 
-@media (max-width: 720px) {
-  body { padding: 0 14px 48px; font-size: 12.5px; }
-  td, thead th { padding: 8px 10px; }
-}
+.depth-0 { padding-left: 16px; } .depth-1 { padding-left: 32px; }
+.depth-2 { padding-left: 48px; } .depth-3 { padding-left: 64px; }
+.depth-4 { padding-left: 80px; } .depth-5 { padding-left: 96px; }
+.depth-6 { padding-left: 112px; } .depth-7 { padding-left: 128px; }
+.depth-8 { padding-left: 144px; } .depth-9 { padding-left: 160px; }
+.depth-10 { padding-left: 176px; } .depth-11 { padding-left: 192px; }
+.depth-12 { padding-left: 208px; }
+.dimmed { opacity: 0.45; }
 
-@media (prefers-reduced-motion: reduce) {
-  * { transition: none !important; }
+@media (max-width: 900px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar { position: static; height: auto; flex-direction: row; align-items: center; overflow-x: auto; }
+  .sidebar .nav { display: flex; gap: 4px; padding: 10px; }
+  .nav-group + .nav-group { margin-top: 0; }
+  .nav-label, .sidebar-foot { display: none; }
+  .nav-group { display: flex; gap: 4px; }
+  .topbar, .content { padding-left: 16px; padding-right: 16px; }
 }
-
-/* ---------------------------------------------------------------------
-   The shell, and the controls the board grew when it stopped being
-   read-only. Everything below follows the same rule as everything above:
-   one accent, hairline borders, and density over decoration.
-   --------------------------------------------------------------------- */
-
-.shell { max-width: 1180px; margin: 0 auto; }
-
-/* One masthead line: name, sections, state. The wordmark is set in the same
-   face as the data because this is a tool, not a brand -- a logotype here
-   would be the only thing on the page not carrying information. */
-.masthead {
-  display: flex; align-items: baseline; gap: 22px;
-  padding: 20px 0 16px; border-bottom: 1px solid var(--line);
-}
-.masthead nav { border: none; padding: 0; margin: 0; flex: 1; }
-.wordmark {
-  font-weight: 600; letter-spacing: 0.02em; color: var(--fg);
-  text-decoration: none; font-size: 13px;
-}
-nav a.here { color: var(--fg); background: var(--line-soft); }
-.chip {
-  font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase;
-  color: var(--fg-faint); border: 1px solid var(--line);
-  padding: 3px 8px; border-radius: 999px;
-}
-
-/* The readout. Figures first, labels under -- the number is what a person
-   came for and the label only says which number it is. */
-.readout {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-  gap: 1px; background: var(--line); border: 1px solid var(--line);
-  border-radius: var(--radius); overflow: hidden; margin: 24px 0 8px;
-}
-.readout > div { background: var(--panel); padding: 14px 16px; }
-.readout b {
-  display: block; font-size: 24px; font-weight: 500;
-  line-height: 1.1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
-}
-.readout span {
-  display: block; margin-top: 5px; font-size: 10px; font-weight: 600;
-  letter-spacing: 0.09em; text-transform: uppercase; color: var(--fg-faint);
-}
-
-h1 { margin: 26px auto 2px; }
-.sub { color: var(--fg-faint); font-size: 11.5px; margin-top: 2px; }
-.faint { color: var(--fg-faint); }
-.path { color: var(--fg-muted); font-size: 12px; }
-.right { text-align: right; }
-a.title, .title { color: var(--fg); font-weight: 500; text-decoration: none; }
-a.title:hover { text-decoration: underline; text-underline-offset: 3px; }
-
-.problem {
-  border: 1px solid var(--blocked); border-left-width: 2px;
-  background: var(--panel); color: var(--fg);
-  padding: 11px 14px; border-radius: var(--radius); margin: 16px auto 0;
-}
-.empty {
-  border: 1px solid var(--line); background: var(--panel);
-  padding: 14px; border-radius: var(--radius); color: var(--fg-muted);
-}
-
-/* Actions sit at the end of their row and stay quiet until hovered. A row
-   of loud buttons would compete with the score for the eye, and the score
-   is what ranks the work. */
-.acts { display: flex; gap: 6px; justify-content: flex-end; }
-.acts.wide { justify-content: flex-start; margin: 14px 0 4px; }
-.acts form { margin: 0; }
-button {
-  font: inherit; font-size: 11.5px; cursor: pointer;
-  color: var(--fg-muted); background: transparent;
-  border: 1px solid var(--line); border-radius: var(--radius);
-  padding: 4px 10px;
-}
-button:hover { color: var(--fg); border-color: var(--fg-faint); background: var(--line-soft); }
-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-button.danger:hover { color: var(--blocked); border-color: var(--blocked); }
-
-/* The composer is closed by default. Filing work is deliberate, and a form
-   sitting open above the queue would put the empty state of a text box
-   where the answer to "what should I do" belongs. */
-.composer {
-  margin: 18px 0 6px; border: 1px solid var(--line);
-  border-radius: var(--radius); background: var(--panel);
-}
-.composer > summary {
-  cursor: pointer; padding: 11px 14px; color: var(--fg-muted);
-  font-size: 12px; list-style: none;
-}
-.composer > summary::-webkit-details-marker { display: none; }
-.composer > summary::before { content: "+ "; color: var(--fg-faint); }
-.composer[open] > summary { border-bottom: 1px solid var(--line); color: var(--fg); }
-.composer[open] > summary::before { content: "\2212 "; }
-.composer:hover > summary { color: var(--fg); }
-
-.grid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 12px 14px; padding: 16px 14px;
-}
-.grid .wide { grid-column: 1 / -1; }
-.grid label {
-  display: flex; flex-direction: column; gap: 5px;
-  font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em;
-  text-transform: uppercase; color: var(--fg-faint);
-}
-.grid label.inline {
-  flex-direction: row; align-items: center; gap: 8px;
-  text-transform: none; letter-spacing: 0.02em; font-size: 12px;
-  font-weight: 400; color: var(--fg-muted);
-}
-.grid .row { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
-input, select, textarea {
-  font: inherit; font-size: 12.5px; color: var(--fg);
-  background: var(--bg); border: 1px solid var(--line);
-  border-radius: var(--radius); padding: 8px 10px; width: 100%;
-}
-input[type="checkbox"] { width: auto; }
-input:focus, select:focus, textarea:focus { outline: none; border-color: var(--fg-faint); }
-input::placeholder, textarea::placeholder { color: var(--fg-faint); }
-textarea { resize: vertical; line-height: 1.5; }
-.grid button { padding: 7px 16px; font-size: 12px; color: var(--fg); border-color: var(--fg-faint); }
-
-.state-idle { color: var(--fg-faint); }
-
-@media (max-width: 720px) {
-  .masthead { flex-wrap: wrap; gap: 10px; }
-  .acts { justify-content: flex-start; }
-}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
 <body>
-<div class="shell">
-<header class="masthead">
-  <a class="wordmark" href="/">rounce</a>
-  <nav>
-    <a href="/">Board</a>
-    <a href="/backlog">Backlog</a>
-    <a href="/all">Repositories</a>
+<div class="app">
+
+<aside class="sidebar">
+  <div class="brand">
+    <span class="brand-mark">◈</span>
+    <span class="brand-name">rounce</span>
+  </div>
+
+  <nav class="nav">
+    <div class="nav-group">
+      <div class="nav-label">Work</div>
+      <a href="/" class="nav-item">
+        <svg class="ico" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4.5h10M3 8h10M3 11.5h6"/></svg><span>Board</span>
+        
+      </a>
+      <a href="/backlog" class="nav-item">
+        <svg class="ico" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 8.5h3l1 2h4l1-2h3M2.5 8.5l1.5-5h8l1.5 5v4h-11z"/></svg><span>Parked</span>
+        
+      </a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Across repositories</div>
+      <a href="/all" class="nav-item">
+        <svg class="ico" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2l6 3-6 3-6-3 6-3zM2 8l6 3 6-3M2 11l6 3 6-3"/></svg><span>All repositories</span>
+      </a>
+    </div>
   </nav>
-  <span class="chip">read only</span>
-</header>
+
+  <div class="sidebar-foot">
+    
+      <div class="status-line muted"><svg class="ico" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 7V5.5a3.5 3.5 0 017 0V7M3.5 7h9v6h-9z"/></svg> Read only</div>
+    
+    <div class="status-line muted" title=""><svg class="ico" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 4.5h4l1.2 1.5H14v7H2z"/></svg> no store</div>
+  </div>
+</aside>
+
+<main class="main">
+  <header class="topbar">
+    <div>
+      <h1>Tree</h1>
+      <p class="lede">Everything beneath this item, and what is blocking it.</p>
+    </div>
+    <div class="topbar-actions">
+      
+    </div>
+  </header>
+
+  
+  <div class="content">
 
 
-
-<h1>Tree</h1>
-<table class="tree">
+<div class="panel"><table class="tree">
 <thead><tr><th>id</th><th>type</th><th>title</th><th>state</th></tr></thead>
 <tbody>
 <tr>
@@ -470,7 +465,9 @@ textarea { resize: vertical; line-height: 1.5; }
 <td class="state state-blocked">blocked ← blocked by rnc-epic</td>
 </tr>
 </tbody>
-</table>
+</table></div>
+  </div>
+</main>
 </div>
 </body>
 </html>

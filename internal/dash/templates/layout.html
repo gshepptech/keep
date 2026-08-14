@@ -1,5 +1,6 @@
 {{/*
-  head/foot -- the chrome every view wraps around its own content.
+  The application shell: a fixed sidebar, and a content region with its own
+  header. Every view fills the region; none of them draws chrome.
 
   DEVIATION FROM THE PLAN'S LITERAL {{define "layout"}} SHAPE, RECORDED FOR
   THE NEXT READER: html/template parses every *.html file here into ONE
@@ -7,8 +8,10 @@
   only the last parsed -- verified live. So each view defines its own
   uniquely-named top-level template and calls these shared blocks directly.
 
-  Both blocks take the page wrapper, not a string, because the nav needs to
-  know which section is current and the header needs the flash.
+  Icons are inline SVG, drawn here rather than fetched: DASH-05 forbids any
+  off-host reference in rendered output, so an icon font or a sprite sheet
+  is not available. They are 16px, 1.5px stroke, currentColor -- one visual
+  weight across the whole nav.
 */}}
 {{define "head"}}<!doctype html>
 <html lang="en">
@@ -19,30 +22,80 @@
 <style>{{style}}</style>
 </head>
 <body>
-<div class="shell">
-<header class="masthead">
-  <a class="wordmark" href="/">rounce</a>
-  <nav>
-    <a href="/"{{if eq .Page.Nav "board"}} class="here"{{end}}>Board</a>
-    <a href="/backlog"{{if eq .Page.Nav "backlog"}} class="here"{{end}}>Backlog</a>
-    <a href="/all"{{if eq .Page.Nav "all"}} class="here"{{end}}>Repositories</a>
+<div class="app">
+
+<aside class="sidebar">
+  <div class="brand">
+    <span class="brand-mark">◈</span>
+    <span class="brand-name">rounce</span>
+  </div>
+
+  <nav class="nav">
+    <div class="nav-group">
+      <div class="nav-label">Work</div>
+      <a href="/" class="nav-item{{if eq .Page.Nav "board"}} active{{end}}">
+        {{template "icon-board"}}<span>Board</span>
+        {{with .Page.Counts.Ready}}<em class="pip">{{.}}</em>{{end}}
+      </a>
+      <a href="/backlog" class="nav-item{{if eq .Page.Nav "backlog"}} active{{end}}">
+        {{template "icon-inbox"}}<span>Parked</span>
+        {{with .Page.Counts.Backlog}}<em class="pip">{{.}}</em>{{end}}
+      </a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Across repositories</div>
+      <a href="/all" class="nav-item{{if eq .Page.Nav "all"}} active{{end}}">
+        {{template "icon-stack"}}<span>All repositories</span>
+      </a>
+    </div>
   </nav>
-  {{if not .Page.Writable}}<span class="chip">read only</span>{{end}}
-</header>
-{{with .Page.Problem}}<p class="problem" role="alert">{{.}}</p>{{end}}
+
+  <div class="sidebar-foot">
+    {{if .Page.Writable}}
+      <div class="status-line">{{template "icon-dot"}} Connected</div>
+    {{else}}
+      <div class="status-line muted">{{template "icon-lock"}} Read only</div>
+    {{end}}
+    <div class="status-line muted" title="{{.Page.Repo}}">{{template "icon-folder"}} {{base .Page.Repo}}</div>
+  </div>
+</aside>
+
+<main class="main">
+  <header class="topbar">
+    <div>
+      <h1>{{.Heading}}</h1>
+      {{with .Lede}}<p class="lede">{{.}}</p>{{end}}
+    </div>
+    <div class="topbar-actions">
+      {{if .Page.Writable}}<a class="btn btn-primary" href="/new">{{template "icon-plus"}} New item</a>{{end}}
+    </div>
+  </header>
+
+  {{with .Page.Problem}}<div class="banner banner-bad">{{template "icon-alert"}}<span>{{.}}</span></div>{{end}}
+  <div class="content">
 {{end}}
 
-{{define "foot"}}</div>
+{{define "foot"}}  </div>
+</main>
+</div>
 </body>
 </html>
 {{end}}
 
-{{/* action is one POST button. Every mutating control on every page goes
-     through this block, so the token can never be forgotten on one of them
-     and the markup cannot drift between pages. */}}
+{{/* One POST button. Every mutating control goes through this block, so the
+     token cannot be forgotten on one of them and the markup cannot drift. */}}
 {{define "action"}}<form method="post" action="/do/{{.Verb}}">
 <input type="hidden" name="csrf" value="{{.CSRF}}">
 <input type="hidden" name="id" value="{{.ID}}">
 <input type="hidden" name="return" value="{{.Return}}">
-<button type="submit"{{if .Danger}} class="danger"{{end}}>{{.Label}}</button>
+<button type="submit" class="btn btn-sm{{if .Danger}} btn-danger{{end}}">{{.Label}}</button>
 </form>{{end}}
+
+{{/* A stat card. Figure first, then what it counts, then one line of
+     context -- the caption is where a number stops being trivia. */}}
+{{define "stat"}}<div class="stat{{if .Accent}} stat-{{.Accent}}{{end}}">
+  <div class="stat-head"><span>{{.Label}}</span>{{if .Badge}}<em class="badge badge-{{.Accent}}">{{.Badge}}</em>{{end}}</div>
+  <b>{{.Value}}</b>
+  <p>{{.Caption}}</p>
+</div>{{end}}
