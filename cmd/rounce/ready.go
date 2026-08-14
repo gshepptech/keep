@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/gshepptech/rounce/internal/interlock"
 	"github.com/gshepptech/rounce/internal/model"
 	"github.com/gshepptech/rounce/internal/registry"
 )
@@ -56,9 +57,42 @@ func runReady(args []string, stdout, stderr io.Writer) int {
 	}
 	defer s.Close()
 
-	items, err := s.Ready(context.Background(), *limitFlag)
+	// UNLIMITED, then filtered, then sliced. Applying --limit in SQL and
+	// filtering afterwards would return fewer rows than asked for whenever
+	// Interlock held anything -- the same count-versus-rows rule runBoard
+	// and mcpInstructions each state at length, for the same reason.
+	ctx := context.Background()
+	items, err := s.Ready(ctx, 0)
 	if err != nil {
 		return exitFor(stderr, err)
+	}
+
+	// The second of the two joins both roadmaps describe: `ready`
+	// additionally excludes items whose paths collide with a lease
+	// Interlock currently holds. Absent Interlock, this is exactly what it
+	// was before -- Fetch reports unusable rather than failing.
+	//
+	// The empty dir means "inherit this process's working directory", which
+	// is the right one: `interlock status` resolves its own repository root
+	// by walking up from where it runs, exactly as `rounce ready` resolves
+	// its store. Passing the store's path instead would ask Interlock about
+	// whichever repository --db pointed at, which is not where the agent is
+	// working.
+	if st, ok := interlock.Fetch(ctx, ""); ok {
+		var held []interlock.Collision
+		items, held = interlock.Exclude(items, st)
+		// Diagnostics on stderr, never stdout: stdout is the queue, and an
+		// agent piping it must not have to strip prose. Naming the holder
+		// is the point -- an item that merely vanished would be
+		// indistinguishable from one that was closed.
+		for _, c := range held {
+			fmt.Fprintf(stderr, "rounce: ready: %s held back -- %s is held by %s (session %s)\n",
+				c.Item.ID, c.Path, c.Lease.Agent, c.Lease.SessionID)
+		}
+	}
+
+	if *limitFlag > 0 && *limitFlag < len(items) {
+		items = items[:*limitFlag]
 	}
 
 	if *jsonFlag {

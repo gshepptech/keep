@@ -31,6 +31,7 @@ func (s *Server) routes() *http.ServeMux {
 	mux.HandleFunc("GET /{$}", s.handleReady)
 	mux.HandleFunc("GET /backlog", s.handleBacklog)
 	mux.HandleFunc("GET /all", s.handleAll)
+	mux.HandleFunc("GET /who", s.handleInterlock)
 	mux.HandleFunc("GET /item/{id}", s.handleItem)
 	mux.HandleFunc("GET /tree/{id}", s.handleTree)
 	return mux
@@ -42,7 +43,10 @@ func (s *Server) routes() *http.ServeMux {
 // happens to match a fixture's size today is exactly the coincidental pass
 // GATE-03 exists to catch.
 func (s *Server) handleReady(w http.ResponseWriter, r *http.Request) {
-	items, err := s.st.Ready(r.Context(), 0)
+	// readyItems, not s.st.Ready directly: the queue and /who must apply
+	// the same Interlock filter, computed once, or the board will omit an
+	// item that /who cannot explain.
+	items, _, err := s.readyItems(r.Context())
 	if err != nil {
 		s.fail(w, err)
 		return

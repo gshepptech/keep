@@ -1,0 +1,78 @@
+{{/* interlock.html -- who is working, and what they hold. Data: interlockPage.
+     rounce says what needs doing; Interlock says who is doing what and where.
+     This page is the second half, read over a CLI contract rather than a
+     shared database, so it is honest about Interlock being absent instead of
+     rendering an empty table that reads as "nobody is working". */}}
+{{define "interlock"}}{{template "head" "who is working"}}
+<h1>who is working</h1>
+
+{{if not .Available}}
+<p>Interlock is not answering here — it may not be installed, or this may not
+be a repository it knows. rounce works exactly as it did without it; the queue
+below is unfiltered.</p>
+<p>rounce says <em>what needs doing</em>. Interlock says <em>who is doing what,
+and where</em>. Neither needs the other to be useful.</p>
+{{else}}
+
+<h2>held back</h2>
+{{if .Held}}
+<p>These are workable except that someone is editing a file they touch. They
+are absent from the queue for exactly as long as the lease lasts.</p>
+<table class="queue">
+<thead><tr><th>id</th><th>score</th><th>title</th><th>path</th><th>held by</th><th>until</th></tr></thead>
+<tbody>
+{{range .Held}}<tr>
+<td><a href="/item/{{.Item.ID}}">{{.Item.ID}}</a></td>
+<td>{{.Item.Score}}</td>
+<td>{{.Item.Title}}</td>
+<td>{{.Path}}</td>
+<td>{{.Lease.Agent}}</td>
+<td>{{.Lease.ExpiresAt}}</td>
+</tr>
+{{end}}</tbody>
+</table>
+{{else}}
+<p>Nothing in the queue is held back right now.</p>
+{{end}}
+
+<h2>files held</h2>
+<table class="queue">
+<thead><tr><th>path</th><th>agent</th><th>session</th><th>kind</th><th>until</th></tr></thead>
+<tbody>
+{{range .Status.Leases}}<tr>
+<td>{{.Path}}</td>
+<td>{{.Agent}}</td>
+<td>{{.SessionID}}</td>
+<td>{{if .Implicit}}implicit{{else}}declared{{end}}</td>
+<td>{{.ExpiresAt}}</td>
+</tr>
+{{else}}<tr><td colspan="5">no files held right now</td></tr>
+{{end}}</tbody>
+</table>
+
+<h2>sessions</h2>
+<table class="queue">
+<thead><tr><th>id</th><th>agent</th><th>state</th><th>last seen</th></tr></thead>
+<tbody>
+{{range .Status.Sessions}}<tr>
+<td>{{.ID}}</td>
+<td>{{.Agent}}</td>
+<td>{{if .Expired}}expired{{else}}live{{end}}</td>
+<td>{{.LastSeen}}</td>
+</tr>
+{{else}}<tr><td colspan="4">no sessions observed</td></tr>
+{{end}}</tbody>
+</table>
+
+{{if .Status.Errors}}
+<h2>unreadable</h2>
+<table class="queue">
+<thead><tr><th>problem</th></tr></thead>
+<tbody>
+{{range .Status.Errors}}<tr><td>{{.}}</td></tr>
+{{end}}</tbody>
+</table>
+{{end}}
+
+{{end}}
+{{template "foot"}}{{end}}

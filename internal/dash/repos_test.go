@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gshepptech/rounce/internal/interlock"
 	"github.com/gshepptech/rounce/internal/registry"
 	"github.com/gshepptech/rounce/internal/store"
 )
@@ -266,5 +267,112 @@ func TestNoExternalReferencesInCrossRepoView(t *testing.T) {
 
 	if v := scanRenderedHTML(body); len(v) != 0 {
 		t.Errorf("off-host references in /all:\n%s", strings.Join(v, "\n"))
+	}
+}
+
+// TestInterlockPageSaysSoWhenInterlockIsAbsent: an empty table would read as
+// "nobody is working", which is the same lie an empty cross-repo queue would
+// tell about a deleted store. The test environment has no Interlock on PATH,
+// which is also the common case for a rounce user.
+func TestInterlockPageSaysSoWhenInterlockIsAbsent(t *testing.T) {
+	// Explicitly off, not merely absent from PATH: whether this test saw a
+	// filtered queue would otherwise depend on whether the developer
+	// running it has Interlock installed. It caught exactly that on the
+	// machine it was written on.
+	t.Setenv(interlock.EnvBinary, "off")
+	s, _ := newHandlerFixture(t)
+
+	rec := get(t, s.Handler(), "/who")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /who: status = %d, want 200", rec.Code)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "not answering here") {
+		t.Errorf("/who does not say Interlock is absent:\n%s", body)
+	}
+	// It must not imply the queue is filtered when it is not.
+	if !strings.Contains(body, "unfiltered") {
+		t.Errorf("/who does not say the queue is unfiltered without Interlock:\n%s", body)
+	}
+}
+
+// TestInterlockNavLinkIsOnEveryView: the page is only reachable if every
+// view offers it, and asserting per view catches one that stops going
+// through the shared head block.
+func TestInterlockNavLinkIsOnEveryView(t *testing.T) {
+	s, ids := newHandlerFixture(t)
+
+	for _, path := range []string{"/", "/backlog", "/all", "/item/" + ids.ready, "/tree/" + ids.epic} {
+		rec := get(t, s.Handler(), path)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("GET %s: status = %d", path, rec.Code)
+		}
+		if !strings.Contains(rec.Body.String(), `href="/who"`) {
+			t.Errorf("%s does not link to the Interlock view", path)
+		}
+	}
+}
+
+// stubInterlock writes an `interlock` that answers `status --json` with the
+// given envelope, and returns its path for ROUNCE_INTERLOCK.
+func stubInterlock(t *testing.T, statusJSON string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "interlock")
+	script := "#!/bin/sh\ncat <<'EOF_JSON'\n" + statusJSON + "\nEOF_JSON\n"
+	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
+		t.Fatalf("write stub: %v", err)
+	}
+	return path
+}
+
+// TestQueueAndInterlockViewAgree is DASH-07's rule applied to the second
+// join. The board's queue and /who both answer "is this held", and if they
+// answered it separately they would drift -- producing a board that omits an
+// item while the page meant to explain the omission does not mention it.
+// They share one Exclude call through readyItems; this is what proves it.
+//
+// The break that motivated this test: changing handleReady back to calling
+// s.st.Ready directly leaves every other test in this package passing.
+func TestQueueAndInterlockViewAgree(t *testing.T) {
+	st := openTestStore(t)
+	held := mustAdd(t, st, store.AddItemInput{
+		Title: "held work", Actor: "tester", Paths: "internal/shared.go",
+	})
+	free := mustAdd(t, st, store.AddItemInput{Title: "free work", Actor: "tester"})
+
+	t.Setenv(interlock.EnvBinary, stubInterlock(t, `{
+  "version": 1, "repo": "/repo", "sessions": [],
+  "leases": [{"path": "internal/shared.go", "agent": "claude",
+              "session_id": "agent-a", "implicit": true,
+              "acquired": "2026-08-13T00:00:00Z",
+              "expires_at": "2026-08-14T00:00:00Z"}],
+  "errors": []
+}`))
+
+	s, err := NewServer(st, "127.0.0.1:0", "")
+	if err != nil {
+		t.Fatalf("NewServer: %v", err)
+	}
+	t.Cleanup(func() { s.Close() })
+
+	queue := get(t, s.Handler(), "/").Body.String()
+	who := get(t, s.Handler(), "/who").Body.String()
+
+	if strings.Contains(queue, held.ID) {
+		t.Errorf("the queue shows %s although internal/shared.go is held:\n%s", held.ID, queue)
+	}
+	if !strings.Contains(queue, free.ID) {
+		t.Errorf("the queue dropped %s, which holds nothing:\n%s", free.ID, queue)
+	}
+
+	// The page that exists to explain the omission must name the item the
+	// queue omitted -- that agreement is the whole point.
+	if !strings.Contains(who, held.ID) {
+		t.Errorf("/who does not name %s, which the queue omitted:\n%s", held.ID, who)
+	}
+	for _, want := range []string{"internal/shared.go", "claude", "agent-a"} {
+		if !strings.Contains(who, want) {
+			t.Errorf("/who does not mention %q:\n%s", want, who)
+		}
 	}
 }
