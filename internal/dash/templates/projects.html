@@ -59,12 +59,16 @@
       <input type="hidden" name="csrf" value="{{$p.CSRF}}">
       <label class="wide">Directory
         <input name="dir" required placeholder="~/Projects/my-app">
-        <span class="hint-text">Adding registers an existing store. It does not create one — run <code>rounce init</code> there first, so becoming a project stays your decision.</span>
+        <span class="hint-text">Each project keeps its own store at <code>.rounce/db.sqlite</code> inside the repository, so its queue travels with the code.</span>
       </label>
       <div class="wide row">
-        <span class="hint">Removing a project only forgets it. The store is never touched.</span>
+        <label class="inline">
+          <input type="checkbox" name="create" value="1">
+          Create the store if the directory does not have one yet
+        </label>
         <button type="submit" class="btn btn-primary">{{template "icon-plus"}} Add project</button>
       </div>
+      <p class="hint wide">Removing a project only forgets it. The store is never touched.</p>
     </form>
   </div>
 </div>

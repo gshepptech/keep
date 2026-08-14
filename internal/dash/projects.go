@@ -133,9 +133,34 @@ func (s *Server) doProjectAdd(w http.ResponseWriter, r *http.Request) {
 
 	path := store.StorePathIn(abs)
 	if _, err := os.Stat(path); err != nil {
-		http.Redirect(w, r, flashURL(r, "/projects", "problem",
-			fmt.Sprintf("No rounce store in %s. Run `rounce init` there first.", abs)), http.StatusSeeOther)
-		return
+		// No store yet. Creating one is offered rather than assumed: it
+		// writes a file into someone's repository, which is not a thing to
+		// do because a form was submitted. The checkbox is the consent.
+		if r.PostFormValue("create") == "" {
+			http.Redirect(w, r, flashURL(r, "/projects", "problem",
+				fmt.Sprintf("No store in %s yet. Tick \"create the store\" to make one, or run `rounce init` there.", abs)),
+				http.StatusSeeOther)
+			return
+		}
+		if _, err := os.Stat(abs); err != nil {
+			http.Redirect(w, r, flashURL(r, "/projects", "problem",
+				fmt.Sprintf("There is no directory at %s.", abs)), http.StatusSeeOther)
+			return
+		}
+		// The .rounce directory is the CLI's job in runInit (init.go:75);
+		// store.Init opens a path and does not make the directory around
+		// it. Missing that is why the first version of this created
+		// nothing and reported success.
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			http.Redirect(w, r, flashURL(r, "/projects", "problem", err.Error()), http.StatusSeeOther)
+			return
+		}
+		st, err := store.Init(path)
+		if err != nil {
+			http.Redirect(w, r, flashURL(r, "/projects", "problem", err.Error()), http.StatusSeeOther)
+			return
+		}
+		st.Close()
 	}
 	if err := registry.Register(s.home, path, registry.NameFor(path), nowStamp()); err != nil {
 		http.Redirect(w, r, flashURL(r, "/projects", "problem", err.Error()), http.StatusSeeOther)

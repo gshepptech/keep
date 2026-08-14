@@ -171,3 +171,45 @@ func TestAddingAProjectRegistersIt(t *testing.T) {
 		t.Error("the added project is not listed")
 	}
 }
+
+// TestAddingAProjectCreatesAStoreOnlyWhenAsked. Creating writes a file into
+// someone's repository, which is not a thing to do because a form was
+// submitted -- so the checkbox is the consent, and without it the refusal
+// names both ways out.
+func TestAddingAProjectCreatesAStoreOnlyWhenAsked(t *testing.T) {
+	s, _ := twoProjects(t)
+	dir := t.TempDir()
+
+	rec := post(t, s, "/do/project-add", url.Values{"dir": {dir}})
+	if loc := rec.Header().Get("Location"); !strings.Contains(loc, "problem=") {
+		t.Errorf("adding a storeless directory did not refuse: %s", loc)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".rounce", "db.sqlite")); err == nil {
+		t.Fatal("a store was created without being asked for")
+	}
+
+	if rec := post(t, s, "/do/project-add", url.Values{"dir": {dir}, "create": {"1"}}); rec.Code != http.StatusSeeOther {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".rounce", "db.sqlite")); err != nil {
+		t.Errorf("asked to create the store and it did not: %v", err)
+	}
+	if !strings.Contains(get(t, s.Handler(), "/projects").Body.String(), dir) {
+		t.Error("the created project is not listed")
+	}
+}
+
+// TestCreateRefusesAMissingDirectory: creating a store is one thing,
+// creating the repository around it is another nobody asked for.
+func TestCreateRefusesAMissingDirectory(t *testing.T) {
+	s, _ := twoProjects(t)
+	gone := filepath.Join(t.TempDir(), "not-there")
+
+	rec := post(t, s, "/do/project-add", url.Values{"dir": {gone}, "create": {"1"}})
+	if loc := rec.Header().Get("Location"); !strings.Contains(loc, "problem=") {
+		t.Errorf("creating in a missing directory did not refuse: %s", loc)
+	}
+	if _, err := os.Stat(gone); err == nil {
+		t.Error("the directory was created; only the store should ever be")
+	}
+}
