@@ -68,7 +68,8 @@ commands:
               --json        one object: the counts and the items
               --web         serve the dashboard on 127.0.0.1 and print the URL
               --port <n>    a fixed port instead of an OS-assigned one
-              read-only: the page cannot change the store
+              the page writes: file, edit, claim, close, promote,
+              assign, and start an agent where Interlock is installed
   repos     the registry of known stores across repositories
               --json        machine-parseable output
               repos add <path>     register a repository directory or store
