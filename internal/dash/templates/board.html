@@ -28,11 +28,12 @@
   </div>
   {{if $d.Ready}}
   <div class="table-wrap"><table class="queue">
-  <thead><tr><th>Score</th><th>Item</th><th>Touches</th>{{if $p.Writable}}<th class="right">Actions</th>{{end}}</tr></thead>
+  <thead><tr><th>Score</th><th>Item</th><th></th><th>Touches</th>{{if $p.Writable}}<th class="right">Actions</th>{{end}}</tr></thead>
   <tbody>
   {{range $d.Ready}}<tr>
   <td class="score">{{.Score}}</td>
-  <td><a class="title" href="{{$p.Prefix}}/item/{{.ID}}">{{.Title}}</a><div class="sub">{{.ID}} · {{.Type}}</div></td>
+  <td><a class="title" href="{{$p.Prefix}}/item/{{.ID}}">{{.Title}}</a></td>
+  <td class="id-cell"><span class="id">{{.ID}}</span></td>
   <td class="path">{{if .Paths}}{{.Paths}}{{else}}<span class="faint">not declared</span>{{end}}</td>
   {{if $p.Writable}}<td class="right"><div class="acts">
     {{if $p.HasInterlock}}
@@ -93,12 +94,13 @@
 <div class="panel">
   <div class="panel-head"><h2>Being worked on</h2></div>
   <div class="table-wrap"><table>
-  <thead><tr><th>Score</th><th>Item</th><th>Claimed by</th>{{if $p.Writable}}<th class="right">Actions</th>{{end}}</tr></thead>
+  <thead><tr><th>Score</th><th>Item</th><th></th><th>Claimed by</th>{{if $p.Writable}}<th class="right">Actions</th>{{end}}</tr></thead>
   <tbody>
   {{range $d.Progress}}<tr>
   <td class="score">{{.Score}}</td>
-  <td><a class="title" href="{{$p.Prefix}}/item/{{.ID}}">{{.Title}}</a><div class="sub">{{.ID}}</div></td>
-  <td>{{if .Assignee}}<span class="state state-claimed">{{.Assignee}}</span>{{else}}<span class="faint">claimed before rounce recorded who</span>{{end}}</td>
+  <td><a class="title" href="{{$p.Prefix}}/item/{{.ID}}">{{.Title}}</a></td>
+  <td class="id-cell"><span class="id">{{.ID}}</span></td>
+  <td>{{if .Assignee}}{{template "state-tag" (tag "claimed" .Assignee)}}{{else}}<span class="faint">claimed before rounce recorded who</span>{{end}}</td>
   {{if $p.Writable}}<td class="right"><div class="acts">
     {{template "action" (act $p "close" .ID "Close" "/" false)}}
     {{template "action" (act $p "drop" .ID "Drop" "/" true)}}
@@ -116,13 +118,14 @@
     <span class="hint">{{len $d.Held}} workable, except an agent has the file open</span>
   </div>
   <div class="table-wrap"><table>
-  <thead><tr><th>Score</th><th>Item</th><th>File</th><th>Held by</th><th>Frees up</th>{{if $p.Writable}}<th class="right">Actions</th>{{end}}</tr></thead>
+  <thead><tr><th>Score</th><th>Item</th><th></th><th>File</th><th>Held by</th><th>Frees up</th>{{if $p.Writable}}<th class="right">Actions</th>{{end}}</tr></thead>
   <tbody>
   {{range $d.Held}}<tr class="flagged">
   <td class="score">{{.Item.Score}}</td>
-  <td><a class="title" href="{{$p.Prefix}}/item/{{.Item.ID}}">{{.Item.Title}}</a><div class="sub">{{.Item.ID}}</div></td>
+  <td><a class="title" href="{{$p.Prefix}}/item/{{.Item.ID}}">{{.Item.Title}}</a></td>
+  <td class="id-cell"><span class="id">{{.Item.ID}}</span></td>
   <td class="path">{{.Path}}</td>
-  <td><span class="state state-claimed">{{.Lease.Agent}}</span></td>
+  <td>{{template "state-tag" (tag "held" .Lease.Agent)}}</td>
   <td class="faint">{{until .Lease.ExpiresAt}}</td>
   {{if $p.Writable}}<td class="right"><div class="acts"><form method="post" action="/do/release">
     <input type="hidden" name="csrf" value="{{$p.CSRF}}">
@@ -146,7 +149,8 @@
   <thead><tr><th>Item</th><th>Waiting on</th></tr></thead>
   <tbody>
   {{range $d.Blocked}}<tr class="flagged stopped">
-  <td><a class="title" href="{{$p.Prefix}}/item/{{.Item.ID}}">{{.Item.Title}}</a><div class="sub">{{.Item.ID}}</div></td>
+  <td><a class="title" href="{{$p.Prefix}}/item/{{.Item.ID}}">{{.Item.Title}}</a></td>
+  <td class="id-cell"><span class="id">{{.Item.ID}}</span></td>
   <td><a href="{{$p.Prefix}}/item/{{.BlockedBy}}">{{.BlockedBy}}</a></td>
   </tr>
   {{end}}</tbody>
@@ -166,7 +170,7 @@
   <tbody>
   {{range .Sessions}}<tr>
   <td><div class="who"><span class="avatar">{{initial .Agent}}</span><div><b>{{.Agent}}</b><div class="sub">{{.ID}}</div></div></div></td>
-  <td><span class="state {{if .Expired}}state-idle{{else}}state-workable{{end}}">{{if .Expired}}gone{{else}}live{{end}}</span></td>
+  <td>{{if .Expired}}{{template "state-tag" (tag "idle" "gone")}}{{else}}{{template "state-tag" (tag "workable" "live")}}{{end}}</td>
   <td class="faint">{{ago .LastSeen}}</td>
   <td class="path">{{holdsFor $d.Interlock .ID}}</td>
   {{if $p.Writable}}<td class="right"><div class="acts">{{if holdCount $d.Interlock .ID}}<form method="post" action="/do/release">

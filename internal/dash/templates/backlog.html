@@ -9,18 +9,19 @@
 <div class="panel">
 <div class="panel-head"><h2>Parked items</h2></div>
 <div class="table-wrap"><table class="backlog queue">
-<thead><tr><th>Item</th><th>Noticed</th>{{if $p.Writable}}<th class="right">Act</th>{{end}}</tr></thead>
+<thead><tr><th>Item</th><th></th><th>Noticed</th>{{if $p.Writable}}<th class="right">Act</th>{{end}}</tr></thead>
 <tbody>
-{{range .}}{{if .NewGroup}}<tr class="group"><th colspan="3">{{.Type}}</th></tr>
+{{range .}}{{if .NewGroup}}<tr class="group"><th colspan="4">{{.Type}}</th></tr>
 {{end}}<tr>
-<td><a class="title" href="{{$p.Prefix}}/item/{{.ID}}">{{.Title}}</a><div class="sub">{{.ID}}</div></td>
+<td><a class="title" href="{{$p.Prefix}}/item/{{.ID}}">{{.Title}}</a></td>
+<td class="id-cell"><span class="id">{{.ID}}</span></td>
 <td class="faint">{{ago .CreatedAt}}</td>
 {{if $p.Writable}}<td class="right"><div class="acts">
   {{template "action" (act $p "promote" .ID "Promote" "/backlog" false)}}
   {{template "action" (act $p "drop" .ID "Drop" "/backlog" true)}}
 </div></td>{{end}}
 </tr>
-{{else}}<tr><td colspan="3" class="faint">Nothing parked. Anything an agent notices but should not act on lands here.</td></tr>
+{{else}}<tr><td colspan="4" class="faint">Nothing parked. Anything an agent notices but should not act on lands here.</td></tr>
 {{end}}</tbody>
 </table></div>
 </div>

@@ -10,7 +10,7 @@
 
 <p class="lede">
   <span class="mono">{{.ID}}</span> · {{.Type}} · {{.Stage}} ·
-  <span class="state state-{{state (printf "%s" .Status) false}}">{{.Status}}</span> ·
+  {{template "state-tag" (tag (state (printf "%s" .Status) false) (printf "%s" .Status))}} ·
   score {{.Score}}
   {{if .ParentID}} · under <a href="{{$p.Prefix}}/item/{{.ParentID}}">{{.ParentID}}</a>{{end}}
 </p>

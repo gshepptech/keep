@@ -8,14 +8,15 @@
 <div class="panel">
 <div class="panel-head"><h2>Ranked across {{.RepoCount}} registered {{if eq .RepoCount 1}}repository{{else}}repositories{{end}}</h2></div>
 <div class="table-wrap"><table class="queue">
-<thead><tr><th>Repository</th><th>Score</th><th>Item</th></tr></thead>
+<thead><tr><th>Repository</th><th>Score</th><th>Item</th><th></th></tr></thead>
 <tbody>
 {{range .Items}}<tr>
 <td>{{.Repository}}</td>
 <td class="score">{{.Score}}</td>
-<td><span class="title">{{.Title}}</span><div class="sub">{{.ID}} · {{.Type}}</div></td>
+<td><span class="title">{{.Title}}</span></td>
+<td class="id-cell"><span class="id">{{.ID}}</span></td>
 </tr>
-{{else}}<tr><td colspan="3" class="faint">Nothing is workable in any registered repository.</td></tr>
+{{else}}<tr><td colspan="4" class="faint">Nothing is workable in any registered repository.</td></tr>
 {{end}}</tbody>
 </table></div>
 </div>

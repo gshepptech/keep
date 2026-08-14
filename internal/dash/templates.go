@@ -55,6 +55,12 @@ var funcMap = template.FuncMap{
 			Project: p.Project, Prefix: p.Prefix, Danger: danger,
 		}
 	},
+	// tag pairs a semantic state with the word shown beside its glyph, so
+	// one block draws every state marker on every page and a new state
+	// cannot be introduced with a glyph on one page and a pill on another.
+	"tag": func(slug, label string) stateTag {
+		return stateTag{Slug: slug, Label: label}
+	},
 	"holdsFor":  holdsFor,
 	"holdCount": holdCount,
 	"base":      base,

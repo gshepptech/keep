@@ -241,6 +241,13 @@ type actionArgs struct {
 
 // holdsFor names the files one session is holding, for the agents table.
 // Presentation only: it joins facts Interlock already reported.
+// stateTag is one state marker: the semantic slug that picks its glyph and
+// colour, and the word printed beside it.
+type stateTag struct {
+	Slug  string
+	Label string
+}
+
 // holdCount is how many files a session is holding right now. The Agents
 // panel asks before drawing Release: a button offered against nothing
 // teaches you that the button does nothing.

@@ -21,7 +21,7 @@
     <div class="who">
       <span class="avatar">{{initial .Name}}</span>
       <div>
-        <b>{{.Name}}</b>{{if .Active}} <span class="state state-workable">open</span>{{end}}
+        <b>{{.Name}}</b>{{if .Active}} {{template "state-tag" (tag "workable" "open")}}{{end}}
         {{if .Err}}<div class="sub">{{.Err}}</div>{{end}}
       </div>
     </div>

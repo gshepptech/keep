@@ -18,7 +18,7 @@
 <td class="{{depthClass .Depth}}"><a href="{{$p.Prefix}}/item/{{.ID}}">{{.ID}}</a></td>
 <td>{{.Type}}</td>
 <td>{{.Title}}</td>
-<td class="state state-{{state .Status .Blocked}}">{{state .Status .Blocked}}{{if .Blocked}} ← blocked by {{.BlockedBy}}{{end}}</td>
+<td>{{template "state-tag" (tag (state .Status .Blocked) (state .Status .Blocked))}}{{if .Blocked}} <span class="faint">← blocked by {{.BlockedBy}}</span>{{end}}</td>
 </tr>
 {{else}}<tr><td colspan="4">no items beneath this root</td></tr>
 {{end}}</tbody>
