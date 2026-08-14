@@ -26,7 +26,7 @@ in **one SQLite file** and **one static binary**.
 
 <br>
 
-<img src="docs/images/rounce-queue.png" alt="The rounce board: a ranked queue of workable items" width="880">
+<img src="docs/images/rounce-queue.png" alt="The rounce board: the ranked queue, the agents at work, and the items they are holding up" width="880">
 
 </div>
 
@@ -191,11 +191,11 @@ Neither program imports the other. Each reads the other over a versioned CLI
 contract, and each works completely alone — a Go import would have made that a
 slogan instead of a fact.
 
-<img src="docs/images/rounce-who.png" alt="rounce's who-is-working view: two items held back, each naming the agent holding it and for how long" width="880">
+<img src="docs/images/rounce-held.png" alt="Two items held back, each naming the file, the agent holding it, and when the lease frees up" width="880">
 
-Two items are held back. The page names who holds them and until when; the
-queue omits exactly those two. The board and this page share one filter, so the
-board can never drop an item this page fails to explain.
+Two items are held back. The board names who holds them and until when, and the
+queue above omits exactly those two. Both come from one store call, so the
+queue can never drop an item the panel fails to explain.
 
 <img src="docs/images/interlock-panel.png" alt="Interlock's panel: what is workable next, above the files currently held" width="880">
 

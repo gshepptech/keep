@@ -100,37 +100,98 @@ the binary is not on `PATH`.
 
 ## Seeing it
 
-Either dashboard shows the whole picture. They share a design language on
-purpose — you should not have to re-learn a page when you switch.
+One page shows both sides. rounce's board reads Interlock directly, so you do
+not need to keep two dashboards open to answer one question.
 
 ```bash
-rounce board --web        # the queue, and who is holding it up
-interlock dashboard       # the agents, and what is next
+rounce board --web        # the queue, who is holding it up, and the agents
+interlock dashboard       # the same moment from the territory's side
 ```
 
-### rounce — `/who`
+### The board
 
-![rounce's who-is-working view](images/rounce-who.png)
+![The rounce board](images/rounce-queue.png)
 
-Two items are held back, and the page says by whom and for how long. The queue
-view omits exactly these two — the board and this page share one filter, so the
-board can never omit an item this page fails to explain.
+Five panels, top to bottom: the counts, **Workable now**, **Ask an agent**,
+**Held back**, and **Agents**. The last two only appear when Interlock is
+installed and wired — with it off, the board is the queue and nothing else, and
+says so in the sidebar.
+
+**Held back** is the join made visible:
+
+![Items held back, and who holds them](images/rounce-held.png)
+
+Two items are workable on their own merits and absent from the queue above.
+The panel names the file, the agent, and when the lease frees up. The queue and
+this panel come from one store call, so the board can never drop an item it
+fails to explain.
+
+**Release** hands a file back early. It is the one destructive control on the
+page, and it does what Interlock's own `lease release` does — nothing rounce
+invented.
 
 ### Interlock — the panel
 
 ![Interlock's panel](images/interlock-panel.png)
 
-The same moment from the other side. **Next** shows what is workable, already
-filtered; **Files held** below shows why the two higher-scoring items are not
-there.
+The same moment from the other side. **Next** is rounce's queue, already
+filtered; **Files held** below is why the two higher-scoring items are not in
+it.
+
+---
+
+## Starting an agent from the board
+
+Every workable row carries a runner picker and **Start agent**. Pressing it
+runs, in the project's own directory:
+
+```bash
+interlock run <agent> --item <id> --no-follow -- "<the item's title and reason>"
+```
+
+Interlock owns the process from there: it supervises the run, its hooks fire,
+and the agent claims files as it writes them. rounce does not spawn agents
+itself and does not want to — a second supervisor is a second thing to be
+wrong.
+
+**Ask an agent**, below the queue, is the same path without an item, for work
+you would not have written a ticket for. Both report what actually happened: a
+run that fails on startup — no credentials, no such runner — is reported as a
+failure with Interlock's own reason, not as a successful launch.
+
+To watch a run, or stop one:
+
+```bash
+interlock runs list
+interlock runs logs <run-id>
+interlock runs stop <run-id>
+```
+
+---
+
+## Several projects at once
+
+`rounce init` registers a repository, so the board's sidebar lists every project
+you have initialised and each keeps its own store, queue and board. **Manage
+projects** adds one you have cloned since, or forgets one — forgetting removes
+it from the list and never touches the store.
+
+Interlock is per-repository too, and the board says which project it is looking
+at, by name and by full path, at the top of the sidebar. The status line at the
+bottom says whether Interlock is watching *that* project. Switching projects
+switches both.
+
+**Queue, all projects** pools every registered project into one ranked list, for
+the morning question of what to work on before you have decided where.
 
 ---
 
 ## What this does not do
 
-- **It does not assign work.** rounce holds the list and Interlock holds the
-  territory. Neither starts an agent unless you ask — `interlock run` is you
-  asking.
+- **It does not assign work by itself.** rounce holds the list and Interlock
+  holds the territory. Nothing starts unless you ask — pressing **Start agent**
+  is you asking, and so is `interlock run`. Neither program decides on its own
+  that an item should be worked on.
 - **It does not make the queue safe to race on.** A lease appears when an agent
   writes, not when it starts thinking. Two agents that both ask within the same
   second can still both be offered the same item.

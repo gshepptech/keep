@@ -355,14 +355,16 @@ ships no JavaScript, so it works with the network down. `--port <n>` picks a
 fixed port instead of an OS-assigned one, if you want a stable bookmark.
 Ctrl-C stops it cleanly (exit 0 — a clean shutdown isn't an error).
 
-The page has four views:
+The page has six views:
 
 | View | Shows |
 |---|---|
-| **Queue** (default) | `ready`, ranked — same data as the terminal board |
-| **Backlog** | every raw item, grouped by type — the pen |
-| **Item** | one item: body, acceptance criteria, deps both directions, event history |
+| **Board** (default) | the ranked queue, plus — with Interlock installed — what is held back and which agents are at work |
+| **Parked** | every raw item, grouped by type — the pen |
+| **Item** | one item: detail, an edit form, deps both directions, event history |
 | **Tree** | everything under a roadmap, blocked subtrees visibly dimmed |
+| **Projects** | every registered project, its directory, and its counts |
+| **Queue, all projects** | every project's queue merged into one ranked list |
 
 The tree view is the one that actually earns having a web page at all — a
 blocked epic greying out its entire subtree is legible in about a second,
@@ -373,9 +375,28 @@ ready` or `rounce blocked` would tell you about the same items.
 
 The page uses colour for exactly three states — workable, claimed, blocked —
 and never colour alone: a blocked row also carries the literal word "blocked"
-in text. There's no editing from the page. The dashboard opens the store
-read-only, so that isn't a policy choice enforced by discipline; a write
-against a read-only-opened SQLite file fails at the driver level.
+in text.
+
+### Acting from the page
+
+![One item, with its edit form](images/rounce-item.png)
+
+The board writes. You can file an item, edit one, claim, close, drop, promote
+from the pen, assign, and — with Interlock installed — start an agent on a row
+or send a free-text prompt.
+
+Every one of those is a POST with a CSRF token and an Origin check, and the
+answer is a redirect, so a reload never repeats an action. There is no
+JavaScript involved in any of it: they are HTML forms.
+
+A board can still be read-only, and says so in the sidebar. That happens when
+the store path cannot be resolved at all — the board keeps serving what it can
+already read rather than refusing to start, and renders every view without a
+single action control, because the templates ask `Writable` before drawing one.
+
+The read handle itself stays read-only for the whole life of the process; a
+write reopens the file for that one action and closes it, so a GET structurally
+cannot write.
 
 ## Multi-repo
 
@@ -425,9 +446,12 @@ is what turns "deleted" into a visible, distinguishable error instead of a
 lie. `repos forget <path>` removes a store from the registry without
 touching the store file itself — forgetting is bookkeeping, not deletion.
 
-There's no cross-repo dashboard. `rounce board --web` still serves exactly
-one store, the same as it did before multi-repo support existed — that mode
-was deliberately not built, not merely not-gotten-to.
+The board reads the registry too. Its sidebar lists every registered project,
+each with its own queue and its own board, and **Queue, all projects** merges
+them into one ranked list. Each project is still a separate SQLite file — the
+board opens the one you are looking at, never a combined database, and names
+the project and its full path at the top of the sidebar so a board you act on
+is never ambiguous about where the write lands.
 
 ## Using it with agents
 

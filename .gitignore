@@ -10,3 +10,7 @@
 
 # macOS
 .DS_Store
+
+# Playwright MCP scratch output -- screenshots and snapshots taken while
+# checking the board render. Never part of the project.
+.playwright-mcp/
