@@ -217,6 +217,7 @@ func (s *Server) routesMutating(mux *http.ServeMux) {
 	mux.HandleFunc("POST /do/project-add", s.doProjectAdd)
 	mux.HandleFunc("POST /do/project-forget", s.doProjectForget)
 	mux.HandleFunc("POST /do/watch", s.doWatch)
+	mux.HandleFunc("POST /do/prompt", s.doPrompt)
 }
 
 func (s *Server) doStart(w http.ResponseWriter, r *http.Request) {
@@ -477,4 +478,31 @@ func (s *Server) doWatch(w http.ResponseWriter, r *http.Request) {
 	}
 	http.Redirect(w, r, s.flashURL(r, "/", "done",
 		"Agent coordination is on for this project. Hooks are wired into your agents' own settings."), http.StatusSeeOther)
+}
+
+// doPrompt starts an agent on a free-text instruction.
+//
+// The queue is still the normal way in: an item carries a brief, acceptance
+// criteria and the files it touches, and an agent started from one begins
+// with all of that. This is for the thing you want done now and would not
+// have written a ticket for -- and it goes through the same launcher, so
+// Interlock supervises it and its guard still applies.
+func (s *Server) doPrompt(w http.ResponseWriter, r *http.Request) {
+	if err := s.guard(r); err != nil {
+		http.Error(w, "refused: "+err.Error(), http.StatusForbidden)
+		return
+	}
+	path, err := s.writablePathFor(r)
+	if err != nil {
+		http.Redirect(w, r, s.flashURL(r, "/", "problem", err.Error()), http.StatusSeeOther)
+		return
+	}
+	agent := r.PostFormValue("agent")
+	text := strings.TrimSpace(r.PostFormValue("prompt"))
+	if err := interlock.Prompt(r.Context(), agent, text, repoDirOf(path)); err != nil {
+		http.Redirect(w, r, s.flashURL(r, "/", "problem", err.Error()), http.StatusSeeOther)
+		return
+	}
+	http.Redirect(w, r, s.flashURL(r, "/", "done",
+		"Started "+agent+". Watch it in Interlock."), http.StatusSeeOther)
 }

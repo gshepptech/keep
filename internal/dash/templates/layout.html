@@ -32,11 +32,10 @@
 
   {{/* Which project this board is serving, said in full. A board that does
        not name its own project is one you can act on by mistake. */}}
-  <a class="project-card" href="/projects" title="{{.Page.ProjectDir}}">
+  <div class="project-card" title="{{.Page.ProjectDir}}">
     <div class="project-name">{{if .Page.Project}}{{.Page.Project}}{{else}}no project{{end}}</div>
     <div class="project-dir">{{.Page.ProjectDir}}</div>
-    <div class="project-switch">Switch project</div>
-  </a>
+  </div>
 
   <nav class="nav">
     <div class="nav-group">
@@ -52,10 +51,23 @@
     </div>
 
     <div class="nav-group">
-      <div class="nav-label">Everything</div>
+      <div class="nav-label">Projects</div>
+      <div class="project-list">
+      {{range .Page.Projects}}
+        <a class="project-item{{if .Active}} active{{end}}{{if .Err}} unreadable{{else if .Ready}} has-work{{end}}"
+           href="{{if .Active}}/{{else}}/p/{{.Name}}{{end}}" title="{{.Dir}}">
+          <i class="dot"></i><span>{{.Name}}</span>
+          {{if and (not .Err) .Ready}}<em class="pip">{{.Ready}}</em>{{end}}
+        </a>
+      {{end}}
+      </div>
       <a href="/projects" class="nav-item{{if eq .Page.Nav "projects"}} active{{end}}">
-        {{template "icon-folder"}}<span>Projects</span>
+        {{template "icon-folder"}}<span>Manage projects</span>
       </a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Everything</div>
       <a href="/all" class="nav-item{{if eq .Page.Nav "all"}} active{{end}}">
         {{template "icon-stack"}}<span>Queue, all projects</span>
       </a>
@@ -86,9 +98,9 @@
 
   {{/* role=alert so the outcome is announced, not only drawn. A red border
        alone tells a screen reader nothing. */}}
+  <div class="content">
   {{with .Page.Problem}}<div class="banner banner-bad" role="alert">{{template "icon-alert"}}<span>{{.}}</span></div>{{end}}
   {{with .Page.Done}}<div class="banner banner-good" role="status">{{template "icon-check"}}<span>{{.}}</span></div>{{end}}
-  <div class="content">
 {{end}}
 
 {{define "foot"}}  </div>

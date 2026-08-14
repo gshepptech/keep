@@ -259,6 +259,26 @@ func Release(ctx context.Context, session string) error {
 // --no-follow because the caller is an HTTP handler: the run outlives the
 // request, and Interlock is the thing watching it.
 func Run(ctx context.Context, agent, item, dir string) error {
+	return run(ctx, agent, dir, "--item", item)
+}
+
+// Prompt starts an agent on a free-text instruction rather than an item.
+//
+// The queue is the normal way in -- an item carries a brief, acceptance
+// criteria and the files it touches, and an agent started from one begins
+// with all of that. A prompt has none of it, so this is for the thing you
+// want done now and would not have written a ticket for. Interlock still
+// supervises it, and Interlock's own guard still applies: a prompt cannot
+// talk its way past a lease.
+func Prompt(ctx context.Context, agent, text, dir string) error {
+	if strings.TrimSpace(text) == "" {
+		return errors.New("no prompt given")
+	}
+	return run(ctx, agent, dir, text)
+}
+
+// run is the shared launcher.
+func run(ctx context.Context, agent, dir string, args ...string) error {
 	bin, ok := binary()
 	if !ok {
 		return errors.New("interlock is not installed here, so there is nothing to start an agent with")
@@ -268,16 +288,15 @@ func Run(ctx context.Context, agent, item, dir string) error {
 	default:
 		return fmt.Errorf("unknown agent %q", agent)
 	}
-	if strings.TrimSpace(item) == "" {
-		return errors.New("no item named")
-	}
 
 	// Longer than fetchTimeout: launching supervises a process rather than
 	// reading a file, and two seconds is not a fair budget for that.
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, bin, "run", agent, "--item", item, "--cwd", dir, "--no-follow")
+	full := append([]string{"run", agent}, args...)
+	full = append(full, "--cwd", dir, "--no-follow")
+	cmd := exec.CommandContext(ctx, bin, full...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("interlock run: %s", strings.TrimSpace(string(out)))

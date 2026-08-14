@@ -49,6 +49,11 @@ type page struct {
 	ProjectDir   string
 	HasInterlock bool
 
+	// Projects is the switcher in the sidebar. Every page carries it so
+	// changing project is one click from anywhere, rather than a trip
+	// through a list page.
+	Projects []project
+
 	// Prefix is what every in-page link is built from: empty for the
 	// started-in project, /p/<name> for any other. Without it a link on
 	// another project's board would silently navigate back to this one.
@@ -84,6 +89,8 @@ func (s *Server) pageFor(r *http.Request, nav, project string, data any) page {
 		HasInterlock: interlock.Watches(repoDirOf(s.pathFor(project))),
 		Data:         data,
 	}
+	p.Projects = s.projects(r.Context(), project)
+
 	// Best effort: a sidebar count that cannot be read is omitted, never an
 	// error. The page it decorates is still worth rendering.
 	if st, done, _, err := s.storeFor(r); err == nil {

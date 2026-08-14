@@ -1,95 +1,120 @@
-{{/* item.html -- the single-item view (DASH-04). Data: model.ItemDetail.
-     Field order follows show's own precedent (cmd/rounce/show.go): id,
-     stage, type, status, score, parent, repo, paths, why, acceptance,
-     created, updated -- then deps both directions, event history
-     oldest-first (already ordered by store.GetItem), then the body last,
-     verbatim, inside <pre> as plain text -- never markdown-to-HTML, never
-     template.HTML. A parent id and each dep's other end are links built
-     from the id field alone, never from title/body/why. */}}
-{{define "item"}}{{template "head" (titled . "Item" "Item" "")}}
+{{/* item.html -- one item in full. Data: model.ItemDetail.
+
+     Field order follows show's own precedent (cmd/rounce/show.go). The body
+     is rendered verbatim inside <pre> as plain text -- never
+     markdown-to-HTML, never template.HTML. A parent id and each dep's other
+     end are links built from the id field alone, never from title, body or
+     why. */}}
+{{define "item"}}{{template "head" (titled . "Item" .Data.Title "")}}
 {{$p := .}}{{with .Data}}
-<p class="sub">{{.ID}} · {{.Type}} · {{.Stage}} · <span class="state state-{{state (printf "%s" .Status) false}}">{{.Status}}</span> · score {{.Score}}</p>
+
+<p class="lede">
+  <span class="mono">{{.ID}}</span> · {{.Type}} · {{.Stage}} ·
+  <span class="state state-{{state (printf "%s" .Status) false}}">{{.Status}}</span> ·
+  score {{.Score}}
+  {{if .ParentID}} · under <a href="{{$p.Prefix}}/item/{{.ParentID}}">{{.ParentID}}</a>{{end}}
+</p>
 
 {{if $p.Writable}}
-<div class="acts wide">
-  {{if eq (printf "%s" .Status) "open"}}{{template "action" (act $p "start" .ID "Start" "" false)}}{{end}}
-  {{if ne (printf "%s" .Status) "closed"}}{{template "action" (act $p "close" .ID "Close" "" false)}}
-  {{template "action" (act $p "drop" .ID "Drop" "" true)}}{{end}}
+<div class="toolbar">
+  {{if eq (printf "%s" .Status) "open"}}{{template "action" (act $p "start" .ID "Claim" "" false)}}{{end}}
+  {{if ne (printf "%s" .Status) "closed"}}
+    {{template "action" (act $p "close" .ID "Close" "" false)}}
+    {{template "action" (act $p "drop" .ID "Drop" "" true)}}
+  {{end}}
   {{if eq (printf "%s" .Stage) "raw"}}{{template "action" (act $p "promote" .ID "Promote to the queue" "" false)}}{{end}}
+  <a class="btn btn-sm" href="{{$p.Prefix}}/tree/{{.ID}}">See the tree</a>
 </div>
+{{end}}
 
 <div class="panel">
-  <div class="panel-head"><h2>Assign</h2><span class="hint">Who is meant to do it — separate from claiming it</span></div>
+  <div class="panel-head">
+    <h2>Detail</h2>
+    <span class="hint">Created {{ago .CreatedAt}}{{if ne .CreatedAt .UpdatedAt}} · edited {{ago .UpdatedAt}}{{end}}</span>
+  </div>
+  <div class="table-wrap">
+  <table class="fields">
+  <tbody>
+  <tr><th>Why it matters</th><td>{{if .Why}}{{.Why}}{{else}}<span class="faint">not given</span>{{end}}</td></tr>
+  <tr><th>Done when</th><td>{{if .Acceptance}}{{.Acceptance}}{{else}}<span class="faint">not given</span>{{end}}</td></tr>
+  <tr><th>Files it touches</th><td class="path">{{if .Paths}}{{.Paths}}{{else}}<span class="faint">not declared — it will never be held back</span>{{end}}</td></tr>
+  <tr><th>Assignee</th><td>{{if .Assignee}}{{.Assignee}}{{else}}<span class="faint">nobody</span>{{end}}</td></tr>
+  {{if .Repo}}<tr><th>Repository</th><td class="path">{{.Repo}}</td></tr>{{end}}
+  </tbody>
+  </table>
+  </div>
+</div>
+
+{{if $p.Writable}}
+<div class="panel">
+  <div class="panel-head">
+    <h2>Edit</h2>
+    <span class="hint">Only what you change is written</span>
+  </div>
   <div class="panel-body">
-    <form method="post" action="/do/assign" class="grid">
+    <form method="post" action="/do/update" class="grid">
       <input type="hidden" name="csrf" value="{{$p.CSRF}}">
-<input type="hidden" name="project" value="{{$p.Project}}"><input type="hidden" name="prefix" value="{{$p.Prefix}}">
+      <input type="hidden" name="project" value="{{$p.Project}}">
+      <input type="hidden" name="prefix" value="{{$p.Prefix}}">
       <input type="hidden" name="id" value="{{.ID}}">
+      <label class="wide">Title <input name="title" value="{{.Title}}" required></label>
+      <label>Value <input name="value" type="number" min="0" max="10" value="{{with .Value}}{{.}}{{end}}"></label>
+      <label>Confidence <input name="confidence" type="number" min="0" max="10" value="{{with .Confidence}}{{.}}{{end}}"></label>
+      <label>Effort <input name="effort" type="number" min="0" max="10" value="{{with .Effort}}{{.}}{{end}}"></label>
       <label class="wide">Assignee
         <input name="assignee" value="{{with .Assignee}}{{.}}{{end}}" placeholder="A person, or claude / codex">
         <span class="hint-text">Assigning does not start anything. Claim is what says someone picked it up.</span>
       </label>
-      <div class="wide row">
-        <span class="hint"></span>
-        <button type="submit" class="btn">Save assignee</button>
-      </div>
+      <label class="wide">Files it touches <input name="paths" value="{{with .Paths}}{{.}}{{end}}" placeholder="internal/auth.go, cmd/main.go"></label>
+      <label class="wide">Why it matters <textarea name="why" rows="2">{{.Why}}</textarea></label>
+      <label class="wide">Done when <textarea name="acceptance" rows="2">{{.Acceptance}}</textarea></label>
+      <label class="wide">Body <textarea name="body" rows="6">{{.Body}}</textarea></label>
+      <div class="wide row"><span class="hint"></span><button type="submit" class="btn btn-primary">Save changes</button></div>
     </form>
   </div>
 </div>
-
-<details class="composer">
-  <summary>Edit</summary>
-  <form method="post" action="/do/update" class="grid">
-    <input type="hidden" name="csrf" value="{{$p.CSRF}}">
-<input type="hidden" name="project" value="{{$p.Project}}"><input type="hidden" name="prefix" value="{{$p.Prefix}}">
-    <input type="hidden" name="id" value="{{.ID}}">
-    <label class="wide">Title <input name="title" value="{{.Title}}" required></label>
-    <label>Value <input name="value" type="number" min="0" max="10" value="{{with .Value}}{{.}}{{end}}"></label>
-    <label>Confidence <input name="confidence" type="number" min="0" max="10" value="{{with .Confidence}}{{.}}{{end}}"></label>
-    <label>Effort <input name="effort" type="number" min="0" max="10" value="{{with .Effort}}{{.}}{{end}}"></label>
-    <label class="wide">Files it touches <input name="paths" value="{{with .Paths}}{{.}}{{end}}"></label>
-    <label class="wide">Why it matters <textarea name="why" rows="2">{{.Why}}</textarea></label>
-    <label class="wide">Acceptance <textarea name="acceptance" rows="2">{{.Acceptance}}</textarea></label>
-    <label class="wide">Body <textarea name="body" rows="6">{{.Body}}</textarea></label>
-    <div class="wide row"><button type="submit">Save changes</button></div>
-  </form>
-</details>
 {{end}}
 
-<div class="panel"><div class="panel-head"><h2>Detail</h2></div>
-<div class="table-wrap"><table class="fields">
-<tbody>
-{{if .ParentID}}<tr><th>parent</th><td><a href="{{$p.Prefix}}/item/{{.ParentID}}">{{.ParentID}}</a></td></tr>
-{{end}}{{if .Repo}}<tr><th>repo</th><td>{{.Repo}}</td></tr>
-{{end}}{{if .Paths}}<tr><th>paths</th><td>{{.Paths}}</td></tr>
-{{end}}{{if .Why}}<tr><th>why</th><td>{{.Why}}</td></tr>
-{{end}}{{if .Acceptance}}<tr><th>acceptance</th><td>{{.Acceptance}}</td></tr>
-{{end}}<tr><th>created</th><td>{{.CreatedAt}}</td></tr>
-<tr><th>updated</th><td>{{.UpdatedAt}}</td></tr>
-</tbody>
-</table></div></div>
+{{if or .DependsOn .DependedOnBy}}
+<div class="panel">
+  <div class="panel-head"><h2>Dependencies</h2></div>
+  <div class="table-wrap">
+  <table>
+  <thead><tr><th>Direction</th><th>Kind</th><th>Item</th></tr></thead>
+  <tbody>
+  {{range .DependsOn}}<tr><td class="faint">waits on</td><td>{{.Type}}</td><td><a href="{{$p.Prefix}}/item/{{.DependsOnID}}">{{.DependsOnID}}</a></td></tr>
+  {{end}}
+  {{range .DependedOnBy}}<tr><td class="faint">blocks</td><td>{{.Type}}</td><td><a href="{{$p.Prefix}}/item/{{.ItemID}}">{{.ItemID}}</a></td></tr>
+  {{end}}
+  </tbody>
+  </table>
+  </div>
+</div>
+{{end}}
 
-{{if .DependsOn}}<h2>Waiting on</h2>
-<div class="table-wrap"><table class="deps">
-<tbody>
-{{range .DependsOn}}<tr><td>{{.Type}}</td><td><a href="{{$p.Prefix}}/item/{{.DependsOnID}}">{{.DependsOnID}}</a></td></tr>
-{{end}}</tbody>
-</table></div>
-{{end}}
-{{if .DependedOnBy}}<h2>Blocking</h2>
-<div class="table-wrap"><table class="deps">
-<tbody>
-{{range .DependedOnBy}}<tr><td>{{.Type}}</td><td><a href="{{$p.Prefix}}/item/{{.ItemID}}">{{.ItemID}}</a></td></tr>
-{{end}}</tbody>
-</table></div>
-{{end}}
-{{if .Events}}<h2>History</h2>
-<div class="table-wrap"><table class="events">
-<tbody>
-{{range .Events}}<tr><td>{{.At}}</td><td>{{.Kind}}</td><td>{{.Actor}}</td></tr>
-{{end}}</tbody>
-</table></div>
-{{end}}
-<h2>Body</h2>
-<pre>{{.Body}}</pre>
+<div class="panel">
+  <div class="panel-head">
+    <h2>History</h2>
+    <span class="hint">{{len .Events}} event{{if ne (len .Events) 1}}s{{end}}, oldest first</span>
+  </div>
+  <div class="table-wrap">
+  <table>
+  <thead><tr><th>When</th><th>What</th><th>Who</th></tr></thead>
+  <tbody>
+  {{range .Events}}<tr>
+    <td class="faint" title="{{.At}}">{{ago .At}}</td>
+    <td>{{.Kind}}</td>
+    <td>{{.Actor}}</td>
+  </tr>
+  {{end}}</tbody>
+  </table>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-head"><h2>Body</h2></div>
+  {{if .Body}}<pre>{{.Body}}</pre>
+  {{else}}<div class="blank">{{template "icon-file"}}<h3>No body</h3><p>The title and the reason carry this one. A body is for a captured document, or for detail that will not fit in a line.</p></div>{{end}}
+</div>
+
 {{end}}{{template "foot"}}{{end}}

@@ -1,0 +1,128 @@
+- generic [ref=f32e2]:
+  - complementary [ref=f32e3]:
+    - generic [ref=f32e4]:
+      - generic [ref=f32e5]: ◈
+      - generic [ref=f32e6]: rounce
+    - generic "/private/tmp/walkthrough/api" [ref=f32e7]: api
+    - navigation [ref=f32e10]:
+      - generic [ref=f32e11]:
+        - generic [ref=f32e12]: Work
+        - link "Board 3" [ref=f32e13] [cursor=pointer]:
+          - /url: /
+          - generic [ref=f32e16]: Board
+          - emphasis [ref=f32e17]: "3"
+        - link "Parked 1" [ref=f32e18] [cursor=pointer]:
+          - /url: /backlog
+          - generic [ref=f32e21]: Parked
+          - emphasis [ref=f32e22]: "1"
+      - generic [ref=f32e23]:
+        - generic [ref=f32e24]: Projects
+        - generic [ref=f32e25]:
+          - link "api 3" [ref=f32e26] [cursor=pointer]:
+            - /url: /
+            - generic [ref=f32e28]: api
+            - emphasis [ref=f32e29]: "3"
+          - link "web 1" [ref=f32e30] [cursor=pointer]:
+            - /url: /p/web
+            - generic [ref=f32e32]: web
+            - emphasis [ref=f32e33]: "1"
+        - link "Manage projects" [ref=f32e34] [cursor=pointer]:
+          - /url: /projects
+      - generic [ref=f32e38]:
+        - generic [ref=f32e39]: Everything
+        - link "Queue, all projects" [ref=f32e40] [cursor=pointer]:
+          - /url: /all
+    - generic [ref=f32e44]:
+      - generic [ref=f32e45]: Connected
+      - generic [ref=f32e48]: Interlock watching
+  - main [ref=f32e52]:
+    - generic [ref=f32e53]:
+      - heading "Expire refresh tokens after 30 days" [level=1] [ref=f32e55]
+      - link "New item" [ref=f32e57] [cursor=pointer]:
+        - /url: /new
+    - generic [ref=f32e60]:
+      - paragraph [ref=f32e61]:
+        - text: rnc-bc133b · task · ticket ·
+        - generic [ref=f32e62]: open
+        - text: · score 28
+      - generic [ref=f32e63]:
+        - button "Claim" [ref=f32e65] [cursor=pointer]
+        - button "Close" [ref=f32e67] [cursor=pointer]
+        - button "Drop" [ref=f32e69] [cursor=pointer]
+        - link "See the tree" [ref=f32e70] [cursor=pointer]:
+          - /url: /tree/rnc-bc133b
+      - generic [ref=f32e71]:
+        - generic [ref=f32e72]:
+          - heading "Detail" [level=2] [ref=f32e73]
+          - generic [ref=f32e74]: Created 4m ago
+        - table [ref=f32e76]:
+          - rowgroup [ref=f32e77]:
+            - row [ref=f32e78]:
+              - rowheader "Why it matters" [ref=f32e79]
+              - cell "tokens never expire" [ref=f32e80]
+            - row [ref=f32e81]:
+              - rowheader "Done when" [ref=f32e82]
+              - cell "not given" [ref=f32e83]
+            - row [ref=f32e84]:
+              - rowheader "Files it touches" [ref=f32e85]
+              - cell "internal/auth.go" [ref=f32e86]
+            - row [ref=f32e87]:
+              - rowheader "Assignee" [ref=f32e88]
+              - cell "nobody" [ref=f32e89]
+      - generic [ref=f32e90]:
+        - generic [ref=f32e91]:
+          - heading "Edit" [level=2] [ref=f32e92]
+          - generic [ref=f32e93]: Only what you change is written
+        - generic [ref=f32e95]:
+          - generic [ref=f32e96]:
+            - text: Title
+            - textbox "Title" [ref=f32e97]: Expire refresh tokens after 30 days
+          - generic [ref=f32e98]:
+            - text: Value
+            - spinbutton "Value" [ref=f32e99]: "9"
+          - generic [ref=f32e100]:
+            - text: Confidence
+            - spinbutton "Confidence" [ref=f32e101]: "9"
+          - generic [ref=f32e102]:
+            - text: Effort
+            - spinbutton "Effort" [ref=f32e103]: "1"
+          - generic [ref=f32e104]:
+            - text: Assignee
+            - textbox "Assignee Assigning does not start anything. Claim is what says someone picked it up." [ref=f32e105]:
+              - /placeholder: A person, or claude / codex
+            - generic [ref=f32e106]: Assigning does not start anything. Claim is what says someone picked it up.
+          - generic [ref=f32e107]:
+            - text: Files it touches
+            - textbox "Files it touches" [ref=f32e108]:
+              - /placeholder: internal/auth.go, cmd/main.go
+              - text: internal/auth.go
+          - generic [ref=f32e109]:
+            - text: Why it matters
+            - textbox "Why it matters" [ref=f32e110]: tokens never expire
+          - generic [ref=f32e111]:
+            - text: Done when
+            - textbox "Done when" [ref=f32e112]
+          - generic [ref=f32e113]:
+            - text: Body
+            - textbox "Body" [ref=f32e114]
+          - button "Save changes" [ref=f32e116] [cursor=pointer]
+      - generic [ref=f32e117]:
+        - generic [ref=f32e118]:
+          - heading "History" [level=2] [ref=f32e119]
+          - generic [ref=f32e120]: 1 event, oldest first
+        - table [ref=f32e122]:
+          - rowgroup [ref=f32e123]:
+            - row [ref=f32e124]:
+              - columnheader "When" [ref=f32e125]
+              - columnheader "What" [ref=f32e126]
+              - columnheader "Who" [ref=f32e127]
+          - rowgroup [ref=f32e128]:
+            - row [ref=f32e129]:
+              - cell "4m ago" [ref=f32e130]
+              - cell "add" [ref=f32e131]
+              - cell "dev" [ref=f32e132]
+      - generic [ref=f32e133]:
+        - heading "Body" [level=2] [ref=f32e135]
+        - generic [ref=f32e136]:
+          - heading "No body" [level=3] [ref=f32e139]
+          - paragraph [ref=f32e140]: The title and the reason carry this one. A body is for a captured document, or for detail that will not fit in a line.

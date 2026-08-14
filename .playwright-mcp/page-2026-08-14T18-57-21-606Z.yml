@@ -1,0 +1,88 @@
+- generic [ref=f31e2]:
+  - complementary [ref=f31e3]:
+    - generic [ref=f31e4]:
+      - generic [ref=f31e5]: ◈
+      - generic [ref=f31e6]: rounce
+    - generic "/private/tmp/walkthrough/api" [ref=f31e7]: api
+    - navigation [ref=f31e10]:
+      - generic [ref=f31e11]:
+        - generic [ref=f31e12]: Work
+        - link "Board 3" [ref=f31e13] [cursor=pointer]:
+          - /url: /
+          - generic [ref=f31e16]: Board
+          - emphasis [ref=f31e17]: "3"
+        - link "Parked 1" [ref=f31e18] [cursor=pointer]:
+          - /url: /backlog
+          - generic [ref=f31e21]: Parked
+          - emphasis [ref=f31e22]: "1"
+      - generic [ref=f31e23]:
+        - generic [ref=f31e24]: Projects
+        - generic [ref=f31e25]:
+          - link "api 3" [ref=f31e26] [cursor=pointer]:
+            - /url: /
+            - generic [ref=f31e28]: api
+            - emphasis [ref=f31e29]: "3"
+          - link "web 1" [ref=f31e30] [cursor=pointer]:
+            - /url: /p/web
+            - generic [ref=f31e32]: web
+            - emphasis [ref=f31e33]: "1"
+        - link "Manage projects" [ref=f31e34] [cursor=pointer]:
+          - /url: /projects
+      - generic [ref=f31e38]:
+        - generic [ref=f31e39]: Everything
+        - link "Queue, all projects" [ref=f31e40] [cursor=pointer]:
+          - /url: /all
+    - generic [ref=f31e44]:
+      - generic [ref=f31e45]: Connected
+      - generic [ref=f31e48]: Interlock watching
+  - main [ref=f31e52]:
+    - generic [ref=f31e53]:
+      - heading "Item" [level=1] [ref=f31e55]
+      - link "New item" [ref=f31e57] [cursor=pointer]:
+        - /url: /new
+    - generic [ref=f31e60]:
+      - paragraph [ref=f31e61]:
+        - text: rnc-bc133b · task · ticket ·
+        - generic [ref=f31e62]: open
+        - text: · score 28
+      - generic [ref=f31e63]:
+        - button "Start" [ref=f31e65] [cursor=pointer]
+        - button "Close" [ref=f31e67] [cursor=pointer]
+        - button "Drop" [ref=f31e69] [cursor=pointer]
+      - generic [ref=f31e70]:
+        - generic [ref=f31e71]:
+          - heading "Assign" [level=2] [ref=f31e72]
+          - generic [ref=f31e73]: Who is meant to do it — separate from claiming it
+        - generic [ref=f31e75]:
+          - generic [ref=f31e76]:
+            - text: Assignee
+            - textbox "Assignee Assigning does not start anything. Claim is what says someone picked it up." [ref=f31e77]:
+              - /placeholder: A person, or claude / codex
+            - generic [ref=f31e78]: Assigning does not start anything. Claim is what says someone picked it up.
+          - button "Save assignee" [ref=f31e80] [cursor=pointer]
+      - group [ref=f31e81]:
+        - generic "Edit" [ref=f31e82]
+      - generic [ref=f31e83]:
+        - heading "Detail" [level=2] [ref=f31e85]
+        - table [ref=f31e87]:
+          - rowgroup [ref=f31e88]:
+            - row [ref=f31e89]:
+              - rowheader "paths" [ref=f31e90]
+              - cell "internal/auth.go" [ref=f31e91]
+            - row [ref=f31e92]:
+              - rowheader "why" [ref=f31e93]
+              - cell "tokens never expire" [ref=f31e94]
+            - row [ref=f31e95]:
+              - rowheader "created" [ref=f31e96]
+              - cell "2026-08-14T18:54:51.529650000Z" [ref=f31e97]
+            - row [ref=f31e98]:
+              - rowheader "updated" [ref=f31e99]
+              - cell "2026-08-14T18:54:51.529650000Z" [ref=f31e100]
+      - heading "History" [level=2] [ref=f31e101]
+      - table [ref=f31e103]:
+        - rowgroup [ref=f31e104]:
+          - row [ref=f31e105]:
+            - cell "2026-08-14T18:54:51.531143000Z" [ref=f31e106]
+            - cell "add" [ref=f31e107]
+            - cell "dev" [ref=f31e108]
+      - heading "Body" [level=2] [ref=f31e109]

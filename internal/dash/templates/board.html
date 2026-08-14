@@ -6,8 +6,15 @@
 {{define "board"}}{{template "head" (titled . "Board" "Board" "What is workable right now, and what is standing in its way.")}}
 {{$p := .}}{{$d := .Data}}
 
+{{if $d.Held}}
+<div class="banner banner-notice">
+  {{template "icon-clock"}}
+  <span class="grow">{{len $d.Held}} item{{if ne (len $d.Held) 1}}s{{end}} held back — an agent has the files open. They return on their own when the lease expires.</span>
+</div>
+{{end}}
+
 <section class="stats">
-  {{template "stat" (stat "Workable" $d.Counts.Ready "" "Ready to pick up now" "")}}
+  {{template "stat" (stat "Workable" $d.Counts.Ready "" "Ready to pick up now" "workable")}}
   {{template "stat" (stat "In progress" $d.Counts.InProgress "" "Claimed by someone" "claimed")}}
   {{template "stat" (stat "Held back" (len $d.Held) "" "Workable, but a file is open" "claimed")}}
   {{template "stat" (stat "Blocked" $d.Counts.Blocked "" "Waiting on other work" "blocked")}}
@@ -17,7 +24,7 @@
 <div class="panel">
   <div class="panel-head">
     <h2>Workable now</h2>
-    <span class="hint">Ranked by value plus confidence, less effort</span>
+    <span class="hint">{{len $d.Ready}} ranked by value plus confidence, less effort</span>
   </div>
   {{if $d.Ready}}
   <div class="table-wrap"><table class="queue">
@@ -56,6 +63,32 @@
   {{end}}
 </div>
 
+{{if and $p.Writable $p.HasInterlock}}
+<div class="panel">
+  <div class="panel-head">
+    <h2>Ask an agent</h2>
+    <span class="hint">For something you would not have written a ticket for</span>
+  </div>
+  <div class="panel-body">
+    <form method="post" action="/do/prompt" class="prompt-row">
+      <input type="hidden" name="csrf" value="{{$p.CSRF}}">
+      <input type="hidden" name="project" value="{{$p.Project}}">
+      <input type="hidden" name="prefix" value="{{$p.Prefix}}">
+      <textarea name="prompt" required rows="3" aria-label="What to ask the agent"
+        placeholder="Find every place we parse a token and check they agree on expiry."></textarea>
+      <div class="prompt-side">
+        <select name="agent" aria-label="Which agent">
+          <option value="claude">claude</option>
+          <option value="codex">codex</option>
+        </select>
+        <button type="submit" class="btn btn-primary">Send</button>
+        <span class="hint" title="{{$p.ProjectDir}}">Runs in {{base $p.ProjectDir}}</span>
+      </div>
+    </form>
+  </div>
+</div>
+{{end}}
+
 {{if $d.Progress}}
 <div class="panel">
   <div class="panel-head"><h2>Being worked on</h2></div>
@@ -80,12 +113,12 @@
 <div class="panel">
   <div class="panel-head">
     <h2>Held back</h2>
-    <span class="hint">Workable, except an agent has the file open</span>
+    <span class="hint">{{len $d.Held}} workable, except an agent has the file open</span>
   </div>
   <div class="table-wrap"><table>
   <thead><tr><th>Score</th><th>Item</th><th>File</th><th>Held by</th><th>Frees up</th>{{if $p.Writable}}<th class="right">Actions</th>{{end}}</tr></thead>
   <tbody>
-  {{range $d.Held}}<tr>
+  {{range $d.Held}}<tr class="flagged">
   <td class="score">{{.Item.Score}}</td>
   <td><a class="title" href="{{$p.Prefix}}/item/{{.Item.ID}}">{{.Item.Title}}</a><div class="sub">{{.Item.ID}}</div></td>
   <td class="path">{{.Path}}</td>
@@ -112,7 +145,7 @@
   <div class="table-wrap"><table>
   <thead><tr><th>Item</th><th>Waiting on</th></tr></thead>
   <tbody>
-  {{range $d.Blocked}}<tr>
+  {{range $d.Blocked}}<tr class="flagged stopped">
   <td><a class="title" href="{{$p.Prefix}}/item/{{.Item.ID}}">{{.Item.Title}}</a><div class="sub">{{.Item.ID}}</div></td>
   <td><a href="{{$p.Prefix}}/item/{{.BlockedBy}}">{{.BlockedBy}}</a></td>
   </tr>
