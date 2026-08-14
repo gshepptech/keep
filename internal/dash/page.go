@@ -27,10 +27,11 @@ type page struct {
 	// CSRF goes in every mutating form on the page.
 	CSRF string
 
-	// Problem is the last action's failure, shown once at the top. Empty
-	// most of the time; a page that always showed a status bar would train
-	// people to stop reading it.
+	// Problem is the last action's failure and Done is its success, shown
+	// once at the top. Empty most of the time; a page that always showed a
+	// status bar would train people to stop reading it.
 	Problem string
+	Done    string
 
 	// Writable is false when the board was started without a path to write
 	// to. Actions are then not rendered at all rather than rendered and
@@ -58,6 +59,7 @@ func (s *Server) newPage(r *http.Request, nav string, data any) page {
 		Nav:      nav,
 		CSRF:     s.csrf,
 		Problem:  r.URL.Query().Get("problem"),
+		Done:     r.URL.Query().Get("done"),
 		Writable: s.dbPath != "",
 		Repo:     s.dbPath,
 		Data:     data,

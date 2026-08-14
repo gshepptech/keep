@@ -40,9 +40,14 @@
   --line: #e6e4e0;
   --line-soft: #efedea;
 
+  /* Every text token below clears 4.5:1 against both the panel and the
+     canvas -- measured, not assumed. The first version of --fg-faint sat at
+     2.93:1 and carried table headers, timestamps and every hint on the
+     page, which is a lot of real text to have made unreadable by treating
+     "faint" as a look rather than a contrast budget. */
   --fg: #16161a;
   --fg-muted: #6b6b74;
-  --fg-faint: #96969f;
+  --fg-faint: #74747b;
 
   /* The three states, and nothing else. Values carried forward from the
      original stylesheet: they were already chosen for contrast on both
@@ -61,6 +66,26 @@
   --radius: 6px;
   --radius-lg: 10px;
 
+  /* One modular scale. The previous version had eleven sizes including
+     half-pixel values chosen by eye (10.5, 11.5, 12.5), which is how a
+     hierarchy stops being one: at those deltas a reader cannot tell two
+     levels apart, so the distinctions cost bytes and buy nothing. */
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 13px;
+  --text-md: 15px;
+  --text-lg: 18px;
+  --text-xl: 24px;
+  --text-2xl: 32px;
+
+  /* One duration. Instant state changes read as a repaint rather than a
+     response; anything longer than this on a hover is in the way. */
+  --tempo: 150ms;
+
+  /* The focus ring is a tinted halo rather than a hard outline, so it is
+     visible on both grounds without redrawing the field's own border. */
+  --focus-ring: rgba(22, 22, 26, 0.16);
+
   /* Tinted grounds for the three states. Derived from the state colours
      rather than picked separately, so a pill and its dot cannot drift. */
   --workable-bg: rgba(26, 127, 55, 0.10);
@@ -77,7 +102,7 @@
 
     --fg: #e8eaed;
     --fg-muted: #8b9198;
-    --fg-faint: #5a6069;
+    --fg-faint: #7a7f85;
 
     --workable: #3fb950;
     --claimed: #d29922;
@@ -94,7 +119,7 @@ body {
   background: var(--bg);
   color: var(--fg);
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: var(--text-base);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
@@ -127,21 +152,22 @@ body {
 .nav { flex: 1; padding: 14px 10px; overflow-y: auto; }
 .nav-group + .nav-group { margin-top: 20px; }
 .nav-label {
-  padding: 0 8px 7px; font-size: 10px; font-weight: 600;
+  padding: 0 8px 7px; font-size: var(--text-xs); font-weight: 600;
   letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-faint);
 }
 .nav-item {
   display: flex; align-items: center; gap: 9px;
   padding: 7px 9px; border-radius: var(--radius);
-  color: var(--fg-muted); text-decoration: none; font-size: 12.5px;
+  color: var(--fg-muted); text-decoration: none; font-size: var(--text-sm);
 }
+.nav-item { transition: background var(--tempo) ease, color var(--tempo) ease; }
 .nav-item:hover { background: var(--line-soft); color: var(--fg); }
 .nav-item.active { background: var(--line-soft); color: var(--fg); font-weight: 500; }
 .nav-item .ico { color: var(--fg-faint); }
 .nav-item.active .ico { color: var(--fg); }
 .nav-item span { flex: 1; }
 .pip {
-  font-style: normal; font-size: 11px; color: var(--fg-faint);
+  font-style: normal; font-size: var(--text-xs); color: var(--fg-faint);
   font-variant-numeric: tabular-nums;
 }
 .nav-item.active .pip { color: var(--fg-muted); }
@@ -152,7 +178,7 @@ body {
 }
 .status-line {
   display: flex; align-items: center; gap: 8px;
-  font-size: 11.5px; color: var(--workable);
+  font-size: var(--text-sm); color: var(--workable);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .status-line.muted { color: var(--fg-faint); }
@@ -167,8 +193,8 @@ body {
   border-bottom: 1px solid var(--line);
   position: sticky; top: 0; background: var(--bg); z-index: 2;
 }
-.topbar h1 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
-.lede { margin: 5px 0 0; color: var(--fg-muted); font-size: 12.5px; max-width: 74ch; }
+.topbar h1 { margin: 0; font-size: var(--text-lg); font-weight: 600; letter-spacing: -0.01em; }
+.lede { margin: 5px 0 0; color: var(--fg-muted); font-size: var(--text-sm); max-width: 74ch; }
 .topbar-actions { display: flex; gap: 8px; flex: none; }
 
 .content { padding: 22px 28px 64px; }
@@ -181,14 +207,15 @@ body {
 
 .btn {
   display: inline-flex; align-items: center; gap: 7px;
-  font: inherit; font-size: 12px; cursor: pointer; text-decoration: none;
+  font: inherit; font-size: var(--text-sm); cursor: pointer; text-decoration: none;
   color: var(--fg); background: var(--panel);
   border: 1px solid var(--line); border-radius: var(--radius);
   padding: 7px 13px; white-space: nowrap;
 }
+.btn { transition: background var(--tempo) ease, border-color var(--tempo) ease, color var(--tempo) ease; }
 .btn:hover { border-color: var(--fg-faint); background: var(--line-soft); }
 .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.btn-sm { padding: 4px 10px; font-size: 11.5px; color: var(--fg-muted); }
+.btn-sm { padding: 4px 10px; font-size: var(--text-sm); color: var(--fg-muted); }
 .btn-sm:hover { color: var(--fg); }
 .btn-primary {
   background: var(--fg); color: var(--bg); border-color: var(--fg); font-weight: 500;
@@ -211,16 +238,16 @@ body {
 }
 .stat-head {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  font-size: 10.5px; font-weight: 600; letter-spacing: 0.09em;
+  font-size: var(--text-xs); font-weight: 600; letter-spacing: 0.09em;
   text-transform: uppercase; color: var(--fg-faint);
 }
 .stat b {
-  display: block; margin-top: 10px; font-size: 30px; font-weight: 500;
+  display: block; margin-top: 10px; font-size: var(--text-2xl); font-weight: 500;
   line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums;
 }
-.stat p { margin: 9px 0 0; font-size: 11.5px; color: var(--fg-faint); }
+.stat p { margin: 9px 0 0; font-size: var(--text-sm); color: var(--fg-faint); }
 .badge {
-  font-style: normal; font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
+  font-style: normal; font-size: var(--text-xs); font-weight: 600; letter-spacing: 0.04em;
   padding: 2px 7px; border-radius: 999px; text-transform: none;
   background: var(--line-soft); color: var(--fg-muted);
 }
@@ -239,11 +266,16 @@ body {
   padding: 13px 16px; border-bottom: 1px solid var(--line);
 }
 .panel-head h2 {
-  margin: 0; font-size: 12.5px; font-weight: 600; letter-spacing: 0;
+  margin: 0; font-size: var(--text-sm); font-weight: 600; letter-spacing: 0;
   text-transform: none; color: var(--fg);
 }
-.panel-head .hint { font-size: 11.5px; color: var(--fg-faint); }
+.panel-head .hint { font-size: var(--text-sm); color: var(--fg-faint); }
 .panel-body { padding: 16px; }
+
+/* A wide table scrolls inside its own panel. Without this the action
+   columns push the page sideways on a narrow screen, which breaks every
+   other section too. */
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
 /* ---------------------------------------------------------------------
    Tables live inside panels and carry no border of their own.
@@ -252,23 +284,24 @@ body {
 table { width: 100%; border-collapse: collapse; }
 thead th {
   text-align: left; padding: 9px 16px;
-  font-size: 10px; font-weight: 600; letter-spacing: 0.09em;
+  font-size: var(--text-xs); font-weight: 600; letter-spacing: 0.09em;
   text-transform: uppercase; color: var(--fg-faint);
   background: var(--bg); border-bottom: 1px solid var(--line); white-space: nowrap;
 }
 td { padding: 11px 16px; border-top: 1px solid var(--line-soft); vertical-align: middle; }
 tbody tr:first-child td { border-top: none; }
+tbody td { transition: background var(--tempo) ease; }
 tbody tr:hover td { background: var(--line-soft); }
 tr.group th {
   text-align: left; padding: 13px 16px 7px;
-  font-size: 10px; font-weight: 600; letter-spacing: 0.09em;
+  font-size: var(--text-xs); font-weight: 600; letter-spacing: 0.09em;
   text-transform: uppercase; color: var(--fg-faint);
   border-top: 1px solid var(--line-soft);
 }
 .right { text-align: right; }
 .faint { color: var(--fg-faint); }
-.path { color: var(--fg-muted); font-size: 12px; }
-.sub { color: var(--fg-faint); font-size: 11px; margin-top: 3px; }
+.path { color: var(--fg-muted); font-size: var(--text-sm); }
+.sub { color: var(--fg-faint); font-size: var(--text-xs); margin-top: 3px; }
 a { color: var(--fg); text-underline-offset: 3px; text-decoration-color: var(--fg-faint); }
 a:hover { text-decoration-color: var(--fg); }
 a.title, .title { color: var(--fg); font-weight: 500; text-decoration: none; }
@@ -277,7 +310,7 @@ a.title:hover { text-decoration: underline; }
 /* The score is the one number the product exists to produce. It anchors
    every row it appears in. */
 td.score {
-  font-variant-numeric: tabular-nums; font-size: 16px;
+  font-variant-numeric: tabular-nums; font-size: var(--text-md);
   font-weight: 600; color: var(--fg); white-space: nowrap; width: 1%;
 }
 
@@ -285,7 +318,7 @@ td.score {
    a long table the ground is what separates the rows that need you. */
 .state {
   display: inline-flex; align-items: center; gap: 6px;
-  font-size: 11.5px; font-weight: 500; white-space: nowrap;
+  font-size: var(--text-sm); font-weight: 500; white-space: nowrap;
   padding: 3px 9px 3px 7px; border-radius: 999px;
   background: var(--line-soft); color: var(--fg-muted);
 }
@@ -299,7 +332,7 @@ td.score {
   display: inline-flex; align-items: center; justify-content: center;
   width: 22px; height: 22px; border-radius: 50%; flex: none;
   background: var(--line-soft); color: var(--fg-muted);
-  font-size: 10px; font-weight: 600; text-transform: uppercase;
+  font-size: var(--text-xs); font-weight: 600; text-transform: uppercase;
 }
 .who { display: flex; align-items: center; gap: 9px; }
 
@@ -312,14 +345,16 @@ td.score {
   border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
 }
 .banner-bad { border-color: var(--blocked); color: var(--fg); }
+.banner-good { border-color: var(--workable); color: var(--fg); }
+.banner-good .ico { color: var(--workable); }
 .banner-bad .ico { color: var(--blocked); }
 
 /* An empty state is an invitation, so it gets room and a next step rather
    than one grey sentence in a table cell. */
 .blank { padding: 34px 16px 38px; text-align: center; }
 .blank .ico { color: var(--fg-faint); width: 22px; height: 22px; }
-.blank h3 { margin: 12px 0 5px; font-size: 13px; font-weight: 600; }
-.blank p { margin: 0 auto 14px; max-width: 46ch; color: var(--fg-muted); font-size: 12.5px; }
+.blank h3 { margin: 12px 0 5px; font-size: var(--text-base); font-weight: 600; }
+.blank p { margin: 0 auto 14px; max-width: 46ch; color: var(--fg-muted); font-size: var(--text-sm); }
 
 /* ---------------------------------------------------------------------
    Forms.
@@ -329,23 +364,27 @@ td.score {
 .grid .wide { grid-column: 1 / -1; }
 .grid label {
   display: flex; flex-direction: column; gap: 6px;
-  font-size: 10px; font-weight: 600; letter-spacing: 0.09em;
+  font-size: var(--text-xs); font-weight: 600; letter-spacing: 0.09em;
   text-transform: uppercase; color: var(--fg-faint);
 }
 .grid label.inline {
   flex-direction: row; align-items: center; gap: 9px;
-  text-transform: none; letter-spacing: 0; font-size: 12.5px;
+  text-transform: none; letter-spacing: 0; font-size: var(--text-sm);
   font-weight: 400; color: var(--fg-muted);
 }
 .grid .row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.hint-text { font-size: 11px; color: var(--fg-faint); text-transform: none; letter-spacing: 0; font-weight: 400; }
+.hint-text { font-size: var(--text-xs); color: var(--fg-faint); text-transform: none; letter-spacing: 0; font-weight: 400; }
 input, select, textarea {
-  font: inherit; font-size: 12.5px; color: var(--fg);
+  font: inherit; font-size: var(--text-sm); color: var(--fg);
   background: var(--bg); border: 1px solid var(--line);
   border-radius: var(--radius); padding: 9px 11px; width: 100%;
 }
 input[type="checkbox"] { width: auto; accent-color: var(--fg); }
-input:focus, select:focus, textarea:focus { outline: none; border-color: var(--fg-faint); }
+input, select, textarea { transition: border-color var(--tempo) ease, box-shadow var(--tempo) ease; }
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: none; border-color: var(--fg-muted);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
 input::placeholder, textarea::placeholder { color: var(--fg-faint); }
 textarea { resize: vertical; line-height: 1.55; }
 
@@ -353,14 +392,14 @@ table.fields th {
   text-align: left; padding: 10px 16px; font-weight: 500;
   color: var(--fg-faint); white-space: nowrap; width: 1%;
   border-top: 1px solid var(--line-soft); text-transform: none;
-  letter-spacing: 0; font-size: 12px; background: transparent;
+  letter-spacing: 0; font-size: var(--text-sm); background: transparent;
 }
 table.fields tr:first-child th { border-top: none; }
 
 pre {
   margin: 0; padding: 16px; background: var(--bg);
   border-top: 1px solid var(--line); overflow-x: auto;
-  font-family: var(--mono); font-size: 12.5px; line-height: 1.6;
+  font-family: var(--mono); font-size: var(--text-sm); line-height: 1.6;
 }
 
 .depth-0 { padding-left: 16px; } .depth-1 { padding-left: 32px; }
@@ -371,6 +410,14 @@ pre {
 .depth-10 { padding-left: 176px; } .depth-11 { padding-left: 192px; }
 .depth-12 { padding-left: 208px; }
 .dimmed { opacity: 0.45; }
+
+/* Touch targets. A 24px button is fine under a pointer and not under a
+   thumb; below the tablet breakpoint every control gets the 44px minimum. */
+@media (pointer: coarse), (max-width: 720px) {
+  .btn, .btn-sm { min-height: 44px; padding-top: 10px; padding-bottom: 10px; }
+  .nav-item { min-height: 44px; }
+  input, select, textarea { min-height: 44px; }
+}
 
 @media (max-width: 900px) {
   .app { grid-template-columns: 1fr; }
@@ -434,6 +481,8 @@ pre {
   </header>
 
   
+  
+  
   <div class="content">
 
 
@@ -465,7 +514,7 @@ pre {
 <td class="state state-blocked">blocked ← blocked by rnc-epic</td>
 </tr>
 </tbody>
-</table></div>
+</table></div></div>
   </div>
 </main>
 </div>

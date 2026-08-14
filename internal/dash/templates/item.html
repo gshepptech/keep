@@ -37,7 +37,7 @@
 {{end}}
 
 <div class="panel"><div class="panel-head"><h2>Detail</h2></div>
-<table class="fields">
+<div class="table-wrap"><table class="fields">
 <tbody>
 {{if .ParentID}}<tr><th>parent</th><td><a href="/item/{{.ParentID}}">{{.ParentID}}</a></td></tr>
 {{end}}{{if .Repo}}<tr><th>repo</th><td>{{.Repo}}</td></tr>
@@ -47,28 +47,28 @@
 {{end}}<tr><th>created</th><td>{{.CreatedAt}}</td></tr>
 <tr><th>updated</th><td>{{.UpdatedAt}}</td></tr>
 </tbody>
-</table></div>
+</table></div></div>
 
 {{if .DependsOn}}<h2>Waiting on</h2>
-<table class="deps">
+<div class="table-wrap"><table class="deps">
 <tbody>
 {{range .DependsOn}}<tr><td>{{.Type}}</td><td><a href="/item/{{.DependsOnID}}">{{.DependsOnID}}</a></td></tr>
 {{end}}</tbody>
-</table>
+</table></div>
 {{end}}
 {{if .DependedOnBy}}<h2>Blocking</h2>
-<table class="deps">
+<div class="table-wrap"><table class="deps">
 <tbody>
 {{range .DependedOnBy}}<tr><td>{{.Type}}</td><td><a href="/item/{{.ItemID}}">{{.ItemID}}</a></td></tr>
 {{end}}</tbody>
-</table>
+</table></div>
 {{end}}
 {{if .Events}}<h2>History</h2>
-<table class="events">
+<div class="table-wrap"><table class="events">
 <tbody>
 {{range .Events}}<tr><td>{{.At}}</td><td>{{.Kind}}</td><td>{{.Actor}}</td></tr>
 {{end}}</tbody>
-</table>
+</table></div>
 {{end}}
 <h2>Body</h2>
 <pre>{{.Body}}</pre>

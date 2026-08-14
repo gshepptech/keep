@@ -80,7 +80,7 @@ func (s *Server) checkOrigin(r *http.Request) error {
 // It redirects rather than rendering, so a reload after acting does not
 // repeat the action -- the POST-redirect-GET shape, which matters more here
 // than usual because the actions are things like "close this item".
-func (s *Server) mutate(w http.ResponseWriter, r *http.Request, fn func(*store.Store) (string, error)) {
+func (s *Server) mutate(w http.ResponseWriter, r *http.Request, done string, fn func(*store.Store) (string, error)) {
 	if err := s.checkOrigin(r); err != nil {
 		http.Error(w, "refused: "+err.Error(), http.StatusForbidden)
 		return
@@ -106,30 +106,34 @@ func (s *Server) mutate(w http.ResponseWriter, r *http.Request, fn func(*store.S
 		// The error goes back as a flash on the page the form came from,
 		// never as a bare error page: a person mid-action needs to see what
 		// happened next to the thing they were acting on.
-		http.Redirect(w, r, redirectWithFlash(r, "", err.Error()), http.StatusSeeOther)
+		http.Redirect(w, r, flashURL(r, "", "problem", err.Error()), http.StatusSeeOther)
 		return
 	}
-	http.Redirect(w, r, redirectWithFlash(r, dest, ""), http.StatusSeeOther)
+	// And a success says so. An action that reports nothing looks like an
+	// action that did nothing -- particularly here, where closing an item
+	// makes it vanish from the list you were looking at, which is
+	// indistinguishable from the click having missed.
+	http.Redirect(w, r, flashURL(r, dest, "done", done), http.StatusSeeOther)
 }
 
-// redirectWithFlash builds the destination, carrying a message in the query
-// string. A query parameter rather than a cookie: there is no session here,
-// and a cookie would outlive the one page it is meant for.
-func redirectWithFlash(r *http.Request, dest, problem string) string {
+// flashURL builds the destination, carrying one message in the query
+// string under key. A query parameter rather than a cookie: there is no
+// session here, and a cookie would outlive the one page it is meant for.
+func flashURL(r *http.Request, dest, key, msg string) string {
 	if dest == "" {
 		dest = r.PostFormValue("return")
 	}
 	if dest == "" {
 		dest = "/"
 	}
-	if problem == "" {
+	if msg == "" {
 		return dest
 	}
 	sep := "?"
 	if strings.Contains(dest, "?") {
 		sep = "&"
 	}
-	return dest + sep + "problem=" + url.QueryEscape(problem)
+	return dest + sep + key + "=" + url.QueryEscape(msg)
 }
 
 // routesMutating registers the POST handlers. Each one is a verb a person
@@ -145,7 +149,7 @@ func (s *Server) routesMutating(mux *http.ServeMux) {
 }
 
 func (s *Server) doStart(w http.ResponseWriter, r *http.Request) {
-	s.mutate(w, r, func(st *store.Store) (string, error) {
+	s.mutate(w, r, "Started.", func(st *store.Store) (string, error) {
 		id := r.PostFormValue("id")
 		_, err := st.StartItem(r.Context(), store.StartItemInput{ID: id, Actor: s.actor})
 		return "", err
@@ -153,7 +157,7 @@ func (s *Server) doStart(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) doClose(w http.ResponseWriter, r *http.Request) {
-	s.mutate(w, r, func(st *store.Store) (string, error) {
+	s.mutate(w, r, "Closed.", func(st *store.Store) (string, error) {
 		_, err := st.CloseItem(r.Context(), store.CloseItemInput{
 			ID:     r.PostFormValue("id"),
 			Reason: reasonOr(r.PostFormValue("reason"), "closed from the board"),
@@ -164,7 +168,7 @@ func (s *Server) doClose(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) doDrop(w http.ResponseWriter, r *http.Request) {
-	s.mutate(w, r, func(st *store.Store) (string, error) {
+	s.mutate(w, r, "Dropped.", func(st *store.Store) (string, error) {
 		_, err := st.DropItem(r.Context(), store.DropItemInput{
 			ID:     r.PostFormValue("id"),
 			Reason: reasonOr(r.PostFormValue("reason"), "dropped from the board"),
@@ -186,7 +190,7 @@ func reasonOr(given, fallback string) string {
 }
 
 func (s *Server) doAdd(w http.ResponseWriter, r *http.Request) {
-	s.mutate(w, r, func(st *store.Store) (string, error) {
+	s.mutate(w, r, "Filed.", func(st *store.Store) (string, error) {
 		in := store.AddItemInput{
 			Title:      strings.TrimSpace(r.PostFormValue("title")),
 			Type:       r.PostFormValue("type"),
@@ -216,7 +220,7 @@ func (s *Server) doAdd(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) doUpdate(w http.ResponseWriter, r *http.Request) {
-	s.mutate(w, r, func(st *store.Store) (string, error) {
+	s.mutate(w, r, "Saved.", func(st *store.Store) (string, error) {
 		id := r.PostFormValue("id")
 		in := store.UpdateItemInput{ID: id, Actor: s.actor}
 
@@ -249,7 +253,7 @@ func (s *Server) doUpdate(w http.ResponseWriter, r *http.Request) {
 // attribute: a backlog item becomes workable when someone has refined it
 // into something whose title stands alone.
 func (s *Server) doPromote(w http.ResponseWriter, r *http.Request) {
-	s.mutate(w, r, func(st *store.Store) (string, error) {
+	s.mutate(w, r, "Promoted to the queue.", func(st *store.Store) (string, error) {
 		id := r.PostFormValue("id")
 		stage := string(model.StageTicket)
 		_, err := st.UpdateItem(r.Context(), store.UpdateItemInput{
@@ -318,8 +322,8 @@ func (s *Server) doRelease(w http.ResponseWriter, r *http.Request) {
 
 	session := r.PostFormValue("session")
 	if err := interlockRelease(r.Context(), session); err != nil {
-		http.Redirect(w, r, redirectWithFlash(r, "/who", err.Error()), http.StatusSeeOther)
+		http.Redirect(w, r, flashURL(r, "/", "problem", err.Error()), http.StatusSeeOther)
 		return
 	}
-	http.Redirect(w, r, "/who", http.StatusSeeOther)
+	http.Redirect(w, r, flashURL(r, "/", "done", "Holds released."), http.StatusSeeOther)
 }

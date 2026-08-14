@@ -7,7 +7,7 @@
 {{$p := .}}{{with .Data}}
 <div class="panel">
 <div class="panel-head"><h2>Ranked across {{.RepoCount}} registered {{if eq .RepoCount 1}}repository{{else}}repositories{{end}}</h2></div>
-<table class="queue">
+<div class="table-wrap"><table class="queue">
 <thead><tr><th>Repository</th><th>Score</th><th>Item</th></tr></thead>
 <tbody>
 {{range .Items}}<tr>
@@ -17,18 +17,18 @@
 </tr>
 {{else}}<tr><td colspan="3" class="faint">Nothing is workable in any registered repository.</td></tr>
 {{end}}</tbody>
-</table>
+</table></div>
 </div>
 
 {{if .Errors}}
 <div class="panel">
 <div class="panel-head"><h2>Unreadable</h2></div>
-<table class="queue">
+<div class="table-wrap"><table class="queue">
 <thead><tr><th>Repository</th><th>Problem</th></tr></thead>
 <tbody>
 {{range .Errors}}<tr><td>{{.Repo}}</td><td>{{.Message}}</td></tr>
 {{end}}</tbody>
-</table>
+</table></div>
 </div>
 {{end}}
 {{end}}{{template "foot"}}{{end}}

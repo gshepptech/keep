@@ -72,7 +72,10 @@
     </div>
   </header>
 
-  {{with .Page.Problem}}<div class="banner banner-bad">{{template "icon-alert"}}<span>{{.}}</span></div>{{end}}
+  {{/* role=alert so the outcome is announced, not only drawn. A red border
+       alone tells a screen reader nothing. */}}
+  {{with .Page.Problem}}<div class="banner banner-bad" role="alert">{{template "icon-alert"}}<span>{{.}}</span></div>{{end}}
+  {{with .Page.Done}}<div class="banner banner-good" role="status">{{template "icon-check"}}<span>{{.}}</span></div>{{end}}
   <div class="content">
 {{end}}
 
