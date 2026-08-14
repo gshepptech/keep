@@ -320,7 +320,66 @@ func run(ctx context.Context, agent, dir string, flags []string, prompt string) 
 	if err != nil {
 		return fmt.Errorf("interlock run: %s", strings.TrimSpace(string(out)))
 	}
+
+	// --no-follow returns as soon as the supervisor is up, so a zero exit
+	// means "launched", not "working". A run that is going to fail on
+	// configuration -- not logged in, no such model, a bad hook -- does so
+	// within a second or two, and reporting those as started is the same
+	// overclaim as announcing an outcome nobody checked.
+	//
+	// So: give it a moment, then ask. A run still alive after that is
+	// genuinely running and its outcome belongs in Interlock, not in a
+	// redirect.
+	id := runIDFrom(string(out))
+	if id == "" {
+		return nil
+	}
+	select {
+	case <-ctx.Done():
+		return nil
+	case <-time.After(settleWindow):
+	}
+	if state, why := runState(ctx, bin, dir, id); state == "failed" {
+		return fmt.Errorf("the agent started and stopped straight away: %s", why)
+	}
 	return nil
+}
+
+// settleWindow is how long to wait before believing a run is under way.
+// Long enough to catch a configuration failure, short enough that a person
+// who pressed a button is not left watching a spinner.
+const settleWindow = 2500 * time.Millisecond
+
+// runIDFrom finds the run id `interlock run` prints.
+func runIDFrom(out string) string {
+	for _, line := range strings.Split(out, "\n") {
+		if _, after, ok := strings.Cut(line, "run: "); ok {
+			return strings.TrimSpace(after)
+		}
+	}
+	return ""
+}
+
+// runState asks Interlock what became of a run.
+func runState(ctx context.Context, bin, dir, id string) (state, why string) {
+	cmd := exec.CommandContext(ctx, bin, "runs", "show", id)
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		return "", ""
+	}
+	for _, line := range strings.Split(string(out), "\n") {
+		if v, ok := strings.CutPrefix(strings.TrimSpace(line), "state:"); ok {
+			state = strings.TrimSpace(v)
+		}
+		if v, ok := strings.CutPrefix(strings.TrimSpace(line), "outcome:"); ok {
+			why = strings.TrimSpace(v)
+		}
+	}
+	if why == "" {
+		why = "see interlock runs show " + id
+	}
+	return state, why
 }
 
 // Watches reports whether Interlock is wired into this repository.

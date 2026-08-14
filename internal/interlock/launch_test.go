@@ -114,3 +114,55 @@ func TestUnknownAgentIsRefused(t *testing.T) {
 		t.Error("an unknown agent was accepted")
 	}
 }
+
+// launcher writes an interlock whose `run` prints a run id and whose
+// `runs show` reports the given state.
+func launcher(t *testing.T, state string) string {
+	t.Helper()
+	bin := filepath.Join(t.TempDir(), "interlock")
+	script := "#!/bin/sh\n" +
+		"if [ \"$1\" = \"runs\" ]; then\n" +
+		"  echo 'id: run-abc'\n" +
+		"  echo 'state: " + state + "'\n" +
+		"  echo 'outcome: failed with exit code 1'\n" +
+		"  exit 0\n" +
+		"fi\n" +
+		"echo 'rnc-x is running'\n" +
+		"echo 'run: run-abc'\n" +
+		"exit 0\n"
+	if err := os.WriteFile(bin, []byte(script), 0o755); err != nil {
+		t.Fatalf("write launcher: %v", err)
+	}
+	return bin
+}
+
+// TestLaunchReportsARunThatDiedImmediately.
+//
+// --no-follow returns as soon as the supervisor is up, so a zero exit means
+// "launched", not "working". A run that fails on configuration -- not
+// logged in, no such model, a broken hook -- does so within a second or
+// two. Reporting those as started is the same overclaim as announcing an
+// outcome nobody checked, and it was caught by running a real agent rather
+// than by reading the code: the board said "Started" while the run had
+// already failed.
+func TestLaunchReportsARunThatDiedImmediately(t *testing.T) {
+	t.Setenv(EnvBinary, launcher(t, "failed"))
+
+	err := Run(context.Background(), "claude", "rnc-x", t.TempDir())
+	if err == nil {
+		t.Fatal("a run that failed immediately was reported as started")
+	}
+	if !strings.Contains(err.Error(), "exit code 1") {
+		t.Errorf("the failure does not say what happened: %v", err)
+	}
+}
+
+// TestLaunchAcceptsARunThatIsStillGoing. The outcome of a live run belongs
+// in Interlock, not in a redirect -- the board's job is to say it started.
+func TestLaunchAcceptsARunThatIsStillGoing(t *testing.T) {
+	t.Setenv(EnvBinary, launcher(t, "running"))
+
+	if err := Run(context.Background(), "claude", "rnc-x", t.TempDir()); err != nil {
+		t.Errorf("a running agent was reported as a failure: %v", err)
+	}
+}
