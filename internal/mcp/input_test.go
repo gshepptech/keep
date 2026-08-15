@@ -10,7 +10,7 @@ import (
 )
 
 // wantRequired is the exact `required` set BuildSchemas must produce for
-// each of the ten tools, per the plan's own <behavior> block. ready/backlog/
+// each of the thirteen tools, per the plan's own <behavior> block. ready/backlog/
 // list have no required fields -- []string{} rather than nil so the
 // comparison below is order-independent and nil-tolerant either way.
 var wantRequired = map[string][]string{
@@ -32,16 +32,16 @@ func sortedCopy(s []string) []string {
 	return out
 }
 
-// TestBuildSchemasReturnsTenWithNoError proves BuildSchemas produces exactly
+// TestBuildSchemasReturnsThirteenWithNoError proves BuildSchemas produces exactly
 // the ten tool schemas the plan names, and that generation itself returns no
 // error -- the schemaSet accumulator's single error check covers all ten.
-func TestBuildSchemasReturnsTenWithNoError(t *testing.T) {
+func TestBuildSchemasReturnsThirteenWithNoError(t *testing.T) {
 	schemas, err := BuildSchemas()
 	if err != nil {
 		t.Fatalf("BuildSchemas() error = %v, want nil", err)
 	}
-	if len(schemas) != 10 {
-		t.Fatalf("BuildSchemas() returned %d schemas, want 10: %v", len(schemas), schemas)
+	if len(schemas) != 13 {
+		t.Fatalf("BuildSchemas() returned %d schemas, want 13: %v", len(schemas), schemas)
 	}
 	for name := range wantRequired {
 		if _, ok := schemas[name]; !ok {

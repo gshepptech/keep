@@ -1,0 +1,50 @@
+{{/* search.html -- find an item by a word you remember. Data: searchData.
+
+     The one page on this board that reads a query string. A search is a
+     read: it belongs in a URL you can bookmark and reload, which is why
+     this is a GET and not a POST like every mutating form here. */}}
+{{define "search"}}{{template "head" (titled . "Search" "Search" "Find an item by a word you remember -- title, reason, acceptance, files, or body.")}}
+{{$p := .}}{{with .Data}}
+
+<div class="panel">
+  <div class="panel-body">
+    <form method="get" action="{{$p.Prefix}}/search" class="searchbar">
+      <input type="search" name="q" value="{{.Query}}" autofocus
+             placeholder="token expiry, internal/auth, the flag help" aria-label="Search items">
+      <label class="inline"><input type="checkbox" name="closed" value="1"> Include finished work</label>
+      <button type="submit" class="btn btn-primary">Search</button>
+    </form>
+  </div>
+</div>
+
+{{if .Ran}}
+<div class="panel">
+  <div class="panel-head">
+    <h2>Results</h2>
+    <span class="hint">{{len .Results}} match{{if ne (len .Results) 1}}es{{end}} for “{{.Query}}”, best first</span>
+  </div>
+  {{if .Results}}
+  <div class="table-wrap"><table>
+  <thead><tr><th>Score</th><th>Item</th><th></th><th>Matched</th><th>State</th><th>Touches</th></tr></thead>
+  <tbody>
+  {{range .Results}}<tr>
+  <td class="score">{{.Score}}</td>
+  <td><a class="title" href="{{$p.Prefix}}/item/{{.ID}}">{{.Title}}</a></td>
+  <td class="id-cell"><span class="id">{{.ID}}</span></td>
+  <td class="faint">{{.MatchedIn}}</td>
+  <td>{{template "state-tag" (tag (state (printf "%s" .Status) false) (printf "%s" .Status))}}</td>
+  <td class="path">{{if .Paths}}{{.Paths}}{{else}}<span class="faint">not declared</span>{{end}}</td>
+  </tr>
+  {{end}}</tbody>
+  </table></div>
+  {{else}}
+  <div class="blank">
+    {{template "icon-search"}}
+    <h3>Nothing matches “{{.Query}}”</h3>
+    <p>Finished work is left out unless you ask for it. Tick “include finished work” and search again.</p>
+  </div>
+  {{end}}
+</div>
+{{end}}
+
+{{end}}{{template "foot"}}{{end}}

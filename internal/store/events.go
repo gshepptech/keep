@@ -5,8 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-
-	"github.com/gshepptech/rounce/internal/model"
 )
 
 // writeEvent is the ONLY place in this codebase that inserts into events
@@ -22,7 +20,11 @@ import (
 // the empty string" are never conflated into the same row.
 //
 // payload is marshalled with encoding/json when non-nil; a nil payload
-// stores NULL. at is always model.Now() at the moment of the write -- see
+// stores NULL. at is always nowFunc() at the moment of the write -- the
+// same clock indirection items.go uses, so a test that pins the clock pins
+// the whole store rather than half of it. Reading model.Now() directly here
+// made event timestamps the one thing no test could control, which is
+// exactly what a staleness query needs to control -- see
 // items.go's nowFunc seam for how callers keep a single mutation's
 // created_at/updated_at/deps.created_at/event.at values internally
 // consistent by threading one timestamp through, rather than calling
@@ -41,7 +43,7 @@ func writeEvent(ctx context.Context, tx *sql.Tx, itemID, kind, actor, sessionID 
 
 	_, err := tx.ExecContext(ctx,
 		`INSERT INTO events (item_id, kind, actor, session_id, at, payload) VALUES (?, ?, ?, ?, ?, ?)`,
-		itemID, kind, actor, session, model.Now(), payloadJSON,
+		itemID, kind, actor, session, nowFunc(), payloadJSON,
 	)
 	if err != nil {
 		return fmt.Errorf("writeEvent: insert kind %q for item %q: %w", kind, itemID, err)

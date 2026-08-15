@@ -3,6 +3,7 @@ package mcp
 import (
 	"errors"
 	"slices"
+	"time"
 
 	"github.com/google/jsonschema-go/jsonschema"
 
@@ -145,8 +146,14 @@ func BuildSchemas() (map[string]*jsonschema.Schema, error) {
 	set.put("close", sc, err)
 	sc, err = jsonschema.For[store.DropItemInput](nil)
 	set.put("drop", sc, err)
+	sc, err = jsonschema.For[store.SearchFilter](nil)
+	set.put("search", sc, err)
+	sc, err = jsonschema.For[store.FeedFilter](nil)
+	set.put("log", sc, err)
+	sc, err = jsonschema.For[StaleInput](nil)
+	set.put("stale", sc, err)
 
-	// No error-guard branch here: every one of the ten types above is a
+	// No error-guard branch here: every one of the thirteen types above is a
 	// fixed, concrete struct (plain strings/ints/slices/pointers, no map
 	// with a non-string key, no func/chan/complex/unsafe-pointer field), so
 	// jsonschema.For genuinely cannot fail for any of them -- verified by
@@ -164,4 +171,23 @@ func BuildSchemas() (map[string]*jsonschema.Schema, error) {
 	withEnum(set.m["dep"], "type", depTypesForWire())
 
 	return set.m, set.err()
+}
+
+// StaleInput is `stale`'s one knob, expressed in hours because JSON has no
+// duration type and a bare number of nanoseconds is not something anyone
+// would type correctly.
+type StaleInput struct {
+	// SilentHours is how long an item must have had nothing happen to it.
+	// Zero means the store's own default.
+	SilentHours float64 `json:"silent_hours,omitempty"`
+}
+
+// After turns the wire value into a duration. It does not apply a default:
+// StaleClaims already treats a non-positive duration as its own default, so
+// an omitted field arrives as zero and means exactly that. Defaulting here
+// too would be a second copy of one policy, and the structure test that
+// forbids branches outside the two places this package allows them is right
+// to have caught the attempt.
+func (in StaleInput) After() time.Duration {
+	return time.Duration(in.SilentHours * float64(time.Hour))
 }

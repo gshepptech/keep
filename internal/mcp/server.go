@@ -220,6 +220,42 @@ func NewServer(st *store.Store, opts Options) (*mcp.Server, error) {
 	})
 
 	s.AddTool(&mcp.Tool{
+		Name:        "search",
+		Description: "Find items by text, matching title, why, acceptance, paths and body, ranked by where the match landed. Use this before filing anything: the thing you noticed may already be filed.",
+		InputSchema: sc["search"],
+	}, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		in := store.SearchFilter{}
+		if err := json.Unmarshal(req.Params.Arguments, &in); err != nil {
+			return nil, &jsonrpc.Error{Code: jsonrpc.CodeInvalidParams, Message: err.Error()}
+		}
+		return resultFor(st.Search(ctx, in))
+	})
+
+	s.AddTool(&mcp.Tool{
+		Name:        "log",
+		Description: "What has happened in this store, newest first: every add, claim, close, drop and edit, each with its item's title. Narrow with since, actor or kind.",
+		InputSchema: sc["log"],
+	}, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		in := store.FeedFilter{}
+		if err := json.Unmarshal(req.Params.Arguments, &in); err != nil {
+			return nil, &jsonrpc.Error{Code: jsonrpc.CodeInvalidParams, Message: err.Error()}
+		}
+		return resultFor(st.Feed(ctx, in))
+	})
+
+	s.AddTool(&mcp.Tool{
+		Name:        "stale",
+		Description: "Items claimed by someone who then went quiet -- a session that died mid-work leaves one behind. Reports only; rounce never releases a claim on its own.",
+		InputSchema: sc["stale"],
+	}, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		in := StaleInput{}
+		if err := json.Unmarshal(req.Params.Arguments, &in); err != nil {
+			return nil, &jsonrpc.Error{Code: jsonrpc.CodeInvalidParams, Message: err.Error()}
+		}
+		return resultFor(st.StaleClaims(ctx, in.After()))
+	})
+
+	s.AddTool(&mcp.Tool{
 		Name:        "dep",
 		Description: "Create a dependency edge between two items: blocks, related, or derived-from. Parent-child structure is created by `add`'s parent_id, not this tool.",
 		InputSchema: sc["dep"],

@@ -18,7 +18,7 @@ in **one SQLite file** and **one static binary**.
 
 ![Go](https://img.shields.io/badge/go-1.26-00ADD8?style=for-the-badge&logo=go&logoColor=white)
 ![SQLite](https://img.shields.io/badge/sqlite-pure_go%2C_no_cgo-003B57?style=for-the-badge&logo=sqlite&logoColor=white)
-![MCP](https://img.shields.io/badge/MCP-10_tools-6E56CF?style=for-the-badge)
+![MCP](https://img.shields.io/badge/MCP-13_tools-6E56CF?style=for-the-badge)
 ![Runtime deps](https://img.shields.io/badge/runtime_deps-4-2ea043?style=for-the-badge)
 ![Network calls](https://img.shields.io/badge/network_calls-0-b32428?style=for-the-badge)
 

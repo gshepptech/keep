@@ -20,7 +20,7 @@ import (
 // --json output; it escaped notice until two types interleaved in time.
 //
 // typeFilter follows this package's existing optional-string-filter
-// convention (ListFilter's fields): "" means no filter, never a bound ''.
+// convention (ListFilter's fields): "" means no filter, never a bound ”.
 //
 // The trailing `id ASC` is not decoration. Two items added inside one
 // transaction share a created_at (this package's one-nowFunc-per-

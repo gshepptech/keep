@@ -53,6 +53,12 @@
         {{template "icon-inbox"}}<span>Parked</span>
         {{with .Page.Counts.Backlog}}<em class="pip">{{.}}</em>{{end}}
       </a>
+      <a href="{{.Page.Prefix}}/search" class="nav-item{{if eq .Page.Nav "search"}} active{{end}}">
+        {{template "icon-search"}}<span>Search</span>
+      </a>
+      <a href="{{.Page.Prefix}}/activity" class="nav-item{{if eq .Page.Nav "activity"}} active{{end}}">
+        {{template "icon-clock"}}<span>Activity</span>
+      </a>
     </div>
 
     <div class="nav-group">

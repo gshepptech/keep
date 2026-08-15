@@ -63,8 +63,8 @@ func TestReadyOrderAndLimit(t *testing.T) {
 
 	// Insertion order (mid, low, high) deliberately differs from score
 	// order (high, mid, low) added_at ordering: value+confidence-effort+11.
-	mid := mustAdd(t, bin, repo, e, "--score", "5/5/5", "mid item") // score 16
-	low := mustAdd(t, bin, repo, e, "--score", "1/1/10", "low item") // score 3
+	mid := mustAdd(t, bin, repo, e, "--score", "5/5/5", "mid item")     // score 16
+	low := mustAdd(t, bin, repo, e, "--score", "1/1/10", "low item")    // score 3
 	high := mustAdd(t, bin, repo, e, "--score", "10/10/1", "high item") // score 30
 
 	stdout, stderr, code := run(t, bin, repo, e, "ready")

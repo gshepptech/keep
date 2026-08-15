@@ -16,7 +16,7 @@ import (
 // (04-CONTEXT.md decision 2). Fewer than this must fail loudly -- a broken
 // matcher (or a broken registration path, see GATE-03 break 1 in this
 // plan's verification section) must not pass vacuously.
-const wantHandlerCount = 10
+const wantHandlerCount = 13
 
 // TestNoConditionalInToolHandlers is the AST proof of MCP-05 --
 // docs/design/phase-3.md line 63's "no tool handler contains a conditional",

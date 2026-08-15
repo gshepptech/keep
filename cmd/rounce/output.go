@@ -54,6 +54,13 @@ func titleWidth(w io.Writer) int {
 type renderOpts struct {
 	showStatus bool
 	blockedBy  map[string]string
+
+	// note is a per-item trailing comment with no fixed wording of its own,
+	// for callers whose suffix is not "blocked by". search uses it to say
+	// which field a match came from. It is a separate field rather than a
+	// reuse of blockedBy because that map's suffix text is fixed, and
+	// borrowing it printed "blocked by matched in why".
+	note map[string]string
 }
 
 // renderItems writes one space-padded line per item -- id, [status,] score,
@@ -112,6 +119,11 @@ func renderItems(w io.Writer, items []model.Item, opts renderOpts) {
 		if opts.blockedBy != nil {
 			if blocker, ok := opts.blockedBy[it.ID]; ok {
 				fmt.Fprintf(&b, " ← blocked by %s", blocker)
+			}
+		}
+		if opts.note != nil {
+			if n, ok := opts.note[it.ID]; ok {
+				fmt.Fprintf(&b, "  (%s)", n)
 			}
 		}
 		fmt.Fprintln(w, strings.TrimRight(b.String(), " "))

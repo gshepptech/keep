@@ -4,7 +4,7 @@ Puts the work queue **in front of** your agents instead of hoping they ask for i
 
 ## The problem this solves
 
-Registering rounce's MCP server gives an agent ten tools. It does not make the
+Registering rounce's MCP server gives an agent thirteen tools. It does not make the
 agent *use* them. Say "fix the login bug" and Claude will fix the login bug,
 with a `ready` tool sitting there untouched.
 
@@ -36,7 +36,7 @@ tool** (`docs/design/phase-3.md`).
 | | |
 |---|---|
 | **`SessionStart` hook** | the ranked queue, injected before the first message |
-| **MCP server** | all ten tools, registered automatically |
+| **MCP server** | all thirteen tools, registered automatically |
 | **`/rounce:ready`** | the ranked queue on demand |
 | **`/rounce:board`** | counts and the top of the queue; `--web` for the dashboard |
 | **`/rounce:file`** | file what you noticed, choosing `add` or `capture` correctly |

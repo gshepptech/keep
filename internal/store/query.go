@@ -122,7 +122,7 @@ func queryEvents(ctx context.Context, db *sql.DB, itemID string) ([]model.Event,
 }
 
 // ListFilter's zero value means "no filter" -- an empty field is omitted
-// from the WHERE clause entirely rather than bound as ''. Filters compose as
+// from the WHERE clause entirely rather than bound as ”. Filters compose as
 // AND (02-CONTEXT.md "Claude's Discretion": yes, the obvious reading).
 //
 // json tags (04-02): this struct doubles as the `list` MCP tool's wire type

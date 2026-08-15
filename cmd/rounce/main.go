@@ -43,6 +43,22 @@ commands:
               --json        machine-parseable output
               --body        print only the stored body, verbatim, and
                             nothing else (cannot combine with --json)
+  search    find items by text: rounce search [flags] <text>
+              matches title, why, acceptance, paths and body, ranked by
+              where the match landed
+              --closed      search closed and dropped items too
+              --limit <n>   at most n results
+              --json        machine-parseable output
+  log       what happened, newest first
+              --since <s>   24h, 7d, or an RFC3339 timestamp
+              --actor <a>   only what this person or agent did
+              --kind <k>    add/start/close/drop/update/dep
+              --limit <n>   at most n entries (default 30, 0 = all)
+              --json        machine-parseable output
+  stale     claims nothing has happened to in a while
+              --after <d>   how much silence counts (default 2h)
+              --json        machine-parseable output
+              reports only -- rounce never releases a claim on its own
   list      list items with filters, composed as AND
               --stage/--status/--type/--parent/--repo/--limit
               --json        machine-parseable output
@@ -112,6 +128,12 @@ func main() {
 		os.Exit(runShow(os.Args[2:], os.Stdout, os.Stderr))
 	case "list":
 		os.Exit(runList(os.Args[2:], os.Stdout, os.Stderr))
+	case "search":
+		os.Exit(runSearch(os.Args[2:], os.Stdout, os.Stderr))
+	case "log":
+		os.Exit(runLog(os.Args[2:], os.Stdout, os.Stderr))
+	case "stale":
+		os.Exit(runStale(os.Args[2:], os.Stdout, os.Stderr))
 	case "start":
 		os.Exit(runStart(os.Args[2:], os.Stdout, os.Stderr))
 	case "close":

@@ -1,0 +1,39 @@
+{{/* activity.html -- what happened, newest first. Data: []store.FeedEntry.
+
+     The board's other pages answer "what is true now". This one answers
+     "what did they do", which is the question you have when you sit back
+     down after leaving agents running. It reads the events table, which is
+     already the complete record of every mutation -- nothing here can
+     disagree with what actually happened. */}}
+{{define "activity"}}{{template "head" (titled . "Activity" "Activity" "Everything that has happened in this project, newest first.")}}
+{{$p := .}}
+
+<div class="panel">
+  <div class="panel-head">
+    <h2>What happened</h2>
+    <span class="hint">{{len .Data}} event{{if ne (len .Data) 1}}s{{end}}</span>
+  </div>
+  {{if .Data}}
+  <div class="table-wrap"><table>
+  <thead><tr><th>When</th><th>What</th><th>Who</th><th>Item</th><th></th><th>Why</th></tr></thead>
+  <tbody>
+  {{range .Data}}<tr>
+  <td class="faint" title="{{.At}}">{{ago .At}}</td>
+  <td>{{.Kind}}</td>
+  <td>{{.Actor}}</td>
+  <td><a class="title" href="{{$p.Prefix}}/item/{{.ItemID}}">{{.Title}}</a></td>
+  <td class="id-cell"><span class="id">{{.ItemID}}</span></td>
+  <td class="faint">{{if .Reason}}{{.Reason}}{{else}}—{{end}}</td>
+  </tr>
+  {{end}}</tbody>
+  </table></div>
+  {{else}}
+  <div class="blank">
+    {{template "icon-clock"}}
+    <h3>Nothing has happened yet</h3>
+    <p>Every add, claim, close, drop and edit lands here as it happens.</p>
+  </div>
+  {{end}}
+</div>
+
+{{template "foot"}}{{end}}

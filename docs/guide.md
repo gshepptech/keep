@@ -355,7 +355,7 @@ ships no JavaScript, so it works with the network down. `--port <n>` picks a
 fixed port instead of an OS-assigned one, if you want a stable bookmark.
 Ctrl-C stops it cleanly (exit 0 — a clean shutdown isn't an error).
 
-The page has six views:
+The page has eight views:
 
 | View | Shows |
 |---|---|
@@ -363,6 +363,8 @@ The page has six views:
 | **Parked** | every raw item, grouped by type — the pen |
 | **Item** | one item: detail, an edit form, deps both directions, event history |
 | **Tree** | everything under a roadmap, blocked subtrees visibly dimmed |
+| **Search** | find an item by a word you remember, saying which field matched |
+| **Activity** | every add, claim, close, drop and edit, newest first |
 | **Projects** | every registered project, its directory, and its counts |
 | **Queue, all projects** | every project's queue merged into one ranked list |
 
@@ -500,6 +502,9 @@ sense below but are omitted from the table for space — see `rounce <cmd>
 | `backlog` | `--type`, `--json` | Every raw item, grouped by type, newest first. No score column. |
 | `show <id>` | `--json`, `--body` | Full detail: fields, deps both directions, event history, body last. `--body` prints only the raw body (mutually exclusive with `--json`). |
 | `list` | `--stage`, `--status`, `--type`, `--parent`, `--repo`, `--limit`, `--json` | Reads items directly, not the `ready` view — the only place raw and closed/dropped items show up alongside open ones. |
+| `search <text>` | `--closed`, `--limit`, `--json` | Finds items by text across title, why, acceptance, paths and body, ranked by where the match landed and saying which field it came from. Finished work is left out unless `--closed`. A miss goes to stderr so a script piping stdout gets an empty result, not prose. |
+| `log` | `--since` (`24h`, `7d`, RFC3339), `--actor`, `--kind`, `--limit`, `--json` | What happened, newest first, each entry carrying its item's title and — for a close or drop — the reason. Reads the events table, which is already the complete record of every mutation. |
+| `stale` | `--after` (default `2h`), `--json` | Claims nothing has happened to in a while. Silence is measured from the item's last **event**, not from when it was claimed, so a long piece of work being actively touched is never flagged. Reports only — rounce never releases a claim on its own. |
 | `dep <a> <type> <b>` | `--db`, `--actor` | `<type>` is `blocks`, `related`, or `derived-from`. `parent-child` is a valid dep type but `dep` refuses to create one — use `add --parent` instead. `blocks` reads "a waits on b." |
 | `start <id>` | `--json` | Claims the item for `$ROUNCE_SESSION`. Same-session repeat is a silent no-op; a different session's claim fails. |
 | `close <id> --reason <text>` | — | `--reason` is required. |

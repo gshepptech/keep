@@ -133,6 +133,11 @@ type boardData struct {
 	// agents, rather than showing an empty agents table.
 	Interlock *interlock.Status
 
+	// Stale is the claims nothing has happened to in a while. It sits on
+	// the board rather than behind a command because the whole failure it
+	// describes is one nobody thinks to go looking for.
+	Stale []store.StaleClaim
+
 	Types  []string
 	Repo   string
 	Counts boardCounts
@@ -188,6 +193,10 @@ func (s *Server) boardDataFrom(r *http.Request, st *store.Store, path string) (b
 			}
 			d.Counts.Holding = len(st.Leases)
 		}
+	}
+
+	if d.Stale, err = st.StaleClaims(ctx, 0); err != nil {
+		return d, err
 	}
 
 	d.Counts.Ready = len(d.Ready)

@@ -552,3 +552,28 @@ pre {
    rather than a list. */
 .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
 .toolbar form { margin: 0; }
+
+/* A panel that is reporting a problem, not just holding a table. The left
+   edge carries it rather than a tinted background: a coloured block behind
+   a table makes the table harder to read, which is the opposite of what a
+   warning about that table should do. */
+.panel-warn { border-left: 2px solid var(--claimed); }
+.panel-foot {
+  margin: 0; padding: 10px 16px 14px;
+  font-size: var(--text-xs); color: var(--fg-faint);
+  border-top: 1px solid var(--line-soft);
+}
+
+/* The search bar. One row: the field takes what is left, the two controls
+   keep their size. A search box that is the same width as its button is a
+   search box you cannot read your own query in. */
+.searchbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.searchbar input[type="search"] {
+  flex: 1 1 320px; min-width: 0;
+  background: var(--bg); color: var(--fg);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 9px 12px; font: inherit; font-size: var(--text-base);
+}
+.searchbar input[type="search"]:focus-visible {
+  outline: 2px solid var(--workable); outline-offset: 1px; border-color: transparent;
+}

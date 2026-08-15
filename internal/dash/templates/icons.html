@@ -43,3 +43,5 @@
      html/template requires a literal in {{template}} -- so the mapping is
      this one chain, in one place, rather than a pill hand-built per page. */}}
 {{define "state-tag"}}<span class="state state-{{.Slug}}">{{if eq .Slug "workable"}}{{template "glyph-workable"}}{{else if eq .Slug "claimed"}}{{template "glyph-claimed"}}{{else if eq .Slug "blocked"}}{{template "glyph-blocked"}}{{else if eq .Slug "held"}}{{template "glyph-held"}}{{else if eq .Slug "done"}}{{template "glyph-done"}}{{else}}{{template "glyph-idle"}}{{end}}<span>{{.Label}}</span></span>{{end}}
+
+{{define "icon-search"}}<svg class="ico" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg>{{end}}
