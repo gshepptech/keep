@@ -121,17 +121,34 @@ func renderFeed(w io.Writer, entries []store.FeedEntry) {
 		actorW = max(actorW, len(e.Actor))
 	}
 
+	// Titles and reasons are both truncated for the same reason the rest of
+	// this CLI truncates titles: a close reason in a real store is often
+	// several paragraphs -- agents write down what they did -- and printing
+	// one in full turns a twenty-line log into a wall nobody reads. The
+	// whole text is one `rounce show <id>` away, and --json never truncates.
+	// The title is what you scan for, so it keeps the larger share; the
+	// reason is context you read only on the row you stopped at.
+	budget := titleWidth(w)
+	titleBudget := max(budget/2, minTitleBudget)
+	reasonBudget := max(budget/2, minTitleBudget)
+
 	for i, e := range entries {
 		// The reason is the useful half of a close or a drop; without it
 		// the log says work ended but never why.
 		suffix := ""
 		if e.Reason != "" {
-			suffix = "  -- " + e.Reason
+			suffix = "  -- " + truncateTitle(oneLine(e.Reason), reasonBudget)
 		}
 		fmt.Fprintf(w, "%-*s  %-*s  %-*s  %s  %s%s\n",
 			whenW, whens[i], kindW, e.Kind, actorW, e.Actor,
-			e.ItemID, e.Title, suffix)
+			e.ItemID, truncateTitle(e.Title, titleBudget), suffix)
 	}
+}
+
+// oneLine flattens a multi-line reason onto one line, so a paragraph does
+// not break the column alignment of every row after it.
+func oneLine(s string) string {
+	return strings.Join(strings.Fields(s), " ")
 }
 
 // agoOrRaw prints a timestamp as an age, falling back to the raw string if

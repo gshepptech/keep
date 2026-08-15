@@ -148,3 +148,52 @@ func TestSearchSaysWhereTheMatchCameFrom(t *testing.T) {
 		}
 	}
 }
+
+// TestSearchShowsTheTextAroundAMatch.
+//
+// Found by running search against a real store: one captured document whose
+// body was an entire roadmap matched almost every query, and "matched in
+// body" gave no way at all to tell a real hit from a passing mention. The
+// window of surrounding text is what makes a result judgeable without
+// opening it.
+func TestSearchShowsTheTextAroundAMatch(t *testing.T) {
+	st, ctx := openTestStore(t), context.Background()
+	long := strings.Repeat("padding text that is not interesting. ", 12) +
+		"the token parser is duplicated in three places. " +
+		strings.Repeat("more padding afterwards. ", 12)
+	mustAdd(t, st, AddItemInput{Title: "a captured document", Body: long, Actor: "a"})
+
+	got, err := st.Search(ctx, SearchFilter{Query: "token parser"})
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("Search found %d, want 1", len(got))
+	}
+	if !strings.Contains(got[0].Snippet, "token parser") {
+		t.Errorf("snippet = %q, want it to contain the matched text", got[0].Snippet)
+	}
+	if len(got[0].Snippet) >= len(long) {
+		t.Errorf("snippet is %d chars of a %d-char body -- it must be a window, not the whole thing",
+			len(got[0].Snippet), len(long))
+	}
+	if !strings.HasPrefix(got[0].Snippet, "…") || !strings.HasSuffix(got[0].Snippet, "…") {
+		t.Errorf("snippet = %q, want ellipses showing it was cut on both sides", got[0].Snippet)
+	}
+}
+
+// TestSearchDoesNotEllipsiseWhatItShowedWhole. A short field is returned
+// whole; decorating it with ellipses would claim text was hidden when none
+// was.
+func TestSearchDoesNotEllipsiseWhatItShowedWhole(t *testing.T) {
+	st, ctx := openTestStore(t), context.Background()
+	mustAdd(t, st, AddItemInput{Title: "short one", Why: "tokens expire", Actor: "a"})
+
+	got, err := st.Search(ctx, SearchFilter{Query: "tokens"})
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if got[0].Snippet != "tokens expire" {
+		t.Errorf("snippet = %q, want the whole short field with no ellipses", got[0].Snippet)
+	}
+}

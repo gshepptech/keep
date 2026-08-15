@@ -34,6 +34,13 @@ type SearchResult struct {
 	// MatchedIn is one of searchFields -- the highest-ranked field that
 	// contained the query.
 	MatchedIn string `json:"matched_in"`
+
+	// Snippet is the text around the match, when the match is somewhere you
+	// cannot already see. Found by using this against a real store: one
+	// captured document whose body is a whole roadmap matched almost every
+	// query, and "matched in body" gave no way to tell a real hit from a
+	// passing mention. A window of the actual text does.
+	Snippet string `json:"snippet,omitempty"`
 }
 
 // searchFields are the columns a match may come from, in the order that
@@ -131,12 +138,66 @@ func (s *Store) Search(ctx context.Context, f SearchFilter) ([]SearchResult, err
 			return nil, fmt.Errorf("Search: %w", err)
 		}
 		r.MatchedIn = fieldName(rank)
+		r.Snippet = snippetAround(r.fieldValue(r.MatchedIn), query)
 		out = append(out, r)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("Search: %w", err)
 	}
 	return out, nil
+}
+
+// fieldValue reads back the field a match came from, so the snippet is cut
+// from the text that actually matched rather than from whichever field is
+// most convenient.
+func (r SearchResult) fieldValue(name string) string {
+	switch name {
+	case "title":
+		return r.Title
+	case "why":
+		return r.Why
+	case "acceptance":
+		return r.Acceptance
+	case "paths":
+		if r.Paths == nil {
+			return ""
+		}
+		return *r.Paths
+	case "body":
+		return r.Body
+	}
+	return ""
+}
+
+// snippetWindow is how much text to show either side of a match. Enough for
+// a sentence fragment to be recognisable, short enough to stay on one line
+// beside everything else in the row.
+const snippetWindow = 44
+
+// snippetAround returns the text surrounding the first case-insensitive
+// occurrence of query, with ellipses where it was cut. A field short enough
+// to read whole is returned whole rather than decorated with ellipses that
+// hide nothing.
+func snippetAround(field, query string) string {
+	if field == "" {
+		return ""
+	}
+	flat := strings.Join(strings.Fields(field), " ")
+	at := strings.Index(strings.ToLower(flat), strings.ToLower(query))
+	if at < 0 || len(flat) <= snippetWindow*2 {
+		return flat
+	}
+
+	start := max(at-snippetWindow, 0)
+	end := min(at+len(query)+snippetWindow, len(flat))
+	out := flat[start:end]
+	if start > 0 {
+		out = "…" + out
+	}
+	if end < len(flat) {
+		out += "…"
+	}
+	return out
 }
 
 // fieldName turns the rank the query computed back into the field it came

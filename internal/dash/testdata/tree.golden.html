@@ -585,6 +585,11 @@ pre {
 .searchbar input[type="search"]:focus-visible {
   outline: 2px solid var(--workable); outline-offset: 1px; border-color: transparent;
 }
+
+/* A search result's match context. Capped so one captured document with a
+   very long body cannot push the rest of the row off the page. */
+.snippet { max-width: 34ch; }
+.snippet .sub { white-space: normal; }
 </style>
 </head>
 <body>

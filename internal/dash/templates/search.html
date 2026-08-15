@@ -31,7 +31,7 @@
   <td class="score">{{.Score}}</td>
   <td><a class="title" href="{{$p.Prefix}}/item/{{.ID}}">{{.Title}}</a></td>
   <td class="id-cell"><span class="id">{{.ID}}</span></td>
-  <td class="faint">{{.MatchedIn}}</td>
+  <td class="faint snippet">{{.MatchedIn}}{{if and .Snippet (ne .MatchedIn "title")}}<div class="sub">{{.Snippet}}</div>{{end}}</td>
   <td>{{template "state-tag" (tag (state (printf "%s" .Status) false) (printf "%s" .Status))}}</td>
   <td class="path">{{if .Paths}}{{.Paths}}{{else}}<span class="faint">not declared</span>{{end}}</td>
   </tr>

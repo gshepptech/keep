@@ -89,7 +89,17 @@ func runSearch(args []string, stdout, stderr io.Writer) int {
 	matched := make(map[string]string, len(results))
 	for i, r := range results {
 		items[i] = r.Item
-		matched[r.ID] = "matched in " + r.MatchedIn
+		// A title match needs no explanation -- the title is right there.
+		// Anything else does, and the snippet is what makes the row
+		// judgeable without opening the item.
+		if r.MatchedIn == "title" {
+			continue
+		}
+		note := "in " + r.MatchedIn
+		if r.Snippet != "" {
+			note += ": " + r.Snippet
+		}
+		matched[r.ID] = note
 	}
 	renderItems(stdout, items, renderOpts{note: matched})
 	return 0
