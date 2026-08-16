@@ -38,8 +38,16 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+      # 30 minutes rather than go test's default 10. Windows is far slower
+      # here than the other two -- the same suite runs in 20s on macOS and
+      # ran past 600s there even after the repeated compiling was removed,
+      # which points at process spawning and SQLite file locking rather than
+      # at anything rounce chooses to do. The long limit is to get a real
+      # pass or fail out of Windows instead of a stopwatch reading; if it
+      # turns out to need most of that budget, the slowness is itself worth
+      # a ticket.
       - name: Test
-        run: go test ./... -count=1
+        run: go test ./... -count=1 -timeout 30m
 
   # The race detector needs cgo, so it cannot run in the matrix above. It
   # runs once, on Linux, where the store's concurrency tests actually
