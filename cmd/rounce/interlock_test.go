@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -73,6 +74,15 @@ func readyWith(t *testing.T, bin, repo string, e []string) (string, string) {
 // design is that rounce shells out rather than importing, so an in-process
 // test would prove nothing about the thing that can break.
 func TestReadyExcludesItemsWhosePathsInterlockHolds(t *testing.T) {
+	// The fake interlock these tests drive is a /bin/sh script, which
+	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// shell's, but there is no honest way to assert it here without a
+	// Windows stub -- so this is skipped rather than quietly passing, and
+	// the gap is real: rounce's Interlock integration is unverified on
+	// Windows.
+	if runtime.GOOS == "windows" {
+		t.Skip("the interlock stub is a shell script; see the comment above")
+	}
 	bin := buildRounce(t, "")
 	repo := tempDir(t)
 	home := tempDir(t)
@@ -119,6 +129,15 @@ func TestReadyExcludesItemsWhosePathsInterlockHolds(t *testing.T) {
 // The dashboard's equivalent caught exactly that on the machine this was
 // written on.
 func TestReadyIsUnchangedWithoutInterlock(t *testing.T) {
+	// The fake interlock these tests drive is a /bin/sh script, which
+	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// shell's, but there is no honest way to assert it here without a
+	// Windows stub -- so this is skipped rather than quietly passing, and
+	// the gap is real: rounce's Interlock integration is unverified on
+	// Windows.
+	if runtime.GOOS == "windows" {
+		t.Skip("the interlock stub is a shell script; see the comment above")
+	}
 	bin := buildRounce(t, "")
 	repo := tempDir(t)
 	home := tempDir(t)
@@ -141,6 +160,15 @@ func TestReadyIsUnchangedWithoutInterlock(t *testing.T) {
 // failure direction this integration must never take. Refusing to parse an
 // envelope it does not recognise is the only safe reading.
 func TestReadyIgnoresAnUnsupportedStatusVersion(t *testing.T) {
+	// The fake interlock these tests drive is a /bin/sh script, which
+	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// shell's, but there is no honest way to assert it here without a
+	// Windows stub -- so this is skipped rather than quietly passing, and
+	// the gap is real: rounce's Interlock integration is unverified on
+	// Windows.
+	if runtime.GOOS == "windows" {
+		t.Skip("the interlock stub is a shell script; see the comment above")
+	}
 	bin := buildRounce(t, "")
 	repo := tempDir(t)
 	home := tempDir(t)
@@ -162,6 +190,15 @@ func TestReadyIgnoresAnUnsupportedStatusVersion(t *testing.T) {
 // each state, and the one that is invisible here because nothing renders
 // both numbers side by side.
 func TestReadyLimitAppliesAfterTheInterlockFilter(t *testing.T) {
+	// The fake interlock these tests drive is a /bin/sh script, which
+	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// shell's, but there is no honest way to assert it here without a
+	// Windows stub -- so this is skipped rather than quietly passing, and
+	// the gap is real: rounce's Interlock integration is unverified on
+	// Windows.
+	if runtime.GOOS == "windows" {
+		t.Skip("the interlock stub is a shell script; see the comment above")
+	}
 	bin := buildRounce(t, "")
 	repo := tempDir(t)
 	home := tempDir(t)

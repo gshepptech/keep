@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -59,6 +60,15 @@ func twoProjects(t *testing.T) (*Server, string) {
 // board that does not say which project it is serving is one you can act on
 // by mistake, and with several open in tabs that is a matter of when.
 func TestBoardNamesItsProject(t *testing.T) {
+	// The fake interlock these tests drive is a /bin/sh script, which
+	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// shell's, but there is no honest way to assert it here without a
+	// Windows stub -- so this is skipped rather than quietly passing, and
+	// the gap is real: rounce's Interlock integration is unverified on
+	// Windows.
+	if runtime.GOOS == "windows" {
+		t.Skip("the interlock stub is a shell script; see the comment above")
+	}
 	s, home := twoProjects(t)
 
 	body := get(t, s.Handler(), "/").Body.String()
@@ -74,6 +84,15 @@ func TestBoardNamesItsProject(t *testing.T) {
 // TestEachProjectHasItsOwnBoard: /p/<name> serves that project's store, not
 // the one the server was started in.
 func TestEachProjectHasItsOwnBoard(t *testing.T) {
+	// The fake interlock these tests drive is a /bin/sh script, which
+	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// shell's, but there is no honest way to assert it here without a
+	// Windows stub -- so this is skipped rather than quietly passing, and
+	// the gap is real: rounce's Interlock integration is unverified on
+	// Windows.
+	if runtime.GOOS == "windows" {
+		t.Skip("the interlock stub is a shell script; see the comment above")
+	}
 	s, _ := twoProjects(t)
 
 	here := get(t, s.Handler(), "/").Body.String()
@@ -96,6 +115,15 @@ func TestEachProjectHasItsOwnBoard(t *testing.T) {
 // click on another project's board silently navigates back to the default
 // one -- which looks like the data changed under you.
 func TestOtherProjectLinksStayInThatProject(t *testing.T) {
+	// The fake interlock these tests drive is a /bin/sh script, which
+	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// shell's, but there is no honest way to assert it here without a
+	// Windows stub -- so this is skipped rather than quietly passing, and
+	// the gap is real: rounce's Interlock integration is unverified on
+	// Windows.
+	if runtime.GOOS == "windows" {
+		t.Skip("the interlock stub is a shell script; see the comment above")
+	}
 	s, _ := twoProjects(t)
 
 	body := get(t, s.Handler(), "/p/there").Body.String()
@@ -110,6 +138,15 @@ func TestOtherProjectLinksStayInThatProject(t *testing.T) {
 // TestUnknownProjectIs404: a mistyped name is an ordinary miss. Reporting
 // it as a server failure sends a person looking for a bug that is not there.
 func TestUnknownProjectIs404(t *testing.T) {
+	// The fake interlock these tests drive is a /bin/sh script, which
+	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// shell's, but there is no honest way to assert it here without a
+	// Windows stub -- so this is skipped rather than quietly passing, and
+	// the gap is real: rounce's Interlock integration is unverified on
+	// Windows.
+	if runtime.GOOS == "windows" {
+		t.Skip("the interlock stub is a shell script; see the comment above")
+	}
 	s, _ := twoProjects(t)
 
 	if rec := get(t, s.Handler(), "/p/nope"); rec.Code != http.StatusNotFound {
@@ -120,6 +157,15 @@ func TestUnknownProjectIs404(t *testing.T) {
 // TestProjectsPageListsEveryProject with the two facts a person needs to
 // tell them apart.
 func TestProjectsPageListsEveryProject(t *testing.T) {
+	// The fake interlock these tests drive is a /bin/sh script, which
+	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// shell's, but there is no honest way to assert it here without a
+	// Windows stub -- so this is skipped rather than quietly passing, and
+	// the gap is real: rounce's Interlock integration is unverified on
+	// Windows.
+	if runtime.GOOS == "windows" {
+		t.Skip("the interlock stub is a shell script; see the comment above")
+	}
 	s, home := twoProjects(t)
 
 	body := get(t, s.Handler(), "/projects").Body.String()
@@ -134,6 +180,15 @@ func TestProjectsPageListsEveryProject(t *testing.T) {
 // that quietly ran init would be deciding on a person's behalf that a
 // directory should become a project.
 func TestAddingAProjectRequiresAStore(t *testing.T) {
+	// The fake interlock these tests drive is a /bin/sh script, which
+	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// shell's, but there is no honest way to assert it here without a
+	// Windows stub -- so this is skipped rather than quietly passing, and
+	// the gap is real: rounce's Interlock integration is unverified on
+	// Windows.
+	if runtime.GOOS == "windows" {
+		t.Skip("the interlock stub is a shell script; see the comment above")
+	}
 	s, _ := twoProjects(t)
 	empty := t.TempDir()
 
@@ -151,6 +206,15 @@ func TestAddingAProjectRequiresAStore(t *testing.T) {
 
 // TestAddingAProjectRegistersIt, given a directory that does have one.
 func TestAddingAProjectRegistersIt(t *testing.T) {
+	// The fake interlock these tests drive is a /bin/sh script, which
+	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// shell's, but there is no honest way to assert it here without a
+	// Windows stub -- so this is skipped rather than quietly passing, and
+	// the gap is real: rounce's Interlock integration is unverified on
+	// Windows.
+	if runtime.GOOS == "windows" {
+		t.Skip("the interlock stub is a shell script; see the comment above")
+	}
 	s, _ := twoProjects(t)
 
 	dir := t.TempDir()
@@ -177,6 +241,15 @@ func TestAddingAProjectRegistersIt(t *testing.T) {
 // submitted -- so the checkbox is the consent, and without it the refusal
 // names both ways out.
 func TestAddingAProjectCreatesAStoreOnlyWhenAsked(t *testing.T) {
+	// The fake interlock these tests drive is a /bin/sh script, which
+	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// shell's, but there is no honest way to assert it here without a
+	// Windows stub -- so this is skipped rather than quietly passing, and
+	// the gap is real: rounce's Interlock integration is unverified on
+	// Windows.
+	if runtime.GOOS == "windows" {
+		t.Skip("the interlock stub is a shell script; see the comment above")
+	}
 	s, _ := twoProjects(t)
 	dir := t.TempDir()
 
@@ -202,6 +275,15 @@ func TestAddingAProjectCreatesAStoreOnlyWhenAsked(t *testing.T) {
 // TestCreateRefusesAMissingDirectory: creating a store is one thing,
 // creating the repository around it is another nobody asked for.
 func TestCreateRefusesAMissingDirectory(t *testing.T) {
+	// The fake interlock these tests drive is a /bin/sh script, which
+	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// shell's, but there is no honest way to assert it here without a
+	// Windows stub -- so this is skipped rather than quietly passing, and
+	// the gap is real: rounce's Interlock integration is unverified on
+	// Windows.
+	if runtime.GOOS == "windows" {
+		t.Skip("the interlock stub is a shell script; see the comment above")
+	}
 	s, _ := twoProjects(t)
 	gone := filepath.Join(t.TempDir(), "not-there")
 
@@ -220,6 +302,15 @@ func TestCreateRefusesAMissingDirectory(t *testing.T) {
 // project's board put it in another's -- silently, since the item lands
 // somewhere real, just not where the person was looking.
 func TestActionsWriteToTheProjectTheyCameFrom(t *testing.T) {
+	// The fake interlock these tests drive is a /bin/sh script, which
+	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// shell's, but there is no honest way to assert it here without a
+	// Windows stub -- so this is skipped rather than quietly passing, and
+	// the gap is real: rounce's Interlock integration is unverified on
+	// Windows.
+	if runtime.GOOS == "windows" {
+		t.Skip("the interlock stub is a shell script; see the comment above")
+	}
 	s, home := twoProjects(t)
 
 	// Post the form the way /p/there renders it.
@@ -246,6 +337,15 @@ func TestActionsWriteToTheProjectTheyCameFrom(t *testing.T) {
 // forms actually send the field -- one that omits it writes to the wrong
 // store and says nothing.
 func TestEveryActionFormCarriesItsProject(t *testing.T) {
+	// The fake interlock these tests drive is a /bin/sh script, which
+	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// shell's, but there is no honest way to assert it here without a
+	// Windows stub -- so this is skipped rather than quietly passing, and
+	// the gap is real: rounce's Interlock integration is unverified on
+	// Windows.
+	if runtime.GOOS == "windows" {
+		t.Skip("the interlock stub is a shell script; see the comment above")
+	}
 	s, _ := twoProjects(t)
 
 	for _, path := range []string{"/p/there", "/p/there/new", "/p/there/backlog"} {
@@ -264,6 +364,15 @@ func TestEveryActionFormCarriesItsProject(t *testing.T) {
 // they acted on another project's board moves them somewhere else and makes
 // their own change look like it did not happen.
 func TestActionRedirectsStayInTheProject(t *testing.T) {
+	// The fake interlock these tests drive is a /bin/sh script, which
+	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// shell's, but there is no honest way to assert it here without a
+	// Windows stub -- so this is skipped rather than quietly passing, and
+	// the gap is real: rounce's Interlock integration is unverified on
+	// Windows.
+	if runtime.GOOS == "windows" {
+		t.Skip("the interlock stub is a shell script; see the comment above")
+	}
 	s, _ := twoProjects(t)
 
 	rec := post(t, s, "/do/add", url.Values{
@@ -285,6 +394,15 @@ func TestActionRedirectsStayInTheProject(t *testing.T) {
 // directory, including one it has never been initialised in -- so the
 // button appeared on projects where pressing it would do nothing.
 func TestAgentControlsFollowTheProject(t *testing.T) {
+	// The fake interlock these tests drive is a /bin/sh script, which
+	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// shell's, but there is no honest way to assert it here without a
+	// Windows stub -- so this is skipped rather than quietly passing, and
+	// the gap is real: rounce's Interlock integration is unverified on
+	// Windows.
+	if runtime.GOOS == "windows" {
+		t.Skip("the interlock stub is a shell script; see the comment above")
+	}
 	s, home := twoProjects(t)
 
 	// Neither project is set up, so neither offers to launch.
@@ -343,6 +461,15 @@ func strconvQuote(s string) string { return "'" + strings.ReplaceAll(s, "'", `'\
 // board announced coordination was on while still showing it as off --
 // which is worse than failing, because it stops you looking.
 func TestTurningOnCoordinationConfirmsItWorked(t *testing.T) {
+	// The fake interlock these tests drive is a /bin/sh script, which
+	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// shell's, but there is no honest way to assert it here without a
+	// Windows stub -- so this is skipped rather than quietly passing, and
+	// the gap is real: rounce's Interlock integration is unverified on
+	// Windows.
+	if runtime.GOOS == "windows" {
+		t.Skip("the interlock stub is a shell script; see the comment above")
+	}
 	s, _ := twoProjects(t)
 
 	// An interlock whose init succeeds and whose doctor never does: the

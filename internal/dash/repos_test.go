@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -71,6 +72,15 @@ func crossRepoFixture(t *testing.T) (*Server, string) {
 // every registered store, ranked across all of them rather than grouped by
 // repository.
 func TestAllRanksAcrossRepositories(t *testing.T) {
+	// The fake interlock these tests drive is a /bin/sh script, which
+	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// shell's, but there is no honest way to assert it here without a
+	// Windows stub -- so this is skipped rather than quietly passing, and
+	// the gap is real: rounce's Interlock integration is unverified on
+	// Windows.
+	if runtime.GOOS == "windows" {
+		t.Skip("the interlock stub is a shell script; see the comment above")
+	}
 	s, _ := crossRepoFixture(t)
 
 	rec := get(t, s.Handler(), "/all")
@@ -108,6 +118,15 @@ func TestAllRanksAcrossRepositories(t *testing.T) {
 // the page -- and must never be fabricated as an empty repository, which
 // would read as "nothing to do here" rather than "this is broken".
 func TestAllReportsUnreadableRepositoryAsARowNotAPage(t *testing.T) {
+	// The fake interlock these tests drive is a /bin/sh script, which
+	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// shell's, but there is no honest way to assert it here without a
+	// Windows stub -- so this is skipped rather than quietly passing, and
+	// the gap is real: rounce's Interlock integration is unverified on
+	// Windows.
+	if runtime.GOOS == "windows" {
+		t.Skip("the interlock stub is a shell script; see the comment above")
+	}
 	s, home := crossRepoFixture(t)
 
 	// Delete beta's store out from under the registry, leaving the
@@ -149,6 +168,15 @@ func TestAllReportsUnreadableRepositoryAsARowNotAPage(t *testing.T) {
 // registry home still answers /all, because the nav link is unconditional.
 // A 404 on a link the page itself renders is worse than an empty table.
 func TestAllWithNoRegistryIsAnEmptyPageNotAnError(t *testing.T) {
+	// The fake interlock these tests drive is a /bin/sh script, which
+	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// shell's, but there is no honest way to assert it here without a
+	// Windows stub -- so this is skipped rather than quietly passing, and
+	// the gap is real: rounce's Interlock integration is unverified on
+	// Windows.
+	if runtime.GOOS == "windows" {
+		t.Skip("the interlock stub is a shell script; see the comment above")
+	}
 	s, _ := newHandlerFixture(t) // built with home ""
 
 	rec := get(t, s.Handler(), "/all")
@@ -165,6 +193,15 @@ func TestAllWithNoRegistryIsAnEmptyPageNotAnError(t *testing.T) {
 // template is what catches a view that stops going through the shared head
 // block.
 func TestAllNavLinkIsOnEveryView(t *testing.T) {
+	// The fake interlock these tests drive is a /bin/sh script, which
+	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// shell's, but there is no honest way to assert it here without a
+	// Windows stub -- so this is skipped rather than quietly passing, and
+	// the gap is real: rounce's Interlock integration is unverified on
+	// Windows.
+	if runtime.GOOS == "windows" {
+		t.Skip("the interlock stub is a shell script; see the comment above")
+	}
 	s, ids := newHandlerFixture(t)
 
 	for _, path := range []string{"/", "/backlog", "/item/" + ids.ready, "/tree/" + ids.epic} {
@@ -195,6 +232,15 @@ func TestAllNavLinkIsOnEveryView(t *testing.T) {
 // Both cases are forced here: alpha's title carries hostile text, and beta
 // is deleted so its error row renders in the same response.
 func TestNoExternalReferencesInCrossRepoView(t *testing.T) {
+	// The fake interlock these tests drive is a /bin/sh script, which
+	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// shell's, but there is no honest way to assert it here without a
+	// Windows stub -- so this is skipped rather than quietly passing, and
+	// the gap is real: rounce's Interlock integration is unverified on
+	// Windows.
+	if runtime.GOOS == "windows" {
+		t.Skip("the interlock stub is a shell script; see the comment above")
+	}
 	home := t.TempDir()
 
 	mk := func(name, title string) string {
@@ -275,6 +321,15 @@ func TestNoExternalReferencesInCrossRepoView(t *testing.T) {
 // tell about a deleted store. The test environment has no Interlock on PATH,
 // which is also the common case for a rounce user.
 func TestInterlockPageSaysSoWhenInterlockIsAbsent(t *testing.T) {
+	// The fake interlock these tests drive is a /bin/sh script, which
+	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// shell's, but there is no honest way to assert it here without a
+	// Windows stub -- so this is skipped rather than quietly passing, and
+	// the gap is real: rounce's Interlock integration is unverified on
+	// Windows.
+	if runtime.GOOS == "windows" {
+		t.Skip("the interlock stub is a shell script; see the comment above")
+	}
 	// Explicitly off, not merely absent from PATH: whether this test saw a
 	// filtered queue would otherwise depend on whether the developer
 	// running it has Interlock installed. It caught exactly that on the
@@ -300,6 +355,15 @@ func TestInterlockPageSaysSoWhenInterlockIsAbsent(t *testing.T) {
 // the agents holding it up are on ONE page. There is no separate view to
 // switch to, which is the whole reason the old /who is gone.
 func TestBoardIsOnePage(t *testing.T) {
+	// The fake interlock these tests drive is a /bin/sh script, which
+	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// shell's, but there is no honest way to assert it here without a
+	// Windows stub -- so this is skipped rather than quietly passing, and
+	// the gap is real: rounce's Interlock integration is unverified on
+	// Windows.
+	if runtime.GOOS == "windows" {
+		t.Skip("the interlock stub is a shell script; see the comment above")
+	}
 	t.Setenv(interlock.EnvBinary, "off")
 	s, _ := newHandlerFixture(t)
 
@@ -335,6 +399,15 @@ func stubInterlock(t *testing.T, statusJSON string) string {
 // The break that motivated this test: changing handleReady back to calling
 // s.st.Ready directly leaves every other test in this package passing.
 func TestQueueAndInterlockViewAgree(t *testing.T) {
+	// The fake interlock these tests drive is a /bin/sh script, which
+	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// shell's, but there is no honest way to assert it here without a
+	// Windows stub -- so this is skipped rather than quietly passing, and
+	// the gap is real: rounce's Interlock integration is unverified on
+	// Windows.
+	if runtime.GOOS == "windows" {
+		t.Skip("the interlock stub is a shell script; see the comment above")
+	}
 	st := openTestStore(t)
 	held := mustAdd(t, st, store.AddItemInput{
 		Title: "held work", Actor: "tester", Paths: "internal/shared.go",

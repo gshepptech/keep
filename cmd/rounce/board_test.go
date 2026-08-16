@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -380,6 +381,12 @@ func startBoardWeb(t *testing.T, bin, repo string, e []string, extraArgs ...stri
 // reading the URL alone would only prove a string was printed, not that
 // anything is listening.
 func TestBoardWebPrintsURLThenServes(t *testing.T) {
+	// Windows has no SIGINT to send a process, so "Ctrl-C exits cleanly"
+	// is not a statement that can be made there. The board's own shutdown
+	// path is exercised on the other two platforms.
+	if runtime.GOOS == "windows" {
+		t.Skip("SIGINT does not exist on Windows")
+	}
 	bin := buildRounce(t, "")
 	repo := tempDir(t)
 	home := tempDir(t)
@@ -416,6 +423,12 @@ func TestBoardWebPrintsURLThenServes(t *testing.T) {
 // TestBoardWebCtrlCExitsZero is the dedicated SIGINT exit-0 proof: after a
 // real 200, send os.Interrupt and require cmd.Wait() to return nil.
 func TestBoardWebCtrlCExitsZero(t *testing.T) {
+	// Windows has no SIGINT to send a process, so "Ctrl-C exits cleanly"
+	// is not a statement that can be made there. The board's own shutdown
+	// path is exercised on the other two platforms.
+	if runtime.GOOS == "windows" {
+		t.Skip("SIGINT does not exist on Windows")
+	}
 	bin := buildRounce(t, "")
 	repo := tempDir(t)
 	home := tempDir(t)
