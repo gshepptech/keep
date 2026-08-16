@@ -379,6 +379,8 @@ The page uses colour for exactly three states — workable, claimed, blocked —
 and never colour alone: a blocked row also carries the literal word "blocked"
 in text.
 
+![Activity: what happened, newest first](images/rounce-activity.png)
+
 ### Acting from the page
 
 ![One item, with its edit form](images/rounce-item.png)
