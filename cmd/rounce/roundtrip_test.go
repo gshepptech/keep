@@ -60,8 +60,8 @@ func buildLargeMarkdownDoc() string {
 // and the real binary.
 func TestCaptureShowBodyRoundTripsByteIdentical(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -130,8 +130,8 @@ func TestCaptureShowBodyRoundTripsByteIdentical(t *testing.T) {
 // (03-CONTEXT.md decision 2).
 func TestShowBodyAndJSONAreMutuallyExclusive(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -151,8 +151,8 @@ func TestShowBodyAndJSONAreMutuallyExclusive(t *testing.T) {
 // case is success, not an error.
 func TestShowBodyEmptyBodyPrintsNothing(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 

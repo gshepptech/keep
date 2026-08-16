@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -12,10 +13,37 @@ import (
 // via -ldflags and returns its path. Every CLI test in this package goes
 // through it: these tests exist to prove process-level behaviour, so nothing
 // here may call runInit in-process.
+// tempDir is t.TempDir() with symlinks resolved.
+//
+// On macOS /var is a symlink to /private/var, so t.TempDir() hands back
+// /var/folders/... while rounce -- correctly, because the registry needs one
+// canonical path per store -- reports /private/var/folders/.... A test
+// comparing its own unresolved path against rounce's resolved one fails on
+// the difference between two names for the same directory.
+//
+// It passed on the developer's Mac only because TMPDIR there already
+// pointed at a resolved path. CI found it on the first run.
+func tempDir(t *testing.T) string {
+	t.Helper()
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatalf("resolving the temp dir: %v", err)
+	}
+	return dir
+}
+
 func buildRounce(t *testing.T, version string) string {
 	t.Helper()
 
-	dst := filepath.Join(t.TempDir(), "rounce")
+	// .exe on Windows, or exec refuses to start what `go build` just wrote.
+	// Found by CI's first run: every cross-process test failed there with
+	// "executable file not found in %PATH%" while passing on the developer's
+	// Mac, which is the whole reason the matrix exists.
+	name := "rounce"
+	if runtime.GOOS == "windows" {
+		name += ".exe"
+	}
+	dst := filepath.Join(t.TempDir(), name)
 	args := []string{"build", "-o", dst}
 	if version != "" {
 		args = append(args, "-ldflags", "-X main.version="+version)

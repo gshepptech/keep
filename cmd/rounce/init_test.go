@@ -11,7 +11,7 @@ import (
 
 func TestVersionUsesLdflags(t *testing.T) {
 	bin := buildRounce(t, "t-9.9.9")
-	home := t.TempDir()
+	home := tempDir(t)
 
 	stdout, stderr, code := run(t, bin, home, env(home, ""), "version")
 	if code != 0 {
@@ -27,7 +27,7 @@ func TestVersionUsesLdflags(t *testing.T) {
 
 func TestVersionDashVRemoved(t *testing.T) {
 	bin := buildRounce(t, "t-9.9.9")
-	home := t.TempDir()
+	home := tempDir(t)
 
 	_, stderr, code := run(t, bin, home, env(home, ""), "-v")
 	if code != 2 {
@@ -40,8 +40,8 @@ func TestVersionDashVRemoved(t *testing.T) {
 
 func TestInitCreatesRepoStore(t *testing.T) {
 	bin := buildRounce(t, "test")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 
 	stdout, stderr, code := run(t, bin, repo, env(home, ""), "init")
 	if code != 0 {
@@ -69,8 +69,8 @@ func TestInitCreatesRepoStore(t *testing.T) {
 
 func TestInitGlobal(t *testing.T) {
 	bin := buildRounce(t, "test")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 
 	stdout, stderr, code := run(t, bin, repo, env(home, ""), "init", "--global")
 	if code != 0 {
@@ -95,8 +95,8 @@ func TestInitGlobal(t *testing.T) {
 
 func TestInitDBFlag(t *testing.T) {
 	bin := buildRounce(t, "test")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	custom := filepath.Join(repo, "custom", "x.sqlite")
 
 	stdout, stderr, code := run(t, bin, repo, env(home, ""), "init", "--db", custom)
@@ -116,8 +116,8 @@ func TestInitDBFlag(t *testing.T) {
 
 func TestInitDBFlagWithGlobalIsUsageError(t *testing.T) {
 	bin := buildRounce(t, "test")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	custom := filepath.Join(repo, "custom", "x.sqlite")
 
 	_, stderr, code := run(t, bin, repo, env(home, ""), "init", "--db", custom, "--global")
@@ -137,8 +137,8 @@ func TestInitDBFlagWithGlobalIsUsageError(t *testing.T) {
 
 func TestInitTwiceIsIdempotent(t *testing.T) {
 	bin := buildRounce(t, "test")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 
 	stdout1, stderr1, code1 := run(t, bin, repo, env(home, ""), "init")
 	if code1 != 0 {
@@ -167,8 +167,8 @@ func TestInitTwiceIsIdempotent(t *testing.T) {
 
 func TestInitNestedWarnsOnStderr(t *testing.T) {
 	bin := buildRounce(t, "test")
-	outer := t.TempDir()
-	home := t.TempDir()
+	outer := tempDir(t)
+	home := tempDir(t)
 
 	stdoutOuter, stderrOuter, codeOuter := run(t, bin, outer, env(home, ""), "init")
 	if codeOuter != 0 {
@@ -211,9 +211,9 @@ func TestInitNestedWarnsOnStderr(t *testing.T) {
 
 func TestInitWarnsWhenRounceDBShadows(t *testing.T) {
 	bin := buildRounce(t, "test")
-	repo := t.TempDir()
-	home := t.TempDir()
-	elsewhere := filepath.Join(t.TempDir(), "elsewhere.sqlite")
+	repo := tempDir(t)
+	home := tempDir(t)
+	elsewhere := filepath.Join(tempDir(t), "elsewhere.sqlite")
 
 	stdout, stderr, code := run(t, bin, repo, env(home, elsewhere), "init")
 	if code != 0 {

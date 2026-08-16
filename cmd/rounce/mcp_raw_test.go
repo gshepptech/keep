@@ -312,7 +312,7 @@ func (c *rawMCPConn) closeAndWait(t *testing.T) int {
 // nothing left in flight.
 func TestRawMCPHandshake(t *testing.T) {
 	bin := buildRounce(t, "")
-	dir := t.TempDir()
+	dir := tempDir(t)
 	environ := env(dir, "", "ROUNCE_SESSION=raw-handshake-session")
 
 	if _, _, code := run(t, bin, dir, environ, "init"); code != 0 {
@@ -363,7 +363,7 @@ func TestRawMCPHandshake(t *testing.T) {
 // contention.
 func TestMCPPipelinedCallsDoNotRace(t *testing.T) {
 	bin := buildRounce(t, "")
-	dir := t.TempDir()
+	dir := tempDir(t)
 	environ := env(dir, "", "ROUNCE_SESSION=pipeline-session")
 
 	if _, _, code := run(t, bin, dir, environ, "init"); code != 0 {
@@ -513,7 +513,7 @@ func TestMCPPipelinedCallsDoNotRace(t *testing.T) {
 // (see GATE-03 break 1, 04-06-PLAN.md's verification section).
 func TestMCPStdoutIsProtocolBytesOnly(t *testing.T) {
 	bin := buildRounce(t, "")
-	dir := t.TempDir()
+	dir := tempDir(t)
 	environ := env(dir, "", "ROUNCE_SESSION=stdout-purity-session")
 
 	if _, _, code := run(t, bin, dir, environ, "init"); code != 0 {

@@ -61,8 +61,8 @@ func countEventsOfKind(d showDetail, kind string) int {
 // writing a second `start` event.
 func TestStartClaimsAndIsIdempotent(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "", "ROUNCE_SESSION=s1")
 	mustInit(t, bin, repo, e)
 
@@ -101,8 +101,8 @@ func TestStartClaimsAndIsIdempotent(t *testing.T) {
 // holding session on stderr.
 func TestStartDifferentSessionConflicts(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e1 := env(home, "", "ROUNCE_SESSION=s1")
 	e2 := env(home, "", "ROUNCE_SESSION=s2")
 	mustInit(t, bin, repo, e1)
@@ -129,8 +129,8 @@ func TestStartDifferentSessionConflicts(t *testing.T) {
 // blocked item both exit 1 with a message identifying the cause.
 func TestStartRefusesRawAndBlocked(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "", "ROUNCE_SESSION=s1")
 	mustInit(t, bin, repo, e)
 
@@ -172,8 +172,8 @@ func TestStartRefusesRawAndBlocked(t *testing.T) {
 // stay distinguishable between the two verbs.
 func TestCloseAndDropAreDistinguishableOnCLI(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -250,8 +250,8 @@ func TestCloseAndDropAreDistinguishableOnCLI(t *testing.T) {
 // indistinguishable, so close.go must reject both explicitly.
 func TestCloseWithoutReasonExitsTwo(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -280,8 +280,8 @@ func TestCloseWithoutReasonExitsTwo(t *testing.T) {
 // would pass for a store that writes it and a ready view that ignores it.
 func TestUpdateChangesFieldsAndScore(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -338,8 +338,8 @@ func TestUpdateChangesFieldsAndScore(t *testing.T) {
 // usage error, not a silent no-op (02-CONTEXT.md decision 4).
 func TestUpdateNoFlagsExitsTwo(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -358,8 +358,8 @@ func TestUpdateNoFlagsExitsTwo(t *testing.T) {
 // all: flag's own "flag provided but not defined" error, exit 2.
 func TestUpdateStatusFlagRejected(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 

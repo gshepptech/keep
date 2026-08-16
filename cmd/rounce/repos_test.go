@@ -48,8 +48,8 @@ func makeRepo(t *testing.T, bin, root, home, name string, n int) string {
 // repository name -- never a substring match.
 func TestReposListsCountsAndLastActivity(t *testing.T) {
 	bin := buildRounce(t, "")
-	root := t.TempDir()
-	home := t.TempDir()
+	root := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 
 	makeRepo(t, bin, root, home, "alpha", 2)
@@ -117,8 +117,8 @@ func TestReposListsCountsAndLastActivity(t *testing.T) {
 // two carrying their real counts, and the command exits 0 regardless.
 func TestReposShowsErrorRowForBrokenStoreAndExitsZero(t *testing.T) {
 	bin := buildRounce(t, "")
-	root := t.TempDir()
-	home := t.TempDir()
+	root := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 
 	makeRepo(t, bin, root, home, "alpha", 1)
@@ -170,8 +170,8 @@ func TestReposShowsErrorRowForBrokenStoreAndExitsZero(t *testing.T) {
 // adding both leaves exactly one registry row.
 func TestReposAddAcceptsDirectoryOrStorePath(t *testing.T) {
 	bin := buildRounce(t, "")
-	root := t.TempDir()
-	home := t.TempDir()
+	root := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 
 	repoDir := filepath.Join(root, "myrepo")
@@ -210,8 +210,8 @@ func TestReposAddAcceptsDirectoryOrStorePath(t *testing.T) {
 // repos` then shows that row with an error rather than refusing to list it.
 func TestReposAddDoesNotValidateTheStore(t *testing.T) {
 	bin := buildRounce(t, "")
-	root := t.TempDir()
-	home := t.TempDir()
+	root := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 
 	repoDir := filepath.Join(root, "empty-repo")
@@ -248,8 +248,8 @@ func TestReposAddDoesNotValidateTheStore(t *testing.T) {
 // message, and exits 1 naming the path on a second, now-unregistered call.
 func TestReposForgetRemovesRowAndLeavesStoreOnDisk(t *testing.T) {
 	bin := buildRounce(t, "")
-	root := t.TempDir()
-	home := t.TempDir()
+	root := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 
 	storePath := makeRepo(t, bin, root, home, "solo", 1)
@@ -289,8 +289,8 @@ func TestReposForgetRemovesRowAndLeavesStoreOnDisk(t *testing.T) {
 // in the repository the user is standing in.
 func TestReposMalformedRegistryIsNotFatal(t *testing.T) {
 	bin := buildRounce(t, "")
-	root := t.TempDir()
-	home := t.TempDir()
+	root := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 
 	if err := os.MkdirAll(filepath.Dir(registry.PathIn(home)), 0o755); err != nil {
@@ -313,7 +313,7 @@ func TestReposMalformedRegistryIsNotFatal(t *testing.T) {
 
 	// The second, more important half: rounce ready must still work in a
 	// real repository despite the malformed HOME registry.
-	repoDir := t.TempDir()
+	repoDir := tempDir(t)
 	if _, stderr2, code2 := run(t, bin, repoDir, e, "init"); code2 != 0 {
 		t.Fatalf("init in a real repository despite a malformed home registry: exit code = %d, want 0 (stderr=%q)", code2, stderr2)
 	}

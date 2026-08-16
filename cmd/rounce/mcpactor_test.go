@@ -65,7 +65,7 @@ func addOverMCPAndReadActor(t *testing.T, bin, dir string, environ []string, cli
 // cannot pass by coincidence.
 func TestMCPActorComesFromTheClientName(t *testing.T) {
 	bin := buildRounce(t, "")
-	dir := t.TempDir()
+	dir := tempDir(t)
 	environ := env(dir, "")
 	if _, _, code := run(t, bin, dir, environ, "init"); code != 0 {
 		t.Fatal("init failed")
@@ -86,7 +86,7 @@ func TestMCPActorComesFromTheClientName(t *testing.T) {
 // client-name default existed.
 func TestMCPActorEnvOverridesClientName(t *testing.T) {
 	bin := buildRounce(t, "")
-	dir := t.TempDir()
+	dir := tempDir(t)
 	environ := env(dir, "", "ROUNCE_ACTOR=explicitly-me")
 	if _, _, code := run(t, bin, dir, environ, "init"); code != 0 {
 		t.Fatal("init failed")
@@ -103,7 +103,7 @@ func TestMCPActorEnvOverridesClientName(t *testing.T) {
 // worse than one naming the wrong thing -- it reads as data loss.
 func TestMCPActorFallsBackWhenClientIsAnonymous(t *testing.T) {
 	bin := buildRounce(t, "")
-	dir := t.TempDir()
+	dir := tempDir(t)
 	environ := env(dir, "")
 	if _, _, code := run(t, bin, dir, environ, "init"); code != 0 {
 		t.Fatal("init failed")
@@ -122,7 +122,7 @@ func TestMCPActorFallsBackWhenClientIsAnonymous(t *testing.T) {
 // default is what changed here; the override is not.
 func TestMCPActorPerCallStillWins(t *testing.T) {
 	bin := buildRounce(t, "")
-	dir := t.TempDir()
+	dir := tempDir(t)
 	environ := env(dir, "")
 	if _, _, code := run(t, bin, dir, environ, "init"); code != 0 {
 		t.Fatal("init failed")

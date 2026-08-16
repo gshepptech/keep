@@ -38,8 +38,8 @@ func initRepo(t *testing.T, bin, dir string, e []string) {
 // meaningful at all.
 func TestReadyAllRanksAcrossStores(t *testing.T) {
 	bin := buildRounce(t, "")
-	root := t.TempDir()
-	home := t.TempDir()
+	root := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 
 	aDir := filepath.Join(root, "alpha")
@@ -87,8 +87,8 @@ func TestReadyAllRanksAcrossStores(t *testing.T) {
 // array still holds the other two repos' items, and the exit code is 0.
 func TestReadyAllCarriesPerRepoErrors(t *testing.T) {
 	bin := buildRounce(t, "")
-	root := t.TempDir()
-	home := t.TempDir()
+	root := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 
 	makeRepo(t, bin, root, home, "alpha", 1)
@@ -129,8 +129,8 @@ func TestReadyAllCarriesPerRepoErrors(t *testing.T) {
 // same answer by accident.
 func TestReadyAllLimitAppliesToTheMergedRanking(t *testing.T) {
 	bin := buildRounce(t, "")
-	root := t.TempDir()
-	home := t.TempDir()
+	root := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 
 	aDir := filepath.Join(root, "alpha")
@@ -165,8 +165,8 @@ func TestReadyAllLimitAppliesToTheMergedRanking(t *testing.T) {
 // TestReadyAllRejectsDBFlag proves ready --all --db <path> exits 2.
 func TestReadyAllRejectsDBFlag(t *testing.T) {
 	bin := buildRounce(t, "")
-	root := t.TempDir()
-	home := t.TempDir()
+	root := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 
 	dbPath := filepath.Join(root, "somewhere", "db.sqlite")
@@ -186,8 +186,8 @@ func TestReadyAllRejectsDBFlag(t *testing.T) {
 // prove the shape is unchanged.
 func TestReadyWithoutAllResolvesExactlyOneStore(t *testing.T) {
 	bin := buildRounce(t, "")
-	root := t.TempDir()
-	home := t.TempDir()
+	root := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 
 	makeRepo(t, bin, root, home, "alpha", 2)
@@ -221,8 +221,8 @@ func TestReadyWithoutAllResolvesExactlyOneStore(t *testing.T) {
 // warns and returns an empty items array, also at exit 0.
 func TestReadyWithoutAllSurvivesAMalformedRegistry(t *testing.T) {
 	bin := buildRounce(t, "")
-	root := t.TempDir()
-	home := t.TempDir()
+	root := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 
 	if err := os.MkdirAll(filepath.Dir(registry.PathIn(home)), 0o755); err != nil {
@@ -255,7 +255,7 @@ func TestReadyWithoutAllSurvivesAMalformedRegistry(t *testing.T) {
 	// repository still work, and ready itself -- unlike init's own
 	// best-effort registration -- never touches the registry, so its own
 	// invocation writes nothing to stderr regardless of the registry's state.
-	repoDir := t.TempDir()
+	repoDir := tempDir(t)
 	if _, stderr, code := run(t, bin, repoDir, e, "init"); code != 0 {
 		t.Fatalf("init despite a malformed home registry: exit %d, stderr=%q", code, stderr)
 	}

@@ -84,7 +84,7 @@ func decodeInto(t *testing.T, text string, v any) {
 // a description and an object input schema.
 func TestMCPToolsListReturnsCommandSurface(t *testing.T) {
 	bin := buildRounce(t, "")
-	dir := t.TempDir()
+	dir := tempDir(t)
 	environ := env(dir, "", "ROUNCE_SESSION=mcp-session-1")
 
 	if _, _, code := run(t, bin, dir, environ, "init"); code != 0 {
@@ -195,7 +195,7 @@ func TestMCPToolsListReturnsCommandSurface(t *testing.T) {
 // one agent session driving the entire loop without shelling out.
 func TestMCPCallSequenceCaptureRefineReadyStartClose(t *testing.T) {
 	bin := buildRounce(t, "")
-	dir := t.TempDir()
+	dir := tempDir(t)
 	environ := env(dir, "", "ROUNCE_SESSION=mcp-session-1")
 
 	if _, _, code := run(t, bin, dir, environ, "init"); code != 0 {

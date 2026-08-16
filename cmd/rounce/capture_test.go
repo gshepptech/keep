@@ -55,8 +55,8 @@ Last line, no trailing newline`
 // type, and a body equal to the piped bytes.
 func TestCaptureCanonicalInvocation(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -87,8 +87,8 @@ func TestCaptureCanonicalInvocation(t *testing.T) {
 // capture stores stage=raw, type=note (the default), and an empty body.
 func TestCaptureDefaultsToRawNote(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -115,8 +115,8 @@ func TestCaptureDefaultsToRawNote(t *testing.T) {
 // defined", stdout is empty, and no item was created.
 func TestCaptureRefusesStageFlag(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -146,8 +146,8 @@ func TestCaptureRefusesStageFlag(t *testing.T) {
 // reader is ("", nil), not an error.
 func TestCaptureEmptyStdinIsNotAnError(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -168,8 +168,8 @@ func TestCaptureEmptyStdinIsNotAnError(t *testing.T) {
 // implementation, not a capture-only path.
 func TestAddBodyDashReadsStdin(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -195,8 +195,8 @@ func TestAddBodyDashReadsStdin(t *testing.T) {
 // boundary, exit 2, naming the legal types.
 func TestCaptureRejectsUnknownType(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 

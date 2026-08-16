@@ -64,8 +64,8 @@ func rowNamesBlocker(row, blockerID string) bool {
 // which is exactly what docs/design/phase-2.md's exit gate claims.
 func TestRefineFromCapturedRoadmap(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -203,8 +203,8 @@ func TestRefineFromCapturedRoadmap(t *testing.T) {
 // with `update --stage ticket`, and not before.
 func TestPromotedRawNoteLeavesBacklogEntersReady(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 

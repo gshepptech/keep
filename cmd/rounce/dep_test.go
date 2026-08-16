@@ -7,8 +7,8 @@ import (
 
 func TestDepVocabulary(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -66,8 +66,8 @@ func TestDepVocabulary(t *testing.T) {
 
 func TestDepSelfEdge(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 

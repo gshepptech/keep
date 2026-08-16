@@ -25,7 +25,7 @@ func fakeCodex(t *testing.T, hooksListResult string) (bin, logPath string) {
 	if runtime.GOOS == "windows" {
 		t.Skip("stub uses a POSIX shebang")
 	}
-	dir := t.TempDir()
+	dir := tempDir(t)
 	logPath = filepath.Join(dir, "requests.jsonl")
 	bin = filepath.Join(dir, "codex")
 
@@ -66,7 +66,7 @@ for line in sys.stdin:
 
 // pyLiteral quotes s as a Python string literal. json.Marshal of a string is
 // a valid Python literal too, and it escapes correctly, which hand-quoting
-// a t.TempDir() path would not reliably do.
+// a tempDir(t) path would not reliably do.
 func pyLiteral(s string) string {
 	b, _ := json.Marshal(s)
 	return string(b)
@@ -103,8 +103,8 @@ func readRequests(t *testing.T, logPath string) []map[string]any {
 // write back exactly what hooks/list said and never a value of its own.
 func TestCodexTrustWritesTheHashCodexReported(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	stub, logPath := fakeCodex(t, oneUntrustedHook)
 	e := env(home, "", "ROUNCE_CODEX="+stub)
 	mustInit(t, bin, repo, e)
@@ -149,8 +149,8 @@ func TestCodexTrustWritesTheHashCodexReported(t *testing.T) {
 // --dangerously-bypass-hook-trust a bad answer.
 func TestCodexTrustLeavesOtherPluginsAlone(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	stub, logPath := fakeCodex(t, oneUntrustedHook)
 	e := env(home, "", "ROUNCE_CODEX="+stub)
 	mustInit(t, bin, repo, e)
@@ -175,8 +175,8 @@ func TestCodexTrustLeavesOtherPluginsAlone(t *testing.T) {
 // what it would do.
 func TestCodexTrustDryRunWritesNothing(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	stub, logPath := fakeCodex(t, oneUntrustedHook)
 	e := env(home, "", "ROUNCE_CODEX="+stub)
 	mustInit(t, bin, repo, e)
@@ -208,8 +208,8 @@ func TestCodexTrustDryRunWritesNothing(t *testing.T) {
 // on record as having (reporting trust healthy while Codex ignored it).
 func TestCodexTrustFailsLoudlyWithNoPlugin(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	stub, _ := fakeCodex(t, `{"data":[{"cwd":"/repo","hooks":[],"warnings":[],"errors":[]}]}`)
 	e := env(home, "", "ROUNCE_CODEX="+stub)
 	mustInit(t, bin, repo, e)

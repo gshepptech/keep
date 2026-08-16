@@ -111,8 +111,8 @@ func jsonArrayLen(t *testing.T, bin, repo string, e []string, args ...string) in
 // `backlog`/`list --status in_progress`'s own output from the same store.
 func TestBoardTerminalCountsAndQueue(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 	buildBoardFixture(t, bin, repo, e)
@@ -181,8 +181,8 @@ func TestBoardTerminalCountsAndQueue(t *testing.T) {
 // rows while all four counts stay identical to --limit 0's.
 func TestBoardLimitTruncatesRowsNotCounts(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 	buildBoardFixture(t, bin, repo, e)
@@ -231,8 +231,8 @@ type boardJSONOut struct {
 // [] (never null) on an empty store.
 func TestBoardJSONShape(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 	buildBoardFixture(t, bin, repo, e)
@@ -268,8 +268,8 @@ func TestBoardJSONShape(t *testing.T) {
 	}
 
 	// Empty store: items must be [], never null.
-	emptyRepo := t.TempDir()
-	emptyHome := t.TempDir()
+	emptyRepo := tempDir(t)
+	emptyHome := tempDir(t)
 	emptyEnv := env(emptyHome, "")
 	mustInit(t, bin, emptyRepo, emptyEnv)
 	emptyStdout, emptyStderr, emptyCode := run(t, bin, emptyRepo, emptyEnv, "board", "--json")
@@ -381,8 +381,8 @@ func startBoardWeb(t *testing.T, bin, repo string, e []string, extraArgs ...stri
 // anything is listening.
 func TestBoardWebPrintsURLThenServes(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 	f := buildBoardFixture(t, bin, repo, e)
@@ -417,8 +417,8 @@ func TestBoardWebPrintsURLThenServes(t *testing.T) {
 // real 200, send os.Interrupt and require cmd.Wait() to return nil.
 func TestBoardWebCtrlCExitsZero(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 	buildBoardFixture(t, bin, repo, e)
@@ -447,8 +447,8 @@ func TestBoardWebCtrlCExitsZero(t *testing.T) {
 // exact port.
 func TestBoardWebPortOverride(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -473,8 +473,8 @@ func TestBoardWebPortOverride(t *testing.T) {
 // stdout.
 func TestBoardWebRejectsJSON(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -491,8 +491,8 @@ func TestBoardWebRejectsJSON(t *testing.T) {
 // before the store opens.
 func TestBoardPortWithoutWebRejected(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	// Deliberately not mustInit-ed: the rejection must happen before the
 	// store is ever opened.

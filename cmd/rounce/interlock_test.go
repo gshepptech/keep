@@ -19,7 +19,7 @@ import (
 // is the half that can regress here.
 func fakeInterlock(t *testing.T, statusJSON string) string {
 	t.Helper()
-	dir := t.TempDir()
+	dir := tempDir(t)
 	script := "#!/bin/sh\n" +
 		"if [ \"$1\" = \"status\" ]; then\n" +
 		"  cat <<'INTERLOCK_EOF'\n" + statusJSON + "\nINTERLOCK_EOF\n" +
@@ -74,8 +74,8 @@ func readyWith(t *testing.T, bin, repo string, e []string) (string, string) {
 // test would prove nothing about the thing that can break.
 func TestReadyExcludesItemsWhosePathsInterlockHolds(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := pathWith(home, fakeInterlock(t, heldSharedGo))
 	mustInit(t, bin, repo, e)
 
@@ -120,8 +120,8 @@ func TestReadyExcludesItemsWhosePathsInterlockHolds(t *testing.T) {
 // written on.
 func TestReadyIsUnchangedWithoutInterlock(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "", "ROUNCE_INTERLOCK=off")
 	mustInit(t, bin, repo, e)
 
@@ -142,8 +142,8 @@ func TestReadyIsUnchangedWithoutInterlock(t *testing.T) {
 // envelope it does not recognise is the only safe reading.
 func TestReadyIgnoresAnUnsupportedStatusVersion(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	future := strings.Replace(heldSharedGo, `"version": 1`, `"version": 99`, 1)
 	e := pathWith(home, fakeInterlock(t, future))
 	mustInit(t, bin, repo, e)
@@ -163,8 +163,8 @@ func TestReadyIgnoresAnUnsupportedStatusVersion(t *testing.T) {
 // both numbers side by side.
 func TestReadyLimitAppliesAfterTheInterlockFilter(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := pathWith(home, fakeInterlock(t, heldSharedGo))
 	mustInit(t, bin, repo, e)
 

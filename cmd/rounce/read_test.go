@@ -56,8 +56,8 @@ func idsFromLines(stdout string) []string {
 // --limit trims the result without altering the order.
 func TestReadyOrderAndLimit(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -106,8 +106,8 @@ func TestReadyOrderAndLimit(t *testing.T) {
 // and --json prints "[]", never "null".
 func TestReadyEmptyIsExitZero(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -139,8 +139,8 @@ func TestReadyEmptyIsExitZero(t *testing.T) {
 // not just at the store layer.
 func TestReadyExcludesRawFromCLI(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -175,8 +175,8 @@ func TestReadyExcludesRawFromCLI(t *testing.T) {
 // SUMMARY.md).
 func TestBlockedNamesBlockerOnCLI(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -237,8 +237,8 @@ func TestBlockedNamesBlockerOnCLI(t *testing.T) {
 // controls.
 func TestShowBodyVerbatim(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -264,8 +264,8 @@ func TestShowBodyVerbatim(t *testing.T) {
 // nothing on stdout, and names the id on stderr.
 func TestShowUnknownID(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -290,8 +290,8 @@ func TestShowUnknownID(t *testing.T) {
 // "--stage ticket --status open" example tests.
 func TestListFiltersCompose(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -323,8 +323,8 @@ func TestListFiltersCompose(t *testing.T) {
 // fmt.Println -- see GATE-03 break 3 below.
 func TestReadJSONStreamPurity(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 

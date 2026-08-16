@@ -12,8 +12,8 @@ import (
 // actually run.
 func TestSearchFindsAndSeparatesItsStreams(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -58,8 +58,8 @@ func TestSearchFindsAndSeparatesItsStreams(t *testing.T) {
 // TestLogReportsWhatHappened. The question the tool could not answer before.
 func TestLogReportsWhatHappened(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -91,8 +91,8 @@ func TestLogReportsWhatHappened(t *testing.T) {
 // silently answer a different question than the one asked.
 func TestLogRejectsATimeItCannotRead(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -113,8 +113,8 @@ func TestLogRejectsATimeItCannotRead(t *testing.T) {
 // prevent.
 func TestStaleReportsButNeverReleases(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 

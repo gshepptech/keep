@@ -63,8 +63,8 @@ func initializeInstructions(t *testing.T, bin, dir string, environ []string) *st
 // Code.
 func TestMCPInstructionsCarryTheQueue(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -109,8 +109,8 @@ func TestMCPInstructionsCarryTheQueue(t *testing.T) {
 // numbers side by side except an agent reading them.
 func TestMCPInstructionsTruncateRowsNotCounts(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -157,8 +157,8 @@ func TestMCPInstructionsTruncateRowsNotCounts(t *testing.T) {
 // because `omitempty` is what makes those two the same thing on the wire.
 func TestMCPInstructionsAbsentOnEmptyStore(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 

@@ -102,7 +102,7 @@ func assertEventsMatchExceptIDAndAt(t *testing.T, wantKind string, cli, mcpEv mo
 // a rendered-output comparison would never catch that.
 func TestCLIAndMCPWriteIdenticalEventRows(t *testing.T) {
 	bin := buildRounce(t, "")
-	dir := t.TempDir()
+	dir := tempDir(t)
 
 	// One store, one HOME, one ROUNCE_SESSION, shared by BOTH paths -- so
 	// nothing about the environment itself can differ between them.
@@ -186,7 +186,7 @@ func TestCLIAndMCPWriteIdenticalEventRows(t *testing.T) {
 // error rather than to isError.
 func TestMCPMalformedArgumentsAreProtocolErrorsAndChangeNothing(t *testing.T) {
 	bin := buildRounce(t, "")
-	dir := t.TempDir()
+	dir := tempDir(t)
 	environ := env(dir, "", "ROUNCE_SESSION=malformed-session")
 
 	if _, _, code := run(t, bin, dir, environ, "init"); code != 0 {

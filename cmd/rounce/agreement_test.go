@@ -32,8 +32,8 @@ func idsOfJSONItems(t *testing.T, items []map[string]any) []string {
 // only because one happens to be a superset of the other today.
 func TestBoardAgreesWithReady(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 	buildBoardFixture(t, bin, repo, e)
@@ -75,8 +75,8 @@ func TestBoardAgreesWithReady(t *testing.T) {
 // immediately rather than only once the queue grows past 10 in production.
 func TestBoardCountMatchesReady(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 	buildBoardFixture(t, bin, repo, e)
@@ -114,8 +114,8 @@ func TestBoardCountMatchesReady(t *testing.T) {
 // (items and counts.ready both truncated to 10, instead of only items).
 func TestBoardDefaultLimitTruncatesRowsOnly(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 	buildBoardFixture(t, bin, repo, e)

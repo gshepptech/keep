@@ -30,8 +30,8 @@ import (
 // stops proving anything about cross-process concurrency at all.
 func TestConcurrentInitSameDirectory(t *testing.T) {
 	bin := buildRounce(t, "concurrent-test")
-	dir := t.TempDir()
-	home := t.TempDir()
+	dir := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 
 	const n = 4
@@ -163,8 +163,8 @@ func TestConcurrentInitSameDirectory(t *testing.T) {
 // together, nothing else.
 func TestConcurrentAddChildrenNoOrdinalCollision(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 
 	if _, stderr, code := run(t, bin, repo, e, "init"); code != 0 {
@@ -309,7 +309,7 @@ func TestConcurrentAddChildrenNoOrdinalCollision(t *testing.T) {
 // _txlock=immediate) rather than from a lock.
 func TestConcurrentInitDifferentRepositoriesLeavesRegistryValid(t *testing.T) {
 	bin := buildRounce(t, "")
-	home := t.TempDir()
+	home := tempDir(t)
 	e := env(home, "")
 
 	const n = 6
@@ -322,7 +322,7 @@ func TestConcurrentInitDifferentRepositoriesLeavesRegistryValid(t *testing.T) {
 		stderr bytes.Buffer
 	}
 
-	base := t.TempDir()
+	base := tempDir(t)
 	procs := make([]*proc, n)
 	wantPaths := make(map[string]bool, n)
 

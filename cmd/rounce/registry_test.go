@@ -13,7 +13,7 @@ import (
 )
 
 // readRegistry decodes home's repos.json. Every test in this file passes a
-// home inside t.TempDir() -- the developer's real ~/.rounce/repos.json must
+// home inside tempDir(t) -- the developer's real ~/.rounce/repos.json must
 // never be read or written by `go test`, which is why cli_test.go's env
 // helper sets an explicit HOME rather than inheriting os.Environ().
 func readRegistry(t *testing.T, home string) registry.Envelope {
@@ -36,8 +36,8 @@ func readRegistry(t *testing.T, home string) registry.Envelope {
 // and whose last_seen parses with model.TimeFormat.
 func TestInitRegistersStoreInRepoList(t *testing.T) {
 	bin := buildRounce(t, "")
-	base := t.TempDir()
-	home := t.TempDir()
+	base := tempDir(t)
+	home := tempDir(t)
 	repoDir := filepath.Join(base, "myrepo")
 	if err := os.MkdirAll(repoDir, 0o755); err != nil {
 		t.Fatalf("mkdir %s: %v", repoDir, err)
@@ -80,8 +80,8 @@ func TestInitRegistersStoreInRepoList(t *testing.T) {
 // timestamp and could slip past a value-only check.
 func TestInitRegistrationIsIdempotentAndRefreshesLastSeen(t *testing.T) {
 	bin := buildRounce(t, "")
-	repoDir := t.TempDir()
-	home := t.TempDir()
+	repoDir := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 
 	if _, stderr, code := run(t, bin, repoDir, e, "init"); code != 0 {
@@ -127,8 +127,8 @@ func TestInitRegistrationIsIdempotentAndRefreshesLastSeen(t *testing.T) {
 // registration is affected.
 func TestInitRegistrationSurvivesUnwritableHome(t *testing.T) {
 	bin := buildRounce(t, "")
-	repoDir := t.TempDir()
-	homeParent := t.TempDir()
+	repoDir := tempDir(t)
+	homeParent := tempDir(t)
 	homeFile := filepath.Join(homeParent, "home-is-a-file")
 	if err := os.WriteFile(homeFile, nil, 0o644); err != nil {
 		t.Fatalf("creating regular file at %s: %v", homeFile, err)
@@ -168,8 +168,8 @@ func TestInitRegistrationSurvivesUnwritableHome(t *testing.T) {
 // case, and the registry file sits beside the store in the same directory.
 func TestGlobalInitRegistersStoreNotSpecialCased(t *testing.T) {
 	bin := buildRounce(t, "")
-	repoDir := t.TempDir()
-	home := t.TempDir()
+	repoDir := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 
 	stdout, stderr, code := run(t, bin, repoDir, e, "init", "--global")

@@ -274,8 +274,8 @@ func TestResolveActor(t *testing.T) {
 // and asserts the add event's actor field is "mcp-actor", not "rounce-test".
 func TestResolveActorReadsROUNCE_ACTORCrossProcess(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "", "ROUNCE_ACTOR=mcp-actor")
 	mustInit(t, bin, repo, e)
 

@@ -50,8 +50,8 @@ func mapsEqual(t *testing.T, a, b map[string]any) bool {
 // would have produced.
 func TestFlagsAfterPositionalShow(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -75,8 +75,8 @@ func TestFlagsAfterPositionalShow(t *testing.T) {
 // show --json, ignoring id/timestamps), not just that both exit 0.
 func TestFlagsAfterPositionalAdd(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -108,8 +108,8 @@ func TestFlagsAfterPositionalAdd(t *testing.T) {
 // alone.
 func TestFlagsAfterPositionalMutations(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "", "ROUNCE_SESSION=s1")
 	mustInit(t, bin, repo, e)
 
@@ -155,8 +155,8 @@ func TestFlagsAfterPositionalMutations(t *testing.T) {
 // raw and ready --limit 1 must behave exactly as before.
 func TestFlagsAfterPositionalNoPositionalCommandsUnaffected(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -188,8 +188,8 @@ func TestFlagsAfterPositionalNoPositionalCommandsUnaffected(t *testing.T) {
 // invocation (dep <a> blocks <b>) is unaffected by permuteArgs.
 func TestFlagsAfterPositionalDepUnaffected(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -210,8 +210,8 @@ func TestFlagsAfterPositionalDepUnaffected(t *testing.T) {
 // an item whose title is exactly "--weird-title".
 func TestPermuteDashDashWeirdTitle(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -236,8 +236,8 @@ func TestPermuteDashDashWeirdTitle(t *testing.T) {
 // asserts UNCHANGED, pre-fix behaviour for a malformed invocation.
 func TestPermuteMissingValueDoesNotCorrupt(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 

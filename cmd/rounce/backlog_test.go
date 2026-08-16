@@ -108,8 +108,8 @@ func buildBacklogFixture(t *testing.T, bin, repo string, e []string) backlogFixt
 // dropped/closed and excluded from backlog's scope entirely.
 func TestBacklogGroupsByTypeInSchemaOrder(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 	buildBacklogFixture(t, bin, repo, e)
@@ -146,8 +146,8 @@ func TestBacklogGroupsByTypeInSchemaOrder(t *testing.T) {
 // the earlier one within the note group.
 func TestBacklogNewestFirstWithinGroup(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 	f := buildBacklogFixture(t, bin, repo, e)
@@ -176,8 +176,8 @@ func TestBacklogNewestFirstWithinGroup(t *testing.T) {
 // backlog's output.
 func TestBacklogExcludesClosedDroppedAndTickets(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 	f := buildBacklogFixture(t, bin, repo, e)
@@ -203,8 +203,8 @@ func TestBacklogExcludesClosedDroppedAndTickets(t *testing.T) {
 // header.
 func TestBacklogTypeFilter(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 	f := buildBacklogFixture(t, bin, repo, e)
@@ -235,8 +235,8 @@ func TestBacklogTypeFilter(t *testing.T) {
 // store-open failure.
 func TestBacklogTypeFilterRejectsUnknownType(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	// Deliberately NOT mustInit-ed: --type validation must happen before
 	// the store is opened, so an unknown type must still exit 2 here, not
@@ -261,8 +261,8 @@ func TestBacklogTypeFilterRejectsUnknownType(t *testing.T) {
 // order the rendered output uses.
 func TestBacklogJSONIsFlatArray(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 	f := buildBacklogFixture(t, bin, repo, e)
@@ -319,8 +319,8 @@ func TestBacklogJSONIsFlatArray(t *testing.T) {
 // exits 0, and --json prints "[]", never "null".
 func TestBacklogEmptyStoreIsSilent(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 

@@ -22,8 +22,8 @@ var rootIDPattern = regexp.MustCompile(`^rnc-[0-9a-f]{6}$`)
 
 func TestAddPrintsID(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -45,8 +45,8 @@ func TestAddPrintsID(t *testing.T) {
 
 func TestAddChildIDs(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -75,8 +75,8 @@ func TestAddChildIDs(t *testing.T) {
 
 func TestAddScoreValidation(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -112,8 +112,8 @@ func TestAddScoreValidation(t *testing.T) {
 
 func TestAddJSON(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
@@ -138,8 +138,8 @@ func TestAddJSON(t *testing.T) {
 
 func TestAddUnknownType(t *testing.T) {
 	bin := buildRounce(t, "")
-	repo := t.TempDir()
-	home := t.TempDir()
+	repo := tempDir(t)
+	home := tempDir(t)
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
