@@ -1,0 +1,74 @@
+# The README's headline claim is a single static binary with pure-Go SQLite
+# and no cgo. That claim has only ever been checked on one developer's Mac,
+# which is exactly the kind of thing that is true until someone else tries
+# it. This runs the whole suite on the three platforms people would install
+# it on, with CGO_ENABLED=0 so a cgo dependency creeping in fails here
+# rather than in someone's install.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      CGO_ENABLED: "0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          # The version go.mod asks for, so CI cannot pass on a toolchain
+          # the module does not actually claim to support.
+          go-version-file: go.mod
+          check-latest: true
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test ./... -count=1
+
+  # The race detector needs cgo, so it cannot run in the matrix above. It
+  # runs once, on Linux, where the store's concurrency tests actually
+  # exercise several processes against one SQLite file.
+  race:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          check-latest: true
+      - name: Test with the race detector
+        run: go test ./... -race -count=1
+
+  # gofmt is checked rather than run: a formatting fix committed by CI is a
+  # commit nobody reviewed.
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Check formatting
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "These files are not gofmt-clean:"
+            echo "$unformatted"
+            exit 1
+          fi
