@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -65,6 +66,13 @@ func TestClassify(t *testing.T) {
 		if os.Geteuid() == 0 {
 			t.Skip("running as root: chmod 000 does not restrict root's own reads, case is unreachable")
 		}
+		// Windows does not implement Unix permission bits, so os.Chmod
+		// cannot make a file unreadable there and the case this asserts
+		// does not exist. Same shape as the root skip above: the mechanism
+		// is absent, not the behaviour wrong.
+		if runtime.GOOS == "windows" {
+			t.Skip("Windows has no Unix permission bits for chmod 000 to clear")
+		}
 
 		dir := t.TempDir()
 		path := filepath.Join(dir, "db.sqlite")
@@ -93,6 +101,13 @@ func TestClassify(t *testing.T) {
 	t.Run("three messages are pairwise different", func(t *testing.T) {
 		if os.Geteuid() == 0 {
 			t.Skip("running as root: chmod 000 does not restrict root's own reads, case is unreachable")
+		}
+		// Windows does not implement Unix permission bits, so os.Chmod
+		// cannot make a file unreadable there and the case this asserts
+		// does not exist. Same shape as the root skip above: the mechanism
+		// is absent, not the behaviour wrong.
+		if runtime.GOOS == "windows" {
+			t.Skip("Windows has no Unix permission bits for chmod 000 to clear")
 		}
 
 		dir := t.TempDir()
