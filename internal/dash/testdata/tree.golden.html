@@ -56,10 +56,16 @@
   --fg-muted: #6b6b74;
   --fg-faint: #74747b;
 
-  /* The three states, and nothing else. Values carried forward from the
-     original stylesheet: they were already chosen for contrast on both
-     grounds, and changing them would have meant re-deriving that. */
-  --workable: #1a7f37;
+  /* Colour marks an exception, and nothing else.
+     
+     "Workable" is the ordinary state of the queue -- most of the page, most
+     of the time -- so it takes the body colour and no hue at all. Painting
+     the happy path green made a healthy board look like a status dashboard
+     and spent the page's only signal on the thing that needs no signal.
+     What is left is amber for work someone has taken, and red for work that
+     cannot proceed. A board with no colour on it is a board with nothing
+     wanting your attention, which is exactly the report to make. */
+  --workable: #6b6b74;
   --claimed: #9a6700;
   --blocked: #b32428;
 
@@ -117,7 +123,7 @@
     --fg-muted: #8b9198;
     --fg-faint: #7a7f85;
 
-    --workable: #3fb950;
+    --workable: #8b9198;
     --claimed: #d29922;
     --blocked: #f85149;
 
@@ -619,6 +625,15 @@ pre {
    very long body cannot push the rest of the row off the page. */
 .snippet { max-width: 34ch; }
 .snippet .sub { white-space: normal; }
+
+/* The wordmark. A dev tool's identity is the name set well, not a badge:
+   there is no room at 16px for anything that needs explaining. Tight
+   tracking and the mark sized to the lowercase x-height, so the two read as
+   one object rather than an icon with a label beside it. */
+.brand { letter-spacing: -0.02em; }
+.brand-name { font-weight: 600; }
+.brand-mark { display: inline-flex; color: var(--fg-muted); }
+.brand-mark svg { display: block; }
 </style>
 </head>
 <body>
@@ -626,7 +641,8 @@ pre {
 
 <aside class="sidebar">
   <div class="brand">
-    <span class="brand-mark">◈</span>
+    
+    <span class="brand-mark"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M2.5 4h11M2.5 8h7.5M2.5 12h4"/></svg></span>
     <span class="brand-name">rounce</span>
   </div>
 
