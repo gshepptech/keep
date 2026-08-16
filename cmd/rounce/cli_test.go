@@ -2,10 +2,13 @@ package main
 
 import (
 	"bytes"
+	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -32,18 +35,60 @@ func tempDir(t *testing.T) string {
 	return dir
 }
 
+// builtBinaries caches one compiled rounce per -ldflags version, for the
+// lifetime of the package's tests.
+//
+// buildRounce used to shell out to `go build` on every call, and it is
+// called 115 times across this package. On macOS that cost about two
+// minutes; on Windows, where spawning a process is far more expensive, it
+// blew through `go test`'s 600-second timeout and CI failed on the clock
+// rather than on any assertion. The binaries are identical per version --
+// nothing here mutates one -- so building each exactly once is the same
+// test with the waste removed.
+var (
+	builtMu       sync.Mutex
+	builtBinaries = map[string]string{}
+	builtDir      string
+)
+
+// TestMain owns the directory the cached binaries live in. It cannot be
+// t.TempDir(): that belongs to one test, and these outlive every test.
+func TestMain(m *testing.M) {
+	dir, err := os.MkdirTemp("", "rounce-testbin")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "creating the test binary dir: %v\n", err)
+		os.Exit(1)
+	}
+	builtDir = dir
+	code := m.Run()
+	os.RemoveAll(dir)
+	os.Exit(code)
+}
+
+// buildRounce returns the path to a rounce binary built with the given
+// -ldflags version, compiling it the first time that version is asked for.
 func buildRounce(t *testing.T, version string) string {
 	t.Helper()
+
+	builtMu.Lock()
+	defer builtMu.Unlock()
+	if path, ok := builtBinaries[version]; ok {
+		return path
+	}
 
 	// .exe on Windows, or exec refuses to start what `go build` just wrote.
 	// Found by CI's first run: every cross-process test failed there with
 	// "executable file not found in %PATH%" while passing on the developer's
 	// Mac, which is the whole reason the matrix exists.
 	name := "rounce"
+	if version != "" {
+		name += "-" + strings.NewReplacer("/", "_", "\\", "_", ":", "_").Replace(version)
+	}
 	if runtime.GOOS == "windows" {
 		name += ".exe"
 	}
-	dst := filepath.Join(t.TempDir(), name)
+
+	dst := filepath.Join(builtDir, name)
 	args := []string{"build", "-o", dst}
 	if version != "" {
 		args = append(args, "-ldflags", "-X main.version="+version)
@@ -55,6 +100,7 @@ func buildRounce(t *testing.T, version string) string {
 	if err != nil {
 		t.Fatalf("building rounce failed: %v\n%s", err, out)
 	}
+	builtBinaries[version] = dst
 	return dst
 }
 
