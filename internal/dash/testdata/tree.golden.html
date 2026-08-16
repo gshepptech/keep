@@ -296,6 +296,25 @@ code { background: var(--line-soft); padding: 1px 5px; border-radius: 3px; }
    canvas reads as a document, and this is an instrument panel.
    --------------------------------------------------------------------- */
 
+/* The tally: every count on one line, under the page's own lede. It
+   replaced a row of five cards, which cost 130px at the top of the board
+   and pushed the queue below the fold -- five boxes announcing that nothing
+   is blocked, above the four things you could actually be doing. */
+.tally {
+  display: flex; flex-wrap: wrap; gap: 4px 14px;
+  margin: 0 0 18px; font-size: var(--text-sm); color: var(--fg-faint);
+}
+.count b {
+  font-weight: 500; font-variant-numeric: tabular-nums;
+  color: var(--fg-muted); margin-right: 2px;
+}
+/* Colour marks a count that wants something from you, and statCardFor still
+   suppresses it at zero: a red 0 beside "blocked" reports the opposite of
+   the news it is carrying. */
+.count-workable b { color: var(--workable); }
+.count-claimed b { color: var(--claimed); }
+.count-blocked b { color: var(--blocked); }
+
 .stats {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 12px; margin-bottom: 22px;
@@ -343,6 +362,16 @@ code { background: var(--line-soft); padding: 1px 5px; border-radius: 3px; }
 }
 .panel-head .hint { font-size: var(--text-sm); color: var(--fg-faint); }
 .panel-body { padding: 16px; }
+
+/* The queue leads. Everything else on this page explains it, so everything
+   else is subordinate: same content, less voice. Without this every panel
+   shouted equally and the page had no answer to "where do I look first". */
+.panel-lead .panel-head h2 { font-size: var(--text-lg); font-weight: 600; }
+.panel-lead .panel-head { padding: 15px 16px; }
+.panel-lead .title { font-size: var(--text-base); }
+.panel-sub { background: none; border-color: var(--line-soft); }
+.panel-sub .panel-head { border-bottom-color: var(--line-soft); }
+.panel-sub .panel-head h2 { color: var(--fg-muted); font-weight: 500; }
 
 /* A wide table scrolls inside its own panel. Without this the action
    columns push the page sideways on a narrow screen, which breaks every

@@ -39,15 +39,19 @@
 </div>
 {{end}}
 
-<section class="stats">
-  {{template "stat" (stat "Workable" $d.Counts.Ready "" "Ready to pick up now" "workable")}}
-  {{template "stat" (stat "In progress" $d.Counts.InProgress "" "Claimed by someone" "claimed")}}
-  {{template "stat" (stat "Held back" (len $d.Held) "" "Workable, but a file is open" "claimed")}}
-  {{template "stat" (stat "Blocked" $d.Counts.Blocked "" "Waiting on other work" "blocked")}}
-  {{template "stat" (stat "Parked" $d.Counts.Backlog "" "Noticed, not yet refined" "")}}
-</section>
+{{/* The counts, on one line. They were five cards across the top, which is
+     the shape every generated dashboard reaches for and which put the queue
+     -- the entire point of the page -- below the fold. A count is a
+     footnote to the table under it, so it is sized like one. */}}
+<p class="tally">
+  {{template "count" (stat "workable" $d.Counts.Ready "" "" "workable")}}
+  {{template "count" (stat "in progress" $d.Counts.InProgress "" "" "claimed")}}
+  {{template "count" (stat "held back" (len $d.Held) "" "" "claimed")}}
+  {{template "count" (stat "blocked" $d.Counts.Blocked "" "" "blocked")}}
+  {{template "count" (stat "parked" $d.Counts.Backlog "" "" "")}}
+</p>
 
-<div class="panel">
+<div class="panel panel-lead">
   <div class="panel-head">
     <h2>Workable now</h2>
     <span class="hint">{{len $d.Ready}} ranked by value plus confidence, less effort</span>
@@ -117,7 +121,7 @@
 {{end}}
 
 {{if $d.Progress}}
-<div class="panel">
+<div class="panel panel-sub">
   <div class="panel-head"><h2>Being worked on</h2></div>
   <div class="table-wrap"><table>
   <thead><tr><th>Score</th><th>Item</th><th></th><th>Claimed by</th>{{if $p.Writable}}<th class="right">Actions</th>{{end}}</tr></thead>
@@ -138,7 +142,7 @@
 {{end}}
 
 {{if $d.Held}}
-<div class="panel">
+<div class="panel panel-sub">
   <div class="panel-head">
     <h2>Held back</h2>
     <span class="hint">{{len $d.Held}} workable, except an agent has the file open</span>
@@ -166,7 +170,7 @@
 {{end}}
 
 {{if $d.Blocked}}
-<div class="panel">
+<div class="panel panel-sub">
   <div class="panel-head">
     <h2>Blocked</h2>
     <span class="hint">Waiting on other work, not on an agent</span>
@@ -184,7 +188,7 @@
 </div>
 {{end}}
 
-<div class="panel">
+<div class="panel panel-sub">
   <div class="panel-head">
     <h2>Agents</h2>
     <span class="hint">{{if $d.Interlock}}From Interlock{{else}}Interlock is not running here{{end}}</span>
