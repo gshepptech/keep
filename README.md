@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/images/hero.svg" alt="Running keep ready lists four workable items; blocking the epic takes its whole subtree out of the queue, leaving one; keep blocked then names what is holding each of the other three back.">
+<img src="docs/images/hero.gif" alt="An agent runs keep ready and takes the top item, keep start claims it, and keep close records why it is done — while the dashboard beside it moves the row from workable to in progress to gone.">
 
 ### the place work lives for AI coding agents
 
@@ -24,6 +24,10 @@ in **one SQLite file** and **one static binary**.
 ## The one thing it does that nothing else does
 
 Block an epic. **Its entire subtree leaves the queue.**
+
+<img src="docs/images/hero.svg" alt="keep ready lists four workable items; blocking the epic takes its whole subtree out of the queue, leaving one; keep blocked then names what is holding each of the other three back.">
+
+The same thing as text, so you can paste it:
 
 ```console
 $ keep ready
