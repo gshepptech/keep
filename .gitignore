@@ -22,3 +22,8 @@
 # hook pointing at a home directory that does not exist for them. Run
 # `interlock init` instead -- it regenerates this file correctly.
 .codex/hooks.json
+
+# redpen scan state. fingerprints.json is a per-run baseline for its
+# sameness detection -- useful locally, churns on every scan, and means
+# nothing to anyone else.
+.redpen/
