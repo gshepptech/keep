@@ -1,5 +1,6 @@
 {{/*
-  The application shell: a fixed sidebar, and a content region with its own
+  The application shell: one bar across the top, and a single column of
+  content beneath it, held to a measure.
   header. Every view fills the region; none of them draws chrome.
 
   DEVIATION FROM THE PLAN'S LITERAL {{define "layout"}} SHAPE, RECORDED FOR
@@ -31,86 +32,70 @@
      rail -- nav, every project, manage projects, all projects -- before
      reaching the content, once per page. */}}
 <a class="skip" href="#content">Skip to content</a>
+{{/* One bar, then a column. This was a 208px rail beside a surface that ran
+     to the window edge -- the admin-dashboard skeleton, and the reason the
+     page read as generated however the pieces inside it were styled.
+
+     It was also costing legibility: on a wide screen the content ran past
+     1100px, so a queue row's title sat on the left and its controls a
+     thousand pixels away on the right, and the eye had to travel the whole
+     screen to connect them. A measure fixes both at once.
+
+     The project switcher is a <details>, which is a disclosure widget with
+     no JavaScript -- keyboard-operable and screen-reader-announced by the
+     browser, for free. */}}
 <div class="app">
 
-<aside class="sidebar">
-  <div class="brand">
+<header class="bar">
+  <a class="brand" href="{{if .Page.Prefix}}{{.Page.Prefix}}{{else}}/{{end}}">
     {{/* Three bars, descending. rounce ranks work and hands you the top of
-         the list; a generic geometric glyph said nothing about that, and a
-         mark that means nothing is a mark nobody remembers. */}}
+         the list; a mark that means nothing is a mark nobody remembers. */}}
     <span class="brand-mark"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M2.5 4h11M2.5 8h7.5M2.5 12h4"/></svg></span>
     <span class="brand-name">rounce</span>
-  </div>
+  </a>
 
-  {{/* Which project this board is serving, said in full. A board that does
-       not name its own project is one you can act on by mistake. */}}
-  <div class="project-card" title="{{.Page.ProjectDir}}">
-    <div class="project-name">{{if .Page.Project}}{{.Page.Project}}{{else}}no project{{end}}</div>
-    <div class="project-dir">{{.Page.ProjectDir}}</div>
-  </div>
-
-  <nav class="nav">
-    <div class="nav-group">
-      <div class="nav-label">Work</div>
-      <a href="{{if .Page.Prefix}}{{.Page.Prefix}}{{else}}/{{end}}" class="nav-item{{if eq .Page.Nav "board"}} active{{end}}"{{if eq .Page.Nav "board"}} aria-current="page"{{end}}>
-        {{template "icon-board"}}<span>Board</span>
-        {{with .Page.Counts.Ready}}<em class="pip">{{.}}</em>{{end}}
-      </a>
-      <a href="{{.Page.Prefix}}/backlog" class="nav-item{{if eq .Page.Nav "backlog"}} active{{end}}"{{if eq .Page.Nav "backlog"}} aria-current="page"{{end}}>
-        {{template "icon-inbox"}}<span>Parked</span>
-        {{with .Page.Counts.Backlog}}<em class="pip">{{.}}</em>{{end}}
-      </a>
-      <a href="{{.Page.Prefix}}/search" class="nav-item{{if eq .Page.Nav "search"}} active{{end}}"{{if eq .Page.Nav "search"}} aria-current="page"{{end}}>
-        {{template "icon-search"}}<span>Search</span>
-      </a>
-      <a href="{{.Page.Prefix}}/activity" class="nav-item{{if eq .Page.Nav "activity"}} active{{end}}"{{if eq .Page.Nav "activity"}} aria-current="page"{{end}}>
-        {{template "icon-clock"}}<span>Activity</span>
-      </a>
-    </div>
-
-    <div class="nav-group">
-      <div class="nav-label">Projects</div>
-      <div class="project-list">
+  <details class="switcher">
+    <summary title="{{.Page.ProjectDir}}">
+      <span class="switcher-name">{{if .Page.Project}}{{.Page.Project}}{{else}}no project{{end}}</span>
+      <span class="switcher-caret" aria-hidden="true"></span>
+    </summary>
+    <div class="switcher-menu">
+      <div class="switcher-dir">{{.Page.ProjectDir}}</div>
       {{range .Page.Projects}}
-        <a {{if .Active}}aria-current="page" {{end}}class="project-item{{if .Active}} active{{end}}{{if .Err}} unreadable{{else if .Ready}} has-work{{end}}"
+        <a {{if .Active}}aria-current="page" {{end}}class="switcher-item{{if .Active}} active{{end}}{{if .Err}} unreadable{{end}}"
            href="{{if .Active}}/{{else}}/p/{{.Name}}{{end}}" title="{{.Dir}}">
           <i class="dot"></i><span>{{.Name}}</span>
           {{if and (not .Err) .Ready}}<em class="pip">{{.Ready}}</em>{{end}}
         </a>
       {{end}}
-      </div>
-      <a href="/projects" class="nav-item{{if eq .Page.Nav "projects"}} active{{end}}"{{if eq .Page.Nav "projects"}} aria-current="page"{{end}}>
-        {{template "icon-folder"}}<span>Manage projects</span>
-      </a>
+      <a class="switcher-item" href="/projects">{{template "icon-folder"}}<span>Manage projects</span></a>
+      <a class="switcher-item" href="/all">{{template "icon-stack"}}<span>Queue, all projects</span></a>
     </div>
+  </details>
 
-    <div class="nav-group">
-      <div class="nav-label">Everything</div>
-      <a href="/all" class="nav-item{{if eq .Page.Nav "all"}} active{{end}}"{{if eq .Page.Nav "all"}} aria-current="page"{{end}}>
-        {{template "icon-stack"}}<span>Queue, all projects</span>
-      </a>
-    </div>
+  <nav class="bar-nav">
+    <a href="{{if .Page.Prefix}}{{.Page.Prefix}}{{else}}/{{end}}" class="tab{{if eq .Page.Nav "board"}} active{{end}}"{{if eq .Page.Nav "board"}} aria-current="page"{{end}}>
+      Board{{with .Page.Counts.Ready}} <em class="pip">{{.}}</em>{{end}}
+    </a>
+    <a href="{{.Page.Prefix}}/backlog" class="tab{{if eq .Page.Nav "backlog"}} active{{end}}"{{if eq .Page.Nav "backlog"}} aria-current="page"{{end}}>
+      Parked{{with .Page.Counts.Backlog}} <em class="pip">{{.}}</em>{{end}}
+    </a>
+    <a href="{{.Page.Prefix}}/search" class="tab{{if eq .Page.Nav "search"}} active{{end}}"{{if eq .Page.Nav "search"}} aria-current="page"{{end}}>Search</a>
+    <a href="{{.Page.Prefix}}/activity" class="tab{{if eq .Page.Nav "activity"}} active{{end}}"{{if eq .Page.Nav "activity"}} aria-current="page"{{end}}>Activity</a>
   </nav>
 
-  <div class="sidebar-foot">
-    {{if .Page.Writable}}
-      <div class="status-line">{{template "icon-dot"}} Connected</div>
-    {{else}}
-      <div class="status-line muted">{{template "icon-lock"}} Read only</div>
-    {{end}}
-    {{if .Page.HasInterlock}}<div class="status-line">{{template "icon-agent"}} Interlock watching</div>
-    {{else}}<div class="status-line muted">{{template "icon-agent"}} No agent watch</div>{{end}}
+  <div class="bar-end">
+    {{if .Page.HasInterlock}}<span class="watching" title="Interlock is watching this project">{{template "icon-agent"}}</span>{{end}}
+    {{if .Page.Writable}}<a class="btn btn-primary" href="{{.Page.Prefix}}/new">{{template "icon-plus"}} New item</a>
+    {{else}}<span class="readonly" title="This board cannot write to its store">{{template "icon-lock"}} Read only</span>{{end}}
   </div>
-</aside>
+</header>
 
 <main class="main">
   <header class="topbar">
     <div>
       <h1>{{.Heading}}</h1>
       {{with .Lede}}<p class="lede">{{.}}</p>{{end}}
-    </div>
-    <div class="topbar-actions">
-      {{if .Page.Writable}}<a class="btn btn-primary" href="{{.Page.Prefix}}/new">{{template "icon-plus"}} New item</a>{{end}}
     </div>
   </header>
 

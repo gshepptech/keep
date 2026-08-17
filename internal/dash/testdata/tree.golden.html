@@ -209,120 +209,107 @@ td[class*="depth-"] { font-family: var(--mono); }
    sidebar is where you are; the region is what you are doing.
    --------------------------------------------------------------------- */
 
-.app {
-  display: grid; grid-template-columns: 208px 1fr;
-  gap: 8px; min-height: 100vh; padding: 12px 12px 12px 2px;
-}
+/* ---------------------------------------------------------------------
+   The shell. One bar, then a column.
 
-/* The rail sits ON the canvas, unfilled. It is how you move between
-   surfaces, so it is not a surface itself. */
-.sidebar {
-  display: flex; flex-direction: column;
-  border-right: none; background: none;
-  position: sticky; top: 10px; height: calc(100vh - 20px);
-}
+   This was a 208px rail beside a surface running to the window edge, which
+   is the admin-dashboard skeleton -- and no amount of work on the pieces
+   inside it changes what the skeleton says. It was costing legibility too:
+   past about 1100px of line, a queue row's title sits on the left and its
+   controls a thousand pixels away on the right, and the eye has to cross
+   the whole screen to join them.
 
+   A measure fixes both. 1080px is wide enough for a row that carries a
+   score, a title, a path and four controls without crowding, and narrow
+   enough that those four controls are still near the title they belong to.
+   --------------------------------------------------------------------- */
+.app { min-height: 100vh; }
+
+.bar {
+  display: flex; align-items: center; gap: 20px;
+  max-width: 1080px; margin: 0 auto; padding: 16px 24px;
+  flex-wrap: wrap;
+}
 .brand {
-  display: flex; align-items: center; gap: 8px;
-  padding: 20px 20px 16px;
-  border-bottom: none;
-}
-.brand-mark { color: var(--workable); font-size: 14px; }
-.brand-name { font-weight: 600; letter-spacing: 0.01em; }
-
-/* The project card names what this board is serving, in full. A board that
-   does not say which project it is looking at is one you can act on by
-   mistake -- and with several open in tabs, that is a matter of when. */
-.project-card {
-  display: block; margin: 4px 12px 12px; padding: 12px 12px;
-  border: none; border-radius: var(--radius);
-  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  display: inline-flex; align-items: center; gap: 8px;
   text-decoration: none; color: var(--fg);
-  transition: background var(--tempo) var(--ease-out);
+  letter-spacing: -0.02em; flex: none;
 }
-.project-card:hover { border-color: var(--fg-faint); }
-.project-name { font-weight: 600; font-size: var(--text-base); }
-/* The path is shown head-first and clipped at the end. An rtl trick shows
-   the tail, which is the more useful half -- and it also rewrites the
-   string, dropping the leading slash and appending one. A path a reader
-   cannot copy is worse than a path they have to hover. */
-.project-dir {
-  font-size: var(--text-xs); color: var(--fg-faint); margin-top: 3px;
+.brand-mark { display: inline-flex; color: var(--fg-muted); }
+.brand-mark svg { display: block; }
+.brand-name { font-weight: 600; font-size: var(--text-base); }
+
+/* The project switcher is a <details>: a disclosure widget the browser
+   already knows how to open, focus and announce, with no script. */
+.switcher { position: relative; flex: none; }
+.switcher summary {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 4px 12px; border-radius: 999px; cursor: pointer;
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  font-size: var(--text-sm); color: var(--fg-muted); list-style: none;
+}
+.switcher summary::-webkit-details-marker { display: none; }
+.switcher summary:hover { color: var(--fg); }
+.switcher summary:focus-visible { outline: 2px solid var(--fg-muted); outline-offset: 2px; }
+.switcher-name { font-weight: 500; color: var(--fg); }
+.switcher-caret {
+  width: 5px; height: 5px; margin-top: -3px;
+  border-right: 1.5px solid var(--fg-faint);
+  border-bottom: 1.5px solid var(--fg-faint);
+  transform: rotate(45deg);
+}
+.switcher[open] .switcher-caret { transform: rotate(-135deg); margin-top: 2px; }
+.switcher-menu {
+  position: absolute; top: calc(100% + 8px); left: 0; z-index: 5;
+  min-width: 260px; padding: 8px; border-radius: var(--radius-lg);
+  background: var(--panel); box-shadow: 0 8px 32px rgb(0 0 0 / 28%);
+}
+.switcher-dir {
+  padding: 4px 12px 8px; font-family: var(--mono);
+  font-size: var(--text-xs); color: var(--fg-faint);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.project-switch { font-size: var(--text-xs); color: var(--fg-muted); margin-top: 7px; }
-.project-card:hover .project-switch { color: var(--fg); }
-
-.acts form { display: flex; gap: 8px; align-items: center; }
-.acts select { width: auto; padding: 4px 24px 4px 12px; font-size: var(--text-xs); border-radius: 999px; }
-.acts .select-wrap::after { right: 10px; width: 5px; height: 5px; margin-top: -3px; }
-code { background: var(--line-soft); padding: 1px 4px; border-radius: 3px; }
-
-.nav { flex: 1; padding: 12px 12px; overflow-y: auto; }
-.nav-group + .nav-group { margin-top: 20px; }
-.nav-label {
-  padding: 0 8px 8px; font-size: var(--text-xs); font-weight: 500;
-  color: var(--fg-faint);
-}
-.nav-item {
+.switcher-item {
   display: flex; align-items: center; gap: 8px;
-  padding: 8px 8px; border-radius: var(--radius);
-  color: var(--fg-muted); text-decoration: none; font-size: var(--text-sm);
-}
-.nav-item { transition: background var(--tempo) var(--ease-out), color var(--tempo) var(--ease-out); }
-.nav-item:hover { background: var(--line-soft); color: var(--fg); }
-.nav-item.active { background: var(--line-soft); color: var(--fg); font-weight: 500; }
-.nav-item .ico { color: var(--fg-faint); }
-.nav-item.active .ico { color: var(--fg); }
-.nav-item span { flex: 1; }
-.pip {
-  font-style: normal; font-size: var(--text-xs); color: var(--fg-faint);
-  font-variant-numeric: tabular-nums;
-}
-.nav-item.active .pip { color: var(--fg-muted); }
-
-/* Projects live in the sidebar, each with the dot its queue earns. A
-   switcher two clicks away is a switcher nobody uses, and the dot is the
-   cheapest possible answer to "is anything waiting over there". */
-.project-list { display: grid; gap: 1px; }
-.project-item {
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px 8px; border-radius: var(--radius);
-  color: var(--fg-muted); text-decoration: none; font-size: var(--text-sm);
+  padding: 8px 12px; border-radius: var(--radius);
+  text-decoration: none; color: var(--fg-muted); font-size: var(--text-sm);
   transition: background var(--tempo) var(--ease-out), color var(--tempo) var(--ease-out);
 }
-.project-item:hover { background: var(--line-soft); color: var(--fg); }
-.project-item.active { background: var(--line-soft); color: var(--fg); font-weight: 500; }
-.project-item .dot {
-  width: 6px; height: 6px; border-radius: 50%; flex: none;
-  background: var(--fg-faint);
-}
-.project-item.has-work .dot { background: var(--workable); }
-.project-item.unreadable .dot { background: var(--blocked); }
-.project-item span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.switcher-item:hover { background: color-mix(in srgb, var(--fg) 6%, transparent); color: var(--fg); }
+.switcher-item.active { color: var(--fg); font-weight: 500; }
+.switcher-item .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--fg-faint); flex: none; }
+.switcher-item.unreadable .dot { background: var(--blocked); }
+.switcher-item span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.sidebar-foot {
-  padding: 12px 16px 16px; border-top: 1px solid var(--line);
-  display: grid; gap: 8px;
+/* Tabs, not a stack of rows. Four destinations do not need a column. */
+.bar-nav { display: flex; align-items: center; gap: 4px; flex: 1; min-width: 0; }
+.tab {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 999px;
+  text-decoration: none; color: var(--fg-muted); font-size: var(--text-sm);
+  white-space: nowrap;
+  transition: background var(--tempo) var(--ease-out), color var(--tempo) var(--ease-out);
 }
-.status-line {
-  display: flex; align-items: center; gap: 8px;
-  font-size: var(--text-sm); color: var(--workable);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+.tab:hover { color: var(--fg); background: color-mix(in srgb, var(--fg) 5%, transparent); }
+.tab.active, .tab[aria-current="page"] {
+  color: var(--fg); font-weight: 500;
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
 }
-.status-line.muted { color: var(--fg-faint); }
+
+.bar-end { display: flex; align-items: center; gap: 12px; flex: none; }
+.watching { display: inline-flex; color: var(--fg-muted); }
+.readonly { display: inline-flex; align-items: center; gap: 6px; font-size: var(--text-sm); color: var(--fg-faint); }
 
 .main {
-  min-width: 0; display: flex; flex-direction: column;
-  background: var(--panel); border-radius: 18px;
-  overflow: hidden;
+  max-width: 1080px; margin: 0 auto; padding: 0 24px;
+  display: flex; flex-direction: column;
 }
 
 /* The content header carries the page's name and its one primary action.
    One primary per page: if two things are equally important, neither is. */
 .topbar {
   display: flex; align-items: flex-start; justify-content: space-between;
-  gap: 24px; padding: 40px 40px 24px;
+  gap: 24px; padding: 28px 0 24px;
   border-bottom: none;
   background: none;
 }
@@ -333,7 +320,7 @@ code { background: var(--line-soft); padding: 1px 4px; border-radius: 3px; }
 .lede { margin: 12px 0 0; color: var(--fg-muted); font-size: var(--text-base); max-width: 70ch; }
 .topbar-actions { display: flex; gap: 8px; flex: none; }
 
-.content { padding: 0 40px 88px; }
+.content { padding: 0 0 88px; }
 
 /* ---------------------------------------------------------------------
    Buttons. Three weights and no more: one filled primary per page, an
@@ -1013,74 +1000,51 @@ input:user-valid, textarea:user-valid {
 <body>
 
 <a class="skip" href="#content">Skip to content</a>
+
 <div class="app">
 
-<aside class="sidebar">
-  <div class="brand">
+<header class="bar">
+  <a class="brand" href="/">
     
     <span class="brand-mark"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M2.5 4h11M2.5 8h7.5M2.5 12h4"/></svg></span>
     <span class="brand-name">rounce</span>
-  </div>
+  </a>
 
-  
-  <div class="project-card" title="">
-    <div class="project-name">no project</div>
-    <div class="project-dir"></div>
-  </div>
-
-  <nav class="nav">
-    <div class="nav-group">
-      <div class="nav-label">Work</div>
-      <a href="/" class="nav-item">
-        <svg class="ico" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4.5h10M3 8h10M3 11.5h6"/></svg><span>Board</span>
-        
-      </a>
-      <a href="/backlog" class="nav-item">
-        <svg class="ico" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 8.5h3l1 2h4l1-2h3M2.5 8.5l1.5-5h8l1.5 5v4h-11z"/></svg><span>Parked</span>
-        
-      </a>
-      <a href="/search" class="nav-item">
-        <svg class="ico" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg><span>Search</span>
-      </a>
-      <a href="/activity" class="nav-item">
-        <svg class="ico" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></svg><span>Activity</span>
-      </a>
-    </div>
-
-    <div class="nav-group">
-      <div class="nav-label">Projects</div>
-      <div class="project-list">
+  <details class="switcher">
+    <summary title="">
+      <span class="switcher-name">no project</span>
+      <span class="switcher-caret" aria-hidden="true"></span>
+    </summary>
+    <div class="switcher-menu">
+      <div class="switcher-dir"></div>
       
-      </div>
-      <a href="/projects" class="nav-item">
-        <svg class="ico" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 4.5h4l1.2 1.5H14v7H2z"/></svg><span>Manage projects</span>
-      </a>
+      <a class="switcher-item" href="/projects"><svg class="ico" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 4.5h4l1.2 1.5H14v7H2z"/></svg><span>Manage projects</span></a>
+      <a class="switcher-item" href="/all"><svg class="ico" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2l6 3-6 3-6-3 6-3zM2 8l6 3 6-3M2 11l6 3 6-3"/></svg><span>Queue, all projects</span></a>
     </div>
+  </details>
 
-    <div class="nav-group">
-      <div class="nav-label">Everything</div>
-      <a href="/all" class="nav-item">
-        <svg class="ico" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2l6 3-6 3-6-3 6-3zM2 8l6 3 6-3M2 11l6 3 6-3"/></svg><span>Queue, all projects</span>
-      </a>
-    </div>
+  <nav class="bar-nav">
+    <a href="/" class="tab">
+      Board
+    </a>
+    <a href="/backlog" class="tab">
+      Parked
+    </a>
+    <a href="/search" class="tab">Search</a>
+    <a href="/activity" class="tab">Activity</a>
   </nav>
 
-  <div class="sidebar-foot">
+  <div class="bar-end">
     
-      <div class="status-line muted"><svg class="ico" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 7V5.5a3.5 3.5 0 017 0V7M3.5 7h9v6h-9z"/></svg> Read only</div>
-    
-    <div class="status-line muted"><svg class="ico" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="6" r="2.5"/><path d="M3.5 13.5a4.5 4.5 0 019 0"/></svg> No agent watch</div>
+    <span class="readonly" title="This board cannot write to its store"><svg class="ico" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 7V5.5a3.5 3.5 0 017 0V7M3.5 7h9v6h-9z"/></svg> Read only</span>
   </div>
-</aside>
+</header>
 
 <main class="main">
   <header class="topbar">
     <div>
       <h1>Tree</h1>
       <p class="lede">Everything beneath this item, and what is blocking it.</p>
-    </div>
-    <div class="topbar-actions">
-      
     </div>
   </header>
 
