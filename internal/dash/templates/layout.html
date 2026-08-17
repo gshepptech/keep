@@ -27,6 +27,10 @@
 <style>{{style}}</style>
 </head>
 <body>
+{{/* The first thing in the tab order. A keyboard user was walking the whole
+     rail -- nav, every project, manage projects, all projects -- before
+     reaching the content, once per page. */}}
+<a class="skip" href="#content">Skip to content</a>
 <div class="app">
 
 <aside class="sidebar">
@@ -48,18 +52,18 @@
   <nav class="nav">
     <div class="nav-group">
       <div class="nav-label">Work</div>
-      <a href="{{if .Page.Prefix}}{{.Page.Prefix}}{{else}}/{{end}}" class="nav-item{{if eq .Page.Nav "board"}} active{{end}}">
+      <a href="{{if .Page.Prefix}}{{.Page.Prefix}}{{else}}/{{end}}" class="nav-item{{if eq .Page.Nav "board"}} active{{end}}"{{if eq .Page.Nav "board"}} aria-current="page"{{end}}>
         {{template "icon-board"}}<span>Board</span>
         {{with .Page.Counts.Ready}}<em class="pip">{{.}}</em>{{end}}
       </a>
-      <a href="{{.Page.Prefix}}/backlog" class="nav-item{{if eq .Page.Nav "backlog"}} active{{end}}">
+      <a href="{{.Page.Prefix}}/backlog" class="nav-item{{if eq .Page.Nav "backlog"}} active{{end}}"{{if eq .Page.Nav "backlog"}} aria-current="page"{{end}}>
         {{template "icon-inbox"}}<span>Parked</span>
         {{with .Page.Counts.Backlog}}<em class="pip">{{.}}</em>{{end}}
       </a>
-      <a href="{{.Page.Prefix}}/search" class="nav-item{{if eq .Page.Nav "search"}} active{{end}}">
+      <a href="{{.Page.Prefix}}/search" class="nav-item{{if eq .Page.Nav "search"}} active{{end}}"{{if eq .Page.Nav "search"}} aria-current="page"{{end}}>
         {{template "icon-search"}}<span>Search</span>
       </a>
-      <a href="{{.Page.Prefix}}/activity" class="nav-item{{if eq .Page.Nav "activity"}} active{{end}}">
+      <a href="{{.Page.Prefix}}/activity" class="nav-item{{if eq .Page.Nav "activity"}} active{{end}}"{{if eq .Page.Nav "activity"}} aria-current="page"{{end}}>
         {{template "icon-clock"}}<span>Activity</span>
       </a>
     </div>
@@ -68,21 +72,21 @@
       <div class="nav-label">Projects</div>
       <div class="project-list">
       {{range .Page.Projects}}
-        <a class="project-item{{if .Active}} active{{end}}{{if .Err}} unreadable{{else if .Ready}} has-work{{end}}"
+        <a {{if .Active}}aria-current="page" {{end}}class="project-item{{if .Active}} active{{end}}{{if .Err}} unreadable{{else if .Ready}} has-work{{end}}"
            href="{{if .Active}}/{{else}}/p/{{.Name}}{{end}}" title="{{.Dir}}">
           <i class="dot"></i><span>{{.Name}}</span>
           {{if and (not .Err) .Ready}}<em class="pip">{{.Ready}}</em>{{end}}
         </a>
       {{end}}
       </div>
-      <a href="/projects" class="nav-item{{if eq .Page.Nav "projects"}} active{{end}}">
+      <a href="/projects" class="nav-item{{if eq .Page.Nav "projects"}} active{{end}}"{{if eq .Page.Nav "projects"}} aria-current="page"{{end}}>
         {{template "icon-folder"}}<span>Manage projects</span>
       </a>
     </div>
 
     <div class="nav-group">
       <div class="nav-label">Everything</div>
-      <a href="/all" class="nav-item{{if eq .Page.Nav "all"}} active{{end}}">
+      <a href="/all" class="nav-item{{if eq .Page.Nav "all"}} active{{end}}"{{if eq .Page.Nav "all"}} aria-current="page"{{end}}>
         {{template "icon-stack"}}<span>Queue, all projects</span>
       </a>
     </div>
@@ -112,7 +116,7 @@
 
   {{/* role=alert so the outcome is announced, not only drawn. A red border
        alone tells a screen reader nothing. */}}
-  <div class="content">
+  <div class="content" id="content">
   {{with .Page.Problem}}<div class="banner banner-bad" role="alert">{{template "icon-alert"}}<span>{{.}}</span></div>{{end}}
   {{with .Page.Done}}<div class="banner banner-good" role="status">{{template "icon-check"}}<span>{{.}}</span></div>{{end}}
 {{end}}

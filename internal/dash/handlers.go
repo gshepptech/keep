@@ -1,9 +1,12 @@
 package dash
 
 import (
+	"bytes"
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 
 	"github.com/gshepptech/rounce/internal/store"
@@ -138,13 +141,48 @@ func (s *Server) handleTree(w http.ResponseWriter, r *http.Request) {
 // fail classifies err by errors.Is, never message text: store.ErrNotFound
 // becomes 404; anything else becomes a generic 500, with the actual error
 // logged to stderr only -- never echoed into the response body.
+// fail renders a real page rather than http.Error's bare text.
+//
+// http.Error writes an unstyled sentence with no nav and no way back, and a
+// board whose URLs carry ids is a board people edit URLs on. Landing on
+// "not found" as plain text is a dead end; landing on it as a page still
+// has the rail, so the way out is where it always is.
 func (s *Server) fail(w http.ResponseWriter, err error) {
 	if errors.Is(err, store.ErrNotFound) {
-		http.Error(w, "not found", http.StatusNotFound)
+		s.failPage(w, http.StatusNotFound, "Nothing here",
+			"That id does not match anything in this project. It may have been dropped, or it may belong to another project.")
 		return
 	}
 	stderrLog.Error("dash: handler error", "err", err)
-	http.Error(w, "internal error", http.StatusInternalServerError)
+	s.failPage(w, http.StatusInternalServerError, "Something went wrong",
+		"The board could not finish that. The reason was written to the terminal running rounce.")
+}
+
+// failPage renders the error inside the normal shell. It deliberately does
+// not echo the underlying error: those are written to the terminal, and an
+// internal error string on a page is noise to the reader and detail to
+// anyone else.
+func (s *Server) failPage(w http.ResponseWriter, code int, heading, body string) {
+	// Executed directly rather than through execute() or render(): execute
+	// wraps whatever it is given in a fresh page, which would bury this one
+	// inside its own Data, and render() reports a failure by calling fail()
+	// -- which is this function, and would recurse.
+	req := (&http.Request{URL: &url.URL{Path: "/"}}).WithContext(context.Background())
+	var buf bytes.Buffer
+	if err := tmpl.ExecuteTemplate(&buf, "failure", s.pageFor(req, "", s.activeName(), errorData{Heading: heading, Body: body})); err != nil {
+		stderrLog.Error("dash: failure page did not render", "err", err)
+		http.Error(w, heading, code)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(code)
+	w.Write(buf.Bytes())
+}
+
+// errorData is what the failure page renders.
+type errorData struct {
+	Heading string
+	Body    string
 }
 
 // writeHTML sets the content type explicitly -- never relies on

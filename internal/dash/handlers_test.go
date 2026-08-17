@@ -178,3 +178,50 @@ func TestHandlerRootRefusesPOST(t *testing.T) {
 		t.Errorf("POST /: status = %d, want 405", rec.Code)
 	}
 }
+
+// TestAMissingIdGetsAPageNotBareText.
+//
+// http.Error writes an unstyled sentence with no nav and no way back. A
+// board whose URLs carry ids is a board people edit URLs on, so this is
+// reached by ordinary use, and it was a dead end.
+//
+// It regressed once while being written: execute() wraps whatever it is
+// given in a fresh page, so handing it an already-built page buried that
+// page inside its own Data and the template silently fell back to the bare
+// text it was meant to replace. The status assertion alone would have
+// passed against that.
+func TestAMissingIdGetsAPageNotBareText(t *testing.T) {
+	s, _ := writableFixture(t)
+
+	rec := get(t, s.Handler(), "/item/rnc-nothing")
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want 404", rec.Code)
+	}
+	body := rec.Body.String()
+	for _, want := range []string{"Nothing here", "Back to the board", "<nav", "class=\"skip\""} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the 404 page is missing %q -- it fell back to bare text", want)
+		}
+	}
+}
+
+// TestTheActiveNavSaysSoOutLoud. aria-current is what tells a screen reader
+// which page it is on; the highlight alone says it only to people who can
+// see it.
+func TestTheActiveNavSaysSoOutLoud(t *testing.T) {
+	s, _ := writableFixture(t)
+
+	// The stylesheet is inlined into every page and contains the selector
+	// `.nav-item[aria-current="page"]`, so a naive Contains matches the CSS
+	// and passes even when no element carries the attribute. It did exactly
+	// that when first written. Strip the style block before looking.
+	body := get(t, s.Handler(), "/").Body.String()
+	if i := strings.Index(body, "<style>"); i >= 0 {
+		if j := strings.Index(body[i:], "</style>"); j >= 0 {
+			body = body[:i] + body[i+j:]
+		}
+	}
+	if !strings.Contains(body, `aria-current="page"`) {
+		t.Error("no element carries aria-current -- the active nav item is styled but silent")
+	}
+}

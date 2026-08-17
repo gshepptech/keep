@@ -970,3 +970,33 @@ input:user-valid, textarea:user-valid {
    reported where the eye already is. */
 .banner-bad { border-left: 2px solid var(--blocked); }
 .banner-good { border-left: 2px solid var(--workable); }
+
+/* The skip link. Off-screen until focused, then the first thing on the page
+   -- not hidden with display:none, which takes it out of the tab order and
+   defeats the point. */
+.skip {
+  position: absolute; left: -9999px; top: 0; z-index: 10;
+  background: var(--panel); color: var(--fg);
+  padding: 12px 20px; border-radius: 0 0 var(--radius) 0;
+  font-size: var(--text-sm); text-decoration: none;
+}
+.skip:focus-visible { left: 0; outline: 2px solid var(--fg-muted); outline-offset: -2px; }
+
+/* aria-current needs something a sighted reader can see too, or it is half
+   a fix: the attribute and the highlight must mean the same thing. */
+.nav-item[aria-current="page"], .project-item[aria-current="page"] { font-weight: 500; }
+
+/* H11: the row controls were a 26px target. These are Start agent, Claim
+   and Close -- the primary actions of the page, not incidental chrome --
+   and 26px is well under the 44px a finger needs. Padding grows them on
+   coarse pointers only, so the dense desktop row is unchanged. */
+@media (pointer: coarse) {
+  .btn-sm { padding: 12px 16px; }
+  .qacts { gap: 12px; }
+}
+
+.backlink {
+  display: inline-block; margin-bottom: 16px;
+  font-size: var(--text-sm); color: var(--fg-muted); text-decoration: none;
+}
+.backlink:hover { color: var(--fg); }

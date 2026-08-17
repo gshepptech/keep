@@ -1,0 +1,17 @@
+{{/* failure.html -- a dead end with the rail still attached. Data: errorData.
+
+     http.Error's bare sentence has no nav, so the only way out is the back
+     button. This keeps the shell, which means the way out is where it
+     always is. */}}
+{{define "failure"}}{{template "head" (titled . "Not found" .Data.Heading "")}}
+{{$p := .}}{{with .Data}}
+
+<section class="firstrun">
+  <p class="firstrun-lede">{{.Body}}</p>
+  <div class="confirm-acts">
+    <a class="btn btn-primary" href="{{$p.Prefix}}/">Back to the board</a>
+    <a class="btn" href="{{$p.Prefix}}/search">Search for it</a>
+  </div>
+</section>
+
+{{end}}{{template "foot"}}{{end}}

@@ -23,11 +23,11 @@
       <label>Type
         <span class="select-wrap"><select name="type">{{range .Data}}<option value="{{.}}">{{.}}</option>{{end}}</select></span>
       </label>
-      <label>Value <input name="value" type="number" min="0" max="10" placeholder="0-10">
+      <label>Value <input name="value" type="number" inputmode="numeric" min="0" max="10" placeholder="0-10">
         <span class="hint-text">What it is worth</span></label>
-      <label>Confidence <input name="confidence" type="number" min="0" max="10" placeholder="0-10">
+      <label>Confidence <input name="confidence" type="number" inputmode="numeric" min="0" max="10" placeholder="0-10">
         <span class="hint-text">How sure you are</span></label>
-      <label>Effort <input name="effort" type="number" min="0" max="10" placeholder="0-10">
+      <label>Effort <input name="effort" type="number" inputmode="numeric" min="0" max="10" placeholder="0-10">
         <span class="hint-text">What it will cost</span></label>
 
       <label class="wide">Files it touches

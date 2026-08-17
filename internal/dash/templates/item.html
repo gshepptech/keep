@@ -8,6 +8,11 @@
 {{define "item"}}{{template "head" (titled . "Item" .Data.Title "")}}
 {{$p := .}}{{with .Data}}
 
+{{/* Arriving here is almost always a click from a list. Without this the
+     only route back is the rail, which is a different mental move from
+     "return to where I was". */}}
+<a class="backlink" href="{{$p.Prefix}}/">← Back to the board</a>
+
 <p class="lede">
   <span class="mono">{{.ID}}</span> · {{.Type}} · {{.Stage}} ·
   {{template "state-tag" (tag (state (printf "%s" .Status) false) (printf "%s" .Status))}} ·
@@ -71,9 +76,9 @@
       <input type="hidden" name="prefix" value="{{$p.Prefix}}">
       <input type="hidden" name="id" value="{{.ID}}">
       <label class="wide">Title <input name="title" value="{{.Title}}" required></label>
-      <label>Value <input name="value" type="number" min="0" max="10" value="{{with .Value}}{{.}}{{end}}"></label>
-      <label>Confidence <input name="confidence" type="number" min="0" max="10" value="{{with .Confidence}}{{.}}{{end}}"></label>
-      <label>Effort <input name="effort" type="number" min="0" max="10" value="{{with .Effort}}{{.}}{{end}}"></label>
+      <label>Value <input name="value" type="number" inputmode="numeric" min="0" max="10" value="{{with .Value}}{{.}}{{end}}"></label>
+      <label>Confidence <input name="confidence" type="number" inputmode="numeric" min="0" max="10" value="{{with .Confidence}}{{.}}{{end}}"></label>
+      <label>Effort <input name="effort" type="number" inputmode="numeric" min="0" max="10" value="{{with .Effort}}{{.}}{{end}}"></label>
       <label class="wide">Assignee
         <input name="assignee" value="{{with .Assignee}}{{.}}{{end}}" placeholder="A person, or claude / codex">
         <span class="hint-text">Assigning does not start anything. Claim is what says someone picked it up.</span>
