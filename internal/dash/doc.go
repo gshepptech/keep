@@ -1,4 +1,4 @@
-// Package dash renders rounce's four read-only dashboard views (queue,
+// Package dash renders keep's four read-only dashboard views (queue,
 // backlog, item, tree) as HTML via html/template. It exists under two rules,
 // each load-bearing enough to write down here rather than leave implicit:
 //

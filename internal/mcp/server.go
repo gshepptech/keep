@@ -8,19 +8,19 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/gshepptech/rounce/internal/model"
-	"github.com/gshepptech/rounce/internal/store"
+	"github.com/gshepptech/keep/internal/model"
+	"github.com/gshepptech/keep/internal/store"
 )
 
 // Options carries everything the server must not read for itself.
 // internal/mcp reads no environment variable and opens no store:
-// cmd/rounce/mcp.go resolves actor and session through the SAME
+// cmd/keep/mcp.go resolves actor and session through the SAME
 // resolveActor/resolveSession helpers every CLI verb uses, then passes them
 // in. That is what makes MCP-03's identical-events-rows claim a property of
 // shared code rather than of two implementations agreeing.
 type Options struct {
 	// Actor is the server's default actor -- resolved once at startup
-	// (ROUNCE_ACTOR, else $USER, via cmd/rounce/flags.go's resolveActor). A
+	// (KEEP_ACTOR, else $USER, via cmd/keep/flags.go's resolveActor). A
 	// caller may override it per call on any mutating tool (04-CONTEXT.md
 	// decision 3: "actor is an optional argument on every mutating tool,
 	// defaulting to the server's own actor"). The pre-seed pattern in every
@@ -42,7 +42,7 @@ type Options struct {
 	//
 	// It exists because the two plugin manifests disagreed and nothing
 	// caught it: plugin/.mcp.json shipped "env": {} while the Codex
-	// registration set ROUNCE_ACTOR=codex, so the same store recorded
+	// registration set KEEP_ACTOR=codex, so the same store recorded
 	// Claude Code's work under $USER and Codex's under "codex". A default
 	// that has to be spelled out per agent is a default that will drift
 	// per agent. The handshake already says who is calling.
@@ -50,7 +50,7 @@ type Options struct {
 	// The parameter is the raw *mcp.InitializeParams, nil and all, because
 	// deciding what to do with a nil ClientInfo needs conditionals and this
 	// package is not allowed any (structure_test.go permits *ast.IfStmt
-	// only in NewServer and resultFor). cmd/rounce/mcp.go does that part,
+	// only in NewServer and resultFor). cmd/keep/mcp.go does that part,
 	// the same way it composes Instructions and resolves Session.
 	ActorFor func(*mcp.InitializeParams) string
 
@@ -79,7 +79,7 @@ type Options struct {
 	//     back verbatim.
 	//   - Codex 0.147.0-alpha.6.5 does NOT. `codex debug prompt-input`
 	//     renders the model-visible prompt, and this text is absent from
-	//     it -- every occurrence of "rounce" in those 26KB is a filesystem
+	//     it -- every occurrence of "keep" in those 26KB is a filesystem
 	//     path. Codex still calls `ready` unprompted, but from the tool's
 	//     name and description, not from this.
 	//
@@ -92,13 +92,13 @@ type Options struct {
 	// branches, and internal/mcp's structure_test.go permits neither
 	// outside NewServer's schema check and resultFor -- that is MCP-05's
 	// "no logic outside store" enforced mechanically, and it holds for
-	// this field too. cmd/rounce/mcpinstructions.go composes the text the
+	// this field too. cmd/keep/mcpinstructions.go composes the text the
 	// same way it resolves Actor and Session.
 	//
 	// Empty is the correct value for an empty or unreachable store: the
 	// SDK omits the field entirely (json:"instructions,omitempty"), which
 	// is the same silence the SessionStart hook keeps in a repository that
-	// does not use rounce.
+	// does not use keep.
 	Instructions string
 
 	// Logger MUST NOT write to stdout (MCP-07) -- stdout carries protocol
@@ -108,7 +108,7 @@ type Options struct {
 	Logger *slog.Logger
 }
 
-// NewServer builds the rounce MCP server: all ten tools, wired to st,
+// NewServer builds the keep MCP server: all ten tools, wired to st,
 // registered through the low-level mcp.Server.AddTool -- never the SDK's
 // generic AddTool[In, Out].
 //
@@ -139,7 +139,7 @@ func NewServer(st *store.Store, opts Options) (*mcp.Server, error) {
 	}
 
 	s := mcp.NewServer(
-		&mcp.Implementation{Name: "rounce", Version: opts.Version},
+		&mcp.Implementation{Name: "keep", Version: opts.Version},
 		&mcp.ServerOptions{Logger: opts.Logger, Instructions: opts.Instructions},
 	)
 
@@ -245,7 +245,7 @@ func NewServer(st *store.Store, opts Options) (*mcp.Server, error) {
 
 	s.AddTool(&mcp.Tool{
 		Name:        "stale",
-		Description: "Items claimed by someone who then went quiet -- a session that died mid-work leaves one behind. Reports only; rounce never releases a claim on its own.",
+		Description: "Items claimed by someone who then went quiet -- a session that died mid-work leaves one behind. Reports only; keep never releases a claim on its own.",
 		InputSchema: sc["stale"],
 	}, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		in := StaleInput{}
@@ -317,7 +317,7 @@ func NewServer(st *store.Store, opts Options) (*mcp.Server, error) {
 //     equivalent; `capture` is the verb for a raw item (input.go, plan 02).
 //  3. An invalid `type`/`stage` on `add`/`capture` produces a raw SQLite
 //     constraint message, because AddItem does not pre-validate against the
-//     closed vocabulary in Go (only cmd/rounce/add.go does, at the CLI
+//     closed vocabulary in Go (only cmd/keep/add.go does, at the CLI
 //     boundary). The published enum steers a model away from it; when one
 //     arrives anyway it falls to resultFor's default arm and becomes a
 //     protocol error carrying driver text (04-RESEARCH.md Open Question 5).
@@ -326,6 +326,6 @@ func NewServer(st *store.Store, opts Options) (*mcp.Server, error) {
 //
 // Nil slices marshal to `null`, not `[]`: store.Ready/Backlog/ListItems
 // return a nil slice when empty, so an empty `ready` tool result is the text
-// `null` -- whereas `rounce ready --json` prints `[]`, because cmd/rounce
+// `null` -- whereas `keep ready --json` prints `[]`, because cmd/keep
 // normalises it. Normalising here would be a conditional in a handler.
 // Accepted and recorded, not fixed.

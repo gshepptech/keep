@@ -10,8 +10,8 @@ import (
 
 	"golang.org/x/net/html"
 
-	"github.com/gshepptech/rounce/internal/model"
-	"github.com/gshepptech/rounce/internal/store"
+	"github.com/gshepptech/keep/internal/model"
+	"github.com/gshepptech/keep/internal/store"
 )
 
 // agreementFixtureReadyCount is the number of plain ready tickets
@@ -20,7 +20,7 @@ import (
 // queue handler hard-coding `Ready(ctx, 10)` would pass on any fixture of 10
 // or fewer items and only start failing later, at which point the failure
 // looks like a regression in unrelated work. 16 stays above both
-// cmd/rounce's defaultBoardLimit (10) and any other default limit in play,
+// cmd/keep's defaultBoardLimit (10) and any other default limit in play,
 // with margin. Do not shrink this constant "to make the test faster."
 const agreementFixtureReadyCount = 16
 

@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gshepptech/rounce/internal/model"
+	"github.com/gshepptech/keep/internal/model"
 )
 
 // This file's only non-stdlib import is internal/model -- the store package
@@ -32,7 +32,7 @@ func renderReady(items []model.Item) ([]byte, error) {
 // existing order -- items is already grouped-then-sorted by store.Backlog
 // (contiguous per type, in model.TypesOrdered order); a row's NewGroup is
 // true exactly when its Type differs from the previous row's Type, matching
-// cmd/rounce/backlog.go's renderBacklog precedent. renderBacklog does not
+// cmd/keep/backlog.go's renderBacklog precedent. renderBacklog does not
 // sort or re-group; ranging over model.TypesOrdered and filtering here would
 // silently drop any type the slice's own order did not anticipate.
 type backlogRow struct {

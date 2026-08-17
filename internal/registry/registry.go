@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/gshepptech/rounce/internal/store"
+	"github.com/gshepptech/keep/internal/store"
 )
 
 // Version is the registry envelope's schema version. It exists so a future
@@ -17,7 +17,7 @@ const Version = 1
 
 // FileName is the registry's basename inside the home store directory
 // (store.StoreDirName). The registry lives beside ~/.rounce/db.sqlite, which
-// `rounce init --global` already writes.
+// `keep init --global` already writes.
 const FileName = "repos.json"
 
 // Repo is one registered store.
@@ -52,7 +52,7 @@ func PathIn(home string) string {
 //
 // 06-CONTEXT.md decision 2 phrases this as "the directory two levels above
 // db.sqlite", which is exactly right for the standard <repo>/.rounce/
-// db.sqlite layout and wrong for `rounce init --db /tmp/scratch/x.sqlite`,
+// db.sqlite layout and wrong for `keep init --db /tmp/scratch/x.sqlite`,
 // where two levels up is "/tmp". Checking for the .rounce/ component first
 // honours the decision's intent (the repository directory's base name) in
 // both layouts. The store file's own name is never used: it is always
@@ -72,7 +72,7 @@ func NameFor(storePath string) string {
 // unrecognised version. That double return is deliberate, not sloppy:
 // 06-CONTEXT.md decision 2 makes a broken registry never fatal, so every
 // caller reports err on stderr and proceeds with the envelope it was also
-// handed. A caller that returned early on err would stop `rounce ready` from
+// handed. A caller that returned early on err would stop `keep ready` from
 // working in the repository the user is standing in, which is the exact
 // failure that decision forbids.
 //
@@ -106,7 +106,7 @@ func Load(home string) (Envelope, error) {
 // os.Rename fails with EXDEV across filesystems, and ~/.rounce and /tmp are
 // not guaranteed to be the same mount. POSIX rename(2) guarantees a
 // concurrent reader observes either the old file or the new file, never a
-// partial write -- which is what makes two racing `rounce init` runs unable
+// partial write -- which is what makes two racing `keep init` runs unable
 // to leave behind a registry that breaks every future `repos` call.
 //
 // What this does NOT guarantee, and must not be claimed: isolation of the
@@ -161,12 +161,12 @@ func Save(home string, env Envelope) error {
 
 // Register adds storePath to home's registry, or updates its last_seen if it
 // is already there. It is idempotent by requirement (06-CONTEXT.md decision
-// 3): re-registering never appends a second row, so `rounce init` run twice
+// 3): re-registering never appends a second row, so `keep init` run twice
 // in one repository leaves one entry, not two.
 //
 // storePath is stored exactly as given. Register does not absolutize it --
 // filepath.Abs consults the process's working directory, which is a property
-// of the caller, not of the registry. Every caller in cmd/rounce passes an
+// of the caller, not of the registry. Every caller in cmd/keep passes an
 // already-absolute path; matching here is plain string equality on that
 // value.
 func Register(home, storePath, name, lastSeen string) error {
@@ -185,7 +185,7 @@ func Register(home, storePath, name, lastSeen string) error {
 func register(home, storePath, name, lastSeen string) error {
 	// Load's error is deliberately ignored here, not propagated: the
 	// never-fatal contract means a corrupted registry must not make every
-	// future `rounce init` fail to register. Register proceeds with the
+	// future `keep init` fail to register. Register proceeds with the
 	// empty envelope Load hands back on any failure, effectively rebuilding
 	// the registry from this one entry rather than refusing to write.
 	env, _ := Load(home)

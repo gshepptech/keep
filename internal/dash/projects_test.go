@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gshepptech/rounce/internal/interlock"
-	"github.com/gshepptech/rounce/internal/registry"
-	"github.com/gshepptech/rounce/internal/store"
+	"github.com/gshepptech/keep/internal/interlock"
+	"github.com/gshepptech/keep/internal/registry"
+	"github.com/gshepptech/keep/internal/store"
 )
 
 // twoProjects builds a home with two registered projects and a board
@@ -61,10 +61,10 @@ func twoProjects(t *testing.T) (*Server, string) {
 // by mistake, and with several open in tabs that is a matter of when.
 func TestBoardNamesItsProject(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// Windows cannot execute. The behaviour under test is keep's, not the
 	// shell's, but there is no honest way to assert it here without a
 	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: rounce's Interlock integration is unverified on
+	// the gap is real: keep's Interlock integration is unverified on
 	// Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
@@ -85,10 +85,10 @@ func TestBoardNamesItsProject(t *testing.T) {
 // the one the server was started in.
 func TestEachProjectHasItsOwnBoard(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// Windows cannot execute. The behaviour under test is keep's, not the
 	// shell's, but there is no honest way to assert it here without a
 	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: rounce's Interlock integration is unverified on
+	// the gap is real: keep's Interlock integration is unverified on
 	// Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
@@ -116,10 +116,10 @@ func TestEachProjectHasItsOwnBoard(t *testing.T) {
 // one -- which looks like the data changed under you.
 func TestOtherProjectLinksStayInThatProject(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// Windows cannot execute. The behaviour under test is keep's, not the
 	// shell's, but there is no honest way to assert it here without a
 	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: rounce's Interlock integration is unverified on
+	// the gap is real: keep's Interlock integration is unverified on
 	// Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
@@ -139,10 +139,10 @@ func TestOtherProjectLinksStayInThatProject(t *testing.T) {
 // it as a server failure sends a person looking for a bug that is not there.
 func TestUnknownProjectIs404(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// Windows cannot execute. The behaviour under test is keep's, not the
 	// shell's, but there is no honest way to assert it here without a
 	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: rounce's Interlock integration is unverified on
+	// the gap is real: keep's Interlock integration is unverified on
 	// Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
@@ -158,10 +158,10 @@ func TestUnknownProjectIs404(t *testing.T) {
 // tell them apart.
 func TestProjectsPageListsEveryProject(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// Windows cannot execute. The behaviour under test is keep's, not the
 	// shell's, but there is no honest way to assert it here without a
 	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: rounce's Interlock integration is unverified on
+	// the gap is real: keep's Interlock integration is unverified on
 	// Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
@@ -181,10 +181,10 @@ func TestProjectsPageListsEveryProject(t *testing.T) {
 // directory should become a project.
 func TestAddingAProjectRequiresAStore(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// Windows cannot execute. The behaviour under test is keep's, not the
 	// shell's, but there is no honest way to assert it here without a
 	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: rounce's Interlock integration is unverified on
+	// the gap is real: keep's Interlock integration is unverified on
 	// Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
@@ -196,7 +196,7 @@ func TestAddingAProjectRequiresAStore(t *testing.T) {
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status %d, want 303", rec.Code)
 	}
-	if loc := rec.Header().Get("Location"); !strings.Contains(loc, "rounce+init") && !strings.Contains(loc, "rounce%20init") {
+	if loc := rec.Header().Get("Location"); !strings.Contains(loc, "keep+init") && !strings.Contains(loc, "keep%20init") {
 		t.Errorf("the refusal does not say how to make it a project: %s", loc)
 	}
 	if strings.Contains(get(t, s.Handler(), "/projects").Body.String(), empty) {
@@ -207,10 +207,10 @@ func TestAddingAProjectRequiresAStore(t *testing.T) {
 // TestAddingAProjectRegistersIt, given a directory that does have one.
 func TestAddingAProjectRegistersIt(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// Windows cannot execute. The behaviour under test is keep's, not the
 	// shell's, but there is no honest way to assert it here without a
 	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: rounce's Interlock integration is unverified on
+	// the gap is real: keep's Interlock integration is unverified on
 	// Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
@@ -242,10 +242,10 @@ func TestAddingAProjectRegistersIt(t *testing.T) {
 // names both ways out.
 func TestAddingAProjectCreatesAStoreOnlyWhenAsked(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// Windows cannot execute. The behaviour under test is keep's, not the
 	// shell's, but there is no honest way to assert it here without a
 	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: rounce's Interlock integration is unverified on
+	// the gap is real: keep's Interlock integration is unverified on
 	// Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
@@ -276,10 +276,10 @@ func TestAddingAProjectCreatesAStoreOnlyWhenAsked(t *testing.T) {
 // creating the repository around it is another nobody asked for.
 func TestCreateRefusesAMissingDirectory(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// Windows cannot execute. The behaviour under test is keep's, not the
 	// shell's, but there is no honest way to assert it here without a
 	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: rounce's Interlock integration is unverified on
+	// the gap is real: keep's Interlock integration is unverified on
 	// Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
@@ -303,10 +303,10 @@ func TestCreateRefusesAMissingDirectory(t *testing.T) {
 // somewhere real, just not where the person was looking.
 func TestActionsWriteToTheProjectTheyCameFrom(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// Windows cannot execute. The behaviour under test is keep's, not the
 	// shell's, but there is no honest way to assert it here without a
 	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: rounce's Interlock integration is unverified on
+	// the gap is real: keep's Interlock integration is unverified on
 	// Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
@@ -338,10 +338,10 @@ func TestActionsWriteToTheProjectTheyCameFrom(t *testing.T) {
 // store and says nothing.
 func TestEveryActionFormCarriesItsProject(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// Windows cannot execute. The behaviour under test is keep's, not the
 	// shell's, but there is no honest way to assert it here without a
 	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: rounce's Interlock integration is unverified on
+	// the gap is real: keep's Interlock integration is unverified on
 	// Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
@@ -365,10 +365,10 @@ func TestEveryActionFormCarriesItsProject(t *testing.T) {
 // their own change look like it did not happen.
 func TestActionRedirectsStayInTheProject(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// Windows cannot execute. The behaviour under test is keep's, not the
 	// shell's, but there is no honest way to assert it here without a
 	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: rounce's Interlock integration is unverified on
+	// the gap is real: keep's Interlock integration is unverified on
 	// Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
@@ -395,10 +395,10 @@ func TestActionRedirectsStayInTheProject(t *testing.T) {
 // button appeared on projects where pressing it would do nothing.
 func TestAgentControlsFollowTheProject(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// Windows cannot execute. The behaviour under test is keep's, not the
 	// shell's, but there is no honest way to assert it here without a
 	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: rounce's Interlock integration is unverified on
+	// the gap is real: keep's Interlock integration is unverified on
 	// Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
@@ -462,10 +462,10 @@ func strconvQuote(s string) string { return "'" + strings.ReplaceAll(s, "'", `'\
 // which is worse than failing, because it stops you looking.
 func TestTurningOnCoordinationConfirmsItWorked(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// Windows cannot execute. The behaviour under test is keep's, not the
 	// shell's, but there is no honest way to assert it here without a
 	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: rounce's Interlock integration is unverified on
+	// the gap is real: keep's Interlock integration is unverified on
 	// Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")

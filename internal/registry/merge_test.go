@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/gshepptech/rounce/internal/model"
+	"github.com/gshepptech/keep/internal/model"
 )
 
 // item is a small synthetic-fixture helper: every field Merge's comparator

@@ -8,11 +8,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gshepptech/rounce/internal/registry"
-	"github.com/gshepptech/rounce/internal/store"
+	"github.com/gshepptech/keep/internal/registry"
+	"github.com/gshepptech/keep/internal/store"
 )
 
-// A project is one repository with a rounce store in it.
+// A project is one repository with a keep store in it.
 //
 // "Repository" was the word everywhere until now, because the registry's own
 // field is Repo and that is what a directory with a .git in it is called.
@@ -104,7 +104,7 @@ func (s *Server) activeName() string {
 
 // doProjectAdd registers a directory as a project.
 //
-// It registers rather than creating: `rounce init` is what makes a store,
+// It registers rather than creating: `keep init` is what makes a store,
 // and a board that quietly created one would be deciding on a person's
 // behalf that a directory should become a project. So the failure here is
 // specific -- it says the directory has no store and how to give it one --
@@ -138,7 +138,7 @@ func (s *Server) doProjectAdd(w http.ResponseWriter, r *http.Request) {
 		// do because a form was submitted. The checkbox is the consent.
 		if r.PostFormValue("create") == "" {
 			http.Redirect(w, r, s.flashURL(r, "/projects", "problem",
-				fmt.Sprintf("No store in %s yet. Tick \"create the store\" to make one, or run `rounce init` there.", abs)),
+				fmt.Sprintf("No store in %s yet. Tick \"create the store\" to make one, or run `keep init` there.", abs)),
 				http.StatusSeeOther)
 			return
 		}

@@ -13,7 +13,7 @@ import (
 // choice is load-bearing rather than incidental. CreateDep (deps.go) writes
 // exactly one events row and zero UPDATE statements against items --
 // confirmed by reading the method, and locked by activity_test.go's
-// dep-only fixture. A repository whose most recent work was `rounce dep <a>
+// dep-only fixture. A repository whose most recent work was `keep dep <a>
 // blocks <b>` would therefore show a stale last-activity if this query read
 // items' own last-write column instead. The events table is already
 // EVENT-01's complete, append-only log of every mutation in the system;
@@ -24,7 +24,7 @@ import (
 // returns one row containing NULL, which scans into a sql.NullString whose
 // Valid is false. That is reported as ("", false, nil), so a freshly
 // initialised store renders as "no activity yet" rather than as a failed
-// row in `rounce repos`.
+// row in `keep repos`.
 func (s *Store) LastActivity(ctx context.Context) (string, bool, error) {
 	var ns sql.NullString
 	if err := s.db.QueryRowContext(ctx, `SELECT MAX(at) FROM events`).Scan(&ns); err != nil {

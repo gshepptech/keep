@@ -2,7 +2,7 @@ package model
 
 import "time"
 
-// TimeFormat is the layout every timestamp rounce writes uses. It is
+// TimeFormat is the layout every timestamp keep writes uses. It is
 // deliberately NOT time.RFC3339Nano: RFC3339Nano trims trailing zeros from the
 // fractional second, which makes its output variable-width, and variable-width
 // timestamps do not sort lexically in the order they occurred --
@@ -14,7 +14,7 @@ import "time"
 const TimeFormat = "2006-01-02T15:04:05.000000000Z"
 
 // Now returns the current instant formatted with TimeFormat, in UTC. It is
-// the one place callers should derive "now" for a rounce timestamp, so no
+// the one place callers should derive "now" for a keep timestamp, so no
 // caller re-derives TimeFormat's usage independently.
 func Now() string {
 	return FormatTime(time.Now())
@@ -127,7 +127,7 @@ const (
 	StageTicket = "ticket"
 )
 
-// ValidStages is the lookup rounce's CLI uses to validate a --stage value
+// ValidStages is the lookup keep's CLI uses to validate a --stage value
 // against the schema's CHECK(stage IN (...)) vocabulary without a query.
 var ValidStages = map[string]bool{
 	StageRaw:    true,
@@ -149,7 +149,7 @@ const (
 	TypeNote    = "note"
 )
 
-// ValidTypes is the lookup rounce's CLI uses to validate a --type value
+// ValidTypes is the lookup keep's CLI uses to validate a --type value
 // against the schema's CHECK(type IN (...)) vocabulary without a query.
 var ValidTypes = map[string]bool{
 	TypeRoadmap: true,
@@ -165,7 +165,7 @@ var ValidTypes = map[string]bool{
 // Schema `enum` decoration (internal/mcp). Ranging over ValidTypes to build
 // either would emit a different order on every process, which makes a demo
 // transcript and a tools/list assertion flaky -- the same reason
-// cmd/rounce/add.go's validTypesList() has always spelled the order out by
+// cmd/keep/add.go's validTypesList() has always spelled the order out by
 // hand. This is now the ONE place it is spelled out.
 var TypesOrdered = []string{TypeRoadmap, TypeEpic, TypeTask, TypeBug, TypeNote}
 
@@ -177,7 +177,7 @@ const (
 	StatusDropped    = "dropped"
 )
 
-// ValidStatuses is the lookup rounce's CLI uses to validate a --status value
+// ValidStatuses is the lookup keep's CLI uses to validate a --status value
 // against the schema's CHECK(status IN (...)) vocabulary without a query.
 var ValidStatuses = map[string]bool{
 	StatusOpen:       true,
@@ -198,7 +198,7 @@ const (
 	DepDerivedFrom = "derived-from"
 )
 
-// ValidDepTypes is the lookup rounce's CLI uses to validate a dep type value
+// ValidDepTypes is the lookup keep's CLI uses to validate a dep type value
 // against the schema's CHECK(type IN (...)) vocabulary without a query.
 var ValidDepTypes = map[string]bool{
 	DepBlocks:      true,

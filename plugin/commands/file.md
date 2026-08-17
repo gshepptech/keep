@@ -1,8 +1,8 @@
 ---
-description: File something you noticed into rounce instead of dropping it
+description: File something you noticed into keep instead of dropping it
 ---
 
-File `$ARGUMENTS` into rounce.
+File `$ARGUMENTS` into keep.
 
 Decide which of the two is right, and say which you chose:
 

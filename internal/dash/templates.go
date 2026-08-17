@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"html/template"
 
-	"github.com/gshepptech/rounce/internal/model"
+	"github.com/gshepptech/keep/internal/model"
 )
 
 // styleCSS is the whole embedded stylesheet, compiled into the binary --

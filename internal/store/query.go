@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/gshepptech/rounce/internal/model"
+	"github.com/gshepptech/keep/internal/model"
 )
 
 // GetItem returns id's full detail: the item itself, its dependency edges in
@@ -138,7 +138,7 @@ type ListFilter struct {
 	Repo     string `json:"repo,omitempty"`
 
 	// ExcludeClosed adds `status NOT IN ('closed', 'dropped')` to the WHERE
-	// clause when true -- CAP-03's caller (backlog, cmd/rounce/backlog.go)
+	// clause when true -- CAP-03's caller (backlog, cmd/keep/backlog.go)
 	// is the first ListItems caller that needs an exclusion rather than an
 	// equality filter: "every raw item still parked" means "not explicitly
 	// discarded", which Status (a single `col = ?`) cannot express. The zero

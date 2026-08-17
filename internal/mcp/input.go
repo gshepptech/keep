@@ -7,8 +7,8 @@ import (
 
 	"github.com/google/jsonschema-go/jsonschema"
 
-	"github.com/gshepptech/rounce/internal/model"
-	"github.com/gshepptech/rounce/internal/store"
+	"github.com/gshepptech/keep/internal/model"
+	"github.com/gshepptech/keep/internal/store"
 )
 
 // ReadyInput is the `ready` tool's argument shape. store.Ready takes a bare
@@ -87,7 +87,7 @@ func withEnum(sc *jsonschema.Schema, prop string, values []string) {
 // an expression, not a statement).
 //
 // This is deliberate: store.CreateDep refuses parent-child outright
-// (ErrParentChildViaDep, whose message names `rounce add --parent`).
+// (ErrParentChildViaDep, whose message names `keep add --parent`).
 // Advertising a value that is always refused would be worse than not
 // advertising it. This runs once at construction time (BuildSchemas), never
 // per call inside a tool handler.

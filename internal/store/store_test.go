@@ -85,7 +85,7 @@ func assertPragmas(t *testing.T, ctx context.Context, conn *sql.Conn, name strin
 }
 
 // TestTxlockImmediateHonored proves STORE-07/STORE-08: a bare BEGIN on a
-// rounce connection (connA, production DSN via dsn()) already holds the
+// keep connection (connA, production DSN via dsn()) already holds the
 // write lock before any statement runs, so a second connection (connB, DSN
 // built by replacing busy_timeout(3000) with busy_timeout(0) so it retries
 // zero times) fails immediately rather than after busy_timeout. Adapted from

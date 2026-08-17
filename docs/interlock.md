@@ -1,6 +1,6 @@
-# Running rounce and Interlock together
+# Running keep and Interlock together
 
-rounce answers **what needs doing**. Interlock answers **who is doing what, and
+keep answers **what needs doing**. Interlock answers **who is doing what, and
 where**. They are separate programs, neither imports the other, and either one
 works alone. This is what happens when you install both.
 
@@ -11,7 +11,7 @@ works alone. This is what happens when you install both.
 Open Claude Code in one terminal and Codex in another. Both ask for work. Both
 get the same top-ranked ticket. Both start editing the same file.
 
-rounce alone cannot prevent that — it does not watch processes. Interlock alone
+keep alone cannot prevent that — it does not watch processes. Interlock alone
 cannot prevent it either — it stops the second write, but only after both agents
 have already spent a while on the same task.
 
@@ -20,17 +20,17 @@ Together, the second agent never gets offered the work in the first place.
 ```
 agent A                          agent B
    |                                |
-   |-- rounce ready --------------->|  both see rnc-18da17 (28)
+   |-- keep ready --------------->|  both see rnc-18da17 (28)
    |                                |
    |-- edits internal/auth/token.go |
    |     Interlock takes a lease    |
    |                                |
-   |                                |-- rounce ready
+   |                                |-- keep ready
    |                                |     rnc-18da17 is gone
    |                                |     rnc-d15cac (23) instead
 ```
 
-Nothing coordinates the two agents. rounce simply stops offering work whose
+Nothing coordinates the two agents. keep simply stops offering work whose
 files are spoken for.
 
 ---
@@ -40,11 +40,11 @@ files are spoken for.
 Both are single Go binaries with no runtime services.
 
 ```bash
-go install github.com/gshepptech/rounce/cmd/rounce@latest
+go install github.com/gshepptech/keep/cmd/keep@latest
 go install github.com/gshepptech/interlock/cmd/interlock@latest
 
 cd /your/repo
-rounce init        # creates .rounce/db.sqlite
+keep init        # creates .rounce/db.sqlite
 interlock init     # wires the agent hooks, merges, never replaces
 ```
 
@@ -54,21 +54,21 @@ Order does not matter. Neither `init` touches the other's state.
 
 ## Give the work paths
 
-The join runs on one field: `paths`, on a rounce item.
+The join runs on one field: `paths`, on a keep item.
 
 ```bash
-rounce add --score 9/9/1 \
+keep add --score 9/9/1 \
   --paths "internal/auth/token.go" \
   --why "tokens never expire; a leaked one is permanent" \
   "Expire refresh tokens after 30 days"
 ```
 
 **Comma-separated, repo-relative.** An item with no paths is never held back —
-rounce does not know what that work touches, and guessing that it collides would
+keep does not know what that work touches, and guessing that it collides would
 hide workable tickets. Interlock's own hook still blocks the write if two agents
 land on the same file anyway.
 
-That is the failure direction on purpose: rounce would rather offer work
+That is the failure direction on purpose: keep would rather offer work
 someone has quietly started than hide work nobody is doing.
 
 ---
@@ -77,20 +77,20 @@ someone has quietly started than hide work nobody is doing.
 
 | | reads | over | when it is missing |
 |---|---|---|---|
-| `rounce ready` | Interlock's leases | `interlock status --json` | queue is unfiltered, no error |
-| `interlock next` | rounce's queue | `rounce ready --json` | one sentence saying there is no work list |
+| `keep ready` | Interlock's leases | `interlock status --json` | queue is unfiltered, no error |
+| `interlock next` | keep's queue | `keep ready --json` | one sentence saying there is no work list |
 
 Both directions are a subprocess and a versioned CLI contract, never a Go
 import. That is what keeps "either works alone" true rather than aspirational:
-a Go import would mean rounce stops building without Interlock.
+a Go import would mean keep stops building without Interlock.
 
 An unrecognised version on either side filters nothing rather than guessing.
 
 ### Turning a direction off
 
 ```bash
-ROUNCE_INTERLOCK=off    # rounce stops consulting Interlock
-INTERLOCK_ROUNCE=off    # Interlock stops consulting rounce
+KEEP_INTERLOCK=off    # keep stops consulting Interlock
+INTERLOCK_KEEP=off    # Interlock stops consulting keep
 ```
 
 Two variables, one per direction. Each can also be set to an absolute path if
@@ -100,17 +100,17 @@ the binary is not on `PATH`.
 
 ## Seeing it
 
-One page shows both sides. rounce's board reads Interlock directly, so you do
+One page shows both sides. keep's board reads Interlock directly, so you do
 not need to keep two dashboards open to answer one question.
 
 ```bash
-rounce board --web        # the queue, who is holding it up, and the agents
+keep board --web        # the queue, who is holding it up, and the agents
 interlock dashboard       # the same moment from the territory's side
 ```
 
 ### The board
 
-![The rounce board](images/rounce-queue.png)
+![The keep board](images/keep-queue.png)
 
 Five panels, top to bottom: the counts, **Workable now**, **Ask an agent**,
 **Held back**, and **Agents**. The last two only appear when Interlock is
@@ -119,7 +119,7 @@ says so in the sidebar.
 
 **Held back** is the join made visible:
 
-![Items held back, and who holds them](images/rounce-held.png)
+![Items held back, and who holds them](images/keep-held.png)
 
 Two items are workable on their own merits and absent from the queue above.
 The panel names the file, the agent, and when the lease frees up. The queue and
@@ -127,14 +127,14 @@ this panel come from one store call, so the board can never drop an item it
 fails to explain.
 
 **Release** hands a file back early. It is the one destructive control on the
-page, and it does what Interlock's own `lease release` does — nothing rounce
+page, and it does what Interlock's own `lease release` does — nothing keep
 invented.
 
 ### Interlock — the panel
 
 ![Interlock's panel](images/interlock-panel.png)
 
-The same moment from the other side. **Next** is rounce's queue, already
+The same moment from the other side. **Next** is keep's queue, already
 filtered; **Files held** below is why the two higher-scoring items are not in
 it.
 
@@ -150,7 +150,7 @@ interlock run <agent> --item <id> --no-follow -- "<the item's title and reason>"
 ```
 
 Interlock owns the process from there: it supervises the run, its hooks fire,
-and the agent claims files as it writes them. rounce does not spawn agents
+and the agent claims files as it writes them. keep does not spawn agents
 itself and does not want to — a second supervisor is a second thing to be
 wrong.
 
@@ -171,7 +171,7 @@ interlock runs stop <run-id>
 
 ## Several projects at once
 
-`rounce init` registers a repository, so the board's sidebar lists every project
+`keep init` registers a repository, so the board's sidebar lists every project
 you have initialised and each keeps its own store, queue and board. **Manage
 projects** adds one you have cloned since, or forgets one — forgetting removes
 it from the list and never touches the store.
@@ -188,7 +188,7 @@ the morning question of what to work on before you have decided where.
 
 ## What this does not do
 
-- **It does not assign work by itself.** rounce holds the list and Interlock
+- **It does not assign work by itself.** keep holds the list and Interlock
   holds the territory. Nothing starts unless you ask — pressing **Start agent**
   is you asking, and so is `interlock run`. Neither program decides on its own
   that an item should be worked on.
@@ -203,11 +203,11 @@ the morning question of what to work on before you have decided where.
 ## Checking it works
 
 ```bash
-rounce ready                 # note the top item
+keep ready                 # note the top item
 # ...let an agent start editing one of its files...
-rounce ready                 # the item is gone; stderr names the holder
+keep ready                 # the item is gone; stderr names the holder
 interlock status --json      # the lease that caused it
 ```
 
-`rounce ready` writes the queue to stdout and the explanation to stderr, so a
+`keep ready` writes the queue to stdout and the explanation to stderr, so a
 script piping the queue never has to strip prose.

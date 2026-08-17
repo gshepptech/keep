@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gshepptech/rounce/internal/interlock"
-	"github.com/gshepptech/rounce/internal/model"
-	"github.com/gshepptech/rounce/internal/store"
+	"github.com/gshepptech/keep/internal/interlock"
+	"github.com/gshepptech/keep/internal/model"
+	"github.com/gshepptech/keep/internal/store"
 )
 
 // page is what every template receives.

@@ -3,7 +3,7 @@ package registry
 import (
 	"sort"
 
-	"github.com/gshepptech/rounce/internal/model"
+	"github.com/gshepptech/keep/internal/model"
 )
 
 // MergedItem is one row of a cross-store merge: an item, plus the name of

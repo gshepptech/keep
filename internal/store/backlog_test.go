@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/gshepptech/rounce/internal/model"
+	"github.com/gshepptech/keep/internal/model"
 )
 
 // typesOf returns the sequence of Type values in items, in order -- what
@@ -139,7 +139,7 @@ func TestBacklogNewestFirstWithinGroup(t *testing.T) {
 
 // TestBacklogCreatedAtTieBrokenByIDAscending pins nowFunc so two items share
 // an identical created_at, then proves the tie is broken by id ASC,
-// deterministically on every run -- the exact reason cmd/rounce/backlog.go's
+// deterministically on every run -- the exact reason cmd/keep/backlog.go's
 // now-removed CLI-side grouping helper carried an ID-ascending tiebreak,
 // now expressed in SQL.
 func TestBacklogCreatedAtTieBrokenByIDAscending(t *testing.T) {

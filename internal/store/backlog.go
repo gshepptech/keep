@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gshepptech/rounce/internal/model"
+	"github.com/gshepptech/keep/internal/model"
 )
 
 // Backlog returns every raw, non-discarded item in canonical backlog order,
@@ -12,8 +12,8 @@ import (
 //
 // The ordering lives HERE, in SQL, and not in a caller. `ready`'s ordering
 // has always lived in the store (inside the view's own ORDER BY);
-// backlog's living in cmd/rounce was the anomaly. Two surfaces render this
-// list -- `rounce backlog` and the MCP `backlog` tool -- and the only way
+// backlog's living in cmd/keep was the anomaly. Two surfaces render this
+// list -- `keep backlog` and the MCP `backlog` tool -- and the only way
 // they cannot disagree is if they walk ONE order by construction rather
 // than two implementations agreeing. Phase 3 wave 5 shipped and fixed
 // exactly that disagreement once already, between backlog's rendered and
@@ -25,7 +25,7 @@ import (
 // The trailing `id ASC` is not decoration. Two items added inside one
 // transaction share a created_at (this package's one-nowFunc-per-
 // transaction rule), and SQLite's row order for a tie is unspecified --
-// cmd/rounce/backlog.go's now-removed CLI-side grouping helper carried an
+// cmd/keep/backlog.go's now-removed CLI-side grouping helper carried an
 // ID-ascending tiebreak for this exact reason and it must not be lost on
 // the way down here.
 func (s *Store) Backlog(ctx context.Context, typeFilter string) ([]model.Item, error) {

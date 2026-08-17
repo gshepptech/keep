@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gshepptech/rounce/internal/model"
+	"github.com/gshepptech/keep/internal/model"
 )
 
 // countDeps returns the total number of rows in deps, for tests that assert

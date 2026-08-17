@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 )
 
-// StoreDirName and StoreFileName are the on-disk layout of a rounce store.
+// StoreDirName and StoreFileName are the on-disk layout of a keep store.
 // Defined once here so no caller anywhere in the codebase re-spells the
 // ".rounce/db.sqlite" layout.
 const StoreDirName = ".rounce"
@@ -95,7 +95,7 @@ func FindUpward(startDir string, exists ExistsFunc) (string, bool) {
 // wrapper responsible for absolutizing; the CLI's init (a later plan) prints
 // an absolute path.
 func ResolvePath(flagDB, envDB, cwd, home string, exists ExistsFunc) (string, error) {
-	// Rule 1: --db beats everything else, including ROUNCE_DB and any
+	// Rule 1: --db beats everything else, including KEEP_DB and any
 	// nearby or home store -- returned without an existence check. An
 	// explicit --db names where the user wants the store, whether or not
 	// it is there yet: init creates it, and every other command fails on
@@ -105,7 +105,7 @@ func ResolvePath(flagDB, envDB, cwd, home string, exists ExistsFunc) (string, er
 		return flagDB, nil
 	}
 
-	// Rule 2: ROUNCE_DB beats a nearby store and the home store, for the
+	// Rule 2: KEEP_DB beats a nearby store and the home store, for the
 	// same reasoning as rule 1.
 	if envDB != "" {
 		return envDB, nil
@@ -122,19 +122,19 @@ func ResolvePath(flagDB, envDB, cwd, home string, exists ExistsFunc) (string, er
 	// produce a path -- when rules 1-3 all miss and home is empty (e.g.
 	// os.UserHomeDir() errored), there is nothing left to return.
 	if home == "" {
-		return "", fmt.Errorf("cannot resolve store path: no --db, no ROUNCE_DB, no store found walking up from %s, and no home directory available", cwd)
+		return "", fmt.Errorf("cannot resolve store path: no --db, no KEEP_DB, no store found walking up from %s, and no home directory available", cwd)
 	}
 	return StorePathIn(home), nil
 }
 
 // Resolve is the only function in this file that touches process state. It
-// reads ROUNCE_DB, the working directory, and the user's home directory,
+// reads KEEP_DB, the working directory, and the user's home directory,
 // then delegates to ResolvePath with OSExists as the existence predicate.
 // Resolve is kept free of any branching beyond error propagation so that
 // everything worth testing lives in the pure ResolvePath/FindUpward
 // functions above.
 func Resolve(flagDB string) (string, error) {
-	envDB := os.Getenv("ROUNCE_DB")
+	envDB := Env("DB")
 
 	cwd, err := os.Getwd()
 	if err != nil {

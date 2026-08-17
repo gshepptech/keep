@@ -7,8 +7,8 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/gshepptech/rounce/internal/registry"
-	"github.com/gshepptech/rounce/internal/store"
+	"github.com/gshepptech/keep/internal/registry"
+	"github.com/gshepptech/keep/internal/store"
 )
 
 // validateLoopback resolves hostport and refuses anything that is not a
@@ -43,7 +43,7 @@ func validateLoopback(hostport string) (*net.TCPAddr, error) {
 	return addr, nil
 }
 
-// Server is rounce's dashboard HTTP server: a bound, loopback-only listener
+// Server is keep's dashboard HTTP server: a bound, loopback-only listener
 // and the route table (handlers.go) that answers requests against it.
 type Server struct {
 	st *store.Store
@@ -159,7 +159,7 @@ var errNoProject = errors.New("no project by that name is registered here")
 
 // storeFor resolves the store this request is about.
 //
-// A board serves every project rounce knows, not only the directory it was
+// A board serves every project keep knows, not only the directory it was
 // started in: switching should not mean restarting a server. The project
 // comes from the URL, so two tabs can hold two different boards without a
 // shared "current project" for them to fight over -- which is exactly the
@@ -207,7 +207,7 @@ func (s *Server) writable() (*store.Store, error) {
 // writableAt opens a writing handle for one action against one project.
 func (s *Server) writableAt(path string) (*store.Store, error) {
 	if path == "" {
-		return nil, fmt.Errorf("this board is read-only: start it with `rounce board --web` from the repository that owns the store")
+		return nil, fmt.Errorf("this board is read-only: start it with `keep board --web` from the repository that owns the store")
 	}
 	return store.Open(path, store.OpenOptions{})
 }

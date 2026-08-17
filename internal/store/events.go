@@ -16,7 +16,7 @@ import (
 // not of what is stored.
 //
 // An empty sessionID stores SQL NULL, not the empty string, so "no session"
-// (agent/human ran a command with no ROUNCE_SESSION set) and "session named
+// (agent/human ran a command with no KEEP_SESSION set) and "session named
 // the empty string" are never conflated into the same row.
 //
 // payload is marshalled with encoding/json when non-nil; a nil payload

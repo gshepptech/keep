@@ -37,7 +37,7 @@ where `type` is one of `blocks`, `parent-child`, `related`, `derived-from`.
 - **`blocks`** — `(A, B, blocks)` means A is blocked until B closes. This is
   the one that feeds `ready`'s filtering.
 - **`parent-child`** — structure. Created only by `add --parent`, never by
-  `rounce dep`; `dep` explicitly refuses to create a `parent-child` edge and
+  `keep dep`; `dep` explicitly refuses to create a `parent-child` edge and
   tells you to use `add --parent` instead (`store.ErrParentChildViaDep`).
   This is what block-propagation walks.
 - **`related`** — a plain cross-reference with no behavior attached.
@@ -126,9 +126,9 @@ someone's shell, not a bad answer.
 `events` is append-only: `id`, `item_id`, `kind`, `actor`, `session_id`,
 `at`, `payload`. Every mutation — `add`, `capture`, `dep`, `start`, `close`,
 `drop`, `update` — writes exactly one row. `kind` is the command name,
-`actor` comes from `--actor`, else `$ROUNCE_ACTOR`, else `$USER`, and
-`session_id` comes from `$ROUNCE_SESSION` when the caller sets it
-(Interlock, rounce's sibling tool, already sets that variable for hook
+`actor` comes from `--actor`, else `$KEEP_ACTOR`, else `$USER`, and
+`session_id` comes from `$KEEP_SESSION` when the caller sets it
+(Interlock, keep's sibling tool, already sets that variable for hook
 invocations, which is how the two line up without either side knowing about
 the other).
 
@@ -136,32 +136,32 @@ Nothing in the store reads `events` for its own logic — no state is derived
 from it, no view depends on it. It's written purely because retrofitting an
 audit trail loses the history that made it worth having; by the time you
 notice you want it, the events you wanted are already gone. This is also
-why `items` never grows a new column for something event-shaped: rounce's
+why `items` never grows a new column for something event-shaped: keep's
 third stated principle is "a new concept gets a new table, never a new
 column on `items`," specifically because Beads' `issues` table reached
 roughly five dozen columns by absorbing an event bus and a scheduler
-directly onto the item row. rounce's `events` table exists so that
+directly onto the item row. keep's `events` table exists so that
 temptation never comes up.
 
 ## The deliberate refusals
 
-Several things rounce visibly does *not* do, and each is a decision dated
+Several things keep visibly does *not* do, and each is a decision dated
 in the README rather than an oversight:
 
-- **No model calls.** rounce is a store. It never calls an LLM, computes an
+- **No model calls.** keep is a store. It never calls an LLM, computes an
   embedding, or does semantic search. Refinement, triage, and scoring are
-  things an agent does *using* rounce's commands — which is exactly what
+  things an agent does *using* keep's commands — which is exactly what
   keeps the binary small and keeps it usable from any agent or plugin,
-  since none of them need to share a model provider with rounce itself.
+  since none of them need to share a model provider with keep itself.
 - **No sync.** No JSONL export, no CRDT, no merge resolution, no
   multi-machine story at all. Sharing a store today means sharing a
   repository (and therefore a filesystem). Building sync is "a decision to
   be made deliberately and dated," per the README — not a gap waiting to be
   filled by the next contributor who trips over it.
-- **No orchestration.** rounce has no concept of agent state, awaits,
+- **No orchestration.** keep has no concept of agent state, awaits,
   timeouts, or roles. `items.claimed_by_session` and `items.paths` exist as
   columns nobody reads yet, reserved for a future join with Interlock, which
-  is the tool that answers "who is doing what, and where" — rounce only ever
+  is the tool that answers "who is doing what, and where" — keep only ever
   answers "what needs doing." Coordinating agents belongs there, not here.
 - **No external tracker bridges.** No Jira, Linear, GitHub Issues, GitLab,
   Azure DevOps, or Notion sync. `items.external_ref` is a string nobody
@@ -172,7 +172,7 @@ in the README rather than an oversight:
   there's data worth not breaking. See `docs/design/phase-0.md`: no
   `is_blocked` column either, because Beads needed one only after their
   recursive view got slow at their data volume, and needed a second
-  migration to keep it correct — a fix rounce isn't shaped to need yet, and
+  migration to keep it correct — a fix keep isn't shaped to need yet, and
   won't add ahead of a benchmark that says it should.
 
 ## Odd-looking decisions, explained
@@ -203,7 +203,7 @@ are noise in that context, not signal — plus supporting it properly would
 mean TTY detection and `NO_COLOR` handling, a new mechanism introduced for
 one command that every other command would then be expected to adopt. More
 to the point, the terminal already has a *better* signal than color could
-be: `rounce blocked` prints `← blocked by <id>`, naming the actual blocker
+be: `keep blocked` prints `← blocked by <id>`, naming the actual blocker
 in text, which color can't do. The web page uses color for exactly three
 states (workable/claimed/blocked) because it can't append that string to
 every row without the layout collapsing — and even there, color is never
@@ -213,7 +213,7 @@ page says 'blocked,' not a metaphor for blocked." See
 `docs/design/phase-4.md`, record 3.
 
 **Why a deleted store errors on its row instead of showing up as empty.**
-`rounce repos` and `rounce ready --all` open every registered store
+`keep repos` and `keep ready --all` open every registered store
 read-only (`OpenOptions{ReadOnly: true}`). That's not an optimization —
 it's what makes a missing store fail loudly instead of silently. A default
 read-write open of a missing path would succeed and quietly create a new,

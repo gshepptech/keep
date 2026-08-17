@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tree · rounce</title>
+<title>Tree · keep</title>
 
-<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%27http%3A//www.w3.org/2000/svg%27%20viewBox=%270%200%2032%2032%27%3E%3Crect%20width=%2732%27%20height=%2732%27%20rx=%277%27%20fill=%27%23101013%27/%3E%3Cpath%20d=%27M16%205.5L26%2016%2016%2026.5%206%2016z%27%20fill=%27none%27%20stroke=%27%233fb950%27%20stroke-width=%272.6%27%20stroke-linejoin=%27round%27/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%27http%3A//www.w3.org/2000/svg%27%20viewBox=%270%200%2032%2032%27%3E%3Crect%20width=%2732%27%20height=%2732%27%20rx=%277%27%20fill=%27%23101013%27/%3E%3Cpath%20d=%27M6%206h4v4h4V6h4v4h4V6h4v19H6z%27%20fill=%27%233fb950%27/%3E%3C/svg%3E">
 <style>/* internal/dash/style.css -- go:embed-ed, inlined into every page's <style>
    block by layout.html. Hand-written, no framework, no reset library, no
    at-rule import, and no CSS resource-fetching function of any kind, not
@@ -230,12 +230,21 @@ td[class*="depth-"] { font-family: var(--mono); }
   max-width: 1080px; margin: 0 auto; padding: 16px 24px;
   flex-wrap: wrap;
 }
+/* The wordmark. A dev tool's identity is the name set well, not a badge:
+   there is no room at 16px for anything that needs explaining. Tight
+   tracking and the mark sized to the lowercase x-height, so the two read as
+   one object rather than an icon with a label beside it.
+
+   The mark takes --fg, not --fg-muted. It did take muted, back when it was
+   three hairline strokes and needed to sit quietly; a filled silhouette at
+   the same value reads as a smudge instead. Full weight, matching the word
+   it stands next to. */
 .brand {
   display: inline-flex; align-items: center; gap: 8px;
   text-decoration: none; color: var(--fg);
   letter-spacing: -0.02em; flex: none;
 }
-.brand-mark { display: inline-flex; color: var(--fg-muted); }
+.brand-mark { display: inline-flex; color: var(--fg); }
 .brand-mark svg { display: block; }
 .brand-name { font-weight: 600; font-size: var(--text-base); }
 
@@ -681,15 +690,6 @@ pre {
 .snippet { max-width: 34ch; }
 .snippet .sub { white-space: normal; }
 
-/* The wordmark. A dev tool's identity is the name set well, not a badge:
-   there is no room at 16px for anything that needs explaining. Tight
-   tracking and the mark sized to the lowercase x-height, so the two read as
-   one object rather than an icon with a label beside it. */
-.brand { letter-spacing: -0.02em; }
-.brand-name { font-weight: 600; }
-.brand-mark { display: inline-flex; color: var(--fg-muted); }
-.brand-mark svg { display: block; }
-
 /* First and last cell align to the section rule above them, so a row reads
    as part of the section rather than as a box inset within it. */
 td:first-child, thead th:first-child { padding-left: 2px; }
@@ -1089,8 +1089,8 @@ input, textarea { caret-color: var(--fg); }
 <header class="bar">
   <a class="brand" href="/">
     
-    <span class="brand-mark"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M2.5 4h11M2.5 8h7.5M2.5 12h4"/></svg></span>
-    <span class="brand-name">rounce</span>
+    <span class="brand-mark"><svg viewBox="0 0 16 16" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M3 5h2v2h2V5h2v2h2V5h2v9H3V5z"/></svg></span>
+    <span class="brand-name">keep</span>
   </a>
 
   <details class="switcher">

@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/gshepptech/rounce/internal/store"
+	"github.com/gshepptech/keep/internal/store"
 )
 
 // stderrLog is this package's one logger: a store error's detail is written
@@ -35,7 +35,7 @@ func (s *Server) routes() *http.ServeMux {
 	mux.HandleFunc("GET /backlog", s.handleBacklog)
 
 	// The same views, scoped to another project. One board serves every
-	// project rounce knows; the URL says which, so two tabs can hold two
+	// project keep knows; the URL says which, so two tabs can hold two
 	// boards without a shared selection for them to fight over.
 	mux.HandleFunc("GET /p/{project}", s.handleReady)
 	mux.HandleFunc("GET /p/{project}/backlog", s.handleBacklog)
@@ -59,7 +59,7 @@ func (s *Server) routes() *http.ServeMux {
 
 // handleReady renders the ready queue. The store call is UNLIMITED
 // (limit 0) -- plan 06's DASH-07 agreement test asserts the board and
-// `rounce ready` come from the same call, and a hard-coded limit that
+// `keep ready` come from the same call, and a hard-coded limit that
 // happens to match a fixture's size today is exactly the coincidental pass
 // GATE-03 exists to catch.
 func (s *Server) handleReady(w http.ResponseWriter, r *http.Request) {
@@ -155,7 +155,7 @@ func (s *Server) fail(w http.ResponseWriter, err error) {
 	}
 	stderrLog.Error("dash: handler error", "err", err)
 	s.failPage(w, http.StatusInternalServerError, "Something went wrong",
-		"The board could not finish that. The reason was written to the terminal running rounce.")
+		"The board could not finish that. The reason was written to the terminal running keep.")
 }
 
 // failPage renders the error inside the normal shell. It deliberately does

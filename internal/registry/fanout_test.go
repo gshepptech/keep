@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gshepptech/rounce/internal/model"
-	"github.com/gshepptech/rounce/internal/store"
+	"github.com/gshepptech/keep/internal/model"
+	"github.com/gshepptech/keep/internal/store"
 )
 
 // addItem is this package's own minimal fixture helper -- internal/store's

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gshepptech/rounce/internal/interlock"
-	"github.com/gshepptech/rounce/internal/store"
+	"github.com/gshepptech/keep/internal/interlock"
+	"github.com/gshepptech/keep/internal/store"
 )
 
 // writableFixture builds a board that can act on its store.
@@ -270,7 +270,7 @@ func TestRedirectPrefixCannotLeaveTheHost(t *testing.T) {
 
 // TestDropRefusesWithoutAReason.
 //
-// `rounce drop` requires --reason and exits 2 without one. The board used to
+// `keep drop` requires --reason and exits 2 without one. The board used to
 // route around that by supplying "dropped from the board" on the user's
 // behalf -- the board holding a lower standard than the command line for
 // the same operation, on the record they both write. The confirm page asks

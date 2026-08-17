@@ -1,4 +1,4 @@
-# rounce — snippet for Codex
+# keep — snippet for Codex
 
 **Codex gets the hook now. This snippet is the fallback, not the plan.**
 
@@ -7,9 +7,9 @@ An earlier version of this file said Codex hooks cannot fire. That was wrong.
 commands install it:
 
 ```bash
-codex plugin marketplace add <path to the rounce repo>
-codex plugin add rounce@rounce
-rounce codex trust
+codex plugin marketplace add <path to the keep repo>
+codex plugin add keep@keep
+keep codex trust
 ```
 
 See [`../README.md`](../README.md) for what that does and why the trust step
@@ -23,13 +23,13 @@ you would rather not install a plugin at all.
 
 ```toml
 [mcp_servers.rounce]
-command = "rounce"
+command = "keep"
 args = ["mcp"]
-env = { ROUNCE_ACTOR = "codex" }
+env = { KEEP_ACTOR = "codex" }
 ```
 
 > **Verified 2026-08-13** against `codex-cli 0.147.0-alpha.6.5`. Running
-> `codex mcp add rounce --env ROUNCE_ACTOR=codex -- rounce mcp` in an isolated
+> `codex mcp add keep --env KEEP_ACTOR=codex -- keep mcp` in an isolated
 > `CODEX_HOME` produces exactly this, with `env` as a `[mcp_servers.rounce.env]`
 > sub-table — equivalent TOML to the inline form above.
 >
@@ -37,26 +37,26 @@ env = { ROUNCE_ACTOR = "codex" }
 > test session failed authentication before any turn ran, so the server was
 > never exercised by a model (`rnc-967360`).
 
-`ROUNCE_ACTOR` is stamped on every event so the log records who did what.
-**It is now optional.** rounce reads the client's own name out of the MCP
+`KEEP_ACTOR` is stamped on every event so the log records who did what.
+**It is now optional.** keep reads the client's own name out of the MCP
 handshake, so Codex records as Codex and Claude Code records as Claude Code with
 nothing set on either side. Setting it explicitly still wins, which is how you
 record a session as a named human or a CI identity rather than as the tool
 driving it.
 
 It used to matter, and getting it wrong was invisible: this file documented
-`ROUNCE_ACTOR=codex` while `plugin/.mcp.json` shipped `"env": {}`, so one store
+`KEEP_ACTOR=codex` while `plugin/.mcp.json` shipped `"env": {}`, so one store
 recorded Codex's work under "codex" and Claude Code's under a username, and the
 only place that surfaced was a mixed event log read afterwards.
 
-`ROUNCE_SESSION` is optional and read once at server start, never per call.
+`KEEP_SESSION` is optional and read once at server start, never per call.
 
 ## 2. Paste this into the repository's `AGENTS.md`
 
 ```markdown
 ## Work tracking
 
-This repository uses rounce, a local work store. The tools are available to you.
+This repository uses keep, a local work store. The tools are available to you.
 
 Before starting work, call `ready`. It returns the ranked list of what is
 workable and already excludes anything blocked — do not re-sort or re-filter it.
@@ -80,5 +80,5 @@ Both read the same `.rounce/db.sqlite`. Neither needs to know the other exists,
 and the events they write are byte-identical for the same operation — Phase 4
 proves that by comparing actual database rows rather than output.
 
-If you are running both agents in one checkout at the same time, rounce will not
+If you are running both agents in one checkout at the same time, keep will not
 stop them editing the same file. That is Interlock's job, not this one.

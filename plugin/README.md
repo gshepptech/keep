@@ -1,10 +1,10 @@
-# rounce — Claude Code plugin
+# keep — Claude Code plugin
 
 Puts the work queue **in front of** your agents instead of hoping they ask for it.
 
 ## The problem this solves
 
-Registering rounce's MCP server gives an agent thirteen tools. It does not make the
+Registering keep's MCP server gives an agent thirteen tools. It does not make the
 agent *use* them. Say "fix the login bug" and Claude will fix the login bug,
 with a `ready` tool sitting there untouched.
 
@@ -15,7 +15,7 @@ This plugin uses a **`SessionStart` hook** instead. It runs before the agent
 reads your first message, so the queue is simply *there*:
 
 ```
-## rounce — the work queue for this repository
+## keep — the work queue for this repository
 
 **ready 2** · in progress 0 · blocked 2 · backlog 1
 
@@ -27,7 +27,7 @@ rnc-4b0d0e      13  task   Rename the flag
 `blocked` names what is holding each one.
 ```
 
-That is the same distinction rounce's own design turns on: the CLI was kept
+That is the same distinction keep's own design turns on: the CLI was kept
 complete precisely because **hooks can call a binary and cannot call an MCP
 tool** (`docs/design/phase-3.md`).
 
@@ -37,20 +37,20 @@ tool** (`docs/design/phase-3.md`).
 |---|---|
 | **`SessionStart` hook** | the ranked queue, injected before the first message |
 | **MCP server** | all thirteen tools, registered automatically |
-| **`/rounce:ready`** | the ranked queue on demand |
-| **`/rounce:board`** | counts and the top of the queue; `--web` for the dashboard |
-| **`/rounce:file`** | file what you noticed, choosing `add` or `capture` correctly |
+| **`/keep:ready`** | the ranked queue on demand |
+| **`/keep:board`** | counts and the top of the queue; `--web` for the dashboard |
+| **`/keep:file`** | file what you noticed, choosing `add` or `capture` correctly |
 
 ## Install
 
-Requires `rounce` on your PATH:
+Requires `keep` on your PATH:
 
 ```bash
-cd ~/Projects/rounce && go install ./cmd/rounce
+cd ~/Projects/keep && go install ./cmd/keep
 ```
 
 Then add this repository as a plugin marketplace in Claude Code and install
-`rounce` from it.
+`keep` from it.
 
 ## It is silent where it is not used
 
@@ -59,7 +59,7 @@ produces nothing at all unless there is something worth saying:
 
 | situation | behaviour |
 |---|---|
-| `rounce` not installed | silent |
+| `keep` not installed | silent |
 | no store resolves from here | silent |
 | store exists but is empty | silent |
 | the store has work | the block above |
@@ -73,8 +73,8 @@ is worse than a hook that does nothing.
 
 ```bash
 codex plugin marketplace add <path to this repo>
-codex plugin add rounce@rounce
-rounce codex trust
+codex plugin add keep@keep
+keep codex trust
 ```
 
 No launcher flag, no `AGENTS.md` rule, no bypass. An earlier version of this
@@ -92,10 +92,10 @@ same script, on both.
 | marketplace | `.claude-plugin/marketplace.json` | `.agents/plugins/marketplace.json` |
 | hook script | `scripts/session-queue.py` | the same file |
 
-### Why `rounce codex trust` exists
+### Why `keep codex trust` exists
 
 Codex will not run a hook it has not been told to trust, and installing a plugin
-does not grant that — a freshly installed rounce plugin reports
+does not grant that — a freshly installed keep plugin reports
 `trustStatus: "untrusted"` and stays silent until the trust entry exists. That
 is a security control working correctly, and this command grants it deliberately
 rather than routing around it. It is the same consent `claude plugin install`
@@ -103,20 +103,20 @@ takes; Codex just makes it a separate step.
 
 **It asks Codex for the hash rather than computing one.** `hooks/list` over
 `codex app-server` returns each hook's `key` and `currentHash`, and
-`config/batchWrite` has Codex write them into its own `config.toml` — so rounce
+`config/batchWrite` has Codex write them into its own `config.toml` — so keep
 needs no TOML parser and cannot drift from Codex's format. Interlock computed
 its own hash and it broke silently when `0.146.0-alpha.9.2` changed how trust is
 recorded, while its doctor kept reporting the trust as healthy because it was
 verifying its own bookkeeping.
 
-`rounce codex trust --dry-run` reports without changing anything.
-`rounce codex status` asks Codex what it thinks of rounce's hooks.
+`keep codex trust --dry-run` reports without changing anything.
+`keep codex status` asks Codex what it thinks of keep's hooks.
 
 ### Proven, not assumed
 
 The hook fires — `hook: SessionStart` in a live session on a clean install,
 reproduced — and its text reaches the model. Asked "what is at the top of my
-rounce queue?" and told to run nothing, a fresh Codex session named the top
+keep queue?" and told to run nothing, a fresh Codex session named the top
 item, its score, and the tie below it, cold. Claude Code shows the same block in
 the transcript at session start.
 
@@ -130,14 +130,14 @@ the transcript at session start.
   it would be auto-trusted; it is not.
 - `${PLUGIN_ROOT}` expands to the installed plugin's cache directory, which is
   how one script serves both plugins.
-- `codex mcp add rounce --env ROUNCE_ACTOR=codex -- rounce mcp` produces exactly
+- `codex mcp add keep --env KEEP_ACTOR=codex -- keep mcp` produces exactly
   the config block [`codex/AGENTS.md`](codex/AGENTS.md) documents.
 - Codex's hook event set is comparable to Claude Code's — `sessionStart`,
   `sessionEnd`, `preToolUse`, `postToolUse`, `permissionRequest`,
   `userPromptSubmit`, `preCompact`, `postCompact`, `subagentStart`,
   `subagentStop`, `stop`.
 
-One asymmetry that is **not** fixed by the plugin: MCP `instructions`. rounce
+One asymmetry that is **not** fixed by the plugin: MCP `instructions`. keep
 returns the ranked queue in the initialize handshake, Claude Code renders it
 under an "MCP Server Instructions" block, and Codex does not put it in the
 model's prompt at all (`codex debug prompt-input` shows it absent). The hook is
@@ -145,9 +145,9 @@ what closes that gap, which is why it is worth the trust step.
 
 ## What it deliberately does not do
 
-- **It does not start anything.** rounce holds the list; it never calls a model
+- **It does not start anything.** keep holds the list; it never calls a model
   and never assigns work. You still open the terminal and ask.
 - **It does not stop two agents colliding in one checkout.** That is Interlock's
-  job. rounce says *what needs doing*; Interlock says *who is in which files*.
+  job. keep says *what needs doing*; Interlock says *who is in which files*.
 - **It does not nag.** No `Stop` hook, no unfiled-findings prompt. The queue is
   offered once, at the start, and then it is out of the way.

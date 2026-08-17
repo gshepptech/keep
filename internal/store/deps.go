@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gshepptech/rounce/internal/model"
+	"github.com/gshepptech/keep/internal/model"
 )
 
 // ErrParentChildViaDep, ErrSelfEdge, and ErrInvalidDepType are CreateDep's
@@ -24,7 +24,7 @@ var (
 	// insertParentChildEdge in items.go is its only call site -- so
 	// items.parent_id and the deps tree can never disagree. `dep` must name
 	// the correct command rather than fail obscurely on a CHECK violation.
-	ErrParentChildViaDep = errors.New("parent-child structure is created by `rounce add --parent <id>`; `dep` does not reparent items")
+	ErrParentChildViaDep = errors.New("parent-child structure is created by `keep add --parent <id>`; `dep` does not reparent items")
 
 	// ErrSelfEdge is returned when ItemID == DependsOnID, for every dep type
 	// including parent-child (DEP-02, self-edge half).

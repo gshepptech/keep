@@ -1,6 +1,6 @@
-# Using rounce with agents
+# Using keep with agents
 
-rounce is built to be driven by agents, not typed by you. This page covers
+keep is built to be driven by agents, not typed by you. This page covers
 just that: registering the MCP server, what the ten tools are, and what to
 put in a project's `CLAUDE.md` so agents actually use it instead of ignoring
 it.
@@ -18,11 +18,11 @@ machine the phase was built on.
 ### Claude Code
 
 ```
-claude mcp add rounce -e ROUNCE_SESSION=<session-id> -e ROUNCE_ACTOR=<actor> -- rounce mcp
+claude mcp add keep -e KEEP_SESSION=<session-id> -e KEEP_ACTOR=<actor> -- keep mcp
 ```
 
-Append `--db <path>` after `rounce mcp` if the store isn't reachable through
-the ordinary four-rule resolver (`--db` flag, `ROUNCE_DB` env, nearest
+Append `--db <path>` after `keep mcp` if the store isn't reachable through
+the ordinary four-rule resolver (`--db` flag, `KEEP_DB` env, nearest
 `.rounce/db.sqlite` walking up from the client's working directory, then
 `~/.rounce/db.sqlite`) from wherever Claude Code's working directory is.
 
@@ -32,13 +32,13 @@ Equivalent JSON, for any client that reads one directly (Claude Code's own
 ```json
 {
   "mcpServers": {
-    "rounce": {
-      "command": "rounce",
+    "keep": {
+      "command": "keep",
       "args": ["mcp"],
       "env": {
-        "ROUNCE_SESSION": "<session-id>",
-        "ROUNCE_ACTOR": "<actor>",
-        "ROUNCE_DB": "<path, optional>"
+        "KEEP_SESSION": "<session-id>",
+        "KEEP_ACTOR": "<actor>",
+        "KEEP_DB": "<path, optional>"
       }
     }
   }
@@ -51,9 +51,9 @@ Codex CLI reads `~/.codex/config.toml`, a table per server:
 
 ```toml
 [mcp_servers.rounce]
-command = "rounce"
+command = "keep"
 args = ["mcp"]
-env = { ROUNCE_SESSION = "<session-id>", ROUNCE_ACTOR = "<actor>" }
+env = { KEEP_SESSION = "<session-id>", KEEP_ACTOR = "<actor>" }
 ```
 
 This one is written from Codex's documented config format, not verified
@@ -63,16 +63,16 @@ probably-right rather than confirmed.
 
 ### Notes on both
 
-- `ROUNCE_SESSION` and `ROUNCE_ACTOR` are read **once, at server start** —
-  never per call. One `rounce mcp` process is scoped to one agent session; if
+- `KEEP_SESSION` and `KEEP_ACTOR` are read **once, at server start** —
+  never per call. One `keep mcp` process is scoped to one agent session; if
   you want a different session id, restart the server, not one tool call.
-- `ROUNCE_DB` is optional and, when set, follows the same four-rule resolver
+- `KEEP_DB` is optional and, when set, follows the same four-rule resolver
   every CLI command uses.
-- There's no `--json` flag and no `--actor` flag on `rounce mcp` itself — the
+- There's no `--json` flag and no `--actor` flag on `keep mcp` itself — the
   protocol *is* the output format, and actor comes from the environment
-  (falling back to `$ROUNCE_ACTOR`, then `$USER`) with a per-call override
+  (falling back to `$KEEP_ACTOR`, then `$USER`) with a per-call override
   available on every mutating tool.
-- `rounce mcp` serves over stdio only. Don't run it interactively — stdin and
+- `keep mcp` serves over stdio only. Don't run it interactively — stdin and
   stdout are the protocol channel.
 
 ## The ten tools
@@ -114,7 +114,7 @@ convenience layer on top of it:
 
 > Block rebuilt their Linear MCP server three times and ended at 2 tools
 > instead of 30+ — the standing justification for **no MCP-only convenience
-> tools**: the count grows only when the CLI does, never otherwise... rounce's
+> tools**: the count grows only when the CLI does, never otherwise... keep's
 > ten are flat, disjoint verbs with no pair a model would hesitate between.
 > — `docs/design/phase-3.md`
 
@@ -124,10 +124,10 @@ tradeoffs rather than bugs (`docs/design/phase-3.md`):
 - `add`'s MCP tool **cannot** set `stage` — the CLI's `add --stage raw` has no
   MCP equivalent, because `capture` is the verb for a raw item.
 - An empty `ready`, `backlog`, or `list` result marshals to JSON `null` over
-  MCP, not `[]` — unlike `rounce ready --json`, which normalizes an empty
+  MCP, not `[]` — unlike `keep ready --json`, which normalizes an empty
   result to `[]`. If you're parsing tool output programmatically, check for
   `null` as well as an empty array.
-- Passing rounce's `--json`-shaped output through as the tool result is less
+- Passing keep's `--json`-shaped output through as the tool result is less
   token-efficient than a custom Markdown or XML format would be. That's the
   accepted price of "every surface is a thin wrapper with no formatting logic
   of its own" — MCP doesn't get a formatter the CLI doesn't have.
@@ -139,11 +139,11 @@ tradeoffs rather than bugs (`docs/design/phase-3.md`):
 
 ## What to tell an agent
 
-Talking to an agent about rounce works the same way as any other tool: say
+Talking to an agent about keep works the same way as any other tool: say
 what you want, let it pick the calls. In practice, three sentences cover
 almost everything:
 
-> *"Scout this repo and file what's worth fixing in rounce."* → the agent
+> *"Scout this repo and file what's worth fixing in keep."* → the agent
 > calls `capture` for things it isn't sure about yet, `add` for things it's
 > ready to commit to as tickets.
 
@@ -162,13 +162,13 @@ scope — that's what keeps the backlog from being either empty or a landfill.
 ### A `CLAUDE.md` snippet
 
 Drop something like this into a project's `CLAUDE.md` if you want agents to
-actually use rounce as their task list rather than working off ad hoc
+actually use keep as their task list rather than working off ad hoc
 todo-list tool calls:
 
 ```markdown
-## Task tracking (rounce)
+## Task tracking (keep)
 
-This repo uses rounce for tickets and backlog. Before starting work:
+This repo uses keep for tickets and backlog. Before starting work:
 
 - Run/call `ready` to see what's workable right now, ranked by score. Don't
   pick up anything not in `ready` — if it's not there, it's either done,
@@ -187,5 +187,5 @@ This repo uses rounce for tickets and backlog. Before starting work:
 Adjust the specifics (which repo, what score threshold counts as worth
 picking up) to the project. The core instruction — consult `ready`, file
 findings instead of dropping them, always give `close`/`drop` a real reason —
-is what makes rounce worth having instead of an agent just keeping its own
+is what makes keep worth having instead of an agent just keeping its own
 mental list for the session.

@@ -6,7 +6,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/gshepptech/rounce/internal/model"
+	"github.com/gshepptech/keep/internal/model"
 )
 
 // idsOfItems returns the sorted ids of items, for table-test comparisons

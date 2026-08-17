@@ -7,8 +7,8 @@ import (
 	"io/fs"
 	"os"
 
-	"github.com/gshepptech/rounce/internal/model"
-	"github.com/gshepptech/rounce/internal/store"
+	"github.com/gshepptech/keep/internal/model"
+	"github.com/gshepptech/keep/internal/store"
 )
 
 // RepoResult is one registered repository's contribution to a fan-out.
@@ -138,7 +138,7 @@ func withStore(path string, fn func(*store.Store) error) error {
 // "what is workable" query in Go is Anti-Pattern 1 in
 // .planning/research/ARCHITECTURE.md, and calling the shipped one is what
 // makes `ready --all`'s per-repo view structurally unable to disagree with
-// that repository's own single-store `rounce ready`.
+// that repository's own single-store `keep ready`.
 func FetchReady(ctx context.Context, repos []Repo) []RepoResult {
 	out := make([]RepoResult, 0, len(repos))
 	for _, r := range repos {
@@ -157,10 +157,10 @@ func FetchReady(ctx context.Context, repos []Repo) []RepoResult {
 }
 
 // FetchCounts opens every registered store read-only and collects the row
-// `rounce repos` renders: total items, ready items, and last activity.
+// `keep repos` renders: total items, ready items, and last activity.
 //
 // The counts come from full item fetches plus len(), not from a COUNT(*)
-// method (06-RESEARCH.md Open Question 1). That matches cmd/rounce/board.go's
+// method (06-RESEARCH.md Open Question 1). That matches cmd/keep/board.go's
 // established precedent exactly -- it already calls Ready/ListItems/Blocked/
 // Backlog purely to take len() -- and README principle 6 ("correct before
 // fast") says a COUNT(*)-shaped method is a measured optimisation, not an

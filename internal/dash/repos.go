@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gshepptech/rounce/internal/registry"
+	"github.com/gshepptech/keep/internal/registry"
 )
 
 // allPage is /all's page data.

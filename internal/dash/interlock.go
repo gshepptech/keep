@@ -3,9 +3,9 @@ package dash
 import (
 	"context"
 
-	"github.com/gshepptech/rounce/internal/interlock"
-	"github.com/gshepptech/rounce/internal/model"
-	"github.com/gshepptech/rounce/internal/store"
+	"github.com/gshepptech/keep/internal/interlock"
+	"github.com/gshepptech/keep/internal/model"
+	"github.com/gshepptech/keep/internal/store"
 )
 
 // readyItems is the queue view's store call and Interlock filter in one

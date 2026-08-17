@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gshepptech/rounce/internal/model"
+	"github.com/gshepptech/keep/internal/model"
 )
 
 // StaleClaim is an item somebody claimed and then went quiet on.
@@ -44,7 +44,7 @@ const DefaultStaleAfter = 2 * time.Hour
 // This reports; it does not release. An automatic unclaim cannot tell a
 // dead session from a slow one, and unclaiming live work is a worse failure
 // than leaving a dead claim visible -- it would put two agents on one item,
-// which is the exact thing rounce exists to prevent. The decision stays
+// which is the exact thing keep exists to prevent. The decision stays
 // with whoever can look at the terminal.
 func (s *Store) StaleClaims(ctx context.Context, after time.Duration) ([]StaleClaim, error) {
 	if after <= 0 {

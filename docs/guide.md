@@ -1,14 +1,14 @@
-# The rounce guide
+# The keep guide
 
-## What rounce is
+## What keep is
 
-rounce is a to-do list that AI coding agents read and write. It stores
+keep is a to-do list that AI coding agents read and write. It stores
 tickets, a backlog, and a dependency graph in one SQLite file per repository,
 and it never calls a model — it's a store, nothing more. Refinement, triage,
-and scoring are things an agent does *using* rounce's commands; rounce itself
+and scoring are things an agent does *using* keep's commands; keep itself
 just remembers what got decided.
 
-You mostly won't type `rounce` yourself. The loop is: an agent scouts a
+You mostly won't type `keep` yourself. The loop is: an agent scouts a
 repository and files what it finds (`capture`, `add`), asks `ready` what's
 workable, `start`s the top item, and `close`s it with a reason when it's
 done. You show up occasionally to look at the board, block something that
@@ -19,7 +19,7 @@ Issues bridge, no cross-machine merge — see `docs/concepts.md`'s "deliberate
 refusals"), it's not an orchestrator (it doesn't know which agent is doing
 what right now — that's a different tool's job), and it doesn't parse
 anything itself. If a document needs turning into tickets, an agent reads it
-and issues `add` commands; rounce never touches a model to do that for you.
+and issues `add` commands; keep never touches a model to do that for you.
 
 For the reasoning behind specific decisions, `docs/concepts.md` has the full
 argument with citations to the design docs. This guide is the walkthrough.
@@ -27,26 +27,26 @@ argument with citations to the design docs. This guide is the walkthrough.
 ## A five-minute first session
 
 ```console
-$ rounce init
+$ keep init
 /Users/you/Projects/demo/.rounce/db.sqlite
 ```
 
 That's it for setup — one SQLite file under `.rounce/` in the current
 repository. Running `init` again is a no-op (it prints `unchanged: <path>`
-and destroys nothing); `rounce init --global` instead writes
+and destroys nothing); `keep init --global` instead writes
 `~/.rounce/db.sqlite`, for anyone who'd rather have one store for everything.
 
 Add a few items. `add` prints the new item's id and nothing else, which is
-what makes `id=$(rounce add ...)` work in a shell:
+what makes `id=$(keep add ...)` work in a shell:
 
 ```console
-$ rounce add --type bug --score 8/6/2 "Fix flaky auth test"
+$ keep add --type bug --score 8/6/2 "Fix flaky auth test"
 rnc-a91f3c
 
-$ rounce add --type task --score 5/6/4 "Write onboarding doc"
+$ keep add --type task --score 5/6/4 "Write onboarding doc"
 rnc-72e0b5
 
-$ rounce add --type epic --score 6/5/6 "Support dark mode"
+$ keep add --type epic --score 6/5/6 "Support dark mode"
 rnc-1cd8f2
 ```
 
@@ -54,7 +54,7 @@ rnc-1cd8f2
 means below. Now ask what's workable:
 
 ```console
-$ rounce ready
+$ keep ready
 rnc-a91f3c  23  bug   Fix flaky auth test
 rnc-72e0b5  18  task  Write onboarding doc
 rnc-1cd8f2  16  epic  Support dark mode
@@ -63,21 +63,21 @@ rnc-1cd8f2  16  epic  Support dark mode
 Highest score first. Claim one and finish it:
 
 ```console
-$ rounce start rnc-a91f3c
+$ keep start rnc-a91f3c
 rnc-a91f3c claimed by session ""
 
-$ rounce ready
+$ keep ready
 rnc-72e0b5  18  task  Write onboarding doc
 rnc-1cd8f2  16  epic  Support dark mode
 
-$ rounce close rnc-a91f3c --reason "fixed the race in TestAuthRetry"
+$ keep close rnc-a91f3c --reason "fixed the race in TestAuthRetry"
 rnc-a91f3c closed
 ```
 
 `start` set the item's status to `in_progress`, which is enough on its own to
 drop it out of `ready` — you don't need to close something to stop seeing it
 as workable. The empty session id (`claimed by session ""`) is normal here:
-`start` records whatever `$ROUNCE_SESSION` is set to, and a human typing
+`start` records whatever `$KEEP_SESSION` is set to, and a human typing
 commands directly usually hasn't set it. Agents running through MCP do —
 `docs/agents.md` covers that.
 
@@ -85,7 +85,7 @@ Notice `close` needed `--reason`. There's a separate `drop` command for
 abandoned work, with the identical shape:
 
 ```console
-$ rounce drop rnc-1cd8f2 --reason "dark mode is now covered by rnc-9c02af"
+$ keep drop rnc-1cd8f2 --reason "dark mode is now covered by rnc-9c02af"
 rnc-1cd8f2 dropped
 ```
 
@@ -97,10 +97,10 @@ existing item) has no `--status` flag at all — status only ever moves through
 `start`/`close`/`drop`, each of which is on the hook to say why.
 
 One more thing worth knowing early: flags can go on either side of the
-positional argument. `rounce show rnc-a91f3c --json` and
-`rounce show --json rnc-a91f3c` both work — a pre-pass reorders arguments
+positional argument. `keep show rnc-a91f3c --json` and
+`keep show --json rnc-a91f3c` both work — a pre-pass reorders arguments
 before the flag parser ever sees them, which is also what makes
-`rounce capture "title" --type roadmap --body -` work even though the title
+`keep capture "title" --type roadmap --body -` work even though the title
 comes first.
 
 ## The blocking demo
@@ -115,7 +115,7 @@ see `docs/concepts.md` for exactly how.
 Start with an epic and two children:
 
 ```console
-$ rounce ready
+$ keep ready
 rnc-4e47ef.1  27  task  High value child
 rnc-df86a0    25  bug   Retry drops last error
 rnc-4e47ef    23  epic  Ship the store
@@ -127,7 +127,7 @@ Four workable items: the epic (`rnc-4e47ef`), its two children
 own id), and an unrelated bug (`rnc-df86a0`). Now block the epic on that bug:
 
 ```console
-$ rounce dep rnc-4e47ef blocks rnc-df86a0
+$ keep dep rnc-4e47ef blocks rnc-df86a0
 rnc-4e47ef blocks rnc-df86a0
 ```
 
@@ -135,7 +135,7 @@ Read that direction carefully — `dep A blocks B` means **A waits on B**, not
 the reverse. Ask what's ready now:
 
 ```console
-$ rounce ready
+$ keep ready
 rnc-df86a0  25  bug  Retry drops last error
 ```
 
@@ -144,7 +144,7 @@ children too, even though neither one has a `blocks` edge of its own. Check
 `blocked` to see why, and who each item blames:
 
 ```console
-$ rounce blocked
+$ keep blocked
 rnc-4e47ef.1  27  task  High value child ← blocked by rnc-4e47ef
 rnc-4e47ef    23  epic  Ship the store   ← blocked by rnc-df86a0
 rnc-4e47ef.2  14  task  Low value child  ← blocked by rnc-4e47ef
@@ -159,10 +159,10 @@ immediate blocked parent, not the root cause, and you'd walk up from there.
 Close the bug and everything comes back:
 
 ```console
-$ rounce close rnc-df86a0 --reason "fixed the retry loop"
+$ keep close rnc-df86a0 --reason "fixed the retry loop"
 rnc-df86a0 closed
 
-$ rounce ready
+$ keep ready
 rnc-4e47ef.1  27  task  High value child
 rnc-4e47ef    23  epic  Ship the store
 rnc-4e47ef.2  14  task  Low value child
@@ -190,7 +190,7 @@ there until something promotes it.
 Pipe a real document in:
 
 ```console
-$ rounce capture "Q3 roadmap" --type roadmap --body - < ROADMAP.md
+$ keep capture "Q3 roadmap" --type roadmap --body - < ROADMAP.md
 rnc-8f2c91
 ```
 
@@ -199,16 +199,16 @@ returns exactly what went in, which matters because an agent refining it
 needs the actual document, not a reformatting of it:
 
 ```console
-$ rounce show rnc-8f2c91 --body | diff - ROADMAP.md
+$ keep show rnc-8f2c91 --body | diff - ROADMAP.md
                                        # silent — no output means identical
 ```
 
 It never shows up in `ready`, and it sits in the backlog instead:
 
 ```console
-$ rounce ready
+$ keep ready
                                        # nothing — the roadmap is raw
-$ rounce backlog
+$ keep backlog
 roadmap
 rnc-8f2c91  2026-08-12  Q3 roadmap
 ```
@@ -221,12 +221,12 @@ There is deliberately no `refine` command. An agent reads the document and
 issues an ordinary `add`, with two flags that mean two different things:
 
 ```console
-$ rounce add --parent rnc-8f2c91 --derived-from rnc-8f2c91 \
+$ keep add --parent rnc-8f2c91 --derived-from rnc-8f2c91 \
     --score 8/7/3 --why "removes duplicate config parsing across three services" \
     "Extract the shared config loader"
 rnc-8f2c91.1
 
-$ rounce ready
+$ keep ready
 rnc-8f2c91.1  23  task  Extract the shared config loader
 ```
 
@@ -238,7 +238,7 @@ epic while its content was refined out of an entirely different parked note.
 That's why they're two separate edges rather than one flag.
 
 **Why this matters six weeks later:** the roadmap document is still sitting
-in the backlog, unchanged, and `rounce show rnc-8f2c91.1` still resolves a
+in the backlog, unchanged, and `keep show rnc-8f2c91.1` still resolves a
 `derived-from` edge back to it. When someone asks "why does this ticket
 exist," the answer doesn't depend on anyone remembering the session that
 created it — it's a fact in the store. In a backlog that fills itself from
@@ -250,20 +250,20 @@ doesn't need a new child item — `update --stage ticket` promotes the same
 item in place:
 
 ```console
-$ rounce capture "Rate limiter is per-process, should be shared"
+$ keep capture "Rate limiter is per-process, should be shared"
 rnc-b31a04
 
-$ rounce backlog --type note
+$ keep backlog --type note
 note
 rnc-b31a04  2026-08-12  Rate limiter is per-process, should be shared
 
-$ rounce update --stage ticket --score 8/8/2 rnc-b31a04
+$ keep update --stage ticket --score 8/8/2 rnc-b31a04
 rnc-b31a04 updated
 
-$ rounce backlog --type note
+$ keep backlog --type note
                                        # empty — it's a ticket now
 
-$ rounce ready
+$ keep ready
 rnc-b31a04    25  note  Rate limiter is per-process, should be shared
 rnc-8f2c91.1  23  task  Extract the shared config loader
 ```
@@ -287,10 +287,10 @@ set — gets exactly `0`. Zero always sorts last, but it is never excluded from
 `ready`:
 
 ```console
-$ rounce add --type task "Investigate slow CI on Windows runners"
+$ keep add --type task "Investigate slow CI on Windows runners"
 rnc-c47a10
 
-$ rounce ready
+$ keep ready
 rnc-b31a04    25  note  Rate limiter is per-process, should be shared
 rnc-8f2c91.1  23  task  Extract the shared config loader
 rnc-c47a10     0  task  Investigate slow CI on Windows runners
@@ -302,10 +302,10 @@ agent can see — a ticket nobody got around to scoring yet is still real
 work, and it stays visible until someone (usually an agent, during
 refinement) gives it a value.
 
-`rounce show <id>` breaks the score back out into its inputs:
+`keep show <id>` breaks the score back out into its inputs:
 
 ```console
-$ rounce show rnc-8f2c91.1
+$ keep show rnc-8f2c91.1
 id         rnc-8f2c91.1
 stage      ticket
 type       task
@@ -322,11 +322,11 @@ time, so `ready` can sort on it directly without recalculating per row.
 
 ## The dashboard
 
-`rounce board` is a terminal glance — a counts line, then the top of the
+`keep board` is a terminal glance — a counts line, then the top of the
 queue:
 
 ```console
-$ rounce board
+$ keep board
 ready 3   in progress 1   blocked 2   backlog 1
 
 rnc-2b7e91.1  27  task  Fix pagination bug in list view
@@ -342,14 +342,14 @@ and `blocked`'s `← blocked by <id>` is already a better signal than colour
 could be, since it names the actual blocker in text.
 
 A repository that has never been used gets its own screen rather than an
-empty queue: what rounce holds, and the three ways work gets into it.
+empty queue: what keep holds, and the three ways work gets into it.
 
-![The first screen in a new repository](images/rounce-first-run.png)
+![The first screen in a new repository](images/keep-first-run.png)
 
 `--web` serves the same data as a real page, over loopback only:
 
 ```console
-$ rounce board --web
+$ keep board --web
 http://127.0.0.1:63417
 ```
 
@@ -377,20 +377,20 @@ The tree view is the one that actually earns having a web page at all — a
 blocked epic greying out its entire subtree is legible in about a second,
 and takes several separate commands to reconstruct from the CLI. It's built
 on the exact same blocked-tree logic `ready` itself uses (not a
-reimplementation), so it structurally cannot disagree with what `rounce
-ready` or `rounce blocked` would tell you about the same items.
+reimplementation), so it structurally cannot disagree with what `keep
+ready` or `keep blocked` would tell you about the same items.
 
 The page uses colour for exactly three states — workable, claimed, blocked —
 and never colour alone: a blocked row also carries the literal word "blocked"
 in text.
 
-![Search, saying which field matched and showing the text around it](images/rounce-search.png)
+![Search, saying which field matched and showing the text around it](images/keep-search.png)
 
-![Activity: what happened, newest first](images/rounce-activity.png)
+![Activity: what happened, newest first](images/keep-activity.png)
 
 ### Acting from the page
 
-![One item, with its edit form](images/rounce-item.png)
+![One item, with its edit form](images/keep-item.png)
 
 The board writes. You can file an item, edit one, claim, close, drop, promote
 from the pen, assign, and — with Interlock installed — start an agent on a row
@@ -411,27 +411,27 @@ cannot write.
 
 ## Multi-repo
 
-`rounce init` registers the store it just created in `~/.rounce/repos.json`
+`keep init` registers the store it just created in `~/.rounce/repos.json`
 — a small index of every store you've initialized, not a combined database.
 Each repository still keeps its own separate SQLite file; the registry just
 remembers where they all are.
 
 ```console
-$ rounce repos
-rounce      41  187  2026-08-12T01:47:51Z  /Users/you/Projects/rounce/.rounce/db.sqlite
+$ keep repos
+keep      41  187  2026-08-12T01:47:51Z  /Users/you/Projects/keep/.rounce/db.sqlite
 interlock   12   64  2026-08-11T18:02:11Z  /Users/you/Projects/interlock/.rounce/db.sqlite
 ```
 
 Columns are name, item count, ready count, last activity, path — right-aligned
 counts, widest-value alignment, no colour, same rules as every other table
-here. `rounce ready --all` merges every registered store's `ready` queue,
+here. `keep ready --all` merges every registered store's `ready` queue,
 ranked by score across all of them, with the repository shown per row:
 
 ```console
-$ rounce ready --all
-rounce      rnc-0a4518  26  task  Wire the tree view
+$ keep ready --all
+keep      rnc-0a4518  26  task  Wire the tree view
 interlock   rnc-fc4427  23  task  Lease renewal backoff     ← different repository
-rounce      rnc-e80b39  14  task  Tidy the flag help
+keep      rnc-e80b39  14  task  Tidy the flag help
 ```
 
 (`--all` and `--db` are mutually exclusive — `--db` names one specific store,
@@ -442,8 +442,8 @@ If a registered store gets deleted or its repository moved, `repos` reports
 it on that row instead of crashing or silently dropping it:
 
 ```console
-$ rounce repos
-rounce      41  187  2026-08-12T01:47:51Z  /Users/you/Projects/rounce/.rounce/db.sqlite
+$ keep repos
+keep      41  187  2026-08-12T01:47:51Z  /Users/you/Projects/keep/.rounce/db.sqlite
 old-thing   error: store not found at /Users/you/Projects/old-thing/.rounce/db.sqlite (deleted or moved): open /Users/you/Projects/old-thing/.rounce/db.sqlite: no such file or directory
 ```
 
@@ -466,14 +466,14 @@ is never ambiguous about where the write lands.
 
 ## Using it with agents
 
-The CLI is the primitive rounce is built around, and it stays complete on
+The CLI is the primitive keep is built around, and it stays complete on
 its own specifically so hooks — which can call a binary but cannot call an
-MCP tool — always have something to call. On top of that, `rounce mcp`
+MCP tool — always have something to call. On top of that, `keep mcp`
 serves the same operations as ten MCP tools over stdio, for agents that
 reach for tools first.
 
 ```bash
-claude mcp add rounce -e ROUNCE_SESSION="$SESSION_ID" -e ROUNCE_ACTOR="$USER" -- rounce mcp
+claude mcp add keep -e KEEP_SESSION="$SESSION_ID" -e KEEP_ACTOR="$USER" -- keep mcp
 ```
 
 Then you mostly just talk to the agent:
@@ -492,13 +492,37 @@ what the ten MCP tools actually are (and which three CLI verbs — `init`,
 snippet you can drop into a project so agents check `ready` before starting
 work instead of keeping their own mental task list for the session.
 
+## If you used this when it was called rounce
+
+The tool was renamed. Nothing on your disk has to change.
+
+**Your stores keep working, untouched.** The store still lives at
+`.rounce/db.sqlite`, and item ids still start with `rnc-`. Both are on-disk
+identifiers rather than branding: renaming them would either break every
+store that already exists or need a migration that invalidates every id
+you have written down in a commit message. `.keep` would also be a poor
+directory name at a repository root, where it already means "this empty
+directory is on purpose" to git.
+
+**The environment variables gained `KEEP_` names and kept the old ones.**
+`KEEP_DB`, `KEEP_ACTOR`, `KEEP_SESSION`, `KEEP_CODEX` and `KEEP_INTERLOCK`
+are the names to use. The matching `ROUNCE_` name is still read when the
+`KEEP_` one is unset, so a shell profile written a year ago still works and
+still attributes your events to you. Setting the `KEEP_` name to the empty
+string counts as unset and falls through, which is how you clear one.
+
+**What did change:** the binary is `keep`, the module is
+`github.com/gshepptech/keep`, the MCP server registers as `keep`, and the
+Codex plugin id is `keep@keep` — so `keep codex trust` has to be run once
+more to grant trust under the new id.
+
 ## Command reference
 
-Flags in `[brackets]` are optional. `--db <path>` (overrides `ROUNCE_DB` and
+Flags in `[brackets]` are optional. `--db <path>` (overrides `KEEP_DB` and
 the discovery walk) and `--actor <name>` (recorded on the events row;
-defaults to `$ROUNCE_ACTOR`, then `$USER`) are available wherever they make
-sense below but are omitted from the table for space — see `rounce <cmd>
--h` or `cmd/rounce/main.go`'s usage text, which is authoritative.
+defaults to `$KEEP_ACTOR`, then `$USER`) are available wherever they make
+sense below but are omitted from the table for space — see `keep <cmd>
+-h` or `cmd/keep/main.go`'s usage text, which is authoritative.
 
 | Command | Flags | Notes |
 |---|---|---|
@@ -513,9 +537,9 @@ sense below but are omitted from the table for space — see `rounce <cmd>
 | `list` | `--stage`, `--status`, `--type`, `--parent`, `--repo`, `--limit`, `--json` | Reads items directly, not the `ready` view — the only place raw and closed/dropped items show up alongside open ones. |
 | `search <text>` | `--closed`, `--limit`, `--json` | Finds items by text across title, why, acceptance, paths and body, ranked by where the match landed and saying which field it came from. Finished work is left out unless `--closed`. A miss goes to stderr so a script piping stdout gets an empty result, not prose. |
 | `log` | `--since` (`24h`, `7d`, RFC3339), `--actor`, `--kind`, `--limit`, `--json` | What happened, newest first, each entry carrying its item's title and — for a close or drop — the reason. Reads the events table, which is already the complete record of every mutation. |
-| `stale` | `--after` (default `2h`), `--json` | Claims nothing has happened to in a while. Silence is measured from the item's last **event**, not from when it was claimed, so a long piece of work being actively touched is never flagged. Reports only — rounce never releases a claim on its own. |
+| `stale` | `--after` (default `2h`), `--json` | Claims nothing has happened to in a while. Silence is measured from the item's last **event**, not from when it was claimed, so a long piece of work being actively touched is never flagged. Reports only — keep never releases a claim on its own. |
 | `dep <a> <type> <b>` | `--db`, `--actor` | `<type>` is `blocks`, `related`, or `derived-from`. `parent-child` is a valid dep type but `dep` refuses to create one — use `add --parent` instead. `blocks` reads "a waits on b." |
-| `start <id>` | `--json` | Claims the item for `$ROUNCE_SESSION`. Same-session repeat is a silent no-op; a different session's claim fails. |
+| `start <id>` | `--json` | Claims the item for `$KEEP_SESSION`. Same-session repeat is a silent no-op; a different session's claim fails. |
 | `close <id> --reason <text>` | — | `--reason` is required. |
 | `drop <id> --reason <text>` | — | Same shape as `close`, distinct status — never counted as done. |
 | `board` | `--limit` (default 10, 0=all), `--json`, `--web`, `--port` (requires `--web`) | Counts line plus the top of the queue, or (`--web`) the loopback dashboard. Read-only. |

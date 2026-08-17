@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/gshepptech/rounce/internal/model"
+	"github.com/gshepptech/keep/internal/model"
 )
 
 // TestTree covers all seven behaviours 05-01-PLAN.md's Task 1 names. Every

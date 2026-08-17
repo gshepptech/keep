@@ -3,7 +3,7 @@ package dash
 import (
 	"testing"
 
-	"github.com/gshepptech/rounce/internal/interlock"
+	"github.com/gshepptech/keep/internal/interlock"
 )
 
 // TestHoldCountIsWhatTheReleaseButtonAsks.

@@ -35,7 +35,7 @@ var forbiddenTemplateTrustCalls = map[string]bool{
 // updates -- not a wider exception.
 const allowedCSSFile = "templates.go"
 
-// forbiddenDashImports mirrors cmd/rounce/boundary_test.go's own list for
+// forbiddenDashImports mirrors cmd/keep/boundary_test.go's own list for
 // the two entries relevant here. TestNoSQLAboveStore already enforces this
 // module-wide (and, per this plan's own coverage assertion, is proven to
 // reach internal/dash); asserting it again HERE, locally, means a failure

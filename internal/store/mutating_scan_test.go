@@ -17,7 +17,7 @@ import (
 // method they call.
 //
 // Why name-based call matching, not go/types: this package is eight files
-// with no name collisions across receivers, and cmd/rounce/boundary_test.go
+// with no name collisions across receivers, and cmd/keep/boundary_test.go
 // already proves the same "match ast.Ident / ast.SelectorExpr.Sel.Name
 // against a keyword" idiom works in this codebase without a full type
 // checker. A fully type-checked call graph (go/types + x/tools/go/packages)
@@ -185,7 +185,7 @@ func receiverTypeName(expr ast.Expr) string {
 }
 
 // mutatingSQLFragments are the same three keyword fragments
-// cmd/rounce/boundary_test.go's forbiddenSQLLiterals uses for SELECT/INSERT/
+// cmd/keep/boundary_test.go's forbiddenSQLLiterals uses for SELECT/INSERT/
 // UPDATE/DELETE/CREATE/PRAGMA -- narrowed here to the three that indicate a
 // WRITE, since SELECT/CREATE TABLE/PRAGMA appear in this package's read
 // paths and schema setup without indicating a mutating *Store method.

@@ -26,7 +26,7 @@ in **one SQLite file** and **one static binary**.
 
 <br>
 
-<img src="docs/images/rounce-queue.png" alt="The rounce board: the ranked queue, the agents at work, and the items they are holding up" width="880">
+<img src="docs/images/keep-queue.png" alt="The keep board: the ranked queue, the agents at work, and the items they are holding up" width="880">
 
 </div>
 
@@ -37,18 +37,18 @@ in **one SQLite file** and **one static binary**.
 Block an epic. **Its entire subtree leaves the queue.**
 
 ```console
-$ rounce ready
+$ keep ready
 rnc-d0b096.1  26  task  High value child
 rnc-28b866    24  bug   Retry drops last error
 rnc-d0b096    21  epic  Ship the store
 rnc-d0b096.2  13  task  Low value child
 
-$ rounce dep rnc-d0b096 blocks rnc-28b866      # the epic waits on the bug
+$ keep dep rnc-d0b096 blocks rnc-28b866      # the epic waits on the bug
 
-$ rounce ready
+$ keep ready
 rnc-28b866    24  bug   Retry drops last error      ← everything else is gone
 
-$ rounce blocked
+$ keep blocked
 rnc-d0b096.1  26  task  High value child ← blocked by rnc-d0b096
 rnc-d0b096    21  epic  Ship the store   ← blocked by rnc-28b866
 rnc-d0b096.2  13  task  Low value child  ← blocked by rnc-d0b096
@@ -62,19 +62,19 @@ reading the same query.
 
 ## The loop
 
-You are not meant to type `rounce` all day. **Agents are.**
+You are not meant to type `keep` all day. **Agents are.**
 
 ```mermaid
 flowchart LR
-    A["agent scouts<br/>the codebase"] -->|capture · add| B[("rounce<br/>one SQLite file")]
+    A["agent scouts<br/>the codebase"] -->|capture · add| B[("keep<br/>one SQLite file")]
     B -->|ready| C["agent picks<br/>the top item"]
     C -->|start · close| B
     B -->|board --web| D["you, occasionally"]
     style B fill:#14171a,stroke:#6E56CF,stroke-width:3px,color:#e6e9ec
 ```
 
-> **rounce never calls a model.** It is a store. Refinement, triage, and
-> estimation are things an agent does *using* rounce — which is exactly why any
+> **keep never calls a model.** It is a store. Refinement, triage, and
+> estimation are things an agent does *using* keep — which is exactly why any
 > agent, any plugin, any editor works with it.
 
 ---
@@ -82,11 +82,11 @@ flowchart LR
 ## Quickstart
 
 ```bash
-git clone git@github.com:gshepptech/rounce.git
-cd rounce && go install ./cmd/rounce      # → $(go env GOPATH)/bin/rounce
+git clone git@github.com:gshepptech/keep.git
+cd keep && go install ./cmd/keep      # → $(go env GOPATH)/bin/keep
 
 cd ~/Projects/your-repo
-rounce init                               # → .rounce/db.sqlite
+keep init                               # → .rounce/db.sqlite
 ```
 
 <sub>Private repository, so `go install …@latest` needs
@@ -96,7 +96,7 @@ simpler.</sub>
 **Give your agents the tools:**
 
 ```bash
-claude mcp add rounce -e ROUNCE_ACTOR="$USER" -- rounce mcp
+claude mcp add keep -e KEEP_ACTOR="$USER" -- keep mcp
 ```
 
 Then just talk to them:
@@ -123,14 +123,14 @@ Then just talk to them:
 </table>
 
 ```console
-$ rounce board
+$ keep board
 ready 3   in progress 0   blocked 0   backlog 1
 
 rnc-6b813d.1  26  task  Wire the tree view
 rnc-6b813d    23  epic  Ship the dashboard
 rnc-8746bb    22  bug   Fix the flake
 
-$ rounce board --web
+$ keep board --web
 http://127.0.0.1:63688
 ```
 
@@ -140,13 +140,13 @@ http://127.0.0.1:63688
 <br>
 
 ```console
-$ rounce ready --all
-rounce      rnc-0a4518  26  task  Wire the tree view
+$ keep ready --all
+keep      rnc-0a4518  26  task  Wire the tree view
 interlock   rnc-fc4427  23  task  Lease renewal backoff     ← different repository
-rounce      rnc-e80b39  14  task  Tidy the flag help
+keep      rnc-e80b39  14  task  Tidy the flag help
 
-$ rounce repos
-rounce      41  187  2026-08-12T01:47:51Z  /Users/you/Projects/rounce/.rounce/db.sqlite
+$ keep repos
+keep      41  187  2026-08-12T01:47:51Z  /Users/you/Projects/keep/.rounce/db.sqlite
 interlock   12   64  2026-08-11T18:02:11Z  /Users/you/Projects/interlock/.rounce/db.sqlite
 old-thing   error: store not found (deleted or moved): …
 ```
@@ -163,14 +163,14 @@ cleanly instead of being silently recreated as an empty database.
 <br>
 
 ```console
-$ rounce capture "Q3 roadmap" --type roadmap --body - < ROADMAP.md
+$ keep capture "Q3 roadmap" --type roadmap --body - < ROADMAP.md
 rnc-5d5874
 
-$ rounce show rnc-5d5874 --body | diff - ROADMAP.md
+$ keep show rnc-5d5874 --body | diff - ROADMAP.md
                                        # silent — byte-identical, 11,874 bytes
 
-$ rounce ready                         # the roadmap never appears here
-$ rounce backlog                       # it waits in the pen until refined
+$ keep ready                         # the roadmap never appears here
+$ keep backlog                       # it waits in the pen until refined
 ```
 
 Refinement is not a command. An agent reads `show` and issues
@@ -184,14 +184,14 @@ an answer.
 
 ## Two agents, one queue
 
-Install [Interlock](https://github.com/gshepptech/interlock) alongside rounce
+Install [Interlock](https://github.com/gshepptech/interlock) alongside keep
 and the queue stops offering work another agent is already editing.
 
 Neither program imports the other. Each reads the other over a versioned CLI
 contract, and each works completely alone — a Go import would have made that a
 slogan instead of a fact.
 
-<img src="docs/images/rounce-held.png" alt="Two items held back, each naming the file, the agent holding it, and when the lease frees up" width="880">
+<img src="docs/images/keep-held.png" alt="Two items held back, each naming the file, the agent holding it, and when the lease frees up" width="880">
 
 Two items are held back. The board names who holds them and until when, and the
 queue above omits exactly those two. Both come from one store call, so the
@@ -199,16 +199,16 @@ queue can never drop an item the panel fails to explain.
 
 <img src="docs/images/interlock-panel.png" alt="Interlock's panel: what is workable next, above the files currently held" width="880">
 
-The same moment from Interlock's side. **Next** is rounce's queue, already
+The same moment from Interlock's side. **Next** is keep's queue, already
 filtered. **Files held**, below it, is why the two higher-scoring items are not
 in it.
 
 ```bash
-rounce add --paths "internal/auth/token.go" --score 9/9/1 "Expire refresh tokens"
+keep add --paths "internal/auth/token.go" --score 9/9/1 "Expire refresh tokens"
 ```
 
 `paths` is the whole join. An item that declares none is never held back —
-rounce would rather offer work someone has quietly started than hide work
+keep would rather offer work someone has quietly started than hide work
 nobody is doing.
 
 **[Full guide →](docs/interlock.md)**
@@ -217,8 +217,8 @@ nobody is doing.
 
 ## Principles
 
-1. **rounce never calls a model.** It is a store. Refinement, triage, and
-   estimation are things an agent does *using* rounce. This is why any plugin
+1. **keep never calls a model.** It is a store. Refinement, triage, and
+   estimation are things an agent does *using* keep. This is why any plugin
    or any agent works with it, and why the binary stays small.
 2. **One core, three surfaces.** The CLI, the MCP server, and the dashboard are
    thin wrappers over `internal/store`. No surface carries behaviour of its own
@@ -237,7 +237,7 @@ nobody is doing.
 
 ---
 
-## What rounce is not, as of 2026-08-12
+## What keep is not, as of 2026-08-12
 
 > This list exists because every item on it will one day arrive as a reasonable
 > ten-minute change. Adding one is a decision to be made deliberately and dated
@@ -248,7 +248,7 @@ nobody is doing.
 | **No multi-machine sync** | No JSONL export, no Dolt, no CRDT, no merge resolution. Sharing a store means sharing a repository |
 | **No external tracker bridges** | No Jira, Linear, GitHub Issues, GitLab, Azure DevOps, or Notion. `items.external_ref` is a string nobody reads |
 | **No HTTP API** | Beyond the loopback dashboard. No federation, no remote |
-| **No orchestration primitives in `items`** | No awaits, timeouts, waiters, agent state, or roles. Coordination belongs in Interlock, which observes agents deterministically through hooks — rounce says *what needs doing*, Interlock says *who is doing what and where* |
+| **No orchestration primitives in `items`** | No awaits, timeouts, waiters, agent state, or roles. Coordination belongs in Interlock, which observes agents deterministically through hooks — keep says *what needs doing*, Interlock says *who is doing what and where* |
 | **No model calls** | No embeddings, no semantic search |
 | **No migration framework** | Beyond a `schema_version` integer, until there is data worth not breaking |
 
@@ -289,7 +289,7 @@ reimplemented.
 The item scoring model (`value` / `confidence` / `effort` → `score`) and the
 convention that an item's rationale cites `file:line` are derived from the
 **Ranger** plugin in `the-tavern`, which scores on four factors, not three:
-rounce has no `consequence` term, and puts effort on a 0-10 scale rather than
+keep has no `consequence` term, and puts effort on a 0-10 scale rather than
 Hollis's 0-5.
 
 ---

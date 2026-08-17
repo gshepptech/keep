@@ -9,7 +9,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/gshepptech/rounce/internal/store"
+	"github.com/gshepptech/keep/internal/store"
 )
 
 // textOf extracts the single TextContent's text from a *mcp.CallToolResult,

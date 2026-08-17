@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gshepptech/rounce/internal/model"
-	"github.com/gshepptech/rounce/internal/rank"
+	"github.com/gshepptech/keep/internal/model"
+	"github.com/gshepptech/keep/internal/rank"
 )
 
 // ErrNoFieldsToUpdate is returned by UpdateItem when the caller sets no
@@ -20,7 +20,7 @@ var ErrNoFieldsToUpdate = errors.New("update: no fields supplied")
 // nullableString converts "" to a driver NULL and anything else to itself,
 // the same "unset flag means SQL NULL, not empty string" convention
 // insertItem (items.go) uses for repo/paths. StartItem uses it for
-// claimed_by_session (an empty ROUNCE_SESSION means "no session", not a
+// claimed_by_session (an empty KEEP_SESSION means "no session", not a
 // session literally named ""); UpdateItem uses it for repo/paths/assignee.
 func nullableString(s string) any {
 	if s == "" {
@@ -103,13 +103,13 @@ func getItemForUpdateTx(ctx context.Context, tx *sql.Tx, id string) (model.Item,
 
 // StartItemInput is the argument to StartItem. Actor is required, same rule
 // as every other mutation in this package (EVENT-01 is unfalsifiable if
-// actor can be silently empty). SessionID is the caller's ROUNCE_SESSION,
+// actor can be silently empty). SessionID is the caller's KEEP_SESSION,
 // which may legitimately be empty -- there is no requirement that an agent
 // set one.
 //
 // json tags (04-02): this struct doubles as the `start` MCP tool's wire type
 // directly (internal/mcp). SessionID is `json:"-"` -- session is a
-// server-lifetime property (resolved once from ROUNCE_SESSION at server
+// server-lifetime property (resolved once from KEEP_SESSION at server
 // start), never a per-call argument, matching every other mutating *Input
 // struct in this package. Tags are additive and behaviourally inert for Go
 // callers, all of which construct this struct with named fields.

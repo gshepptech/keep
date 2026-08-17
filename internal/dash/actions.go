@@ -12,9 +12,9 @@ import (
 
 	"time"
 
-	"github.com/gshepptech/rounce/internal/interlock"
-	"github.com/gshepptech/rounce/internal/model"
-	"github.com/gshepptech/rounce/internal/store"
+	"github.com/gshepptech/keep/internal/interlock"
+	"github.com/gshepptech/keep/internal/model"
+	"github.com/gshepptech/keep/internal/store"
 )
 
 // The board began read-only, deliberately: docs/design/phase-4.md's first
@@ -251,7 +251,7 @@ func (s *Server) doClose(w http.ResponseWriter, r *http.Request) {
 }
 
 // doDrop takes the reason the confirm page collected and does NOT invent
-// one. `rounce drop` refuses without --reason and exits 2; the board used to
+// one. `keep drop` refuses without --reason and exits 2; the board used to
 // route around that by supplying "dropped from the board" on the user's
 // behalf, which is the board holding a lower standard than the command line
 // for the same operation, on the record they both write.
@@ -356,7 +356,7 @@ func (s *Server) doPromote(w http.ResponseWriter, r *http.Request) {
 }
 
 // scoreFields reads value/confidence/effort. All three or none: a partial
-// score is not a score, and rounce treats an unscored item as 0 that sorts
+// score is not a score, and keep treats an unscored item as 0 that sorts
 // last rather than as something to guess at.
 func scoreFields(r *http.Request) (*int, *int, *int) {
 	v, okV := intField(r, "value")
@@ -393,10 +393,10 @@ func hostOnly(hostport string) string {
 // doRelease releases one session's file holds, through Interlock.
 //
 // It shells out rather than reaching into Interlock's state, for the same
-// reason internal/interlock reads status over a CLI contract: rounce must
+// reason internal/interlock reads status over a CLI contract: keep must
 // keep building and working with Interlock absent, and a Go import would
 // end that. The command is Interlock's own documented one, confirmation
-// argument and all -- rounce does not get to invent a gentler version of
+// argument and all -- keep does not get to invent a gentler version of
 // another tool's guard rail.
 func (s *Server) doRelease(w http.ResponseWriter, r *http.Request) {
 	if err := s.guard(r); err != nil {
@@ -430,7 +430,7 @@ func (s *Server) doAssign(w http.ResponseWriter, r *http.Request) {
 
 // doLaunch starts an agent on one item, through Interlock.
 //
-// rounce does not start agents. That is stated in its own README as a
+// keep does not start agents. That is stated in its own README as a
 // deliberate limit -- it holds the list and never calls a model -- and this
 // does not change it: the board shells out to `interlock run`, which is the
 // tool whose job is process lifecycle. If Interlock is not installed the

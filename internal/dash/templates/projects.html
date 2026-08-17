@@ -1,10 +1,10 @@
-{{/* projects.html -- every project rounce knows about. Data: []project.
+{{/* projects.html -- every project keep knows about. Data: []project.
 
      "Project" rather than "repository": what a person switches between here
      is a body of work, and the git repository is where it happens to live.
      The registry keeps its own vocabulary; renaming a stored field to match
      a page would be the tail wagging the dog. */}}
-{{define "projects"}}{{template "head" (titled . "Projects" "Projects" "Every project rounce is tracking. Each has its own board, its own queue, and its own store.")}}
+{{define "projects"}}{{template "head" (titled . "Projects" "Projects" "Every project keep is tracking. Each has its own board, its own queue, and its own store.")}}
 {{$p := .}}
 
 <div class="panel">
@@ -31,7 +31,7 @@
       {{if $p.Writable}}<a class="btn btn-sm btn-danger" href="/confirm?verb=forget&amp;path={{.Path}}&amp;name={{.Name}}&amp;return=/projects">Remove</a>{{end}}
     </span>
   </li>
-  {{else}}<li class="qempty">No projects registered. Run <code>rounce init</code> in a repository and it registers itself, or add one below.</li>
+  {{else}}<li class="qempty">No projects registered. Run <code>keep init</code> in a repository and it registers itself, or add one below.</li>
   {{end}}</ol>
 </div>
 

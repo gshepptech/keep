@@ -16,7 +16,7 @@
 <section class="firstrun">
   <h2>Nothing in here yet</h2>
   <p class="firstrun-lede">
-    rounce holds the list of work for this repository and hands the top of it
+    keep holds the list of work for this repository and hands the top of it
     to whoever asks. That is you, or an agent that has just opened a session
     with no memory of the last one.
   </p>
@@ -35,7 +35,7 @@
   <div class="firstrun-alt">
     <p>Or from the terminal you are already in. The CLI is the whole product,
     and every screen here is a view over it:</p>
-    <pre class="way-code">rounce add --score 9/8/2 --paths internal/auth/token.go \
+    <pre class="way-code">keep add --score 9/8/2 --paths internal/auth/token.go \
   "Expire refresh tokens after 30 days"</pre>
     <p>Or let an agent do it. With the MCP server registered, <code>ready</code> tells an
     agent what to work on and <code>capture</code> is where it files what it noticed on the
@@ -80,7 +80,7 @@
     </span>{{end}}
   </li>
   {{end}}</ol>
-  <p class="panel-foot">rounce never releases a claim on its own: it cannot tell a dead session from a slow one, and unclaiming live work would put two agents on one item.</p>
+  <p class="panel-foot">keep never releases a claim on its own: it cannot tell a dead session from a slow one, and unclaiming live work would put two agents on one item.</p>
 </div>
 {{end}}
 
@@ -188,7 +188,7 @@
     <span class="qbody">
       <a class="title" href="{{$p.Prefix}}/item/{{.ID}}">{{.Title}}</a>
       <span class="qmeta">
-        {{if .Assignee}}{{template "state-tag" (tag "claimed" .Assignee)}}{{else}}<span class="faint">claimed before rounce recorded who</span>{{end}}
+        {{if .Assignee}}{{template "state-tag" (tag "claimed" .Assignee)}}{{else}}<span class="faint">claimed before keep recorded who</span>{{end}}
         <span class="id">{{.ID}}</span>
       </span>
     </span>

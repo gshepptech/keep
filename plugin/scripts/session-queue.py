@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""SessionStart hook: put rounce's ready queue in front of the agent.
+"""SessionStart hook: put keep's ready queue in front of the agent.
 
 This is the whole reason the plugin exists. A `CLAUDE.md` line asking an agent
 to check the queue is an instruction it can ignore; a hook fires whether or not
-the model cooperates, which is why rounce's CLI was kept complete in the first
+the model cooperates, which is why keep's CLI was kept complete in the first
 place (docs/design/phase-3.md: "hooks can call a binary; hooks cannot call an
 MCP tool").
 
 Silence is a feature. This runs at the start of every session in every
-repository, most of which do not use rounce, so it must produce nothing at all
+repository, most of which do not use keep, so it must produce nothing at all
 unless there is something worth saying:
 
-  - rounce not installed        -> silent
+  - keep not installed        -> silent
   - no store resolvable here    -> silent
   - store exists but is empty   -> silent
 
@@ -43,7 +43,7 @@ def emit(context: str) -> None:
 
 
 def main() -> int:
-    binary = shutil.which("rounce")
+    binary = shutil.which("keep")
     if not binary:
         return 0
 
@@ -62,7 +62,7 @@ def main() -> int:
 
     # A non-zero exit here is the ordinary case, not an error worth reporting:
     # it means no store resolves from this directory, i.e. this repository does
-    # not use rounce.
+    # not use keep.
     if proc.returncode != 0:
         return 0
 
@@ -84,7 +84,7 @@ def main() -> int:
         return 0
 
     lines = [
-        "## rounce — the work queue for this repository",
+        "## keep — the work queue for this repository",
         "",
         f"**ready {ready}** · in progress {in_progress} · "
         f"blocked {blocked} · backlog {backlog}",
@@ -108,7 +108,7 @@ def main() -> int:
 
     lines += [
         "",
-        "Use the rounce tools rather than tracking this yourself:",
+        "Use the keep tools rather than tracking this yourself:",
         "`ready` before starting work — it already excludes anything blocked. "
         "`start` when you pick something up, `close` with a reason when it lands. "
         "File what you notice with `add`, or `capture` if it is still rough, "

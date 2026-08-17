@@ -14,7 +14,7 @@ const lockName = FileName + ".lock"
 // These bound how long a caller waits and how long a lock is believed.
 //
 // lockTimeout matches the store's own busy_timeout(3000): the two are the
-// same promise about the same situation -- another rounce process is
+// same promise about the same situation -- another keep process is
 // mid-write, wait a moment rather than failing -- and picking a different
 // number here would mean two different answers to "how long is contention
 // normal for".
@@ -52,7 +52,7 @@ const (
 // syscall.Flock is the textbook answer and is not portable: it does not
 // exist on Windows, so it would mean a build-tagged file per platform for
 // a lock held across three filesystem operations. O_CREATE|O_EXCL is
-// atomic on every filesystem rounce can plausibly run on, needs no build
+// atomic on every filesystem keep can plausibly run on, needs no build
 // tags, and adds no dependency -- and the failure mode it does have (a
 // process dying while holding the lock) is one flock does not have but
 // which is handled below by reclaiming a lock that has gone stale.
@@ -62,7 +62,7 @@ const (
 // The registry's whole contract is never-fatal: Load hands back a usable
 // empty envelope on any error rather than refusing, and Register ignores
 // Load's error deliberately so a corrupted registry cannot make every
-// future `rounce init` fail. Refusing to register because a lock could not
+// future `keep init` fail. Refusing to register because a lock could not
 // be taken would break exactly that promise, and would trade a rare lost
 // update for a routine hard failure. So a lock that cannot be acquired
 // within lockTimeout proceeds anyway, unlocked, which is precisely the

@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/gshepptech/rounce/internal/model"
+	"github.com/gshepptech/keep/internal/model"
 )
 
 // treeCTE walks DOWN the parent-child tree from a bound root id. It is
@@ -13,7 +13,7 @@ import (
 // Tree carries no second copy of the blocking recursion -- Tree is
 // blockedTreeCTE's fifth consumer, after Ready's view, Blocked, IsBlocked
 // and isBlockedTx. That shared constant is the whole reason the tree view
-// and `rounce ready` cannot disagree about which items are blocked
+// and `keep ready` cannot disagree about which items are blocked
 // (DASH-07); a second, independently written recursion here would be the
 // one way to make that claim false.
 //

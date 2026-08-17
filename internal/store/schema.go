@@ -131,7 +131,7 @@ INSERT OR IGNORE INTO meta (key, value) VALUES ('schema_version', '1');
 // through dsn() plus SetMaxOpenConns(1). It is the one place either public
 // entry point touches *sql.DB directly, so they cannot drift apart.
 //
-// STORE-09: one rounce process, one connection. Go's database/sql pool
+// STORE-09: one keep process, one connection. Go's database/sql pool
 // defaults assume a network database with many concurrent backends; SQLite
 // is embedded and single-writer, so the pool must never be allowed to open
 // a second physical connection in production.
@@ -172,7 +172,7 @@ func initWithDDL(path string, ddl string) (*Store, error) {
 	// concurrent processes race to be that first writer, the loser's BEGIN
 	// IMMEDIATE can come back SQLITE_BUSY almost instantly, without waiting
 	// out busy_timeout=3000 -- this was confirmed directly on this machine:
-	// running TestConcurrentInitSameDirectory (cmd/rounce) 30 times surfaced
+	// running TestConcurrentInitSameDirectory (cmd/keep) 30 times surfaced
 	// exactly this failure roughly 1 run in 8, always at this BeginTx, always
 	// well under 3000ms elapsed. It is a real, narrow SQLite WAL-bootstrap
 	// race, not a flaw in this test.

@@ -1,11 +1,11 @@
 {
-  "name": "rounce",
+  "name": "keep",
   "interface": {
-    "displayName": "rounce"
+    "displayName": "keep"
   },
   "plugins": [
     {
-      "name": "rounce",
+      "name": "keep",
       "source": {
         "source": "local",
         "path": "./plugin"

@@ -3,7 +3,7 @@ package interlock
 import (
 	"testing"
 
-	"github.com/gshepptech/rounce/internal/model"
+	"github.com/gshepptech/keep/internal/model"
 )
 
 func ptr(s string) *string { return &s }
@@ -88,7 +88,7 @@ func TestExcludeDropsOnlyItemsWhosePathIsHeld(t *testing.T) {
 }
 
 // TestExcludeKeepsItemsWithNoPaths states the failure direction this must
-// take. An item that declares no paths is one rounce knows nothing about --
+// take. An item that declares no paths is one keep knows nothing about --
 // treating unknown as collided would hide workable work, and a queue that
 // hides work is worse than a queue that occasionally offers work someone
 // else is already doing. Interlock's own hook blocks that write anyway.
@@ -115,7 +115,7 @@ func TestExcludeWithNoLeasesChangesNothing(t *testing.T) {
 
 // TestExcludeReturnsEmptyNotNil: `ready --json` substitutes an empty slice
 // for nil so an agent doing `jq '.[]'` does not break on null. That
-// substitution happens in cmd/rounce, but a filter that turned a non-nil
+// substitution happens in cmd/keep, but a filter that turned a non-nil
 // slice into nil would reintroduce the case just upstream of it.
 func TestExcludeReturnsEmptyNotNil(t *testing.T) {
 	kept, _ := Exclude([]model.Item{item("only", "x.go")}, held("x.go"))

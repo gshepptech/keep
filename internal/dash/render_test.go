@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/gshepptech/rounce/internal/model"
+	"github.com/gshepptech/keep/internal/model"
 )
 
 // update rewrites testdata/tree.golden.html from renderTree's current
@@ -87,7 +87,7 @@ func TestRenderTreeGolden(t *testing.T) {
 
 // diffSummary reports len(got)/len(want) and the first differing byte
 // offset plus a short window around it -- never the whole document --
-// matching cmd/rounce/roundtrip_test.go's existing discipline for a golden
+// matching cmd/keep/roundtrip_test.go's existing discipline for a golden
 // comparison failure.
 func diffSummary(got, want []byte) string {
 	n := min(len(got), len(want))

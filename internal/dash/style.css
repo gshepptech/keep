@@ -222,12 +222,21 @@ td[class*="depth-"] { font-family: var(--mono); }
   max-width: 1080px; margin: 0 auto; padding: 16px 24px;
   flex-wrap: wrap;
 }
+/* The wordmark. A dev tool's identity is the name set well, not a badge:
+   there is no room at 16px for anything that needs explaining. Tight
+   tracking and the mark sized to the lowercase x-height, so the two read as
+   one object rather than an icon with a label beside it.
+
+   The mark takes --fg, not --fg-muted. It did take muted, back when it was
+   three hairline strokes and needed to sit quietly; a filled silhouette at
+   the same value reads as a smudge instead. Full weight, matching the word
+   it stands next to. */
 .brand {
   display: inline-flex; align-items: center; gap: 8px;
   text-decoration: none; color: var(--fg);
   letter-spacing: -0.02em; flex: none;
 }
-.brand-mark { display: inline-flex; color: var(--fg-muted); }
+.brand-mark { display: inline-flex; color: var(--fg); }
 .brand-mark svg { display: block; }
 .brand-name { font-weight: 600; font-size: var(--text-base); }
 
@@ -672,15 +681,6 @@ pre {
    very long body cannot push the rest of the row off the page. */
 .snippet { max-width: 34ch; }
 .snippet .sub { white-space: normal; }
-
-/* The wordmark. A dev tool's identity is the name set well, not a badge:
-   there is no room at 16px for anything that needs explaining. Tight
-   tracking and the mark sized to the lowercase x-height, so the two read as
-   one object rather than an icon with a label beside it. */
-.brand { letter-spacing: -0.02em; }
-.brand-name { font-weight: 600; }
-.brand-mark { display: inline-flex; color: var(--fg-muted); }
-.brand-mark svg { display: block; }
 
 /* First and last cell align to the section rule above them, so a row reads
    as part of the section rather than as a box inset within it. */

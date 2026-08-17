@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify rounce's ten MCP tools load inside Codex and answer, without a turn.
+"""Verify keep's ten MCP tools load inside Codex and answer, without a turn.
 
 rnc-967360 asked for the Codex MCP registration to be checked against a live
 binary. The obvious way -- run `codex exec` and watch it call a tool -- needs
@@ -23,11 +23,11 @@ import sys
 # server name Codex does not have made it fail with a protocol error rather
 # than passing vacuously.
 #
-# Codex is not on $PATH once it has moved into the desktop app; $ROUNCE_CODEX
-# overrides, matching cmd/rounce/codex.go's own findCodex order.
-CODEX = os.environ.get("ROUNCE_CODEX") or shutil.which("codex") \
+# Codex is not on $PATH once it has moved into the desktop app; $KEEP_CODEX
+# overrides, matching cmd/keep/codex.go's own findCodex order.
+CODEX = os.environ.get("KEEP_CODEX") or shutil.which("codex") \
     or "/Applications/ChatGPT.app/Contents/Resources/codex"
-REPO = os.environ.get("ROUNCE_REPO") or os.getcwd()
+REPO = os.environ.get("KEEP_REPO") or os.getcwd()
 
 
 class AppServer:
@@ -80,22 +80,22 @@ def main() -> int:
     # What the CLI says, read first and independently -- the MCP answer is
     # compared against this, never the other way round.
     cli = json.loads(subprocess.run(
-        ["rounce", "ready", "--json"], cwd=REPO,
+        ["keep", "ready", "--json"], cwd=REPO,
         capture_output=True, text=True, check=True).stdout)
     cli_ids = [it["id"] for it in cli]
-    print(f"CLI `rounce ready --json` -> {len(cli_ids)} items: {cli_ids}\n")
+    print(f"CLI `keep ready --json` -> {len(cli_ids)} items: {cli_ids}\n")
 
     s = AppServer(CODEX)
     try:
         s.call("initialize", {"clientInfo": {
-            "name": "rounce-verify", "title": "rounce-verify", "version": "1"}})
+            "name": "keep-verify", "title": "keep-verify", "version": "1"}})
         s.send({"jsonrpc": "2.0", "method": "initialized", "params": {}})
 
         status = s.call("mcpServerStatus/list")
         entries = status.get("data") or status.get("servers") or []
-        rounce = next((e for e in entries if "rounce" in json.dumps(e)), None)
-        check("Codex reports a server named rounce", rounce is not None)
-        if rounce is None:
+        keep = next((e for e in entries if "keep" in json.dumps(e)), None)
+        check("Codex reports a server named keep", keep is not None)
+        if keep is None:
             return 1
 
         # Ten tools, by name -- a count alone would pass if the server
@@ -103,7 +103,7 @@ def main() -> int:
         want = sorted(["add", "backlog", "capture", "close", "dep",
                        "drop", "list", "ready", "show", "start"])
         got = sorted(t if isinstance(t, str) else t.get("name")
-                     for t in (rounce.get("tools") or []))
+                     for t in (keep.get("tools") or []))
         check("all ten tools are loaded, by name", got == want, f"{got}")
 
         thread = s.call("thread/start", {"cwd": REPO})
@@ -113,7 +113,7 @@ def main() -> int:
             return 1
 
         listed = s.call("mcpServer/tool/call", {
-            "server": "rounce", "threadId": tid,
+            "server": "keep", "threadId": tid,
             "tool": "ready", "arguments": {}})
 
         text = json.dumps(listed)

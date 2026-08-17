@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gshepptech/rounce/internal/model"
+	"github.com/gshepptech/keep/internal/model"
 )
 
 // confirmData is the page that stands between a destructive control and the
@@ -83,7 +83,7 @@ func (s *Server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 	case "forget":
 		d.Path = r.URL.Query().Get("path")
 		d.Heading = "Remove " + r.URL.Query().Get("name") + " from the list?"
-		d.Lede = "This forgets the project. Its store, its items and its history are left exactly where they are on disk -- rounce simply stops listing it, and `rounce init` in that directory brings it back."
+		d.Lede = "This forgets the project. Its store, its items and its history are left exactly where they are on disk -- keep simply stops listing it, and `keep init` in that directory brings it back."
 		d.Button = "Remove it"
 		d.Post = "project-forget"
 	default:

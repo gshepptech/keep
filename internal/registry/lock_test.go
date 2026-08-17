@@ -31,7 +31,7 @@ func TestWithLockRemovesTheLockFile(t *testing.T) {
 
 // TestWithLockRunsFnEvenWhenTheLockIsHeld is the never-fatal contract at
 // this boundary. Register ignores Load's error so a corrupted registry
-// cannot make every future `rounce init` fail; refusing to register because
+// cannot make every future `keep init` fail; refusing to register because
 // a lock was busy would break the same promise from the other side, trading
 // a rare lost update for a routine hard failure.
 //
@@ -123,7 +123,7 @@ func TestAcquireDoesNotReclaimAFreshLock(t *testing.T) {
 // TestRegisterAndForgetSerialiseThroughTheLock proves the lock is actually
 // on the read-modify-write path rather than merely existing. Both mutating
 // entry points must take it; Load and Save must not, since a reader that
-// blocked on a writer would make `rounce repos` fail while an init was in
+// blocked on a writer would make `keep repos` fail while an init was in
 // flight.
 func TestRegisterAndForgetSerialiseThroughTheLock(t *testing.T) {
 	home := t.TempDir()
@@ -156,7 +156,7 @@ func TestRegisterAndForgetSerialiseThroughTheLock(t *testing.T) {
 	}
 
 	// Load must NOT block: a read that waited on a writer would make
-	// `rounce repos` hang whenever an init was in flight.
+	// `keep repos` hang whenever an init was in flight.
 	start := time.Now()
 	if _, err := Load(home); err != nil {
 		t.Fatalf("Load: %v", err)

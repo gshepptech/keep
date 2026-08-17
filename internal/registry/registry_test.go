@@ -140,9 +140,9 @@ func TestSaveLeavesNoTempFile(t *testing.T) {
 	}
 }
 
-// TestSaveCreatesMissingRounceDir proves Save into a home whose .rounce
+// TestSaveCreatesMissingKeepDir proves Save into a home whose .rounce
 // directory does not yet exist creates it and succeeds.
-func TestSaveCreatesMissingRounceDir(t *testing.T) {
+func TestSaveCreatesMissingKeepDir(t *testing.T) {
 	home := t.TempDir()
 
 	if err := Save(home, Envelope{}); err != nil {
@@ -326,8 +326,8 @@ func TestForgetUnregisteredPathReturnsFalseNotError(t *testing.T) {
 // called it would still be testable by setting $HOME, but only as long as
 // every test remembered to. Making home a parameter removes the possibility
 // of forgetting: there is no code path here that could reach the
-// developer's real ~/.rounce/repos.json. cmd/rounce is the one place that
-// lookup is used, and cmd/rounce's tests run the real binary with an
+// developer's real ~/.rounce/repos.json. cmd/keep is the one place that
+// lookup is used, and cmd/keep's tests run the real binary with an
 // explicit HOME (cli_test.go's env helper).
 func TestRegistryNeverCallsUserHomeDir(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)

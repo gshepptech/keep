@@ -10,8 +10,8 @@ import (
 
 	"golang.org/x/net/html"
 
-	"github.com/gshepptech/rounce/internal/model"
-	"github.com/gshepptech/rounce/internal/store"
+	"github.com/gshepptech/keep/internal/model"
+	"github.com/gshepptech/keep/internal/store"
 )
 
 // resourceAttrs are the attributes whose values a browser resolves as a URL

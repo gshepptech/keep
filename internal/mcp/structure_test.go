@@ -25,7 +25,7 @@ const wantHandlerCount = 13
 // permitted, lives in one shared helper, and is the only branch in the
 // package." phase-3.md says this rule is "checked by review" -- this test
 // replaces that review with a mechanical walk, following the same
-// go/ast-over-go/types-free precedent cmd/rounce/boundary_test.go's
+// go/ast-over-go/types-free precedent cmd/keep/boundary_test.go's
 // TestNoSQLAboveStore and internal/store/mutating_scan_test.go's
 // mutatingStoreMethods already established in this codebase (grep would
 // not distinguish the permitted switch from business branching; an AST

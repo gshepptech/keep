@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gshepptech/rounce/internal/model"
+	"github.com/gshepptech/keep/internal/model"
 )
 
 // containsID (deps_test.go) reports whether ids contains id -- reused here

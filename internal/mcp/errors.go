@@ -7,7 +7,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/gshepptech/rounce/internal/store"
+	"github.com/gshepptech/keep/internal/store"
 )
 
 // resultFor is the package's one permitted conditional (04-CONTEXT.md
@@ -40,11 +40,11 @@ import (
 //	ErrCycle                | isError: true                     | Well-formed call, legitimate failure
 //	ErrInvalidTransition    | isError: true                     | `start` on a blocked item names the blocker -- useful to an agent
 //	ErrConflict             | isError: true                     | Names the holding session and claim time
-//	ErrParentChildViaDep    | isError: true                     | Its own message already says `rounce add --parent <id>`
+//	ErrParentChildViaDep    | isError: true                     | Its own message already says `keep add --parent <id>`
 //	ErrSelfEdge             | isError: true                     | Well-formed values, refused for a semantic reason
 //	ErrNoFieldsToUpdate     | isError: true                     | Unreachable today (only UpdateItem produces it, and `update` is not one of the ten tools); classified anyway so a future `update` tool inherits the decision instead of re-litigating it
 //	ErrInvalidDepType       | protocol error, CodeInvalidParams | A value outside the closed vocabulary IS a malformed argument -- MCP-04's "schema validation failure -> protocol error" row, enforced by the store because the SDK will not (see note below)
-//	ErrSchemaVersion        | never reaches here                | Produced only by store.Open, so cmd/rounce/mcp.go fails at startup before Run -- not a per-call failure, the store is unusable
+//	ErrSchemaVersion        | never reaches here                | Produced only by store.Open, so cmd/keep/mcp.go fails at startup before Run -- not a per-call failure, the store is unusable
 //
 // Everything unclassified falls through to `default: return nil, err` -- a
 // protocol error with a generic code. The one real case today is a schema
@@ -71,7 +71,7 @@ import (
 // # Classification is by errors.Is, never by message text
 //
 // The same rule internal/store/errors.go states for SQLite codes and
-// cmd/rounce/flags.go's exitFor follows for CLI exit codes, for the same
+// cmd/keep/flags.go's exitFor follows for CLI exit codes, for the same
 // reason: messages are not a contract.
 //
 // A json.Marshal failure on the success path is not a business outcome

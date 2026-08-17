@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gshepptech/rounce/internal/interlock"
-	"github.com/gshepptech/rounce/internal/registry"
-	"github.com/gshepptech/rounce/internal/store"
+	"github.com/gshepptech/keep/internal/interlock"
+	"github.com/gshepptech/keep/internal/registry"
+	"github.com/gshepptech/keep/internal/store"
 )
 
 // crossRepoFixture builds a registry home with two real, separate stores
@@ -73,10 +73,10 @@ func crossRepoFixture(t *testing.T) (*Server, string) {
 // repository.
 func TestAllRanksAcrossRepositories(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// Windows cannot execute. The behaviour under test is keep's, not the
 	// shell's, but there is no honest way to assert it here without a
 	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: rounce's Interlock integration is unverified on
+	// the gap is real: keep's Interlock integration is unverified on
 	// Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
@@ -119,10 +119,10 @@ func TestAllRanksAcrossRepositories(t *testing.T) {
 // would read as "nothing to do here" rather than "this is broken".
 func TestAllReportsUnreadableRepositoryAsARowNotAPage(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// Windows cannot execute. The behaviour under test is keep's, not the
 	// shell's, but there is no honest way to assert it here without a
 	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: rounce's Interlock integration is unverified on
+	// the gap is real: keep's Interlock integration is unverified on
 	// Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
@@ -169,10 +169,10 @@ func TestAllReportsUnreadableRepositoryAsARowNotAPage(t *testing.T) {
 // A 404 on a link the page itself renders is worse than an empty table.
 func TestAllWithNoRegistryIsAnEmptyPageNotAnError(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// Windows cannot execute. The behaviour under test is keep's, not the
 	// shell's, but there is no honest way to assert it here without a
 	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: rounce's Interlock integration is unverified on
+	// the gap is real: keep's Interlock integration is unverified on
 	// Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
@@ -194,10 +194,10 @@ func TestAllWithNoRegistryIsAnEmptyPageNotAnError(t *testing.T) {
 // block.
 func TestAllNavLinkIsOnEveryView(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// Windows cannot execute. The behaviour under test is keep's, not the
 	// shell's, but there is no honest way to assert it here without a
 	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: rounce's Interlock integration is unverified on
+	// the gap is real: keep's Interlock integration is unverified on
 	// Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
@@ -233,10 +233,10 @@ func TestAllNavLinkIsOnEveryView(t *testing.T) {
 // is deleted so its error row renders in the same response.
 func TestNoExternalReferencesInCrossRepoView(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// Windows cannot execute. The behaviour under test is keep's, not the
 	// shell's, but there is no honest way to assert it here without a
 	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: rounce's Interlock integration is unverified on
+	// the gap is real: keep's Interlock integration is unverified on
 	// Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
@@ -319,13 +319,13 @@ func TestNoExternalReferencesInCrossRepoView(t *testing.T) {
 // TestInterlockPageSaysSoWhenInterlockIsAbsent: an empty table would read as
 // "nobody is working", which is the same lie an empty cross-repo queue would
 // tell about a deleted store. The test environment has no Interlock on PATH,
-// which is also the common case for a rounce user.
+// which is also the common case for a keep user.
 func TestInterlockPageSaysSoWhenInterlockIsAbsent(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// Windows cannot execute. The behaviour under test is keep's, not the
 	// shell's, but there is no honest way to assert it here without a
 	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: rounce's Interlock integration is unverified on
+	// the gap is real: keep's Interlock integration is unverified on
 	// Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
@@ -356,10 +356,10 @@ func TestInterlockPageSaysSoWhenInterlockIsAbsent(t *testing.T) {
 // switch to, which is the whole reason the old /who is gone.
 func TestBoardIsOnePage(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// Windows cannot execute. The behaviour under test is keep's, not the
 	// shell's, but there is no honest way to assert it here without a
 	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: rounce's Interlock integration is unverified on
+	// the gap is real: keep's Interlock integration is unverified on
 	// Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
@@ -379,7 +379,7 @@ func TestBoardIsOnePage(t *testing.T) {
 }
 
 // stubInterlock writes an `interlock` that answers `status --json` with the
-// given envelope, and returns its path for ROUNCE_INTERLOCK.
+// given envelope, and returns its path for KEEP_INTERLOCK.
 func stubInterlock(t *testing.T, statusJSON string) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "interlock")
@@ -400,10 +400,10 @@ func stubInterlock(t *testing.T, statusJSON string) string {
 // s.st.Ready directly leaves every other test in this package passing.
 func TestQueueAndInterlockViewAgree(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is rounce's, not the
+	// Windows cannot execute. The behaviour under test is keep's, not the
 	// shell's, but there is no honest way to assert it here without a
 	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: rounce's Interlock integration is unverified on
+	// the gap is real: keep's Interlock integration is unverified on
 	// Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")

@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gshepptech/rounce/internal/model"
+	"github.com/gshepptech/keep/internal/model"
 )
 
 // itemColumns is the explicit, ordered column list every query returning a
@@ -45,7 +45,7 @@ func scanItems(rows *sql.Rows) ([]model.Item, error) {
 	return out, nil
 }
 
-// blockedTreeCTE is the single definition of rounce's blocking recursion
+// blockedTreeCTE is the single definition of keep's blocking recursion
 // that lives in Go. It is a deliberate mirror of the shipped ready view's
 // own blocked_directly/blocked_tree CTE (internal/store/schema.go),
 // extended with blocker_id and nearest_blocked_id so it can REPORT the

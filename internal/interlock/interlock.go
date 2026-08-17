@@ -1,13 +1,13 @@
-// Package interlock reads what Interlock is holding, so rounce's queue can
+// Package interlock reads what Interlock is holding, so keep's queue can
 // tell the truth about what is workable right now.
 //
 // # Why shelling out, and not a Go import
 //
-// rounce and Interlock answer different questions -- rounce says what needs
+// keep and Interlock answer different questions -- keep says what needs
 // doing, Interlock says who is doing what and where -- and both roadmaps
 // state that neither depends on the other to be useful. Importing
 // Interlock's packages would make that false in the one direction that
-// matters: rounce would stop building without it.
+// matters: keep would stop building without it.
 //
 // So this package shells out to the `interlock` binary and parses its
 // documented `status --json` envelope. The coupling is a CLI contract with
@@ -18,14 +18,14 @@
 //
 // Interlock missing, Interlock failing, Interlock slow, Interlock speaking
 // a version this does not understand: all of them mean the same thing here,
-// which is that rounce has nothing to add to its own answer. `ready` then
+// which is that keep has nothing to add to its own answer. `ready` then
 // reports exactly what it reported before this package existed.
 //
-// The alternative -- surfacing an error -- would make `rounce ready` fail in
+// The alternative -- surfacing an error -- would make `keep ready` fail in
 // every repository that does not use Interlock, which is most of them. That
 // is the same never-fatal rule internal/registry follows for an unreadable
 // store, and the same one plugin/scripts/session-queue.py follows when
-// rounce itself is not installed.
+// keep itself is not installed.
 package interlock
 
 import (
@@ -33,12 +33,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 	"time"
 
-	"github.com/gshepptech/rounce/internal/model"
+	"github.com/gshepptech/keep/internal/model"
+	"github.com/gshepptech/keep/internal/store"
 )
 
 // SupportedVersion is the `status --json` envelope this package understands.
@@ -52,7 +52,7 @@ const SupportedVersion = 1
 // Interlock must cost a bounded pause, never the session.
 const fetchTimeout = 2 * time.Second
 
-// Status is Interlock's `status --json` envelope, narrowed to what rounce
+// Status is Interlock's `status --json` envelope, narrowed to what keep
 // reads. Fields it does not use are deliberately absent rather than carried
 // along: a struct that mirrors someone else's output invites code that
 // depends on parts of it nobody meant to promise.
@@ -77,7 +77,7 @@ type Session struct {
 }
 
 // Lease is one file held right now. Path is repo-relative, which is what
-// rounce compares against items.paths.
+// keep compares against items.paths.
 type Lease struct {
 	Path      string `json:"path"`
 	Agent     string `json:"agent"`
@@ -91,7 +91,7 @@ type Lease struct {
 // Collision is one item excluded from `ready` because a path it declares is
 // held. It names the path and the holder, because "this is not workable" is
 // only actionable if you can see who to wait for -- the same reason
-// `rounce blocked` names the blocking item rather than just omitting it.
+// `keep blocked` names the blocking item rather than just omitting it.
 type Collision struct {
 	Item  model.Item
 	Path  string
@@ -140,14 +140,19 @@ func Fetch(ctx context.Context, dir string) (Status, bool) {
 // The "off" value is not only for tests, though it is what makes them
 // deterministic: without it, whether a test sees a filtered queue depends on
 // whether the developer running it happens to have Interlock installed,
-// which is precisely the environment leak cmd/rounce's env() helper exists
+// which is precisely the environment leak cmd/keep's env() helper exists
 // to prevent. It is also the answer for anyone who wants the two tools
 // installed but not joined.
-const EnvBinary = "ROUNCE_INTERLOCK"
+const EnvBinary = "KEEP_INTERLOCK"
 
 // binary resolves the Interlock binary, honouring EnvBinary.
+//
+// Read through store.Env rather than os.Getenv so that ROUNCE_INTERLOCK
+// still works: this is the variable a person sets to "off" to keep the two
+// tools unjoined, and having it quietly stop meaning that after a rename
+// would silently rejoin them.
 func binary() (string, bool) {
-	switch v := os.Getenv(EnvBinary); {
+	switch v := store.Env("INTERLOCK"); {
 	case v == "off":
 		return "", false
 	case v != "":
@@ -164,7 +169,7 @@ func binary() (string, bool) {
 //
 // The format is comma-separated, repo-relative, whitespace trimmed. It is
 // defined HERE, at the first thing that ever reads the column: v1 shipped
-// items.paths deliberately unread ("rounce carries two unread columns for
+// items.paths deliberately unread ("keep carries two unread columns for
 // the eventual join"), so nothing until now had an opinion. Comma-separated
 // because the CLI already takes `--paths` as one string, and splitting on
 // commas is the reading a person writing that flag would expect.
@@ -183,14 +188,14 @@ func SplitPaths(paths *string) []string {
 
 // Exclude partitions items into those still workable and those held.
 //
-// It is one function with two callers -- `rounce ready` and the dashboard's
+// It is one function with two callers -- `keep ready` and the dashboard's
 // queue view -- for the same reason internal/store's blockedTreeCTE is one
 // constant with five: two implementations of "is this held" would drift, and
 // the drift would be invisible until the board and the CLI disagreed about
 // what is workable. DASH-07's agreement test exists because that already
 // almost happened once.
 //
-// An item with no paths is never excluded. Declaring no paths means rounce
+// An item with no paths is never excluded. Declaring no paths means keep
 // does not know what the work touches, and guessing that it collides would
 // hide workable items -- the failure direction this must not take.
 func Exclude(items []model.Item, st Status) ([]model.Item, []Collision) {
@@ -227,10 +232,10 @@ func firstHeld(paths []string, held map[string]Lease) (string, Lease, bool) {
 // Release releases one session's file holds by running Interlock's own
 // command, confirmation argument included.
 //
-// rounce does not reach into Interlock's lease files to do this. Releasing
+// keep does not reach into Interlock's lease files to do this. Releasing
 // someone else's hold is a guard rail Interlock built deliberately -- it
 // takes the session id twice on purpose -- and a second implementation here
-// would be rounce deciding that guard rail is optional.
+// would be keep deciding that guard rail is optional.
 func Release(ctx context.Context, session string) error {
 	bin, ok := binary()
 	if !ok {
@@ -252,7 +257,7 @@ func Release(ctx context.Context, session string) error {
 
 // Run starts an agent on one item, through Interlock's own launcher.
 //
-// rounce does not start agents -- that is a stated limit, not an oversight,
+// keep does not start agents -- that is a stated limit, not an oversight,
 // and this does not change it. Interlock owns process lifecycle, so the
 // board asks Interlock rather than growing a supervisor of its own.
 //

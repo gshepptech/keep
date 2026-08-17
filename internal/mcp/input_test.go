@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gshepptech/rounce/internal/model"
+	"github.com/gshepptech/keep/internal/model"
 )
 
 // wantRequired is the exact `required` set BuildSchemas must produce for

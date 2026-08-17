@@ -10,8 +10,8 @@ import (
 	sqlite "modernc.org/sqlite"
 	sqlite3 "modernc.org/sqlite/lib"
 
-	"github.com/gshepptech/rounce/internal/model"
-	"github.com/gshepptech/rounce/internal/rank"
+	"github.com/gshepptech/keep/internal/model"
+	"github.com/gshepptech/keep/internal/rank"
 )
 
 // nowFunc is the seam AddItem (and any later mutation in this package) uses
@@ -39,7 +39,7 @@ const maxIDAttempts = 8
 // json tags (04-02): this struct doubles as the `add`/`capture` MCP tools'
 // wire type directly (internal/mcp), which is why every field carries a
 // snake_case tag. This changes nothing for Go callers -- every construction
-// site in this module and cmd/rounce uses named fields, which struct tags do
+// site in this module and cmd/keep uses named fields, which struct tags do
 // not affect. Two tags are `json:"-"`, deliberately: SessionID is a
 // server-lifetime property (one MCP server process serves one agent
 // session), never a per-call argument, so it can never be supplied over the
