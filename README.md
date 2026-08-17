@@ -83,10 +83,10 @@ flowchart LR
 
 ```bash
 git clone git@github.com:gshepptech/keep.git
-cd keep && go install ./cmd/keep      # → $(go env GOPATH)/bin/keep
+cd keep && go install ./cmd/keep          # → $(go env GOPATH)/bin/keep
 
 cd ~/Projects/your-repo
-keep init                               # → .rounce/db.sqlite
+keep init                                 # → .rounce/db.sqlite
 ```
 
 <sub>Private repository, so `go install …@latest` needs
@@ -141,12 +141,12 @@ http://127.0.0.1:63688
 
 ```console
 $ keep ready --all
-keep      rnc-0a4518  26  task  Wire the tree view
+keep        rnc-0a4518  26  task  Wire the tree view
 interlock   rnc-fc4427  23  task  Lease renewal backoff     ← different repository
-keep      rnc-e80b39  14  task  Tidy the flag help
+keep        rnc-e80b39  14  task  Tidy the flag help
 
 $ keep repos
-keep      41  187  2026-08-12T01:47:51Z  /Users/you/Projects/keep/.rounce/db.sqlite
+keep        41  187  2026-08-12T01:47:51Z  /Users/you/Projects/keep/.rounce/db.sqlite
 interlock   12   64  2026-08-11T18:02:11Z  /Users/you/Projects/interlock/.rounce/db.sqlite
 old-thing   error: store not found (deleted or moved): …
 ```

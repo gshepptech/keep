@@ -418,7 +418,7 @@ remembers where they all are.
 
 ```console
 $ keep repos
-keep      41  187  2026-08-12T01:47:51Z  /Users/you/Projects/keep/.rounce/db.sqlite
+keep        41  187  2026-08-12T01:47:51Z  /Users/you/Projects/keep/.rounce/db.sqlite
 interlock   12   64  2026-08-11T18:02:11Z  /Users/you/Projects/interlock/.rounce/db.sqlite
 ```
 
@@ -429,9 +429,9 @@ ranked by score across all of them, with the repository shown per row:
 
 ```console
 $ keep ready --all
-keep      rnc-0a4518  26  task  Wire the tree view
+keep        rnc-0a4518  26  task  Wire the tree view
 interlock   rnc-fc4427  23  task  Lease renewal backoff     ← different repository
-keep      rnc-e80b39  14  task  Tidy the flag help
+keep        rnc-e80b39  14  task  Tidy the flag help
 ```
 
 (`--all` and `--db` are mutually exclusive — `--db` names one specific store,
@@ -443,7 +443,7 @@ it on that row instead of crashing or silently dropping it:
 
 ```console
 $ keep repos
-keep      41  187  2026-08-12T01:47:51Z  /Users/you/Projects/keep/.rounce/db.sqlite
+keep        41  187  2026-08-12T01:47:51Z  /Users/you/Projects/keep/.rounce/db.sqlite
 old-thing   error: store not found at /Users/you/Projects/old-thing/.rounce/db.sqlite (deleted or moved): open /Users/you/Projects/old-thing/.rounce/db.sqlite: no such file or directory
 ```
 

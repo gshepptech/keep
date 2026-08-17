@@ -44,7 +44,7 @@ go install github.com/gshepptech/keep/cmd/keep@latest
 go install github.com/gshepptech/interlock/cmd/interlock@latest
 
 cd /your/repo
-keep init        # creates .rounce/db.sqlite
+keep init          # creates .rounce/db.sqlite
 interlock init     # wires the agent hooks, merges, never replaces
 ```
 
@@ -104,7 +104,7 @@ One page shows both sides. keep's board reads Interlock directly, so you do
 not need to keep two dashboards open to answer one question.
 
 ```bash
-keep board --web        # the queue, who is holding it up, and the agents
+keep board --web          # the queue, who is holding it up, and the agents
 interlock dashboard       # the same moment from the territory's side
 ```
 
@@ -203,9 +203,9 @@ the morning question of what to work on before you have decided where.
 ## Checking it works
 
 ```bash
-keep ready                 # note the top item
+keep ready                   # note the top item
 # ...let an agent start editing one of its files...
-keep ready                 # the item is gone; stderr names the holder
+keep ready                   # the item is gone; stderr names the holder
 interlock status --json      # the lease that caused it
 ```
 
