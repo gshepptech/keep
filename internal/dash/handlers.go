@@ -118,7 +118,7 @@ func (s *Server) handleItem(w http.ResponseWriter, r *http.Request) {
 	}
 	path := s.pathFor(r.PathValue("project"))
 	view := itemView{ItemDetail: d, Held: s.heldFor(r.Context(), d.Item, repoDirOf(path))}
-	s.render(w, "item", s.pageFor(r, "", name, view))
+	s.render(w, "item", s.pageFor(r, "item", name, view))
 }
 
 // handleTree renders the subtree beneath {id}.
@@ -135,7 +135,7 @@ func (s *Server) handleTree(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err)
 		return
 	}
-	s.render(w, "tree", s.pageFor(r, "", name, nodes))
+	s.render(w, "tree", s.pageFor(r, "tree", name, nodes))
 }
 
 // fail classifies err by errors.Is, never message text: store.ErrNotFound

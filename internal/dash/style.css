@@ -1007,7 +1007,23 @@ h1, h2, h3, .panel-head h2, .qbody .title, .firstrun h2 { line-height: 1.25; }
 .searchbar input[type="search"], .searchbar .btn { min-height: 44px; }
 .prompt-side .btn, .prompt-side select { min-height: 40px; }
 
-/* Controls that sit in the same row share a height. A 30px select beside a
-   38px button is the mismatch every hand-tuned form ends up with. */
-.qacts .btn, .qacts select, .acts .btn, .acts select { min-height: 32px; }
-.prompt-side .btn, .prompt-side select { min-height: 40px; }
+/* Controls that sit in the same row share a height, exactly -- not a
+   minimum, which still lets a select grow past a button beside it. The row
+   controls are .qacts now (the queue rows became list items); the rule
+   targeted the old .acts, so the select kept the generic form padding and
+   sat 6px taller than its own buttons. */
+.qacts .btn, .qacts select, .acts .btn, .acts select {
+  height: 32px; min-height: 32px; padding-top: 0; padding-bottom: 0;
+}
+.qacts select, .acts select { padding-right: 26px; padding-left: 12px; }
+.prompt-side .btn, .prompt-side select { height: 40px; min-height: 40px; padding-top: 0; padding-bottom: 0; }
+.searchbar input[type="search"], .searchbar .btn { height: 44px; min-height: 44px; padding-top: 0; padding-bottom: 0; }
+
+/* Rows that mix a wrapping run of text with anything else default to
+   align-items: stretch, so the items sit top-aligned and the row loses its
+   baseline. Both of these wrap. */
+.tally, .toolbar { align-items: center; }
+
+/* The tally is read as a sentence, not chrome, so it takes the prose floor
+   rather than the label size. */
+.tally { font-size: var(--text-base); }

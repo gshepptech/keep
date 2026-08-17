@@ -90,6 +90,8 @@
     {{if eq .Page.Nav "all"}}<a href="/all" class="tab active" aria-current="page">All projects</a>{{end}}
     {{if eq .Page.Nav "new"}}<a href="{{.Page.Prefix}}/new" class="tab active" aria-current="page">New item</a>{{end}}
     {{if eq .Page.Nav "confirm"}}<a href="#content" class="tab active" aria-current="page">Confirm</a>{{end}}
+    {{if eq .Page.Nav "item"}}<a href="#content" class="tab active" aria-current="page">Item</a>{{end}}
+    {{if eq .Page.Nav "tree"}}<a href="#content" class="tab active" aria-current="page">Tree</a>{{end}}
   </nav>
 
   <div class="bar-end">
