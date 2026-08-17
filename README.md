@@ -301,3 +301,9 @@ Hollis's 0-5.
 <sub>All rights reserved.</sub>
 
 </div>
+
+---
+
+## License
+
+MIT. See [LICENSE](LICENSE).
