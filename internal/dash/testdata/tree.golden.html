@@ -43,9 +43,9 @@
   /* Canvas, panel, and the hairline that separates them. Three greys, not
      five: more would invite decorative boxes. */
   --bg: #eceae7;
-  --panel: #ffffff;
-  --line: #e6e4e0;
-  --line-soft: #efedea;
+  --panel: #fdfcfb;
+  --line: #e4e1dc;
+  --line-soft: #edeae5;
 
   /* Every text token below clears 4.5:1 against both the panel and the
      canvas -- measured, not assumed. The first version of --fg-faint sat at
@@ -262,7 +262,9 @@ td[class*="depth-"] { font-family: var(--mono); }
 .switcher-menu {
   position: absolute; top: calc(100% + 8px); left: 0; z-index: 5;
   min-width: 260px; padding: 8px; border-radius: var(--radius-lg);
-  background: var(--panel); box-shadow: 0 8px 32px rgb(0 0 0 / 28%);
+  background: var(--panel);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--fg) 12%, transparent),
+              0 8px 20px -6px color-mix(in srgb, var(--fg) 22%, transparent);
 }
 .switcher-dir {
   padding: 4px 12px 8px; font-family: var(--mono);
@@ -539,7 +541,7 @@ td.score {
   font-weight: 400; color: var(--fg-muted);
 }
 .grid .row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.hint-text { font-size: var(--text-xs); color: var(--fg-faint); text-transform: none; letter-spacing: 0; font-weight: 400; }
+.hint-text { font-size: var(--text-sm); color: var(--fg-faint); text-transform: none; letter-spacing: 0; font-weight: 400; }
 input, select, textarea {
   font: inherit; font-size: var(--text-sm); color: var(--fg);
   background: color-mix(in srgb, var(--fg) 6%, transparent);
@@ -1087,7 +1089,7 @@ input, textarea { caret-color: var(--fg); }
 <header class="bar">
   <a class="brand" href="/">
     
-    <span class="brand-mark"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M2.5 4h11M2.5 8h7.5M2.5 12h4"/></svg></span>
+    <span class="brand-mark"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M2.5 4h11M2.5 8h7.5M2.5 12h4"/></svg></span>
     <span class="brand-name">rounce</span>
   </a>
 
@@ -1149,25 +1151,25 @@ input, textarea { caret-color: var(--fg); }
 <td class="depth-0"><a href="/item/rnc-epic">rnc-epic</a></td>
 <td>epic</td>
 <td>Epic root</td>
-<td><span class="state state-blocked"><svg class="glyph" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M4.5 8h7"/></svg><span>blocked</span></span> <span class="faint">← blocked by rnc-blocker</span></td>
+<td><span class="state state-blocked"><svg class="glyph" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M4.5 8h7"/></svg><span>blocked</span></span> <span class="faint">← blocked by rnc-blocker</span></td>
 </tr>
 <tr>
 <td class="depth-1"><a href="/item/rnc-epic.1">rnc-epic.1</a></td>
 <td>task</td>
 <td>Task A</td>
-<td><span class="state state-blocked"><svg class="glyph" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M4.5 8h7"/></svg><span>blocked</span></span> <span class="faint">← blocked by rnc-epic</span></td>
+<td><span class="state state-blocked"><svg class="glyph" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M4.5 8h7"/></svg><span>blocked</span></span> <span class="faint">← blocked by rnc-epic</span></td>
 </tr>
 <tr>
 <td class="depth-2"><a href="/item/rnc-epic.1.1">rnc-epic.1.1</a></td>
 <td>task</td>
 <td>Subtask under A</td>
-<td><span class="state state-blocked"><svg class="glyph" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M4.5 8h7"/></svg><span>blocked</span></span> <span class="faint">← blocked by rnc-epic</span></td>
+<td><span class="state state-blocked"><svg class="glyph" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M4.5 8h7"/></svg><span>blocked</span></span> <span class="faint">← blocked by rnc-epic</span></td>
 </tr>
 <tr class="dimmed">
 <td class="depth-1"><a href="/item/rnc-epic.2">rnc-epic.2</a></td>
 <td>task</td>
 <td>Task B (dropped)</td>
-<td><span class="state state-blocked"><svg class="glyph" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M4.5 8h7"/></svg><span>blocked</span></span> <span class="faint">← blocked by rnc-epic</span></td>
+<td><span class="state state-blocked"><svg class="glyph" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M4.5 8h7"/></svg><span>blocked</span></span> <span class="faint">← blocked by rnc-epic</span></td>
 </tr>
 </tbody>
 </table></div></div>

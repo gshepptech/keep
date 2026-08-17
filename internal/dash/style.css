@@ -35,9 +35,9 @@
   /* Canvas, panel, and the hairline that separates them. Three greys, not
      five: more would invite decorative boxes. */
   --bg: #eceae7;
-  --panel: #ffffff;
-  --line: #e6e4e0;
-  --line-soft: #efedea;
+  --panel: #fdfcfb;
+  --line: #e4e1dc;
+  --line-soft: #edeae5;
 
   /* Every text token below clears 4.5:1 against both the panel and the
      canvas -- measured, not assumed. The first version of --fg-faint sat at
@@ -254,7 +254,9 @@ td[class*="depth-"] { font-family: var(--mono); }
 .switcher-menu {
   position: absolute; top: calc(100% + 8px); left: 0; z-index: 5;
   min-width: 260px; padding: 8px; border-radius: var(--radius-lg);
-  background: var(--panel); box-shadow: 0 8px 32px rgb(0 0 0 / 28%);
+  background: var(--panel);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--fg) 12%, transparent),
+              0 8px 20px -6px color-mix(in srgb, var(--fg) 22%, transparent);
 }
 .switcher-dir {
   padding: 4px 12px 8px; font-family: var(--mono);
@@ -531,7 +533,7 @@ td.score {
   font-weight: 400; color: var(--fg-muted);
 }
 .grid .row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.hint-text { font-size: var(--text-xs); color: var(--fg-faint); text-transform: none; letter-spacing: 0; font-weight: 400; }
+.hint-text { font-size: var(--text-sm); color: var(--fg-faint); text-transform: none; letter-spacing: 0; font-weight: 400; }
 input, select, textarea {
   font: inherit; font-size: var(--text-sm); color: var(--fg);
   background: color-mix(in srgb, var(--fg) 6%, transparent);
