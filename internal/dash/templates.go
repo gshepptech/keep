@@ -61,6 +61,13 @@ var funcMap = template.FuncMap{
 	"tag": func(slug, label string) stateTag {
 		return stateTag{Slug: slug, Label: label}
 	},
+	// either picks between two strings without a branch in the template.
+	// html/template has no ternary, and the alternative -- an {{if}} around
+	// the whole head call -- would duplicate the line that sets every
+	// page's title.
+	"either": func(cond bool, yes, no string) string {
+		return map[bool]string{true: yes, false: no}[cond]
+	},
 	"holdsFor":  holdsFor,
 	"holdCount": holdCount,
 	"base":      base,

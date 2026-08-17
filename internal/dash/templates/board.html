@@ -3,8 +3,68 @@
      The queue and the agents holding it up are the same question asked from
      two sides, so they share a page: a person who has to switch views to
      connect them is doing the join in their head. */}}
-{{define "board"}}{{template "head" (titled . "Board" "Board" "What is workable right now, and what is standing in its way.")}}
+{{define "board"}}{{template "head" (titled . "Board" "Board" (either .Data.FirstRun "" "What is workable right now, and what is standing in its way."))}}
 {{$p := .}}{{$d := .Data}}
+
+{{if $d.FirstRun}}
+{{/* Day one. The ordinary empty state says "nothing is workable", which is
+     true and useless to someone who has not yet learned what this holds or
+     how work gets into it. This screen answers the only two questions a new
+     store raises -- what is it for, and how do I put something in it -- and
+     it is the only thing on the page, because a row of zeros and a second
+     empty state underneath would be competing with the answer. */}}
+<section class="firstrun">
+  <h2>Nothing in here yet</h2>
+  <p class="firstrun-lede">
+    rounce holds the list of work for this repository and hands the top of it
+    to whoever asks — you, or an agent that has just opened a session and has
+    no memory of the last one.
+  </p>
+
+  <ol class="ways">
+    <li>
+      <span class="way-n">1</span>
+      <div>
+        <b>File the first thing you notice</b>
+        <p>A title that stands on its own is enough. Scores and files can come later.</p>
+        {{if $p.Writable}}<a class="btn btn-primary" href="{{$p.Prefix}}/new">File an item</a>{{end}}
+      </div>
+    </li>
+    <li>
+      <span class="way-n">2</span>
+      <div>
+        <b>Or from the terminal, where you already are</b>
+        <p>The CLI is the whole product; every surface here is a view over it.</p>
+        <pre class="way-code">rounce add --score 9/8/2 --paths internal/auth/token.go \
+  "Expire refresh tokens after 30 days"</pre>
+      </div>
+    </li>
+    <li>
+      <span class="way-n">3</span>
+      <div>
+        <b>Or let an agent do it</b>
+        <p>With the MCP server registered, an agent files what it notices instead of
+        mentioning it once and forgetting. <code>ready</code> tells it what to work on;
+        <code>capture</code> is where the rest goes.</p>
+      </div>
+    </li>
+  </ol>
+
+  {{if and $p.Writable (not $p.HasInterlock)}}
+  <div class="firstrun-aside">
+    <b>Running more than one agent here?</b>
+    <p>Interlock stops the queue offering work another agent already has open. It is
+    not required, and it can be turned on whenever.</p>
+    <form method="post" action="/do/watch">
+      <input type="hidden" name="csrf" value="{{$p.CSRF}}">
+      <input type="hidden" name="project" value="{{$p.Project}}">
+      <input type="hidden" name="prefix" value="{{$p.Prefix}}">
+      <button type="submit" class="btn btn-sm">Turn on coordination</button>
+    </form>
+  </div>
+  {{end}}
+</section>
+{{else}}
 
 {{if $d.Stale}}
 <div class="panel panel-warn">
@@ -246,5 +306,7 @@
   </div>
   {{end}}
 </div>
+
+{{end}}
 
 {{template "foot"}}{{end}}

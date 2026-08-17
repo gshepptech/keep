@@ -743,3 +743,101 @@ tbody tr:hover td { background: color-mix(in srgb, var(--fg) 4%, transparent); }
 .qrow.stopped { box-shadow: inset 2px 0 0 var(--blocked); padding-left: 14px; }
 /* The agents list has no score, so its avatar takes that slot's alignment. */
 .qrow > .avatar { flex: none; margin-left: 2px; }
+
+/* ---------------------------------------------------------------------
+   Day one. The only screen a person sees before they have put anything in,
+   so it is the one that has to explain what this is -- and the only thing
+   on the page, because a row of zeros and a second empty state underneath
+   would be competing with the answer.
+   --------------------------------------------------------------------- */
+.firstrun { max-width: 62ch; padding: 8px 0 40px; }
+.firstrun h2 {
+  margin: 0 0 12px; font-size: var(--text-xl); font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.firstrun-lede { margin: 0 0 36px; color: var(--fg-muted); font-size: var(--text-base); line-height: 1.6; }
+
+/* Numbered because these are genuinely alternatives in order of how likely
+   you are to reach for them, not a sequence to complete. */
+.ways { list-style: none; margin: 0; padding: 0; display: grid; gap: 28px; }
+.ways li { display: flex; gap: 16px; align-items: flex-start; }
+.way-n {
+  flex: none; width: 26px; height: 26px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+  color: var(--fg-muted); font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums; margin-top: 1px;
+}
+.ways b { display: block; font-size: var(--text-base); font-weight: 550; margin-bottom: 4px; }
+.ways p { margin: 0 0 12px; color: var(--fg-muted); font-size: var(--text-sm); line-height: 1.55; }
+.ways li:last-child p { margin-bottom: 0; }
+.way-code {
+  margin: 0; padding: 12px 14px; border-radius: var(--radius);
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  font-family: var(--mono); font-size: var(--text-sm);
+  color: var(--fg-muted); overflow-x: auto; line-height: 1.5;
+}
+
+.firstrun-aside {
+  margin-top: 44px; padding-top: 24px;
+  border-top: 1px solid var(--line-soft);
+}
+.firstrun-aside b { display: block; font-size: var(--text-base); font-weight: 550; margin-bottom: 4px; }
+.firstrun-aside p { margin: 0 0 12px; color: var(--fg-muted); font-size: var(--text-sm); max-width: 54ch; }
+
+/* ---------------------------------------------------------------------
+   Motion. --tempo was declared early and then applied to almost nothing,
+   so the page changed state by teleporting: a row highlighted instantly, a
+   banner appeared fully formed, a pressed button gave nothing back.
+
+   Everything below is a state change the person caused, arriving over one
+   or two frames instead of none. Nothing loops, nothing animates on its own
+   schedule, and nothing moves that a person did not just act on -- an
+   interface that fidgets while you read it is worse than a still one.
+   --------------------------------------------------------------------- */
+
+/* A pressed control gives way slightly. The whole feedback is 1px and
+   60ms, which is the difference between a button and a picture of one. */
+.btn:active { transform: translateY(1px); }
+.btn { transition: background var(--tempo) ease, border-color var(--tempo) ease,
+                   color var(--tempo) ease, transform 60ms ease; }
+
+/* Rows lift their actions on approach. The controls are always present for
+   a keyboard and for a screen reader -- this is opacity, never display --
+   so a row is not a puzzle you have to hover to solve. */
+.qacts { transition: opacity var(--tempo) ease; }
+@media (hover: hover) and (min-width: 900px) {
+  .qrow .qacts { opacity: 0.55; }
+  .qrow:hover .qacts,
+  .qrow:focus-within .qacts { opacity: 1; }
+}
+
+/* The nav marks where you are on the way in, not after a jump. */
+.nav-item, .project-item { transition: background var(--tempo) ease, color var(--tempo) ease; }
+
+/* A banner is the answer to something you just did, so it arrives rather
+   than being already there -- 180ms, once, no loop. */
+.banner { animation: rise 180ms ease-out both; }
+@keyframes rise {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* The first-run steps arrive in sequence the first time the page is seen.
+   It is the one screen where a little choreography earns its place: it
+   walks the eye down three options in the order they are meant to be read. */
+.ways li { animation: rise 260ms ease-out both; }
+.ways li:nth-child(2) { animation-delay: 70ms; }
+.ways li:nth-child(3) { animation-delay: 140ms; }
+.firstrun-aside { animation: rise 260ms ease-out 210ms both; }
+
+/* Reduced motion means none of it -- including the arrivals above, which
+   the blanket rule at the top of this block does not cover because they are
+   animations rather than transitions. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .qrow .qacts { opacity: 1; }
+}

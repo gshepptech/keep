@@ -133,6 +133,13 @@ type boardData struct {
 	// agents, rather than showing an empty agents table.
 	Interlock *interlock.Status
 
+	// FirstRun is a store nothing has ever happened in -- no items, no
+	// events, day one. It is worth its own screen: the ordinary empty
+	// state says "nothing is workable", which is true and useless to
+	// someone who has not yet learned what this holds or how work gets
+	// into it.
+	FirstRun bool
+
 	// Stale is the claims nothing has happened to in a while. It sits on
 	// the board rather than behind a command because the whole failure it
 	// describes is one nobody thinks to go looking for.
@@ -198,6 +205,16 @@ func (s *Server) boardDataFrom(r *http.Request, st *store.Store, path string) (b
 	if d.Stale, err = st.StaleClaims(ctx, 0); err != nil {
 		return d, err
 	}
+
+	// The events table is the complete record of every mutation, so "has
+	// anything ever happened here" is one query against it rather than a
+	// count of four separate lists -- and unlike those, it stays correct
+	// for a repository whose work has all been closed.
+	_, everUsed, err := st.LastActivity(ctx)
+	if err != nil {
+		return d, err
+	}
+	d.FirstRun = !everUsed
 
 	d.Counts.Ready = len(d.Ready)
 	d.Counts.InProgress = len(d.Progress)
