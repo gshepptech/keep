@@ -202,7 +202,7 @@ func (s *Server) handleNew(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	done()
-	s.render(w, "new", s.pageFor(r, "", name, typeNames()))
+	s.render(w, "new", s.pageFor(r, "new", name, typeNames()))
 }
 
 // missOrFail answers 404 for a project that is not registered and 500 for

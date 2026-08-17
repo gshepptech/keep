@@ -25,13 +25,14 @@
 
   {{with .Warning}}<p class="confirm-warn">{{.}}</p>{{end}}
 
-  <form method="post" action="/do/{{.Verb}}" class="confirm-form">
+  <form method="post" action="/do/{{.Post}}" class="confirm-form">
     <input type="hidden" name="csrf" value="{{$p.CSRF}}">
     <input type="hidden" name="project" value="{{$p.Project}}">
     <input type="hidden" name="prefix" value="{{$p.Prefix}}">
     <input type="hidden" name="return" value="{{.Return}}">
     {{if .Item}}<input type="hidden" name="id" value="{{.Item.ID}}">{{end}}
     {{with .Session}}<input type="hidden" name="session" value="{{.}}">{{end}}
+    {{if eq .Verb "forget"}}<input type="hidden" name="path" value="{{.Path}}">{{end}}
 
     {{if .AskReason}}
     <label class="wide">Why

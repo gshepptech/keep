@@ -28,12 +28,7 @@
     </span>
     <span class="qacts">
       <a class="btn btn-sm" href="{{if .Active}}/{{else}}/p/{{.Name}}{{end}}">Open board</a>
-      {{if $p.Writable}}<form method="post" action="/do/project-forget">
-        <input type="hidden" name="csrf" value="{{$p.CSRF}}">
-<input type="hidden" name="project" value="{{$p.Project}}"><input type="hidden" name="prefix" value="{{$p.Prefix}}">
-        <input type="hidden" name="path" value="{{.Path}}">
-        <button type="submit" class="btn btn-sm btn-danger">Remove</button>
-      </form>{{end}}
+      {{if $p.Writable}}<a class="btn btn-sm btn-danger" href="/confirm?verb=forget&amp;path={{.Path}}&amp;name={{.Name}}&amp;return=/projects">Remove</a>{{end}}
     </span>
   </li>
   {{else}}<li class="qempty">No projects registered. Run <code>rounce init</code> in a repository and it registers itself, or add one below.</li>

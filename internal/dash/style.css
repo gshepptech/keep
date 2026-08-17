@@ -987,3 +987,27 @@ input:user-valid, textarea:user-valid {
   font-size: var(--text-sm); color: var(--fg-muted); text-decoration: none;
 }
 .backlink:hover { color: var(--fg); }
+
+/* Headings inherited the body's 1.5 leading, which is right for a paragraph
+   and loose for a 26px title -- leading and size move in opposite
+   directions. */
+h1, h2, h3, .panel-head h2, .qbody .title, .firstrun h2 { line-height: 1.25; }
+.topbar h1 { line-height: 1.1; }
+
+/* The bar's own controls were 32-36px. Grown on coarse pointers only, so
+   the dense desktop bar is untouched -- same rule the row buttons follow. */
+@media (pointer: coarse) {
+  .tab { padding: 12px 16px; }
+  .switcher summary { padding: 10px 16px; }
+  .switcher-item { padding: 12px 16px; }
+}
+
+/* An input and the button beside it must share a height, or the row reads
+   as two rows that failed to line up. */
+.searchbar input[type="search"], .searchbar .btn { min-height: 44px; }
+.prompt-side .btn, .prompt-side select { min-height: 40px; }
+
+/* Controls that sit in the same row share a height. A 30px select beside a
+   38px button is the mismatch every hand-tuned form ends up with. */
+.qacts .btn, .qacts select, .acts .btn, .acts select { min-height: 32px; }
+.prompt-side .btn, .prompt-side select { min-height: 40px; }

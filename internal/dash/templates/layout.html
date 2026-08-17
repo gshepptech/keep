@@ -82,6 +82,14 @@
     </a>
     <a href="{{.Page.Prefix}}/search" class="tab{{if eq .Page.Nav "search"}} active{{end}}"{{if eq .Page.Nav "search"}} aria-current="page"{{end}}>Search</a>
     <a href="{{.Page.Prefix}}/activity" class="tab{{if eq .Page.Nav "activity"}} active{{end}}"{{if eq .Page.Nav "activity"}} aria-current="page"{{end}}>Activity</a>
+    {{/* Projects and the merged queue live in the switcher, so when you are
+         ON one of them nothing in the bar said so. The tab appears only
+         while you are there: it is a "you are here" marker, not a
+         destination that needs permanent room. */}}
+    {{if eq .Page.Nav "projects"}}<a href="/projects" class="tab active" aria-current="page">Projects</a>{{end}}
+    {{if eq .Page.Nav "all"}}<a href="/all" class="tab active" aria-current="page">All projects</a>{{end}}
+    {{if eq .Page.Nav "new"}}<a href="{{.Page.Prefix}}/new" class="tab active" aria-current="page">New item</a>{{end}}
+    {{if eq .Page.Nav "confirm"}}<a href="#content" class="tab active" aria-current="page">Confirm</a>{{end}}
   </nav>
 
   <div class="bar-end">

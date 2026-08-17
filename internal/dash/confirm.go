@@ -10,7 +10,12 @@ import (
 // confirmData is the page that stands between a destructive control and the
 // thing it destroys.
 type confirmData struct {
+	// Verb picks the copy; Post is the route the form submits to. They are
+	// separate because "forget" reads better on a page about removing a
+	// project than "project-forget" does, and the handler is registered
+	// under the longer name.
 	Verb    string
+	Post    string
 	Heading string
 	Lede    string
 	Warning string
@@ -25,6 +30,7 @@ type confirmData struct {
 	Item      *model.Item
 	Session   string
 	Path      string
+	Name      string
 	Return    string
 }
 
@@ -51,6 +57,7 @@ func (s *Server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 	verb := r.URL.Query().Get("verb")
 	d := confirmData{
 		Verb:   verb,
+		Post:   verb,
 		Return: r.URL.Query().Get("return"),
 	}
 
@@ -73,12 +80,18 @@ func (s *Server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 		d.Lede = fmt.Sprintf("Session %s is holding %s. Releasing it hands the file back immediately, which means an agent that is still working may have its next write land on top of someone else's.", d.Session, orAny(d.Path))
 		d.Warning = "Interlock takes these leases when an agent opens a file. If that agent is still running, the safe thing is to wait for the lease to expire on its own."
 		d.Button = "Release the hold"
+	case "forget":
+		d.Path = r.URL.Query().Get("path")
+		d.Heading = "Remove " + r.URL.Query().Get("name") + " from the list?"
+		d.Lede = "This forgets the project. Its store, its items and its history are left exactly where they are on disk -- rounce simply stops listing it, and `rounce init` in that directory brings it back."
+		d.Button = "Remove it"
+		d.Post = "project-forget"
 	default:
 		s.missOrFail(w, errNoProject)
 		return
 	}
 
-	s.render(w, "confirm", s.pageFor(r, "", name, d))
+	s.render(w, "confirm", s.pageFor(r, "confirm", name, d))
 }
 
 // orAny names the held path, or says it plainly when the caller did not
