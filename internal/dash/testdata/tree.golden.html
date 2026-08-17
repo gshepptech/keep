@@ -120,7 +120,7 @@
      hierarchy stops being one: at those deltas a reader cannot tell two
      levels apart, so the distinctions cost bytes and buy nothing. */
   --text-xs: 12px;
-  --text-sm: 13px;
+  --text-sm: 14px;
   --text-base: 15px;
   --text-md: 15px;
   --text-lg: 19px;
@@ -1059,6 +1059,23 @@ input, textarea { caret-color: var(--fg); }
   border: 2px solid transparent; background-clip: content-box;
 }
 ::-webkit-scrollbar-thumb:hover { background: var(--fg-faint); background-clip: content-box; }
+
+/* The bar's controls, unconditionally rather than behind a pointer query.
+   32px tabs are fine under a mouse and wrong under a thumb, and a narrow
+   window on a touch laptop is both -- there is no media query that catches
+   it, so they are simply big enough. */
+.tab { min-height: 44px; padding: 0 14px; }
+.switcher summary { min-height: 44px; }
+.switcher-item { min-height: 44px; }
+.bar { gap: 16px; }
+
+/* Equalising the row controls to 32px silently overrode the coarse-pointer
+   rule that had grown them: an explicit height beats the padding that rule
+   was adding. They grow together now, so the row keeps its alignment at
+   both sizes rather than trading one property for the other. */
+@media (pointer: coarse) {
+  .qacts .btn, .qacts select, .acts .btn, .acts select { height: 44px; min-height: 44px; }
+}
 </style>
 </head>
 <body>

@@ -27,3 +27,5 @@
 # sameness detection -- useful locally, churns on every scan, and means
 # nothing to anyone else.
 .redpen/
+
+# redpen writes its state here now (project root, since 8f95248).
