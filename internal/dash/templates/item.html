@@ -15,6 +15,19 @@
   {{if .ParentID}} · under <a href="{{$p.Prefix}}/item/{{.ParentID}}">{{.ParentID}}</a>{{end}}
 </p>
 
+{{with .Held}}
+{{/* The queue hides a held item; this page used to offer Claim on it as
+     though it were free, and said nothing about why it had disappeared
+     from the list you arrived from. Same Exclude call the queue uses, so
+     the two cannot disagree about what is held. */}}
+<div class="banner banner-notice" role="status">
+  {{template "icon-clock"}}
+  <span class="grow">Held back — <span class="path">{{.Path}}</span> is open in
+  {{.Lease.Agent}}'s session, so this is out of the queue until the lease frees up
+  {{until .Lease.ExpiresAt}}. You can still claim it; Interlock will refuse the write.</span>
+</div>
+{{end}}
+
 {{if $p.Writable}}
 <div class="toolbar">
   {{if eq (printf "%s" .Status) "open"}}{{template "action" (act $p "start" .ID "Claim" "" false)}}{{end}}

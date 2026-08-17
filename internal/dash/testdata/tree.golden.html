@@ -810,15 +810,16 @@ tbody tr:hover td { background: color-mix(in srgb, var(--fg) 4%, transparent); }
 .btn { transition: background var(--tempo) ease, border-color var(--tempo) ease,
                    color var(--tempo) ease, transform 60ms ease; }
 
-/* Rows lift their actions on approach. The controls are always present for
-   a keyboard and for a screen reader -- this is opacity, never display --
-   so a row is not a puzzle you have to hover to solve. */
-.qacts { transition: opacity var(--tempo) ease; }
-@media (hover: hover) and (min-width: 900px) {
-  .qrow .qacts { opacity: 0.55; }
-  .qrow:hover .qacts,
-  .qrow:focus-within .qacts { opacity: 1; }
-}
+/* Reveal-on-hover was tried here and taken back out. The references that do
+   it are hiding secondary actions; on this page the row controls are Start
+   agent and Claim, which are the entire point of the queue. Resting them at
+   55% made them read as disabled -- most obviously in a screenshot, where
+   there is no cursor to explain the dimness, but in use too: a control you
+   have to approach before you can tell whether it is live is a control that
+   costs a decision.
+
+   The row still responds. It just does it with the background, which says
+   "you are here" without saying "this was off until now". */
 
 /* The nav marks where you are on the way in, not after a jump. */
 .nav-item, .project-item { transition: background var(--tempo) ease, color var(--tempo) ease; }

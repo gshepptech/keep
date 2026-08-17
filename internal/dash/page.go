@@ -267,6 +267,15 @@ type actionArgs struct {
 
 // holdsFor names the files one session is holding, for the agents table.
 // Presentation only: it joins facts Interlock already reported.
+// itemView is one item's page: its detail, and the lease holding it back
+// if there is one. The board hides a held item from the queue; without this
+// the item page offered Claim on it as though it were free, and said
+// nothing about why it had vanished from the list you came from.
+type itemView struct {
+	model.ItemDetail
+	Held *interlock.Collision
+}
+
 // stateTag is one state marker: the semantic slug that picks its glyph and
 // colour, and the word printed beside it.
 type stateTag struct {

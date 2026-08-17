@@ -111,7 +111,9 @@ func (s *Server) handleItem(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err)
 		return
 	}
-	s.render(w, "item", s.pageFor(r, "", name, d))
+	path := s.pathFor(r.PathValue("project"))
+	view := itemView{ItemDetail: d, Held: s.heldFor(r.Context(), d.Item, repoDirOf(path))}
+	s.render(w, "item", s.pageFor(r, "", name, view))
 }
 
 // handleTree renders the subtree beneath {id}.

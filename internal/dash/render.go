@@ -67,8 +67,12 @@ func backlogRows(items []model.Item) []backlogRow {
 // The body renders inside <pre> as plain text -- never markdown-to-HTML,
 // never template.HTML. A parent id and each dep's other end are links to
 // /item/{{...}}, built from the id field alone.
+// The item view carries the lease holding it back, if any. renderItem takes
+// a bare detail and wraps it with no hold, because its callers -- the
+// golden-file smoke test and any future non-HTTP renderer -- have no
+// Interlock to ask. The handler builds the view itself.
 func renderItem(d model.ItemDetail) ([]byte, error) {
-	return execute("item", d)
+	return execute("item", itemView{ItemDetail: d})
 }
 
 // renderTree renders one row per model.TreeNode, indented by Depth via the
