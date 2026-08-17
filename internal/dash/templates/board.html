@@ -84,7 +84,7 @@
     </span>
     {{if $p.Writable}}<span class="qacts">
       {{template "action" (act $p "close" .ID "Close" "/" false)}}
-      {{template "action" (act $p "drop" .ID "Hand it back" "/" true)}}
+      <a class="btn btn-sm btn-danger" href="{{$p.Prefix}}/confirm?verb=drop&amp;id={{.ID}}&amp;return={{$p.Prefix}}/">Hand it back</a>
     </span>{{end}}
   </li>
   {{end}}</ol>
@@ -202,7 +202,7 @@
     </span>
     {{if $p.Writable}}<span class="qacts">
       {{template "action" (act $p "close" .ID "Close" "/" false)}}
-      {{template "action" (act $p "drop" .ID "Drop" "/" true)}}
+      <a class="btn btn-sm btn-danger" href="{{$p.Prefix}}/confirm?verb=drop&amp;id={{.ID}}&amp;return={{$p.Prefix}}/">Drop</a>
     </span>{{end}}
   </li>
   {{end}}</ol>
@@ -227,12 +227,7 @@
         <span class="id">{{.Item.ID}}</span>
       </span>
     </span>
-    {{if $p.Writable}}<span class="qacts"><form method="post" action="/do/release">
-      <input type="hidden" name="csrf" value="{{$p.CSRF}}">
-<input type="hidden" name="project" value="{{$p.Project}}"><input type="hidden" name="prefix" value="{{$p.Prefix}}">
-      <input type="hidden" name="session" value="{{.Lease.SessionID}}">
-      <button type="submit" class="btn btn-sm btn-danger">Release</button>
-    </form></span>{{end}}
+    {{if $p.Writable}}<span class="qacts"><a class="btn btn-sm btn-danger" href="{{$p.Prefix}}/confirm?verb=release&amp;session={{.Lease.SessionID}}&amp;path={{.Path}}&amp;return={{$p.Prefix}}/">Release</a></span>{{end}}
   </li>
   {{end}}</ol>
 </div>
@@ -277,12 +272,7 @@
         <span class="id">{{.ID}}</span>
       </span>
     </span>
-    {{if $p.Writable}}<span class="qacts">{{if holdCount $d.Interlock .ID}}<form method="post" action="/do/release">
-      <input type="hidden" name="csrf" value="{{$p.CSRF}}">
-<input type="hidden" name="project" value="{{$p.Project}}"><input type="hidden" name="prefix" value="{{$p.Prefix}}">
-      <input type="hidden" name="session" value="{{.ID}}">
-      <button type="submit" class="btn btn-sm">Release holds</button>
-    </form>{{else}}<span class="faint">nothing to release</span>{{end}}</span>{{end}}
+    {{if $p.Writable}}<span class="qacts">{{if holdCount $d.Interlock .ID}}<a class="btn btn-sm btn-danger" href="{{$p.Prefix}}/confirm?verb=release&amp;session={{.ID}}&amp;return={{$p.Prefix}}/">Release holds</a>{{else}}<span class="faint">nothing to release</span>{{end}}</span>{{end}}
   </li>
   {{end}}</ol>
   {{else}}

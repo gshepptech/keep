@@ -1,0 +1,51 @@
+{{/* confirm.html -- the step between a destructive control and the thing it
+     destroys. Data: confirmData.
+
+     A page rather than a dialog because this board ships no JavaScript, and
+     a page turns out to be the better shape: it can show what is about to
+     happen and take the reason at the same time, which a yes/no box cannot. */}}
+{{define "confirm"}}{{template "head" (titled . "Confirm" .Data.Heading "")}}
+{{$p := .}}{{with .Data}}
+
+<section class="confirm">
+  <p class="confirm-lede">{{.Lede}}</p>
+
+  {{if .Item}}
+  <div class="confirm-subject">
+    <span class="qscore">{{.Item.Score}}</span>
+    <span class="qbody">
+      <span class="title">{{.Item.Title}}</span>
+      <span class="qmeta">
+        {{if .Item.Paths}}<span class="path">{{.Item.Paths}}</span>{{end}}
+        <span class="id">{{.Item.ID}}</span>
+      </span>
+    </span>
+  </div>
+  {{end}}
+
+  {{with .Warning}}<p class="confirm-warn">{{.}}</p>{{end}}
+
+  <form method="post" action="/do/{{.Verb}}" class="confirm-form">
+    <input type="hidden" name="csrf" value="{{$p.CSRF}}">
+    <input type="hidden" name="project" value="{{$p.Project}}">
+    <input type="hidden" name="prefix" value="{{$p.Prefix}}">
+    <input type="hidden" name="return" value="{{.Return}}">
+    {{if .Item}}<input type="hidden" name="id" value="{{.Item.ID}}">{{end}}
+    {{with .Session}}<input type="hidden" name="session" value="{{.}}">{{end}}
+
+    {{if .AskReason}}
+    <label class="wide">Why
+      <input name="reason" required autofocus maxlength="500"
+             placeholder="Superseded by rnc-… / no longer worth doing / duplicate">
+      <span class="hint-text">The command line refuses to drop anything without a reason. This page holds the same line, on the same record.</span>
+    </label>
+    {{end}}
+
+    <div class="confirm-acts">
+      <button type="submit" class="btn btn-danger btn-solid">{{.Button}}</button>
+      <a class="btn" href="{{if .Return}}{{.Return}}{{else}}{{$p.Prefix}}/{{end}}">Cancel</a>
+    </div>
+  </form>
+</section>
+
+{{end}}{{template "foot"}}{{end}}

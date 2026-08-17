@@ -267,3 +267,59 @@ func TestRedirectPrefixCannotLeaveTheHost(t *testing.T) {
 		}
 	})
 }
+
+// TestDropRefusesWithoutAReason.
+//
+// `rounce drop` requires --reason and exits 2 without one. The board used to
+// route around that by supplying "dropped from the board" on the user's
+// behalf -- the board holding a lower standard than the command line for
+// the same operation, on the record they both write. The confirm page asks
+// for a reason; this is what makes that more than a suggestion.
+func TestDropRefusesWithoutAReason(t *testing.T) {
+	s, _ := writableFixture(t)
+	post(t, s, "/do/add", url.Values{"title": {"a thing to drop"}, "type": {"task"}})
+	id := firstIDOnBoard(t, s)
+
+	rec := post(t, s, "/do/drop", url.Values{"id": {id}})
+	if loc := rec.Header().Get("Location"); !strings.Contains(loc, "needs+a+reason") {
+		t.Errorf("drop with no reason redirected to %q, want a problem saying a reason is needed", loc)
+	}
+
+	rec = post(t, s, "/do/drop", url.Values{"id": {id}, "reason": {"superseded"}})
+	if loc := rec.Header().Get("Location"); !strings.Contains(loc, "done=") {
+		t.Errorf("drop with a reason redirected to %q, want success", loc)
+	}
+}
+
+// TestConfirmPageNamesWhatItWillDestroyAndActsOnNothing.
+//
+// A confirmation that does not show its subject is one you answer from
+// memory of what you clicked. And it is a GET: viewing it must change
+// nothing, which is the property that makes it safe to link to.
+func TestConfirmPageNamesWhatItWillDestroyAndActsOnNothing(t *testing.T) {
+	s, _ := writableFixture(t)
+	post(t, s, "/do/add", url.Values{"title": {"the item being confirmed"}, "type": {"task"}})
+	id := firstIDOnBoard(t, s)
+
+	req := httptest.NewRequest(http.MethodGet, "/confirm?verb=drop&id="+id, nil)
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, req)
+	body := rec.Body.String()
+
+	// The TITLE is the property here: an id is what you clicked, a title is
+	// what you meant. An earlier version of this test asserted only the id,
+	// so removing the title from the page passed against the break.
+	for _, want := range []string{"Drop this item?", "the item being confirmed", id, "Cancel", "name=\"reason\""} {
+		if !strings.Contains(body, want) {
+			t.Errorf("confirm page does not contain %q", want)
+		}
+	}
+
+	// Viewing it must not have dropped anything.
+	after := httptest.NewRequest(http.MethodGet, "/", nil)
+	arec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(arec, after)
+	if !strings.Contains(arec.Body.String(), id) {
+		t.Error("the item left the board after merely viewing the confirm page")
+	}
+}

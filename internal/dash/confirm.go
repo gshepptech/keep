@@ -1,0 +1,91 @@
+package dash
+
+import (
+	"fmt"
+	"net/http"
+
+	"github.com/gshepptech/rounce/internal/model"
+)
+
+// confirmData is the page that stands between a destructive control and the
+// thing it destroys.
+type confirmData struct {
+	Verb    string
+	Heading string
+	Lede    string
+	Warning string
+	Button  string
+	// AskReason puts a required reason field on the page. The CLI refuses to
+	// close or drop without one -- `--reason` is required and its absence is
+	// exit 2 -- and the board used to route around that by supplying
+	// "dropped from the board" on the user's behalf. That is the board
+	// quietly holding a lower standard than the command line for the same
+	// operation, on the record that both of them write.
+	AskReason bool
+	Item      *model.Item
+	Session   string
+	Path      string
+	Return    string
+}
+
+// handleConfirm renders the confirmation step for a destructive action.
+//
+// A GET, and a real page rather than a dialog, because this board ships no
+// JavaScript: window.confirm is not available and neither is anything that
+// would fake one. That turns out to be the better shape anyway -- a page can
+// show WHAT is about to happen and take the reason at the same time, which
+// a yes/no box cannot.
+//
+// Only genuinely lossy actions come through here. Claim, close and promote
+// do not: they move an item along its normal path and the event trail says
+// who did it. Drop abandons work, and releasing a lease interrupts an agent
+// that is mid-edit; neither is undoable from this board.
+func (s *Server) handleConfirm(w http.ResponseWriter, r *http.Request) {
+	st, done, name, err := s.storeFor(r)
+	if err != nil {
+		s.missOrFail(w, err)
+		return
+	}
+	defer done()
+
+	verb := r.URL.Query().Get("verb")
+	d := confirmData{
+		Verb:   verb,
+		Return: r.URL.Query().Get("return"),
+	}
+
+	switch verb {
+	case "drop":
+		item, err := st.GetItem(r.Context(), r.URL.Query().Get("id"))
+		if err != nil {
+			s.fail(w, err)
+			return
+		}
+		d.Item = &item.Item
+		d.Heading = "Drop this item?"
+		d.Lede = "Dropping records that this work will not be done. It stays in the store and in the event trail, but it leaves every queue and there is no undo on this board."
+		d.Button = "Drop it"
+		d.AskReason = true
+	case "release":
+		d.Session = r.URL.Query().Get("session")
+		d.Path = r.URL.Query().Get("path")
+		d.Heading = "Release this hold?"
+		d.Lede = fmt.Sprintf("Session %s is holding %s. Releasing it hands the file back immediately, which means an agent that is still working may have its next write land on top of someone else's.", d.Session, orAny(d.Path))
+		d.Warning = "Interlock takes these leases when an agent opens a file. If that agent is still running, the safe thing is to wait for the lease to expire on its own."
+		d.Button = "Release the hold"
+	default:
+		s.missOrFail(w, errNoProject)
+		return
+	}
+
+	s.render(w, "confirm", s.pageFor(r, "", name, d))
+}
+
+// orAny names the held path, or says it plainly when the caller did not
+// pass one rather than rendering an empty gap in a sentence.
+func orAny(path string) string {
+	if path == "" {
+		return "a file in this repository"
+	}
+	return path
+}

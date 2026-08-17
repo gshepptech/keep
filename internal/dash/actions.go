@@ -239,11 +239,20 @@ func (s *Server) doClose(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// doDrop takes the reason the confirm page collected and does NOT invent
+// one. `rounce drop` refuses without --reason and exits 2; the board used to
+// route around that by supplying "dropped from the board" on the user's
+// behalf, which is the board holding a lower standard than the command line
+// for the same operation, on the record they both write.
 func (s *Server) doDrop(w http.ResponseWriter, r *http.Request) {
 	s.mutate(w, r, "Dropped.", func(st *store.Store) (string, error) {
+		reason := strings.TrimSpace(r.PostFormValue("reason"))
+		if reason == "" {
+			return "", fmt.Errorf("dropping needs a reason -- say why it will not be done")
+		}
 		_, err := st.DropItem(r.Context(), store.DropItemInput{
 			ID:     r.PostFormValue("id"),
-			Reason: reasonOr(r.PostFormValue("reason"), "dropped from the board"),
+			Reason: reason,
 			Actor:  s.actor,
 		})
 		return "", err

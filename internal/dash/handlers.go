@@ -42,6 +42,8 @@ func (s *Server) routes() *http.ServeMux {
 	mux.HandleFunc("GET /new", s.handleNew)
 	mux.HandleFunc("GET /p/{project}/new", s.handleNew)
 	mux.HandleFunc("GET /projects", s.handleProjects)
+	mux.HandleFunc("GET /confirm", s.handleConfirm)
+	mux.HandleFunc("GET /p/{project}/confirm", s.handleConfirm)
 	mux.HandleFunc("GET /search", s.handleSearch)
 	mux.HandleFunc("GET /p/{project}/search", s.handleSearch)
 	mux.HandleFunc("GET /activity", s.handleActivity)

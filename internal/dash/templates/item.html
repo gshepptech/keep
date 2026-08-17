@@ -33,7 +33,7 @@
   {{if eq (printf "%s" .Status) "open"}}{{template "action" (act $p "start" .ID "Claim" "" false)}}{{end}}
   {{if ne (printf "%s" .Status) "closed"}}
     {{template "action" (act $p "close" .ID "Close" "" false)}}
-    {{template "action" (act $p "drop" .ID "Drop" "" true)}}
+    <a class="btn btn-sm btn-danger" href="{{$p.Prefix}}/confirm?verb=drop&amp;id={{.ID}}&amp;return={{$p.Prefix}}/item/{{.ID}}">Drop</a>
   {{end}}
   {{if eq (printf "%s" .Stage) "raw"}}{{template "action" (act $p "promote" .ID "Promote to the queue" "" false)}}{{end}}
   <a class="btn btn-sm" href="{{$p.Prefix}}/tree/{{.ID}}">See the tree</a>

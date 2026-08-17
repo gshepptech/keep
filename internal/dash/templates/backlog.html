@@ -20,7 +20,7 @@
   </span>
   {{if $p.Writable}}<span class="qacts">
     {{template "action" (act $p "promote" .ID "Promote" "/backlog" false)}}
-    {{template "action" (act $p "drop" .ID "Drop" "/backlog" true)}}
+    <a class="btn btn-sm btn-danger" href="{{$p.Prefix}}/confirm?verb=drop&amp;id={{.ID}}&amp;return={{$p.Prefix}}/backlog">Drop</a>
   </span>{{end}}
 </li>
 {{else}}<li class="qempty">Nothing parked. Anything an agent notices but should not act on lands here.</li>

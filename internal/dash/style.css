@@ -925,3 +925,30 @@ label.inline { display: inline-flex; align-items: center; gap: 8px; cursor: poin
 .topbar h1, .panel-lead .panel-head h2, .firstrun h2, .qscore, .blank h3 {
   font-family: var(--display);
 }
+
+/* The confirmation step. Narrow, so it reads as a stop rather than another
+   list, and the subject of the action is shown in the same row shape it had
+   on the page you came from -- you should not have to trust that the id in
+   the URL is the thing you meant. */
+.confirm { max-width: 60ch; padding: 4px 0 40px; }
+.confirm-lede { margin: 0 0 24px; color: var(--fg-muted); font-size: var(--text-base); line-height: 1.6; }
+.confirm-subject {
+  display: flex; align-items: center; gap: 20px;
+  padding: 16px; margin-bottom: 24px; border-radius: var(--radius);
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
+}
+.confirm-warn {
+  margin: 0 0 24px; padding: 12px 16px; border-radius: var(--radius);
+  border-left: 2px solid var(--claimed);
+  background: color-mix(in srgb, var(--claimed) 9%, transparent);
+  color: var(--fg-muted); font-size: var(--text-sm); line-height: 1.55;
+}
+.confirm-form label { display: flex; flex-direction: column; gap: 8px; font-size: var(--text-sm); color: var(--fg-muted); }
+.confirm-acts { display: flex; align-items: center; gap: 12px; margin-top: 24px; }
+/* The destructive button is filled here and only here. Everywhere else it
+   is an outline that colours on hover, so a row of them does not read as a
+   row of warnings -- but on this page the warning is the point. */
+.btn-danger.btn-solid {
+  background: var(--blocked); border-color: var(--blocked); color: #fff; font-weight: 500;
+}
+.btn-danger.btn-solid:hover { background: var(--blocked); border-color: var(--blocked); opacity: 0.9; }
