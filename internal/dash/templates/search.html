@@ -35,7 +35,11 @@
         {{if .Paths}}<span class="path">{{.Paths}}</span>{{end}}
         <span class="id">{{.ID}}</span>
       </span>
-      {{if and .Snippet (ne .MatchedIn "title")}}<span class="qsnip">{{.Snippet}}</span>{{end}}
+      {{/* No "and (ne .MatchedIn "title")" here any more: the handler
+           blanks a snippet that only repeats what this row already shows,
+           which covers the title, the paths, and a body that happens to
+           restate either. */}}
+      {{if .Snippet}}<span class="qsnip">{{.Snippet}}</span>{{end}}
     </span>
   </li>
   {{end}}</ol>

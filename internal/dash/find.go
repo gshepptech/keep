@@ -44,9 +44,51 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 			s.fail(w, err)
 			return
 		}
-		d.Results = results
+		d.Results = withoutRedundantSnippets(results)
 	}
 	s.render(w, "search", s.pageFor(r, "search", name, d))
+}
+
+// withoutRedundantSnippets blanks the match snippet on any result whose
+// row already displays the text it would show.
+//
+// The snippet exists to answer "why is this in my results?" when the answer
+// is somewhere you cannot see -- a match in the reason, the acceptance
+// criteria, or the body. A row already shows its title and its paths, so a
+// match in either produces a snippet that repeats a line an inch above it.
+// The rendered result was:
+//
+//	Replace the hand-rolled retry loop with a backoff library
+//	open · matched in paths · internal/payments/refund.go · rnc-616bf0
+//	internal/payments/refund.go
+//
+// The template used to special-case the title alone. Substring containment
+// is the same rule stated once instead of once per field, and it also
+// catches the case a field list cannot: a short body whose entire text is
+// the title again.
+//
+// It runs here rather than in store.Search because it is a fact about what
+// this page draws, not about the search. The CLI prints no paths column, so
+// the same snippet is load-bearing there.
+func withoutRedundantSnippets(results []store.SearchResult) []store.SearchResult {
+	for i, r := range results {
+		if r.Snippet == "" {
+			continue
+		}
+		snip := strings.TrimSpace(strings.Trim(r.Snippet, "…"))
+		if snip == "" {
+			results[i].Snippet = ""
+			continue
+		}
+		shown := r.Title
+		if r.Paths != nil {
+			shown += " " + *r.Paths
+		}
+		if strings.Contains(shown, snip) {
+			results[i].Snippet = ""
+		}
+	}
+	return results
 }
 
 // handleActivity renders what has happened, newest first.

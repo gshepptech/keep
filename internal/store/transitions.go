@@ -395,6 +395,12 @@ func (s *Store) UpdateItem(ctx context.Context, in UpdateItemInput) (model.Item,
 	if in.Actor == "" {
 		return model.Item{}, fmt.Errorf("UpdateItem: Actor is required")
 	}
+	// A nil Title means "leave it alone"; a non-nil empty one means "blank
+	// it", which AddItem already refuses to create. Closing one door and
+	// leaving the other open would just make the hole take two commands.
+	if in.Title != nil && strings.TrimSpace(*in.Title) == "" {
+		return model.Item{}, fmt.Errorf("UpdateItem: %w", ErrEmptyTitle)
+	}
 
 	var out model.Item
 	err := s.withTx(ctx, func(tx *sql.Tx) error {

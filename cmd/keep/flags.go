@@ -131,7 +131,8 @@ func exitFor(stderr io.Writer, err error) int {
 	switch {
 	case errors.Is(err, store.ErrParentChildViaDep),
 		errors.Is(err, store.ErrSelfEdge),
-		errors.Is(err, store.ErrInvalidDepType):
+		errors.Is(err, store.ErrInvalidDepType),
+		errors.Is(err, store.ErrEmptyTitle):
 		fmt.Fprintf(stderr, "keep: %v\n", err)
 		return 2
 	default:
@@ -175,7 +176,25 @@ func exitFor(stderr io.Writer, err error) int {
 // positional and is never re-examined as a flag, so
 // `keep add -- --weird-title` keeps working.
 func permuteArgs(fs *flag.FlagSet, args []string) []string {
-	boolFlags := map[string]bool{}
+	// -h and --help are the two names the flag package handles itself, on
+	// every FlagSet, without anyone registering them. They are not in
+	// fs.VisitAll for exactly that reason, so the loop below would classify
+	// them as value-taking and -- being last on the line, with no value
+	// after them -- send them down the "dump the rest verbatim" branch into
+	// the positionals. `keep add --help` then reached flag.Parse as a
+	// positional argument after a `--`, which is to say: as a TITLE. It
+	// filed an item called "--help", printed its id, and exited 0.
+	//
+	// Seeding them as bool flags is what puts them back in front of the
+	// `--`, so flag.Parse sees them, prints the flag list, and returns
+	// ErrHelp -- which every runX in this package already turns into exit 2
+	// without touching the store.
+	//
+	// This is the one hard-coded pair in a function whose doc comment says
+	// it never hard-codes flag names. The reason that rule exists is that
+	// the same name can take a value on one command and not on another; -h
+	// and --help cannot, on any FlagSet, ever.
+	boolFlags := map[string]bool{"h": true, "help": true}
 	fs.VisitAll(func(f *flag.Flag) {
 		if bf, ok := f.Value.(interface{ IsBoolFlag() bool }); ok && bf.IsBoolFlag() {
 			boolFlags[f.Name] = true

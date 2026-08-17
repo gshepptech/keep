@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	sqlite "modernc.org/sqlite"
 	sqlite3 "modernc.org/sqlite/lib"
@@ -204,6 +205,24 @@ type addEventPayload struct {
 	DerivedFrom []string `json:"derived_from,omitempty"`
 }
 
+// ErrEmptyTitle is returned when a write would leave an item with nothing
+// to call it by.
+//
+// The title is the only field every surface displays: `ready`, `list`,
+// `search`, the board's rows, the MCP tools' output. An item without one is
+// not a partially-filled record, it is a hole in the queue that can only be
+// referred to by id -- and the id is deliberately an opaque handle nobody
+// reads. Every other field on an item is optional, and this one cannot be.
+//
+// Guarded in the store rather than in each command because there are five
+// places that build an AddItemInput -- add, capture, two MCP tools and the
+// board -- and the rule should not be four-fifths true.
+//
+// Whitespace counts as empty. A title of "   " is exactly as unreadable as
+// "" in every list that renders it, and accepting one while rejecting the
+// other would be a distinction nobody could see.
+var ErrEmptyTitle = errors.New("an item needs a title: it is the only field every list, search result and board row shows")
+
 // AddItem creates a new item -- root or child -- inside one transaction:
 // hierarchical id allocation, the dual parent-child write, blocks/
 // derived-from edges, the computed score, and exactly one `add` event. The
@@ -214,6 +233,9 @@ type addEventPayload struct {
 func (s *Store) AddItem(ctx context.Context, in AddItemInput) (model.Item, error) {
 	if in.Actor == "" {
 		return model.Item{}, fmt.Errorf("AddItem: Actor is required")
+	}
+	if strings.TrimSpace(in.Title) == "" {
+		return model.Item{}, fmt.Errorf("AddItem: %w", ErrEmptyTitle)
 	}
 
 	itemType := in.Type
