@@ -12,22 +12,22 @@
     <h2>Claimed, then silence</h2>
     <span class="hint">Nothing has happened to these in over two hours</span>
   </div>
-  <div class="table-wrap"><table>
-  <thead><tr><th>Item</th><th></th><th>Claimed by</th><th>Silent</th><th>Last thing</th>{{if $p.Writable}}<th class="right">Actions</th>{{end}}</tr></thead>
-  <tbody>
-  {{range $d.Stale}}<tr>
-  <td><a class="title" href="{{$p.Prefix}}/item/{{.ID}}">{{.Title}}</a></td>
-  <td class="id-cell"><span class="id">{{.ID}}</span></td>
-  <td>{{if .Assignee}}{{template "state-tag" (tag "claimed" .Assignee)}}{{else}}<span class="faint">not recorded</span>{{end}}</td>
-  <td class="faint">{{ago .LastEvent}}</td>
-  <td class="faint">{{.LastKind}}</td>
-  {{if $p.Writable}}<td class="right"><div class="acts">
-    {{template "action" (act $p "close" .ID "Close" "/" false)}}
-    {{template "action" (act $p "drop" .ID "Hand it back" "/" true)}}
-  </div></td>{{end}}
-  </tr>
-  {{end}}</tbody>
-  </table></div>
+  <ol class="queue">
+  {{range $d.Stale}}<li class="qrow">
+    <span class="qbody">
+      <a class="title" href="{{$p.Prefix}}/item/{{.ID}}">{{.Title}}</a>
+      <span class="qmeta">
+        {{if .Assignee}}{{template "state-tag" (tag "claimed" .Assignee)}}{{else}}<span class="faint">nobody recorded</span>{{end}}
+        <span>silent {{ago .LastEvent}}, last thing was {{.LastKind}}</span>
+        <span class="id">{{.ID}}</span>
+      </span>
+    </span>
+    {{if $p.Writable}}<span class="qacts">
+      {{template "action" (act $p "close" .ID "Close" "/" false)}}
+      {{template "action" (act $p "drop" .ID "Hand it back" "/" true)}}
+    </span>{{end}}
+  </li>
+  {{end}}</ol>
   <p class="panel-foot">rounce never releases a claim on its own: it cannot tell a dead session from a slow one, and unclaiming live work would put two agents on one item.</p>
 </div>
 {{end}}
@@ -57,33 +57,40 @@
     <span class="hint">{{len $d.Ready}} ranked by value plus confidence, less effort</span>
   </div>
   {{if $d.Ready}}
-  <div class="table-wrap"><table class="queue">
-  <thead><tr><th>Score</th><th>Item</th><th></th><th>Touches</th>{{if $p.Writable}}<th class="right">Actions</th>{{end}}</tr></thead>
-  <tbody>
-  {{range $d.Ready}}<tr>
-  <td class="score">{{.Score}}</td>
-  <td><a class="title" href="{{$p.Prefix}}/item/{{.ID}}">{{.Title}}</a></td>
-  <td class="id-cell"><span class="id">{{.ID}}</span></td>
-  <td class="path">{{if .Paths}}{{.Paths}}{{else}}<span class="faint">not declared</span>{{end}}</td>
-  {{if $p.Writable}}<td class="right"><div class="acts">
-    {{if $p.HasInterlock}}
-    <form method="post" action="/do/launch">
-      <input type="hidden" name="csrf" value="{{$p.CSRF}}">
+  {{/* Rows, not a table. A queue row is one object -- a score, a thing to
+       do, where it lives, and what you can do about it -- and a table asked
+       four columns to agree on a shape none of them wanted: the score
+       cramped, the path truncated, the actions squeezed. Dropping the
+       header row costs nothing either; "Score" over a column of numerals
+       was labelling the obvious. */}}
+  <ol class="queue">
+  {{range $d.Ready}}<li class="qrow">
+    <span class="qscore">{{.Score}}</span>
+    <span class="qbody">
+      <a class="title" href="{{$p.Prefix}}/item/{{.ID}}">{{.Title}}</a>
+      <span class="qmeta">
+        {{if .Paths}}<span class="path">{{.Paths}}</span>{{else}}<span class="faint">no files declared</span>{{end}}
+        <span class="id">{{.ID}}</span>
+      </span>
+    </span>
+    {{if $p.Writable}}<span class="qacts">
+      {{if $p.HasInterlock}}
+      <form method="post" action="/do/launch">
+        <input type="hidden" name="csrf" value="{{$p.CSRF}}">
 <input type="hidden" name="project" value="{{$p.Project}}"><input type="hidden" name="prefix" value="{{$p.Prefix}}">
-      <input type="hidden" name="id" value="{{.ID}}">
-      <span class="select-wrap"><select name="agent" aria-label="Agent to start on {{.Title}}">
-        <option value="claude">claude</option>
-        <option value="codex">codex</option>
-      </select></span>
-      <button type="submit" class="btn btn-sm">Start agent</button>
-    </form>
-    {{end}}
-    {{template "action" (act $p "start" .ID "Claim" "/" false)}}
-    {{template "action" (act $p "close" .ID "Close" "/" false)}}
-  </div></td>{{end}}
-  </tr>
-  {{end}}</tbody>
-  </table></div>
+        <input type="hidden" name="id" value="{{.ID}}">
+        <span class="select-wrap"><select name="agent" aria-label="Agent to start on {{.Title}}">
+          <option value="claude">claude</option>
+          <option value="codex">codex</option>
+        </select></span>
+        <button type="submit" class="btn btn-sm">Start agent</button>
+      </form>
+      {{end}}
+      {{template "action" (act $p "start" .ID "Claim" "/" false)}}
+      {{template "action" (act $p "close" .ID "Close" "/" false)}}
+    </span>{{end}}
+  </li>
+  {{end}}</ol>
   {{else}}
   <div class="blank">
     {{template "icon-check"}}
@@ -123,21 +130,22 @@
 {{if $d.Progress}}
 <div class="panel panel-sub">
   <div class="panel-head"><h2>Being worked on</h2></div>
-  <div class="table-wrap"><table>
-  <thead><tr><th>Score</th><th>Item</th><th></th><th>Claimed by</th>{{if $p.Writable}}<th class="right">Actions</th>{{end}}</tr></thead>
-  <tbody>
-  {{range $d.Progress}}<tr>
-  <td class="score">{{.Score}}</td>
-  <td><a class="title" href="{{$p.Prefix}}/item/{{.ID}}">{{.Title}}</a></td>
-  <td class="id-cell"><span class="id">{{.ID}}</span></td>
-  <td>{{if .Assignee}}{{template "state-tag" (tag "claimed" .Assignee)}}{{else}}<span class="faint">claimed before rounce recorded who</span>{{end}}</td>
-  {{if $p.Writable}}<td class="right"><div class="acts">
-    {{template "action" (act $p "close" .ID "Close" "/" false)}}
-    {{template "action" (act $p "drop" .ID "Drop" "/" true)}}
-  </div></td>{{end}}
-  </tr>
-  {{end}}</tbody>
-  </table></div>
+  <ol class="queue">
+  {{range $d.Progress}}<li class="qrow">
+    <span class="qscore">{{.Score}}</span>
+    <span class="qbody">
+      <a class="title" href="{{$p.Prefix}}/item/{{.ID}}">{{.Title}}</a>
+      <span class="qmeta">
+        {{if .Assignee}}{{template "state-tag" (tag "claimed" .Assignee)}}{{else}}<span class="faint">claimed before rounce recorded who</span>{{end}}
+        <span class="id">{{.ID}}</span>
+      </span>
+    </span>
+    {{if $p.Writable}}<span class="qacts">
+      {{template "action" (act $p "close" .ID "Close" "/" false)}}
+      {{template "action" (act $p "drop" .ID "Drop" "/" true)}}
+    </span>{{end}}
+  </li>
+  {{end}}</ol>
 </div>
 {{end}}
 
@@ -147,25 +155,26 @@
     <h2>Held back</h2>
     <span class="hint">{{len $d.Held}} workable, except an agent has the file open</span>
   </div>
-  <div class="table-wrap"><table>
-  <thead><tr><th>Score</th><th>Item</th><th></th><th>File</th><th>Held by</th><th>Frees up</th>{{if $p.Writable}}<th class="right">Actions</th>{{end}}</tr></thead>
-  <tbody>
-  {{range $d.Held}}<tr class="flagged">
-  <td class="score">{{.Item.Score}}</td>
-  <td><a class="title" href="{{$p.Prefix}}/item/{{.Item.ID}}">{{.Item.Title}}</a></td>
-  <td class="id-cell"><span class="id">{{.Item.ID}}</span></td>
-  <td class="path">{{.Path}}</td>
-  <td>{{template "state-tag" (tag "held" .Lease.Agent)}}</td>
-  <td class="faint">{{until .Lease.ExpiresAt}}</td>
-  {{if $p.Writable}}<td class="right"><div class="acts"><form method="post" action="/do/release">
-    <input type="hidden" name="csrf" value="{{$p.CSRF}}">
+  <ol class="queue">
+  {{range $d.Held}}<li class="qrow flagged">
+    <span class="qscore">{{.Item.Score}}</span>
+    <span class="qbody">
+      <a class="title" href="{{$p.Prefix}}/item/{{.Item.ID}}">{{.Item.Title}}</a>
+      <span class="qmeta">
+        <span class="path">{{.Path}}</span>
+        {{template "state-tag" (tag "held" .Lease.Agent)}}
+        <span>frees up {{until .Lease.ExpiresAt}}</span>
+        <span class="id">{{.Item.ID}}</span>
+      </span>
+    </span>
+    {{if $p.Writable}}<span class="qacts"><form method="post" action="/do/release">
+      <input type="hidden" name="csrf" value="{{$p.CSRF}}">
 <input type="hidden" name="project" value="{{$p.Project}}"><input type="hidden" name="prefix" value="{{$p.Prefix}}">
-    <input type="hidden" name="session" value="{{.Lease.SessionID}}">
-    <button type="submit" class="btn btn-sm btn-danger">Release</button>
-  </form></div></td>{{end}}
-  </tr>
-  {{end}}</tbody>
-  </table></div>
+      <input type="hidden" name="session" value="{{.Lease.SessionID}}">
+      <button type="submit" class="btn btn-sm btn-danger">Release</button>
+    </form></span>{{end}}
+  </li>
+  {{end}}</ol>
 </div>
 {{end}}
 
@@ -175,16 +184,17 @@
     <h2>Blocked</h2>
     <span class="hint">Waiting on other work, not on an agent</span>
   </div>
-  <div class="table-wrap"><table>
-  <thead><tr><th>Item</th><th>Waiting on</th></tr></thead>
-  <tbody>
-  {{range $d.Blocked}}<tr class="flagged stopped">
-  <td><a class="title" href="{{$p.Prefix}}/item/{{.Item.ID}}">{{.Item.Title}}</a></td>
-  <td class="id-cell"><span class="id">{{.Item.ID}}</span></td>
-  <td><a href="{{$p.Prefix}}/item/{{.BlockedBy}}">{{.BlockedBy}}</a></td>
-  </tr>
-  {{end}}</tbody>
-  </table></div>
+  <ol class="queue">
+  {{range $d.Blocked}}<li class="qrow stopped">
+    <span class="qbody">
+      <a class="title" href="{{$p.Prefix}}/item/{{.Item.ID}}">{{.Item.Title}}</a>
+      <span class="qmeta">
+        <span>waiting on <a href="{{$p.Prefix}}/item/{{.BlockedBy}}">{{.BlockedBy}}</a></span>
+        <span class="id">{{.Item.ID}}</span>
+      </span>
+    </span>
+  </li>
+  {{end}}</ol>
 </div>
 {{end}}
 
@@ -195,23 +205,26 @@
   </div>
   {{with $d.Interlock}}
   {{if .Sessions}}
-  <div class="table-wrap"><table>
-  <thead><tr><th>Agent</th><th>State</th><th>Last seen</th><th>Holding</th>{{if $p.Writable}}<th class="right">Actions</th>{{end}}</tr></thead>
-  <tbody>
-  {{range .Sessions}}<tr>
-  <td><div class="who"><span class="avatar">{{initial .Agent}}</span><div><b>{{.Agent}}</b><div class="sub">{{.ID}}</div></div></div></td>
-  <td>{{if .Expired}}{{template "state-tag" (tag "idle" "gone")}}{{else}}{{template "state-tag" (tag "workable" "live")}}{{end}}</td>
-  <td class="faint">{{ago .LastSeen}}</td>
-  <td class="path">{{holdsFor $d.Interlock .ID}}</td>
-  {{if $p.Writable}}<td class="right"><div class="acts">{{if holdCount $d.Interlock .ID}}<form method="post" action="/do/release">
-    <input type="hidden" name="csrf" value="{{$p.CSRF}}">
+  <ol class="queue">
+  {{range .Sessions}}<li class="qrow">
+    <span class="avatar">{{initial .Agent}}</span>
+    <span class="qbody">
+      <span class="title">{{.Agent}}</span>
+      <span class="qmeta">
+        {{if .Expired}}{{template "state-tag" (tag "idle" "gone")}}{{else}}{{template "state-tag" (tag "workable" "live")}}{{end}}
+        <span>seen {{ago .LastSeen}}</span>
+        <span class="path">{{holdsFor $d.Interlock .ID}}</span>
+        <span class="id">{{.ID}}</span>
+      </span>
+    </span>
+    {{if $p.Writable}}<span class="qacts">{{if holdCount $d.Interlock .ID}}<form method="post" action="/do/release">
+      <input type="hidden" name="csrf" value="{{$p.CSRF}}">
 <input type="hidden" name="project" value="{{$p.Project}}"><input type="hidden" name="prefix" value="{{$p.Prefix}}">
-    <input type="hidden" name="session" value="{{.ID}}">
-    <button type="submit" class="btn btn-sm">Release holds</button>
-  </form>{{else}}<span class="faint">nothing to release</span>{{end}}</div></td>{{end}}
-  </tr>
-  {{end}}</tbody>
-  </table></div>
+      <input type="hidden" name="session" value="{{.ID}}">
+      <button type="submit" class="btn btn-sm">Release holds</button>
+    </form>{{else}}<span class="faint">nothing to release</span>{{end}}</span>{{end}}
+  </li>
+  {{end}}</ol>
   {{else}}
   <div class="blank">{{template "icon-agent"}}<h3>No agents seen yet</h3><p>Interlock is watching. Anyone who opens a file in this repository will appear here.</p></div>
   {{end}}

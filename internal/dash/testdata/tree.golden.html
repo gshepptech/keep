@@ -700,6 +700,57 @@ tbody tr:hover td { background: color-mix(in srgb, var(--fg) 4%, transparent); }
 .brand-name { font-size: var(--text-base); }
 .project-name { font-size: var(--text-sm); }
 .status-line { font-size: var(--text-xs); }
+
+/* ---------------------------------------------------------------------
+   The queue. Each row is one object rather than four table cells: the
+   score, the thing to do, where it lives, and what you can do about it.
+   A table forced those four to share a grid none of them wanted -- the
+   score cramped into a numeric column, the path truncated to fit, the
+   controls squeezed against the right edge.
+   --------------------------------------------------------------------- */
+.queue { list-style: none; margin: 0; padding: 0; }
+.qrow {
+  display: flex; align-items: center; gap: 20px;
+  padding: 14px 8px 14px 2px; border-radius: var(--radius);
+  border-bottom: 1px solid var(--line-soft);
+  transition: background var(--tempo) ease;
+}
+.qrow:last-child { border-bottom: none; }
+.qrow:hover { background: color-mix(in srgb, var(--fg) 4%, transparent); }
+
+.qscore {
+  flex: none; min-width: 44px;
+  font-size: 28px; font-weight: 300; line-height: 1;
+  letter-spacing: -0.04em; font-variant-numeric: tabular-nums;
+  color: var(--fg); text-align: right;
+}
+.qbody { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.qbody .title { font-size: 17px; font-weight: 450; letter-spacing: -0.01em; }
+
+/* The second line is everything you would have needed a column for. It is
+   one line of quiet text because that is what it is worth: you read it
+   after the title has already told you whether you care. */
+.qmeta {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  font-size: var(--text-sm); color: var(--fg-faint); min-width: 0;
+}
+.qmeta .path { font-family: var(--mono); font-size: var(--text-sm); overflow: hidden; text-overflow: ellipsis; }
+.qmeta .id { font-size: var(--text-xs); opacity: 0.75; }
+
+.qacts { flex: none; display: flex; align-items: center; gap: 7px; }
+.qacts form { display: flex; align-items: center; gap: 7px; margin: 0; }
+
+@media (max-width: 900px) {
+  .qrow { flex-wrap: wrap; }
+  .qacts { width: 100%; padding-left: 64px; }
+}
+
+/* A row that is flagged keeps its amber edge; the edge now sits on a list
+   item rather than a table row, so it needs the radius clipped back. */
+.qrow.flagged { box-shadow: inset 2px 0 0 var(--claimed); padding-left: 14px; }
+.qrow.stopped { box-shadow: inset 2px 0 0 var(--blocked); padding-left: 14px; }
+/* The agents list has no score, so its avatar takes that slot's alignment. */
+.qrow > .avatar { flex: none; margin-left: 2px; }
 </style>
 </head>
 <body>

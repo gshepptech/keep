@@ -60,9 +60,11 @@ func newAgreementFixture(t *testing.T) (*Server, *store.Store) {
 }
 
 // idsFromQueueTable extracts every "/item/{id}" href's id, in document
-// order, but ONLY from inside <table class="queue"> -- ready.html's own
-// stable hook, added in plan 02 precisely so this test never needs to edit
-// that template. Scoping to the hook (rather than collecting every /item/
+// order, but ONLY from inside the element carrying class="queue" -- the
+// board's own stable hook, so this test does not need to know whether the
+// queue is a table, a list, or whatever it becomes next. It was a <table>
+// until the queue rows became <li> objects; the hook survived the change,
+// which is what a hook is for. Scoping to the hook (rather than collecting every /item/
 // href on the page) is deliberate: collecting every such href would work
 // today too, since the nav uses only fixed literal paths, but that is an
 // accident of the current nav, not a guarantee -- a future "see also" link
@@ -86,7 +88,7 @@ func idsFromQueueTable(t *testing.T, page string) []string {
 		if table != nil {
 			return
 		}
-		if n.Type == html.ElementNode && n.Data == "table" {
+		if n.Type == html.ElementNode {
 			for _, a := range n.Attr {
 				if a.Key == "class" && a.Val == "queue" {
 					table = n
