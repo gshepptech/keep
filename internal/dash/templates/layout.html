@@ -141,10 +141,6 @@
      number refers to is a few inches below saying the same thing. */}}
 {{define "count"}}<span class="count{{if .Accent}} count-{{.Accent}}{{end}}"><b>{{.Value}}</b> {{.Label}}</span>{{end}}
 
-{{/* A stat card. Figure first, then what it counts, then one line of
-     context -- the caption is where a number stops being trivia. */}}
-{{define "stat"}}<div class="stat{{if .Accent}} stat-{{.Accent}}{{end}}">
-  <div class="stat-head"><span>{{.Label}}</span>{{if .Badge}}<em class="badge badge-{{.Accent}}">{{.Badge}}</em>{{end}}</div>
-  <b>{{.Value}}</b>
-  <p>{{.Caption}}</p>
-</div>{{end}}
+{{/* The stat-card block that lived here is gone with the cards: the board
+     shows its counts as one line under the lede. statCardFor survives and
+     is what `count` above takes -- the zero-suppression rule lives in it. */}}

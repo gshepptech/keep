@@ -131,6 +131,17 @@ func (s *Server) guard(r *http.Request) error {
 	return nil
 }
 
+// mutate runs one write and redirects. A `done` of "" means silent success.
+//
+// Silence is the default for anything whose effect is on the page you land
+// on: filing an item redirects to that item, saving redirects to the saved
+// fields, claiming moves a row into "Being worked on" a few inches down.
+// Announcing those is telling someone what they are already looking at.
+//
+// A banner is kept for the two cases where the page cannot show it: work
+// that LEFT the view (closed, dropped, promoted, released -- you cannot
+// see the absence of a thing you were not looking for), and work that
+// happened somewhere else entirely (an agent starting in another process).
 func (s *Server) mutate(w http.ResponseWriter, r *http.Request, done string, fn func(*store.Store) (string, error)) {
 	if err := s.guard(r); err != nil {
 		http.Error(w, "refused: "+err.Error(), http.StatusForbidden)
@@ -221,7 +232,7 @@ func (s *Server) routesMutating(mux *http.ServeMux) {
 }
 
 func (s *Server) doStart(w http.ResponseWriter, r *http.Request) {
-	s.mutate(w, r, "Started.", func(st *store.Store) (string, error) {
+	s.mutate(w, r, "", func(st *store.Store) (string, error) {
 		id := r.PostFormValue("id")
 		_, err := st.StartItem(r.Context(), store.StartItemInput{ID: id, Actor: s.actor})
 		return "", err
@@ -271,7 +282,7 @@ func reasonOr(given, fallback string) string {
 }
 
 func (s *Server) doAdd(w http.ResponseWriter, r *http.Request) {
-	s.mutate(w, r, "Filed.", func(st *store.Store) (string, error) {
+	s.mutate(w, r, "", func(st *store.Store) (string, error) {
 		in := store.AddItemInput{
 			Title:      strings.TrimSpace(r.PostFormValue("title")),
 			Type:       r.PostFormValue("type"),
@@ -301,7 +312,7 @@ func (s *Server) doAdd(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) doUpdate(w http.ResponseWriter, r *http.Request) {
-	s.mutate(w, r, "Saved.", func(st *store.Store) (string, error) {
+	s.mutate(w, r, "", func(st *store.Store) (string, error) {
 		id := r.PostFormValue("id")
 		in := store.UpdateItemInput{ID: id, Actor: s.actor}
 
@@ -408,7 +419,7 @@ func (s *Server) doRelease(w http.ResponseWriter, r *http.Request) {
 // divided up in advance without every assigned item reading as in
 // progress.
 func (s *Server) doAssign(w http.ResponseWriter, r *http.Request) {
-	s.mutate(w, r, "Assigned.", func(st *store.Store) (string, error) {
+	s.mutate(w, r, "", func(st *store.Store) (string, error) {
 		who := strings.TrimSpace(r.PostFormValue("assignee"))
 		_, err := st.UpdateItem(r.Context(), store.UpdateItemInput{
 			ID: r.PostFormValue("id"), Actor: s.actor, Assignee: &who,

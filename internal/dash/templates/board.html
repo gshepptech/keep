@@ -21,34 +21,26 @@
     no memory of the last one.
   </p>
 
-  <ol class="ways">
-    <li>
-      <span class="way-n">1</span>
-      <div>
-        <b>File the first thing you notice</b>
-        <p>A title that stands on its own is enough. Scores and files can come later.</p>
-        {{if $p.Writable}}<a class="btn btn-primary" href="{{$p.Prefix}}/new">File an item</a>{{end}}
-      </div>
-    </li>
-    <li>
-      <span class="way-n">2</span>
-      <div>
-        <b>Or from the terminal, where you already are</b>
-        <p>The CLI is the whole product; every surface here is a view over it.</p>
-        <pre class="way-code">rounce add --score 9/8/2 --paths internal/auth/token.go \
+  {{/* One primary way in, then the rest as prose. This was three numbered
+       items of equal weight, which is both the hero-plus-three-cards rhythm
+       and a lie about the content: numbers promise a sequence, and these are
+       alternatives you pick between. */}}
+  <div class="firstrun-primary">
+    <b>File the first thing you notice</b>
+    <p>A title that stands on its own is enough — scores and file paths can come later,
+    and most items never need them.</p>
+    {{if $p.Writable}}<a class="btn btn-primary" href="{{$p.Prefix}}/new">File an item</a>{{end}}
+  </div>
+
+  <div class="firstrun-alt">
+    <p>Or from the terminal you are already in — the CLI is the whole product,
+    and every screen here is a view over it:</p>
+    <pre class="way-code">rounce add --score 9/8/2 --paths internal/auth/token.go \
   "Expire refresh tokens after 30 days"</pre>
-      </div>
-    </li>
-    <li>
-      <span class="way-n">3</span>
-      <div>
-        <b>Or let an agent do it</b>
-        <p>With the MCP server registered, an agent files what it notices instead of
-        mentioning it once and forgetting. <code>ready</code> tells it what to work on;
-        <code>capture</code> is where the rest goes.</p>
-      </div>
-    </li>
-  </ol>
+    <p>Or let an agent do it. With the MCP server registered, <code>ready</code> tells an
+    agent what to work on and <code>capture</code> is where it files what it noticed on the
+    way past, instead of mentioning it once and forgetting.</p>
+  </div>
 
   {{if and $p.Writable (not $p.HasInterlock)}}
   <div class="firstrun-aside">
