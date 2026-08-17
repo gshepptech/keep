@@ -21,7 +21,7 @@
       </label>
 
       <label>Type
-        <select name="type">{{range .Data}}<option value="{{.}}">{{.}}</option>{{end}}</select>
+        <span class="select-wrap"><select name="type">{{range .Data}}<option value="{{.}}">{{.}}</option>{{end}}</select></span>
       </label>
       <label>Value <input name="value" type="number" min="0" max="10" placeholder="0-10">
         <span class="hint-text">What it is worth</span></label>
