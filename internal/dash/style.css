@@ -161,7 +161,14 @@
     --workable: #8b9198;
     --claimed: #d29922;
     --blocked: #f85149;
-    --on-danger: #fdf6f6;
+    /* Dark, not near-white. The light theme's danger red is dark enough to
+       carry white text at 6.15:1; this one is a LIGHTER red, chosen to be
+       visible on a near-black canvas, and near-white on it measures 3.14:1
+       -- under the 4.5 that 14px text needs. The token was copied verbatim
+       from the light block, which is the whole failure: an on-colour is a
+       function of the colour it sits on, and the two reds are on opposite
+       sides of the point where that answer flips. */
+    --on-danger: #1a0403;
 
     --accent: #e8eaed;
   }
@@ -260,12 +267,50 @@ td[class*="depth-"] { font-family: var(--mono); }
   transform: rotate(45deg);
 }
 .switcher[open] .switcher-caret { transform: rotate(-135deg); margin-top: 2px; }
+/* The menu is absolutely positioned, so nothing in the flow constrains it:
+   it grew to its widest child, which is a repository's absolute path, and
+   at 375px ran 313px past the edge of a page that cannot scroll sideways.
+   min-width sets the floor it wants; max-width is the ceiling the window
+   imposes. 100vw minus the 24px the bar is inset by, on each side.
+
+   The cap alone is not enough at phone widths, because `left: 0` is the
+   switcher's left edge and the switcher already sits 104px in -- a menu
+   that fits the window still does not fit the window *from there*. Below
+   the phone breakpoint it stops being a popover and becomes what a
+   disclosure widget is in normal flow: a block that opens underneath and
+   pushes the page down. Nothing in flow can overflow the page. */
 .switcher-menu {
   position: absolute; top: calc(100% + 8px); left: 0; z-index: 5;
-  min-width: 260px; padding: 8px; border-radius: var(--radius-lg);
+  min-width: 260px; max-width: calc(100vw - 48px);
+  padding: 8px; border-radius: var(--radius-lg);
   background: var(--panel);
   box-shadow: 0 1px 2px color-mix(in srgb, var(--fg) 12%, transparent),
               0 8px 20px -6px color-mix(in srgb, var(--fg) 22%, transparent);
+}
+/* The switcher takes a whole row of the (wrapping) bar, and its menu drops
+   into normal flow beneath it at full width.
+
+   Both halves are needed. Static alone was not enough: the menu's widest
+   child is a repository path set in nowrap mono, so its min-content width
+   is the whole path, and a static box with no ceiling grew the <details>
+   itself right off the page -- 242px past the edge, which is worse than the
+   popover was. width: 100% of a full-row switcher is what finally gives
+   .switcher-dir a width to run its own text-overflow: ellipsis against. */
+@media (max-width: 560px) {
+  /* min-width: 0 is the load-bearing declaration, not the flex basis. A
+     flex item's automatic minimum size is its min-content width, and this
+     one's min-content is a 573px nowrap repository path -- so `flex: 1 0
+     100%` sized it to 591px inside a 364px bar and the whole switcher hung
+     off the page. Only min-width: 0 lets a flex item be narrower than the
+     longest thing inside it, which is the entire point of the ellipsis the
+     path is already asking for. */
+  .switcher { position: static; flex: 1 1 100%; min-width: 0; }
+  .switcher summary { width: 100%; min-width: 0; justify-content: space-between; }
+  .switcher-menu {
+    position: static; min-width: 0; max-width: 100%; width: 100%;
+    margin-top: 8px; box-shadow: none;
+    border: 1px solid var(--line);
+  }
 }
 .switcher-dir {
   padding: 4px 12px 8px; font-family: var(--mono);
@@ -285,7 +330,15 @@ td[class*="depth-"] { font-family: var(--mono); }
 .switcher-item span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Tabs, not a stack of rows. Four destinations do not need a column. */
-.bar-nav { display: flex; align-items: center; gap: 4px; flex: 1; min-width: 0; }
+/* The nav wraps. It has flex: 1 and min-width: 0 so it yields space to the
+   wordmark and the switcher beside it -- but yielding space to a row of
+   nowrap pills does not shrink them, it pushes them out of the box, and
+   `html { overflow-x: clip }` two hundred lines up then deletes them. At
+   375px that cost Parked, Search and Activity: three of the five places you
+   can go, not merely hard to reach but gone, with no scrollbar to find them
+   with. Wrapping costs a second line at a width where the bar was already
+   two lines tall. */
+.bar-nav { display: flex; align-items: center; gap: 4px; flex: 1; min-width: 0; flex-wrap: wrap; }
 .tab {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 6px 12px; border-radius: 999px;
@@ -579,6 +632,25 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
 input::placeholder, textarea::placeholder { color: var(--fg-faint); }
 textarea { resize: vertical; line-height: 1.55; }
 
+/* A textarea grows to what is in it. `rows` is a guess at how much a field
+   usually holds, and on the item page it guesses two for a reason that runs
+   to four lines -- so the text a person came to read is behind a scroll
+   inside a box, on a page that already scrolls. field-sizing is the CSS-only
+   answer; the alternative is a script, and there is none on this board.
+
+   Capped, because a captured document's body is a whole roadmap and a
+   textarea that grows to it is worse than one that does not. Browsers
+   without field-sizing simply keep the rows attribute they have now, so
+   this only ever improves. */
+textarea { field-sizing: content; min-height: 4.5em; max-height: 24em; }
+
+/* The body is the one field that is usually empty and occasionally holds a
+   whole captured roadmap. field-sizing collapsed the empty case to a single
+   line, and a one-line box does not read as the place a document goes --
+   `rows` was carrying that invitation, and growing-to-content threw it away
+   along with the clipping it was there to fix. A floor keeps both. */
+textarea[name="body"] { min-height: 9em; }
+
 table.fields th {
   text-align: left; padding: 12px 16px; font-weight: 500;
   color: var(--fg-faint); white-space: nowrap; width: 1%;
@@ -752,6 +824,18 @@ tbody tr:hover td { background: color-mix(in srgb, var(--fg) 4%, transparent); }
 @media (max-width: 900px) {
   .qrow { flex-wrap: wrap; }
   .qacts { width: 100%; padding-left: 64px; }
+}
+
+/* Below the phone breakpoint the controls wrap and give up their indent.
+   The 64px above aligns them under the title rather than the score, which
+   is right at tablet width and unaffordable at 375px: the select and three
+   buttons need more than the 311px it leaves them, so Close hung 29px past
+   the edge -- and the page cannot scroll sideways to reach it, by design.
+   Wrapping is the only fix that keeps every control on the page; making
+   them smaller would walk straight back into the 44px minimum above. */
+@media (max-width: 560px) {
+  .qacts { padding-left: 0; flex-wrap: wrap; }
+  .qacts form { flex-wrap: wrap; }
 }
 
 /* A row that is flagged keeps its amber edge; the edge now sits on a list
@@ -1067,6 +1151,22 @@ input, textarea { caret-color: var(--fg); }
    rule that had grown them: an explicit height beats the padding that rule
    was adding. They grow together now, so the row keeps its alignment at
    both sizes rather than trading one property for the other. */
-@media (pointer: coarse) {
-  .qacts .btn, .qacts select, .acts .btn, .acts select { height: 44px; min-height: 44px; }
+/* Matched to the breakpoint at the top of this file, not narrower. That rule
+   says "below the tablet breakpoint every control gets the 44px minimum",
+   and it sets min-height on .btn and on bare select -- but the row controls
+   above are .qacts .btn and .qacts select, which are more specific and set
+   min-height: 32px, so they quietly opted out of the promise the other rule
+   makes. A 375px window with a mouse got 32px controls. This is the second
+   time these particular controls have defeated their own touch-target fix;
+   the first was a coarse-pointer rule overridden by a later height. */
+/* Every control that pins its own exact height, restored to the 44px floor
+   together. They are listed in one rule because they are one mistake made
+   three times: a row of controls needs a shared exact height to line up,
+   an exact height beats a min-height set by a less specific selector, and
+   so each of these rows silently opted out of the touch-target promise made
+   at the top of this file. Anything added here with `height:` on it belongs
+   in this list too. */
+@media (pointer: coarse), (max-width: 720px) {
+  .qacts .btn, .qacts select, .acts .btn, .acts select,
+  .prompt-side .btn, .prompt-side select { height: 44px; min-height: 44px; }
 }

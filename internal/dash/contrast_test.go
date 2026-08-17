@@ -92,6 +92,65 @@ func TestEveryTextTokenClearsContrastOnBothGrounds(t *testing.T) {
 	}
 }
 
+// TestTextOnAFilledColourClearsContrast covers the case the test above is
+// blind to by construction: it measures text tokens against --bg and
+// --panel, the two grounds a *page* provides. A filled button is a third
+// ground, and nothing was checking it.
+//
+// --on-danger fell straight through that gap. It was defined once for the
+// light theme, where the danger red is dark and near-white text on it
+// measures 6.15:1, and then copied verbatim into the dark block -- where
+// the danger red is LIGHTER, because it has to be visible on a near-black
+// canvas, and the same near-white text measures 3.14:1. Found by redpen's
+// render pass, which reads computed colours off the real page and so was
+// never fooled by the token being "already decided".
+//
+// An on-colour is a function of the colour it sits on. The two themes' reds
+// are on opposite sides of the luminance where that function flips, so the
+// one value that looked like a constant could not be one.
+func TestTextOnAFilledColourClearsContrast(t *testing.T) {
+	css := string(styleInline)
+	cut := strings.Index(css, "@media (prefers-color-scheme: dark)")
+	if cut < 0 {
+		t.Fatal("no dark-scheme block in the stylesheet")
+	}
+	schemes := map[string]map[string]string{
+		"light": tokensIn(css[:cut]),
+		"dark":  tokensIn(css[cut:]),
+	}
+
+	// Every place the board sets text on a filled colour rather than on the
+	// page. Extend this when a second filled control appears -- a new
+	// --on-* token with no row here is the same hole reopened.
+	filled := []struct{ text, fill string }{
+		{"on-danger", "blocked"}, // .btn-danger.btn-solid, the confirm page
+		{"bg", "fg"},             // .btn-primary, New item / Save changes
+	}
+
+	// 4.5, not 3.0: these buttons are 14px at weight 500, which is body
+	// text by WCAG's definition, not large text.
+	const min = 4.5
+
+	for scheme, tok := range schemes {
+		for _, p := range filled {
+			fg, ok := tok[p.text]
+			if !ok {
+				t.Errorf("%s: no --%s token", scheme, p.text)
+				continue
+			}
+			bg, ok := tok[p.fill]
+			if !ok {
+				t.Errorf("%s: no --%s token", scheme, p.fill)
+				continue
+			}
+			if got := contrast(fg, bg); got < min {
+				t.Errorf("%s: --%s (#%s) on filled --%s (#%s) is %.2f:1, want at least %.1f:1",
+					scheme, p.text, fg, p.fill, bg, got, min)
+			}
+		}
+	}
+}
+
 // TestContrastMathMatchesAKnownPair guards the measurement itself. Black on
 // white is exactly 21:1 by definition; a helper that cannot reproduce that
 // would pass the test above by being wrong in a convenient direction.
