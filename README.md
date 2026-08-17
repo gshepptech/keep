@@ -1,13 +1,6 @@
 <div align="center">
 
-```
- ██▀███   ▒█████   █    ██  ███▄    █  ▄████▄  ▓█████
-▓██ ▒ ██▒▒██▒  ██▒ ██  ▓██▒ ██ ▀█   █ ▒██▀ ▀█  ▓█   ▀
-▓██ ░▄█ ▒▒██░  ██▒▓██  ▒██░▓██  ▀█ ██▒▒▓█    ▄ ▒███
-▒██▀▀█▄  ▒██   ██░▓▓█  ░██░▓██▒  ▐▌██▒▒▓▓▄ ▄██▒▒▓█  ▄
-░██▓ ▒██▒░ ████▓▒░▒▒█████▓ ▒██░   ▓██░▒ ▓███▀ ░░▒████▒
-░ ▒▓ ░▒▓░░ ▒░▒░▒░ ░▒▓▒ ▒ ▒ ░ ▒░   ▒ ▒ ░ ░▒ ▒  ░░░ ▒░ ░
-```
+<img src="docs/images/hero.svg" alt="Running keep ready lists four workable items; blocking the epic takes its whole subtree out of the queue, leaving one; keep blocked then names what is holding each of the other three back.">
 
 ### the place work lives for AI coding agents
 
@@ -24,10 +17,6 @@ in **one SQLite file** and **one static binary**.
 
 **`no account`** · **`no server`** · **`no SaaS`** · **`no JavaScript`** · **`no telemetry`**
 
-<br>
-
-<img src="docs/images/keep-queue.png" alt="The keep board: the ranked queue, the agents at work, and the items they are holding up" width="880">
-
 </div>
 
 ---
@@ -38,20 +27,20 @@ Block an epic. **Its entire subtree leaves the queue.**
 
 ```console
 $ keep ready
-rnc-d0b096.1  26  task  High value child
-rnc-28b866    24  bug   Retry drops last error
-rnc-d0b096    21  epic  Ship the store
-rnc-d0b096.2  13  task  Low value child
+rnc-4ff9e2.1  26  task  High value child
+rnc-2f5770    24  bug   Retry drops last error
+rnc-4ff9e2    20  epic  Ship the store
+rnc-4ff9e2.2  16  task  Low value child
 
-$ keep dep rnc-d0b096 blocks rnc-28b866      # the epic waits on the bug
+$ keep dep rnc-4ff9e2 blocks rnc-2f5770      # the epic waits on the bug
 
 $ keep ready
-rnc-28b866    24  bug   Retry drops last error      ← everything else is gone
+rnc-2f5770    24  bug   Retry drops last error      ← everything else is gone
 
 $ keep blocked
-rnc-d0b096.1  26  task  High value child ← blocked by rnc-d0b096
-rnc-d0b096    21  epic  Ship the store   ← blocked by rnc-28b866
-rnc-d0b096.2  13  task  Low value child  ← blocked by rnc-d0b096
+rnc-4ff9e2.1  26  task  High value child ← blocked by rnc-4ff9e2
+rnc-4ff9e2    20  epic  Ship the store   ← blocked by rnc-2f5770
+rnc-4ff9e2.2  16  task  Low value child  ← blocked by rnc-4ff9e2
 ```
 
 That propagation lives **inside the SQL view**, not in a caller. No surface can
