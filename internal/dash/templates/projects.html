@@ -12,41 +12,32 @@
     <h2>Tracked projects</h2>
     <span class="hint">{{len .Data}} registered</span>
   </div>
-  <div class="table-wrap">
-  <table>
-  <thead><tr><th>Project</th><th>Directory</th><th class="right">Workable</th><th class="right">Parked</th><th class="right">Actions</th></tr></thead>
-  <tbody>
-  {{range .Data}}<tr>
-  <td>
-    <div class="who">
-      <span class="avatar">{{initial .Name}}</span>
-      <div>
-        <b>{{.Name}}</b>{{if .Active}} {{template "state-tag" (tag "workable" "open")}}{{end}}
-        {{if .Err}}<div class="sub">{{.Err}}</div>{{end}}
-      </div>
-    </div>
-  </td>
-  <td class="path">{{.Dir}}</td>
-  <td class="right score">{{if .Err}}<span class="faint">—</span>{{else}}{{.Ready}}{{end}}</td>
-  <td class="right">{{if .Err}}<span class="faint">—</span>{{else}}{{.Backlog}}{{end}}</td>
-  <td class="right"><div class="acts">
-    <a class="btn btn-sm" href="{{if .Active}}/{{else}}/p/{{.Name}}{{end}}">Open board</a>
-    {{if $p.Writable}}<form method="post" action="/do/project-forget">
-      <input type="hidden" name="csrf" value="{{$p.CSRF}}">
+  <ol class="queue">
+  {{range .Data}}<li class="qrow">
+    <span class="avatar">{{initial .Name}}</span>
+    <span class="qbody">
+      <span class="qline">
+        <span class="title">{{.Name}}</span>
+        {{if .Active}}{{template "state-tag" (tag "workable" "open")}}{{end}}
+      </span>
+      <span class="qmeta">
+        <span class="path">{{.Dir}}</span>
+        {{if .Err}}<span class="qwhy">{{.Err}}</span>
+        {{else}}<span>{{.Ready}} workable · {{.Backlog}} parked</span>{{end}}
+      </span>
+    </span>
+    <span class="qacts">
+      <a class="btn btn-sm" href="{{if .Active}}/{{else}}/p/{{.Name}}{{end}}">Open board</a>
+      {{if $p.Writable}}<form method="post" action="/do/project-forget">
+        <input type="hidden" name="csrf" value="{{$p.CSRF}}">
 <input type="hidden" name="project" value="{{$p.Project}}"><input type="hidden" name="prefix" value="{{$p.Prefix}}">
-      <input type="hidden" name="path" value="{{.Path}}">
-      <button type="submit" class="btn btn-sm btn-danger">Remove</button>
-    </form>{{end}}
-  </div></td>
-  </tr>
-  {{else}}<tr><td colspan="5"><div class="blank">
-    {{template "icon-folder"}}
-    <h3>No projects registered</h3>
-    <p>Run <code>rounce init</code> in a repository and it registers itself. Or add one below.</p>
-  </div></td></tr>
-  {{end}}</tbody>
-  </table>
-  </div>
+        <input type="hidden" name="path" value="{{.Path}}">
+        <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+      </form>{{end}}
+    </span>
+  </li>
+  {{else}}<li class="qempty">No projects registered. Run <code>rounce init</code> in a repository and it registers itself, or add one below.</li>
+  {{end}}</ol>
 </div>
 
 {{if $p.Writable}}

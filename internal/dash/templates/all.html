@@ -7,29 +7,32 @@
 {{$p := .}}{{with .Data}}
 <div class="panel">
 <div class="panel-head"><h2>Ranked across {{.RepoCount}} registered {{if eq .RepoCount 1}}repository{{else}}repositories{{end}}</h2></div>
-<div class="table-wrap"><table class="queue">
-<thead><tr><th>Repository</th><th>Score</th><th>Item</th><th></th></tr></thead>
-<tbody>
-{{range .Items}}<tr>
-<td>{{.Repository}}</td>
-<td class="score">{{.Score}}</td>
-<td><span class="title">{{.Title}}</span></td>
-<td class="id-cell"><span class="id">{{.ID}}</span></td>
-</tr>
-{{else}}<tr><td colspan="4" class="faint">Nothing is workable in any registered repository.</td></tr>
-{{end}}</tbody>
-</table></div>
+<ol class="queue">
+{{range .Items}}<li class="qrow">
+  <span class="qscore">{{.Score}}</span>
+  <span class="qbody">
+    <span class="title">{{.Title}}</span>
+    <span class="qmeta">
+      <span class="qrepo">{{.Repository}}</span>
+      <span class="id">{{.ID}}</span>
+    </span>
+  </span>
+</li>
+{{else}}<li class="qempty">Nothing is workable in any registered repository.</li>
+{{end}}</ol>
 </div>
 
 {{if .Errors}}
 <div class="panel">
 <div class="panel-head"><h2>Unreadable</h2></div>
-<div class="table-wrap"><table class="queue">
-<thead><tr><th>Repository</th><th>Problem</th></tr></thead>
-<tbody>
-{{range .Errors}}<tr><td>{{.Repo}}</td><td>{{.Message}}</td></tr>
-{{end}}</tbody>
-</table></div>
+<ol class="queue">
+{{range .Errors}}<li class="qrow stopped">
+  <span class="qbody">
+    <span class="title">{{.Repo}}</span>
+    <span class="qmeta">{{.Message}}</span>
+  </span>
+</li>
+{{end}}</ol>
 </div>
 {{end}}
 {{end}}{{template "foot"}}{{end}}

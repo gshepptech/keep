@@ -24,19 +24,21 @@
     <span class="hint">{{len .Results}} match{{if ne (len .Results) 1}}es{{end}} for “{{.Query}}”, best first</span>
   </div>
   {{if .Results}}
-  <div class="table-wrap"><table>
-  <thead><tr><th>Score</th><th>Item</th><th></th><th>Matched</th><th>State</th><th>Touches</th></tr></thead>
-  <tbody>
-  {{range .Results}}<tr>
-  <td class="score">{{.Score}}</td>
-  <td><a class="title" href="{{$p.Prefix}}/item/{{.ID}}">{{.Title}}</a></td>
-  <td class="id-cell"><span class="id">{{.ID}}</span></td>
-  <td class="faint snippet">{{.MatchedIn}}{{if and .Snippet (ne .MatchedIn "title")}}<div class="sub">{{.Snippet}}</div>{{end}}</td>
-  <td>{{template "state-tag" (tag (state (printf "%s" .Status) false) (printf "%s" .Status))}}</td>
-  <td class="path">{{if .Paths}}{{.Paths}}{{else}}<span class="faint">not declared</span>{{end}}</td>
-  </tr>
-  {{end}}</tbody>
-  </table></div>
+  <ol class="queue">
+  {{range .Results}}<li class="qrow">
+    <span class="qscore">{{.Score}}</span>
+    <span class="qbody">
+      <a class="title" href="{{$p.Prefix}}/item/{{.ID}}">{{.Title}}</a>
+      <span class="qmeta">
+        {{template "state-tag" (tag (state (printf "%s" .Status) false) (printf "%s" .Status))}}
+        <span>matched in {{.MatchedIn}}</span>
+        {{if .Paths}}<span class="path">{{.Paths}}</span>{{end}}
+        <span class="id">{{.ID}}</span>
+      </span>
+      {{if and .Snippet (ne .MatchedIn "title")}}<span class="qsnip">{{.Snippet}}</span>{{end}}
+    </span>
+  </li>
+  {{end}}</ol>
   {{else}}
   <div class="blank">
     {{template "icon-search"}}

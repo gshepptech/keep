@@ -14,19 +14,22 @@
     <span class="hint">{{len .Data}} event{{if ne (len .Data) 1}}s{{end}}</span>
   </div>
   {{if .Data}}
-  <div class="table-wrap"><table>
-  <thead><tr><th>When</th><th>What</th><th>Who</th><th>Item</th><th></th><th>Why</th></tr></thead>
-  <tbody>
-  {{range .Data}}<tr>
-  <td class="faint" title="{{.At}}">{{ago .At}}</td>
-  <td>{{.Kind}}</td>
-  <td>{{.Actor}}</td>
-  <td><a class="title" href="{{$p.Prefix}}/item/{{.ItemID}}">{{.Title}}</a></td>
-  <td class="id-cell"><span class="id">{{.ItemID}}</span></td>
-  <td class="faint">{{if .Reason}}{{.Reason}}{{else}}—{{end}}</td>
-  </tr>
-  {{end}}</tbody>
-  </table></div>
+  <ol class="queue">
+  {{range .Data}}<li class="qrow">
+    <span class="qbody">
+      <span class="qline">
+        <b class="qkind">{{.Kind}}</b>
+        <a class="title" href="{{$p.Prefix}}/item/{{.ItemID}}">{{.Title}}</a>
+      </span>
+      <span class="qmeta">
+        <span>{{.Actor}}</span>
+        <span title="{{.At}}">{{ago .At}}</span>
+        {{if .Reason}}<span class="qwhy">{{.Reason}}</span>{{end}}
+        <span class="id">{{.ItemID}}</span>
+      </span>
+    </span>
+  </li>
+  {{end}}</ol>
   {{else}}
   <div class="blank">
     {{template "icon-clock"}}
