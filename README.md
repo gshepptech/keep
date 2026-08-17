@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/images/hero.gif" alt="An agent runs keep ready and takes the top item, keep start claims it, and keep close records why it is done — while the dashboard beside it moves the row from workable to in progress to gone.">
+<img src="docs/images/hero.gif" alt="keep's dashboard: a ranked queue with two workable items and two held back by an agent. An agent runs keep start on the top item and the board moves it to in progress; keep close with a reason takes it off the board entirely.">
 
 ### the place work lives for AI coding agents
 
