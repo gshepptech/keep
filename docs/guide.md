@@ -341,6 +341,11 @@ by design: terminal output gets piped and grepped by scripts and by agents,
 and `blocked`'s `← blocked by <id>` is already a better signal than colour
 could be, since it names the actual blocker in text.
 
+A repository that has never been used gets its own screen rather than an
+empty queue: what rounce holds, and the three ways work gets into it.
+
+![The first screen in a new repository](images/rounce-first-run.png)
+
 `--web` serves the same data as a real page, over loopback only:
 
 ```console
@@ -378,6 +383,8 @@ ready` or `rounce blocked` would tell you about the same items.
 The page uses colour for exactly three states — workable, claimed, blocked —
 and never colour alone: a blocked row also carries the literal word "blocked"
 in text.
+
+![Search, saying which field matched and showing the text around it](images/rounce-search.png)
 
 ![Activity: what happened, newest first](images/rounce-activity.png)
 
