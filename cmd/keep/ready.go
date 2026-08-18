@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/gshepptech/keep/internal/interlock"
 	"github.com/gshepptech/keep/internal/model"
@@ -194,13 +195,32 @@ func runReadyAll(limit int, asJSON bool, stdout, stderr io.Writer) int {
 		return 0
 	}
 
-	// Errors on the rendered path go to stderr, one line each -- never to
-	// stdout, which carries the queue only (CLI-01). Exit 0 even when some
-	// repos failed, matching `repos`.
+	// Errors go to stderr, never to stdout, which carries the queue only
+	// (CLI-01). Exit 0 even when some repos failed, matching `repos`.
+	//
+	// One failure is named in full, because it is probably the thing the
+	// person needs to see. Several are summarised to a single line: `init`
+	// registers automatically and nothing unregistered until `repos forget
+	// --gone`, so a registry with a dozen dead scratch repositories used to
+	// print a dozen paragraphs above every queue, which is how a person
+	// learns to stop reading stderr.
+	var failed []string
 	for _, r := range rows {
 		if r.Err != nil {
-			fmt.Fprintf(stderr, "keep: repo %s: %v\n", r.Repo, r.Err)
+			failed = append(failed, r.Repo)
 		}
+	}
+	switch len(failed) {
+	case 0:
+	case 1:
+		for _, r := range rows {
+			if r.Err != nil {
+				fmt.Fprintf(stderr, "keep: repo %s: %v\n", r.Repo, r.Err)
+			}
+		}
+	default:
+		fmt.Fprintf(stderr, "keep: %d registered stores could not be read (%s). `keep repos` names the errors; `keep repos forget --gone` drops the ones that are gone.\n",
+			len(failed), strings.Join(failed, ", "))
 	}
 	renderMerged(stdout, merged)
 	return 0

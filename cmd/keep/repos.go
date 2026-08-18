@@ -245,15 +245,23 @@ func runReposAdd(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-// runReposForget implements `repos forget <path>`.
+// runReposForget implements `repos forget <path>` and `repos forget --gone`.
 func runReposForget(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("repos forget", flag.ContinueOnError)
 	fs.SetOutput(stderr)
+	goneFlag := fs.Bool("gone", false, "forget every registration whose store file no longer exists")
 	if err := fs.Parse(permuteArgs(fs, args)); err != nil {
 		return 2
 	}
+	if *goneFlag {
+		if fs.NArg() != 0 {
+			fmt.Fprintln(stderr, "usage: keep repos forget --gone   (no path; it finds them)")
+			return 2
+		}
+		return runReposForgetGone(stdout, stderr)
+	}
 	if fs.NArg() != 1 {
-		fmt.Fprintln(stderr, "usage: keep repos forget <path>")
+		fmt.Fprintln(stderr, "usage: keep repos forget <path>   or   keep repos forget --gone")
 		return 2
 	}
 
@@ -285,4 +293,62 @@ func runReposForget(args []string, stdout, stderr io.Writer) int {
 	// decision 4 asks for exactly this.
 	fmt.Fprintf(stdout, "forgotten: %s (the store itself was not touched)\n", path)
 	return 0
+}
+
+// runReposForgetGone drops every registration whose store file is gone.
+//
+// `init` registers automatically and nothing ever unregistered, so the
+// registry only grew. A few days of scratch repositories under /tmp is
+// enough to bury the real rows, and every dead one prints a full error line
+// to stderr on each `ready --all` -- the command someone working across
+// repositories runs most.
+//
+// The test is os.Stat reporting IsNotExist, and nothing else. A store that
+// exists but will not open -- a permission, a half-written file, an
+// unmounted disk that is about to come back -- is left registered and keeps
+// reporting its error. Forgetting a registration because a disk was
+// unplugged would lose the entry for good, which is a far worse outcome
+// than the noise this removes: the registry is the only record that the
+// repository was ever known.
+func runReposForgetGone(stdout, stderr io.Writer) int {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Fprintf(stderr, "keep: %v\n", err)
+		return 1
+	}
+	env, err := registry.Load(home)
+	if err != nil {
+		fmt.Fprintf(stderr, "keep: %v\n", err)
+		return 1
+	}
+
+	var gone []string
+	for _, repo := range env.Repos {
+		if _, err := os.Stat(repo.Path); os.IsNotExist(err) {
+			gone = append(gone, repo.Path)
+		}
+	}
+	if len(gone) == 0 {
+		fmt.Fprintln(stdout, "nothing to forget: every registered store is still on disk")
+		return 0
+	}
+
+	for _, path := range gone {
+		if _, err := registry.Forget(home, path); err != nil {
+			fmt.Fprintf(stderr, "keep: %v\n", err)
+			return 1
+		}
+		fmt.Fprintf(stdout, "forgotten: %s\n", path)
+	}
+	fmt.Fprintf(stdout, "%s forgotten. No store file was touched.\n", plural(len(gone), "registration"))
+	return 0
+}
+
+// plural renders a count with its noun, so the summary line reads as a
+// sentence for one as well as for many.
+func plural(n int, noun string) string {
+	if n == 1 {
+		return fmt.Sprintf("1 %s", noun)
+	}
+	return fmt.Sprintf("%d %ss", n, noun)
 }

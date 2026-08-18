@@ -152,6 +152,9 @@ commands:
               --json        machine-parseable output
               repos add <path>     register a repository directory or store
               repos forget <path>  remove it; the store itself is untouched
+              repos forget --gone  remove every registration whose store
+                                   file is gone; one whose store merely
+                                   will not open is kept
               a store that cannot be opened is reported on its row, not
               fatal -- repos exits 0 even when some rows failed
   codex     the Codex side of the plugin

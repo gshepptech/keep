@@ -549,6 +549,7 @@ sense below but are omitted from the table for space — see `keep <cmd>
 | `repos` | `--json` | Lists registered stores with counts and last activity. |
 | `repos add <path>` | — | Registers a repo directory or store file. Registry write failure is fatal here (unlike `init`'s best-effort). |
 | `repos forget <path>` | — | Unregisters; never touches the store file itself. |
+| `repos forget --gone` | — | Unregisters every store whose file no longer exists. `init` registers automatically and nothing unregistered, so the registry only grew — a few scratch repositories are enough to bury the real rows, and each dead one printed an error above every `ready --all`. A store that exists but will not open, because of a permission or an unmounted disk, is deliberately **kept**: dropping it would lose the only record that the repository was ever known. |
 | `mcp` | `--db` | Serves the protocol over stdio. Actor/session resolved once at start from env, not per call. |
 
 Every read command's `--json` output is parseable JSON on stdout with

@@ -276,7 +276,7 @@ nobody is doing.
 | **59** requirements | every one closed with named evidence |
 | **6** phases | each with a machine-checkable exit gate |
 | **220** demo checks | run against a real built binary |
-| **352** tests | every one deliberately broken once to prove it fails |
+| **356** tests | every one deliberately broken once to prove it fails |
 | **3** runtime dependencies | `modernc.org/sqlite`, `modelcontextprotocol/go-sdk`, `google/jsonschema-go` |
 | **0** cgo | `go build` gives you one static file |
 
