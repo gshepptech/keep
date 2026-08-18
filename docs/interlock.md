@@ -211,3 +211,18 @@ interlock status --json      # the lease that caused it
 
 `keep ready` writes the queue to stdout and the explanation to stderr, so a
 script piping the queue never has to strip prose.
+
+## What proves this works
+
+`cmd/keep/join_test.go` builds a real `interlock` from source, takes a real
+lease through a real `PreToolUse` hook, and asserts that a real `keep ready`
+drops the item, names the file, the holder and the session on stderr, and
+leaves items with no declared paths alone. It then releases the lease and
+checks the item comes back, and runs `keep ready` with Interlock off `PATH`
+to confirm the queue is untouched where the peer is absent.
+
+It builds Interlock from `$INTERLOCK_SRC`, or `~/Projects/interlock`. Absent
+both, it skips — keep must build and pass alone. Set
+`KEEP_REQUIRE_INTERLOCK=1` to make that skip a failure, which is what CI
+should do once it has Interlock: a skip nobody notices is the same blind spot
+in a new place.

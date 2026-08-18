@@ -93,6 +93,15 @@ func buildKeep(t *testing.T, version string) string {
 	if version != "" {
 		args = append(args, "-ldflags", "-X main.version="+version)
 	}
+	// GATE-05 puts most of this package's behaviour in a subprocess, which
+	// the in-process coverage instrument cannot see -- `go test -cover`
+	// reports cmd/keep at a few percent and measures almost nothing. When
+	// scripts/coverage.sh sets $KEEP_COVERDIR the binary is built
+	// instrumented instead, so those runs report what they actually
+	// exercised. Unset (every ordinary `go test`) this changes nothing.
+	if coverDir() != "" {
+		args = append(args, "-cover", "-coverpkg=./...")
+	}
 	args = append(args, ".")
 
 	cmd := exec.Command("go", args...)
@@ -112,7 +121,11 @@ func run(t *testing.T, bin, dir string, env []string, args ...string) (stdout, s
 
 	cmd := exec.Command(bin, args...)
 	cmd.Dir = dir
-	cmd.Env = env
+	// env is the process's COMPLETE environment on purpose, so a test can
+	// prove what keep does with a variable absent. GOCOVERDIR is the one
+	// addition, and only when the harness asked for an instrumented build:
+	// an instrumented binary with nowhere to write drops its counters.
+	cmd.Env = withCoverDir(env)
 
 	var outBuf, errBuf bytes.Buffer
 	cmd.Stdout = &outBuf
@@ -151,7 +164,11 @@ func runStdin(t *testing.T, bin, dir string, env []string, stdin string, args ..
 
 	cmd := exec.Command(bin, args...)
 	cmd.Dir = dir
-	cmd.Env = env
+	// env is the process's COMPLETE environment on purpose, so a test can
+	// prove what keep does with a variable absent. GOCOVERDIR is the one
+	// addition, and only when the harness asked for an instrumented build:
+	// an instrumented binary with nowhere to write drops its counters.
+	cmd.Env = withCoverDir(env)
 	cmd.Stdin = strings.NewReader(stdin)
 
 	var outBuf, errBuf bytes.Buffer
@@ -192,4 +209,24 @@ func env(home, keepDB string, extra ...string) []string {
 	}
 	e = append(e, extra...)
 	return e
+}
+
+// coverDir reports where an instrumented binary should write its coverage
+// counters, or "" when this run is not measuring. Read from the environment
+// rather than a flag so it reaches every test in the package, including the
+// ones that build a binary from a helper several calls deep.
+func coverDir() string {
+	return os.Getenv("KEEP_COVERDIR")
+}
+
+// withCoverDir appends GOCOVERDIR to a test's environment when, and only
+// when, the binary under it was built with -cover. Each subprocess writes
+// its own counter files into the shared directory; `go tool covdata` merges
+// them, so no coordination is needed between concurrent tests.
+func withCoverDir(env []string) []string {
+	dir := coverDir()
+	if dir == "" {
+		return env
+	}
+	return append(append([]string(nil), env...), "GOCOVERDIR="+dir)
 }

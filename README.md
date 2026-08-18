@@ -196,6 +196,12 @@ Neither program imports the other. Each reads the other over a versioned CLI
 contract, and each works completely alone — a Go import would have made that a
 slogan instead of a fact.
 
+That independence used to mean the join was invisible to both test suites.
+It is now covered by a test that builds a real Interlock, takes a real lease
+through a real hook, and asserts a real `keep ready` drops the item — so a
+renamed field on either side fails a suite instead of a screenshot. Where
+Interlock is absent the test skips, because keep still has to pass alone.
+
 <img src="docs/images/keep-held.png" alt="Two items held back, each naming the file, the agent holding it, and when the lease frees up" width="880">
 
 Two items are held back. The board names who holds them and until when, and the
@@ -270,11 +276,16 @@ nobody is doing.
 | **59** requirements | every one closed with named evidence |
 | **6** phases | each with a machine-checkable exit gate |
 | **220** demo checks | run against a real built binary |
-| **339** tests | every one deliberately broken once to prove it fails |
+| **342** tests | every one deliberately broken once to prove it fails |
 | **3** runtime dependencies | `modernc.org/sqlite`, `modelcontextprotocol/go-sdk`, `google/jsonschema-go` |
 | **0** cgo | `go build` gives you one static file |
 
 </div>
+
+`scripts/coverage.sh` reports what those tests actually cover. `go test
+-cover` puts `cmd/keep` at 3.3%, which is a blind spot rather than a gap:
+most of its behaviour runs in a real built binary that the in-process
+instrument cannot see into. Measured through the binary it is 67.7%.
 
 Every test here was broken on purpose and confirmed to fail before it was
 believed. That discipline caught, among other things: an AST scan that would
