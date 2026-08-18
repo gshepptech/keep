@@ -9,10 +9,60 @@ package main
 import (
 	"fmt"
 	"os"
+	"runtime/debug"
 )
 
-// version is set at build time via -ldflags.
-var version = "dev"
+// version is set at build time via -ldflags. It is deliberately NOT the only
+// source: the documented install is a plain `go install ./cmd/keep`, which
+// sets no ldflags, so relying on it alone meant every binary anyone actually
+// ran reported "dev" -- including at the v1.0 tag that already exists in this
+// repository. A version a bug report cannot cite is not a version.
+var version = ""
+
+// resolveVersion answers what this binary is, preferring what the build was
+// told over what it can work out for itself.
+//
+//  1. -ldflags -X main.version=… wins. Release builds and the CLI tests both
+//     set it, and an explicit answer beats an inferred one.
+//  2. Otherwise the module version Go stamps into every binary built from a
+//     versioned module — what `go install …@v1.0` records.
+//  3. Otherwise the VCS revision Go stamps into builds made inside a git
+//     work tree, shortened, with a +dirty marker when the tree had uncommitted
+//     changes. This is the case the documented install actually hits.
+//  4. Only if the build carries no information at all does it say "dev",
+//     which now means "genuinely unknown" rather than "nobody passed a flag".
+func resolveVersion() string {
+	if version != "" {
+		return version
+	}
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return "dev"
+	}
+	if v := info.Main.Version; v != "" && v != "(devel)" {
+		return v
+	}
+
+	var revision, modified string
+	for _, s := range info.Settings {
+		switch s.Key {
+		case "vcs.revision":
+			revision = s.Value
+		case "vcs.modified":
+			modified = s.Value
+		}
+	}
+	if revision == "" {
+		return "dev"
+	}
+	if len(revision) > 12 {
+		revision = revision[:12]
+	}
+	if modified == "true" {
+		return revision + "+dirty"
+	}
+	return revision
+}
 
 const usage = `keep - a local work store for AI coding agents
 
@@ -52,7 +102,7 @@ commands:
   log       what happened, newest first
               --since <s>   24h, 7d, or an RFC3339 timestamp
               --actor <a>   only what this person or agent did
-              --kind <k>    add/start/close/drop/update/dep
+              --kind <k>    add/start/unclaim/close/drop/update/dep
               --limit <n>   at most n entries (default 30, 0 = all)
               --json        machine-parseable output
   stale     claims nothing has happened to in a while
@@ -69,6 +119,13 @@ commands:
   close     close an item: keep close [flags] <id> --reason <text>
               --reason      required; records why (exit 2 if empty/absent)
   drop      drop an item: keep drop [flags] <id> --reason <text>
+              --reason      required; records why (exit 2 if empty/absent)
+  unclaim   return a claimed item to the queue: keep unclaim [flags] <id> --reason <text>
+              the third exit from in progress, for when the agent that
+              claimed it is not coming back -- close says it was done and
+              drop says it was not worth doing; this says only that the
+              claim ended. Any session may release any claim; the event
+              records who did
               --reason      required; records why (exit 2 if empty/absent)
   update    change fields on an existing item: keep update [flags] <id>
               --title/--body/--acceptance/--why/--score/--type/--stage
@@ -140,6 +197,8 @@ func main() {
 		os.Exit(runClose(os.Args[2:], os.Stdout, os.Stderr))
 	case "drop":
 		os.Exit(runDrop(os.Args[2:], os.Stdout, os.Stderr))
+	case "unclaim":
+		os.Exit(runUnclaim(os.Args[2:], os.Stdout, os.Stderr))
 	case "update":
 		os.Exit(runUpdate(os.Args[2:], os.Stdout, os.Stderr))
 	case "mcp":
@@ -151,7 +210,7 @@ func main() {
 	case "codex":
 		os.Exit(runCodex(os.Args[2:], os.Stdout, os.Stderr))
 	case "version", "--version":
-		fmt.Println(version)
+		fmt.Println(resolveVersion())
 	case "help", "--help", "-h":
 		fmt.Print(usage)
 	default:

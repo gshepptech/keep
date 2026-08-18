@@ -107,6 +107,13 @@ func TestEveryMutationWritesExactlyOneEvent(t *testing.T) {
 	closeTarget := mustAdd(t, s, AddItemInput{Title: "close-target", Actor: "tester"})
 	dropTarget := mustAdd(t, s, AddItemInput{Title: "drop-target", Actor: "tester"})
 	updateTarget := mustAdd(t, s, AddItemInput{Title: "update-target", Actor: "tester"})
+	// Unclaim needs a claimed item, so this one is started before the timed
+	// window opens -- the start writes its own event and would otherwise be
+	// counted against the unclaim under test.
+	unclaimTarget := mustAdd(t, s, AddItemInput{Title: "unclaim-target", Actor: "tester"})
+	if _, err := s.StartItem(ctx, StartItemInput{ID: unclaimTarget.ID, Actor: "tester", SessionID: "sess-gone"}); err != nil {
+		t.Fatalf("preparing the unclaim target: %v", err)
+	}
 	updateTitle := "update-target-renamed"
 
 	cases := []struct {
@@ -126,6 +133,10 @@ func TestEveryMutationWritesExactlyOneEvent(t *testing.T) {
 		}},
 		{"CloseItem", func() error {
 			_, err := s.CloseItem(ctx, CloseItemInput{ID: closeTarget.ID, Reason: "done", Actor: "tester"})
+			return err
+		}},
+		{"UnclaimItem", func() error {
+			_, err := s.UnclaimItem(ctx, UnclaimItemInput{ID: unclaimTarget.ID, Reason: "the agent stopped", Actor: "tester"})
 			return err
 		}},
 		{"DropItem", func() error {

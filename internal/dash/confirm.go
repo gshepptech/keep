@@ -73,6 +73,18 @@ func (s *Server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 		d.Lede = "Dropping records that this work will not be done. It stays in the store and in the event trail, but it leaves every queue and there is no undo on this board."
 		d.Button = "Drop it"
 		d.AskReason = true
+	case "unclaim":
+		item, err := st.GetItem(r.Context(), r.URL.Query().Get("id"))
+		if err != nil {
+			s.fail(w, err)
+			return
+		}
+		d.Item = &item.Item
+		d.Heading = "Put this back in the queue?"
+		d.Lede = "This ends the claim on this item and makes it workable again. It does not say the work was done or that it was abandoned -- only that whoever had it no longer does."
+		d.Warning = "If that agent is still running, it will keep working on an item the queue has now offered to someone else. Check that it has actually stopped."
+		d.Button = "Put it back"
+		d.AskReason = true
 	case "release":
 		d.Session = r.URL.Query().Get("session")
 		d.Path = r.URL.Query().Get("path")

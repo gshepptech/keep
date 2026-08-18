@@ -192,8 +192,13 @@
         <span class="id">{{.ID}}</span>
       </span>
     </span>
+    {{/* Three exits, not two. Close says the work was done and Drop says it
+         was not worth doing; before "Put back" existed, an agent that simply
+         stopped could only leave this panel by recording one of those two
+         things, neither of which had happened. */}}
     {{if $p.Writable}}<span class="qacts">
       {{template "action" (act $p "close" .ID "Close" "/" false)}}
+      <a class="btn btn-sm" href="{{$p.Prefix}}/confirm?verb=unclaim&amp;id={{.ID}}&amp;return={{$p.Prefix}}/">Put back</a>
       <a class="btn btn-sm btn-danger" href="{{$p.Prefix}}/confirm?verb=drop&amp;id={{.ID}}&amp;return={{$p.Prefix}}/">Drop</a>
     </span>{{end}}
   </li>

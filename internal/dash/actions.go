@@ -221,6 +221,7 @@ func (s *Server) routesMutating(mux *http.ServeMux) {
 	mux.HandleFunc("POST /do/start", s.doStart)
 	mux.HandleFunc("POST /do/close", s.doClose)
 	mux.HandleFunc("POST /do/drop", s.doDrop)
+	mux.HandleFunc("POST /do/unclaim", s.doUnclaim)
 	mux.HandleFunc("POST /do/promote", s.doPromote)
 	mux.HandleFunc("POST /do/release", s.doRelease)
 	mux.HandleFunc("POST /do/assign", s.doAssign)
@@ -244,6 +245,27 @@ func (s *Server) doClose(w http.ResponseWriter, r *http.Request) {
 		_, err := st.CloseItem(r.Context(), store.CloseItemInput{
 			ID:     r.PostFormValue("id"),
 			Reason: reasonOr(r.PostFormValue("reason"), "closed from the board"),
+			Actor:  s.actor,
+		})
+		return "", err
+	})
+}
+
+// doUnclaim returns a claimed item to the queue. It is on this board for the
+// same reason it is on the CLI: the panel it appears in offered only Close
+// and Drop, which are the two exits that record something false about an
+// agent that simply stopped.
+//
+// Reason is required and never invented, exactly as doDrop learned to do.
+func (s *Server) doUnclaim(w http.ResponseWriter, r *http.Request) {
+	s.mutate(w, r, "Back in the queue.", func(st *store.Store) (string, error) {
+		reason := strings.TrimSpace(r.PostFormValue("reason"))
+		if reason == "" {
+			return "", fmt.Errorf("putting work back needs a reason -- say why the claim ended")
+		}
+		_, err := st.UnclaimItem(r.Context(), store.UnclaimItemInput{
+			ID:     r.PostFormValue("id"),
+			Reason: reason,
 			Actor:  s.actor,
 		})
 		return "", err

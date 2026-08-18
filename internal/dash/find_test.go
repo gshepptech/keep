@@ -3,6 +3,7 @@ package dash
 import (
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -136,5 +137,78 @@ func TestTheRenderedSearchPageDoesNotRepeatThePath(t *testing.T) {
 	// And the snippet that earns its place is still there.
 	if !strings.Contains(body, "idempotent") {
 		t.Error("the reason match lost its snippet; the rule is too greedy")
+	}
+}
+
+// TestBeingWorkedOnOffersAllThreeExits.
+//
+// This panel used to offer Close and Drop only. Both record something about
+// the work — done, or not worth doing — and an agent that simply stopped had
+// neither happen to it. Whoever was looking at this board could only rescue
+// the item by picking one of the two and writing something false into the
+// event trail the rest of the design works to keep honest.
+//
+// Asserted on the rendered page rather than on the handler, because the
+// defect was that a control did not exist where a person was looking.
+func TestBeingWorkedOnOffersAllThreeExits(t *testing.T) {
+	s, _ := writableFixture(t)
+
+	if rec := post(t, s, "/do/add", url.Values{
+		"title": {"Expire refresh tokens"}, "type": {"bug"},
+	}); rec.Code != http.StatusSeeOther {
+		t.Fatalf("filing: status = %d", rec.Code)
+	}
+
+	body := get(t, s.Handler(), "/").Body.String()
+	id := regexp.MustCompile(`rnc-[0-9a-f]{6}`).FindString(body)
+	if id == "" {
+		t.Fatal("no item id on the board")
+	}
+	if rec := post(t, s, "/do/start", url.Values{"id": {id}}); rec.Code != http.StatusSeeOther {
+		t.Fatalf("claiming: status = %d", rec.Code)
+	}
+
+	page := get(t, s.Handler(), "/").Body.String()
+	if i, j := strings.Index(page, "<style>"), strings.Index(page, "</style>"); i >= 0 && j > i {
+		page = page[:i] + page[j:]
+	}
+	if !strings.Contains(page, "Being worked on") {
+		t.Fatal("the claimed item is not in the Being worked on panel")
+	}
+	for _, want := range []string{
+		"verb=unclaim&amp;id=" + id,
+		"verb=drop&amp;id=" + id,
+		"Put back",
+	} {
+		if !strings.Contains(page, want) {
+			t.Errorf("the panel does not offer %q", want)
+		}
+	}
+}
+
+// TestPuttingWorkBackNeedsAReason. Same line drop learned to hold: the board
+// must not supply a reason on the user's behalf, because a rescue with no
+// reason records that a claim vanished and nothing about why.
+func TestPuttingWorkBackNeedsAReason(t *testing.T) {
+	s, _ := writableFixture(t)
+	post(t, s, "/do/add", url.Values{"title": {"A thing"}, "type": {"task"}})
+	body := get(t, s.Handler(), "/").Body.String()
+	id := regexp.MustCompile(`rnc-[0-9a-f]{6}`).FindString(body)
+	post(t, s, "/do/start", url.Values{"id": {id}})
+
+	rec := post(t, s, "/do/unclaim", url.Values{"id": {id}, "reason": {"   "}})
+	if rec.Code == http.StatusSeeOther {
+		if page := get(t, s.Handler(), "/").Body.String(); !strings.Contains(page, "Being worked on") {
+			t.Fatal("a blank reason released the item anyway")
+		}
+	}
+
+	if rec := post(t, s, "/do/unclaim", url.Values{
+		"id": {id}, "reason": {"the agent crashed"},
+	}); rec.Code != http.StatusSeeOther {
+		t.Fatalf("a real reason was refused: status = %d", rec.Code)
+	}
+	if page := get(t, s.Handler(), "/").Body.String(); strings.Contains(page, "Being worked on") {
+		t.Error("the item is still being worked on after a successful unclaim")
 	}
 }

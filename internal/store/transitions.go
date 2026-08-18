@@ -246,6 +246,112 @@ func (s *Store) StartItem(ctx context.Context, in StartItemInput) (model.Item, e
 	return out, nil
 }
 
+// UnclaimItemInput is the argument to UnclaimItem.
+//
+// It carries no json tags because there is no `unclaim` MCP tool and there
+// must not be one -- see UnclaimItem's doc comment. Actor and SessionID
+// record who performed the rescue, not who held the claim.
+type UnclaimItemInput struct {
+	ID        string
+	Reason    string
+	Actor     string
+	SessionID string
+}
+
+// unclaimEventPayload names both halves of the rescue: the session whose
+// claim was released, and why. Held holds the session that lost the claim so
+// the trail answers "whose work was this?" after the claim itself is gone.
+type unclaimEventPayload struct {
+	Held   string `json:"held_by,omitempty"`
+	Reason string `json:"reason"`
+}
+
+// UnclaimItem returns an in-progress item to the queue, undoing a claim
+// without asserting anything about the work.
+//
+// # Why this verb has to exist
+//
+// `start` moves open -> in_progress, and before this only `close` and `drop`
+// could move it out again. An agent that dies mid-item -- the ordinary
+// failure for the thing this store is built around -- left the item stuck in
+// progress, out of `ready`, with two exits that both record something false:
+// `close` says it was done, `drop` says it was abandoned as not worth doing.
+//
+// ITEM-08 keeps `close` and `drop` distinguishable so abandoned work is never
+// counted as done. That guarantee is worth nothing if the only way to rescue
+// a dead agent's item is to pick one of them and lie. This is the third exit,
+// and it asserts only what actually happened: the claim ended.
+//
+// # Why any session may do it
+//
+// `start` refuses a claim held by a different session (ErrConflict), because
+// two agents on one item is the exact collision this exists to prevent.
+// Unclaim deliberately does NOT check the holder: the holder is, by
+// definition of the case this serves, not coming back to release it itself.
+// The event records who did the releasing, so a rescue is never anonymous.
+//
+// That openness is also why `stale` still only reports (internal/store/
+// stale.go) and why there is no `unclaim` MCP tool. A verb that can take work
+// away from a live agent belongs with the person who can look at the
+// terminal, not in the hands of another agent that has just been told the
+// queue is empty. It joins `init`, `blocked` and `update` as a CLI capability
+// with no MCP counterpart.
+//
+// The status returns to open and the claim fields clear. Assignee is left
+// alone: "who has this right now" and "who should do this" are different
+// questions, and only the first one ended.
+func (s *Store) UnclaimItem(ctx context.Context, in UnclaimItemInput) (model.Item, error) {
+	// Reason is not validated here, and that is consistency rather than an
+	// oversight: `close` and `drop` enforce theirs in cmd/keep, not in the
+	// store. Adding a store-level check for this one verb would make three
+	// verbs with the same contract enforce it in two different places.
+	// (That the requirement lives outside the store at all is a real gap --
+	// the board had to re-implement it and got it wrong once -- but moving
+	// all three is a change to close and drop, not to this.)
+	if in.Actor == "" {
+		return model.Item{}, fmt.Errorf("UnclaimItem: Actor is required")
+	}
+
+	var out model.Item
+	err := s.withTx(ctx, func(tx *sql.Tx) error {
+		item, err := getItemForUpdateTx(ctx, tx, in.ID)
+		if err != nil {
+			return fmt.Errorf("UnclaimItem: %w", err)
+		}
+
+		if item.Status != model.StatusInProgress {
+			return fmt.Errorf("UnclaimItem: item %q: status %q is not claimed, so there is nothing to release: %w",
+				in.ID, item.Status, ErrInvalidTransition)
+		}
+
+		held := ""
+		if item.ClaimedBySession != nil {
+			held = *item.ClaimedBySession
+		}
+
+		now := nowFunc()
+		if _, err := tx.ExecContext(ctx,
+			`UPDATE items SET status = ?, claimed_by_session = NULL, claimed_at = NULL, updated_at = ? WHERE id = ?`,
+			model.StatusOpen, now, in.ID,
+		); err != nil {
+			return err
+		}
+
+		item.Status = model.StatusOpen
+		item.ClaimedBySession = nil
+		item.ClaimedAt = nil
+		item.UpdatedAt = now
+		out = item
+
+		return writeEvent(ctx, tx, in.ID, "unclaim", in.Actor, in.SessionID,
+			unclaimEventPayload{Held: held, Reason: in.Reason})
+	})
+	if err != nil {
+		return model.Item{}, err
+	}
+	return out, nil
+}
+
 // CloseItemInput is the argument to CloseItem.
 //
 // json tags (04-02): this struct doubles as the `close` MCP tool's wire type

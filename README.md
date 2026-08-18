@@ -121,7 +121,7 @@ Then just talk to them:
 
 <table>
 <tr>
-<td width="33%" align="center"><h3>CLI</h3>21 commands<br/><code>--json</code> on every read</td>
+<td width="33%" align="center"><h3>CLI</h3>22 commands<br/><code>--json</code> on every read</td>
 <td width="33%" align="center"><h3>MCP</h3>13 tools over stdio<br/>zero logic of its own</td>
 <td width="33%" align="center"><h3>Dashboard</h3>loopback only<br/>no JS, no assets</td>
 </tr>
@@ -269,7 +269,7 @@ nobody is doing.
 | **59** requirements | every one closed with named evidence |
 | **6** phases | each with a machine-checkable exit gate |
 | **220** demo checks | run against a real built binary |
-| **324** tests | every one deliberately broken once to prove it fails |
+| **331** tests | every one deliberately broken once to prove it fails |
 | **3** runtime dependencies | `modernc.org/sqlite`, `modelcontextprotocol/go-sdk`, `google/jsonschema-go` |
 | **0** cgo | `go build` gives you one static file |
 

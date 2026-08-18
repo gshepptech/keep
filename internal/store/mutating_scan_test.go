@@ -213,12 +213,13 @@ func containsMutatingSQL(literal string) bool {
 // than silently passing task 2's guard.
 var (
 	wantMutating = map[string]bool{
-		"AddItem":    true,
-		"StartItem":  true,
-		"CloseItem":  true,
-		"DropItem":   true,
-		"UpdateItem": true,
-		"CreateDep":  true,
+		"AddItem":     true,
+		"StartItem":   true,
+		"UnclaimItem": true,
+		"CloseItem":   true,
+		"DropItem":    true,
+		"UpdateItem":  true,
+		"CreateDep":   true,
 	}
 	wantReadOnly = map[string]bool{
 		"Ready":        true,
