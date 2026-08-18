@@ -78,7 +78,7 @@ func TestResultFor(t *testing.T) {
 		}
 	})
 
-	// isErrorSentinels is the single source of truth for the seven sentinels
+	// isErrorSentinels is the single source of truth for the eight sentinels
 	// resultFor classifies as isError:true tool results -- decision 4's "the
 	// legitimate outcome of a well-formed call" arm. If a tenth store
 	// sentinel is ever added and not added here, it is invisible to this
@@ -93,6 +93,7 @@ func TestResultFor(t *testing.T) {
 		"ErrConflict":          store.ErrConflict,
 		"ErrParentChildViaDep": store.ErrParentChildViaDep,
 		"ErrSelfEdge":          store.ErrSelfEdge,
+		"ErrEmptyTitle":        store.ErrEmptyTitle,
 		"ErrNoFieldsToUpdate":  store.ErrNoFieldsToUpdate,
 	}
 	for name, sentinel := range isErrorSentinels {
@@ -115,11 +116,18 @@ func TestResultFor(t *testing.T) {
 	// with its jsonrpc.Error assertion -- it does not belong in
 	// isErrorSentinels.
 	//
-	// ErrSchemaVersion (the ninth sentinel) is deliberately NOT exercised
-	// here: it is produced only by store.Open, never by any of the ten tool
-	// calls resultFor wraps, so it structurally never reaches this function
-	// -- see resultFor's doc comment classification table.
-	t.Run("all nine sentinels named", func(t *testing.T) {
+	// ErrSchemaVersion is deliberately NOT exercised here: it is produced
+	// only by store.Open, never by any tool call resultFor wraps, so it
+	// structurally never reaches this function -- see resultFor's doc
+	// comment classification table.
+	//
+	// This count is the guard that caught ErrEmptyTitle. It was added to
+	// internal/store as the tenth sentinel and never classified here, so
+	// `add` and `capture` returned it as a raw protocol error instead of a
+	// tool error an agent could read and retry from. The table above says to
+	// add a row here first; that did not happen, and this assertion is what
+	// noticed.
+	t.Run("every sentinel is named", func(t *testing.T) {
 		named := map[string]bool{
 			"ErrInvalidDepType": true, // protocol error, tested separately above
 			"ErrSchemaVersion":  true, // never reaches resultFor, tested nowhere
@@ -127,8 +135,8 @@ func TestResultFor(t *testing.T) {
 		for name := range isErrorSentinels {
 			named[name] = true
 		}
-		if len(named) != 9 {
-			t.Fatalf("named %d sentinels, want 9: %v", len(named), named)
+		if len(named) != 10 {
+			t.Fatalf("named %d sentinels, want 10: %v", len(named), named)
 		}
 	})
 }

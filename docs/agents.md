@@ -1,7 +1,7 @@
 # Using keep with agents
 
 keep is built to be driven by agents, not typed by you. This page covers
-just that: registering the MCP server, what the thirteen tools are, and what to
+just that: registering the MCP server, what the fourteen tools are, and what to
 put in a project's `CLAUDE.md` so agents actually use it instead of ignoring
 it.
 
@@ -75,9 +75,9 @@ probably-right rather than confirmed.
 - `keep mcp` serves over stdio only. Don't run it interactively — stdin and
   stdout are the protocol channel.
 
-## The thirteen tools
+## The fourteen tools
 
-The MCP server exposes thirteen of the CLI's verbs, in this order (also
+The MCP server exposes fourteen of the CLI's verbs, in this order (also
 `tools/list`'s order):
 
 | Tool | What it does |
@@ -99,21 +99,26 @@ The MCP server exposes thirteen of the CLI's verbs, in this order (also
 Descriptions above are the literal tool descriptions registered in
 `internal/mcp/server.go` — what a model actually sees.
 
-**`init`, `blocked`, `update`, `unclaim` and `reopen` have no MCP tool.** This is
+**`init`, `blocked`, `unclaim` and `reopen` have no MCP tool.** This is
 deliberate, not an oversight (`docs/design/phase-3.md`):
 
 - `init` isn't exposed because an MCP client is, by definition, already
   pointed at a store — there's nothing useful "create the store I'm already
   talking to" would do over the protocol.
-- `blocked` and `update` were simply left off the original locked list.
-  `blocked` is a CLI/dashboard convenience; an agent that wants to know why
-  something isn't in `ready` can call `show` on it. `update`'s omission means
-  an agent that wants to change a field goes through `add`'s creation path or
-  isn't offered a generic patch tool — narrower is the point (see below).
-- `reopen` is withheld on the same grounds as `update`: it is a correction to
-  a call an agent already made, and the person who notices a mis-close can
-  reach the CLI. If an agent is ever given `update`, this should be
-  reconsidered with it — they are the same argument.
+- `blocked` was simply left off the original locked list. It is a
+  CLI/dashboard convenience; an agent that wants to know why something isn't
+  in `ready` can call `show` on it.
+- `update` was left off the same way, and that omission has been corrected.
+  The honest account is that it was an artifact rather than a decision: it
+  left the agent-facing surface write-once, so an agent that filed an item
+  with a wrong title or score could only go back through `add`, producing a
+  duplicate with a new id while the original stood. The count grows when the
+  argument for a tool is real, and this one was.
+- `reopen` is withheld because it undoes a finished decision rather than
+  correcting a field, and the person who notices a mis-close can reach the
+  CLI. That is a weaker argument now that `update` is a tool, and it should
+  be revisited the next time an agent is seen filing a duplicate because it
+  could not undo its own close.
 - `unclaim` is withheld on different grounds: it is the one verb that can take
   work away from an agent that is still running. That call belongs with
   whoever can look at the terminal and see whether the session is actually
@@ -122,10 +127,15 @@ deliberate, not an oversight (`docs/design/phase-3.md`):
 
 **Why exactly these, not fewer, and not more.** The tool count tracks the CLI
 1:1, minus the four above — it grows only when the CLI does, never as a
-convenience layer on top of it. It has grown once, and by the rule: `search`,
-`log` and `stale` were built as CLI verbs first and mirrored here afterwards,
-which is the order the rule requires. Ten became thirteen because the product
-did, not because the protocol wanted a shortcut.
+convenience layer on top of it. It has grown twice, both by the rule.
+`search`, `log` and `stale` were built as CLI verbs first and mirrored here
+afterwards, which is the order the rule requires; ten became thirteen because
+the product did, not because the protocol wanted a shortcut. `update` is the
+fourteenth, and it is a different case: the CLI verb had existed since Phase
+2, and its absence here was an artifact of the original locked list rather
+than a decision. Correcting an artifact is not the same as adding a
+convenience layer, but it is the closer call of the two, which is why it is
+written down.
 
 > Block rebuilt their Linear MCP server three times and ended at 2 tools
 > instead of 30+ — the standing justification for **no MCP-only convenience

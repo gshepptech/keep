@@ -97,7 +97,7 @@ func depTypesForWire() []string {
 	})
 }
 
-// BuildSchemas generates the ten tools' InputSchema values via
+// BuildSchemas generates every tool's InputSchema value via
 // jsonschema.For[T] -- the same reflection helper the SDK's generic
 // AddTool[In,Out] uses
 // internally -- and decorates every closed-vocabulary property with its
@@ -152,8 +152,10 @@ func BuildSchemas() (map[string]*jsonschema.Schema, error) {
 	set.put("log", sc, err)
 	sc, err = jsonschema.For[StaleInput](nil)
 	set.put("stale", sc, err)
+	sc, err = jsonschema.For[store.UpdateItemInput](nil)
+	set.put("update", sc, err)
 
-	// No error-guard branch here: every one of the thirteen types above is a
+	// No error-guard branch here: every one of the fourteen types above is a
 	// fixed, concrete struct (plain strings/ints/slices/pointers, no map
 	// with a non-string key, no func/chan/complex/unsafe-pointer field), so
 	// jsonschema.For genuinely cannot fail for any of them -- verified by
@@ -169,6 +171,8 @@ func BuildSchemas() (map[string]*jsonschema.Schema, error) {
 	withEnum(set.m["list"], "stage", model.StagesOrdered)
 	withEnum(set.m["list"], "status", model.StatusesOrdered)
 	withEnum(set.m["dep"], "type", depTypesForWire())
+	withEnum(set.m["update"], "type", model.TypesOrdered)
+	withEnum(set.m["update"], "stage", model.StagesOrdered)
 
 	return set.m, set.err()
 }

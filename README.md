@@ -11,7 +11,7 @@ in **one SQLite file** and **one static binary**.
 
 ![Go](https://img.shields.io/badge/go-1.26-00ADD8?style=for-the-badge&logo=go&logoColor=white)
 ![SQLite](https://img.shields.io/badge/sqlite-pure_go%2C_no_cgo-003B57?style=for-the-badge&logo=sqlite&logoColor=white)
-![MCP](https://img.shields.io/badge/MCP-13_tools-6E56CF?style=for-the-badge)
+![MCP](https://img.shields.io/badge/MCP-14_tools-6E56CF?style=for-the-badge)
 ![Runtime deps](https://img.shields.io/badge/runtime_deps-3-2ea043?style=for-the-badge)
 ![Network calls](https://img.shields.io/badge/network_calls-0-b32428?style=for-the-badge)
 
@@ -122,7 +122,7 @@ Then just talk to them:
 <table>
 <tr>
 <td width="33%" align="center"><h3>CLI</h3>23 commands<br/><code>--json</code> on every read</td>
-<td width="33%" align="center"><h3>MCP</h3>13 tools over stdio<br/>zero logic of its own</td>
+<td width="33%" align="center"><h3>MCP</h3>14 tools over stdio<br/>zero logic of its own</td>
 <td width="33%" align="center"><h3>Dashboard</h3>loopback only<br/>no JS, no assets</td>
 </tr>
 </table>
@@ -270,7 +270,7 @@ nobody is doing.
 | **59** requirements | every one closed with named evidence |
 | **6** phases | each with a machine-checkable exit gate |
 | **220** demo checks | run against a real built binary |
-| **336** tests | every one deliberately broken once to prove it fails |
+| **339** tests | every one deliberately broken once to prove it fails |
 | **3** runtime dependencies | `modernc.org/sqlite`, `modelcontextprotocol/go-sdk`, `google/jsonschema-go` |
 | **0** cgo | `go build` gives you one static file |
 

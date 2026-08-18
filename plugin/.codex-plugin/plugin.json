@@ -1,7 +1,7 @@
 {
   "name": "keep",
   "version": "0.1.0",
-  "description": "Puts the work queue in front of your agents instead of hoping they ask for it. Registers keep's thirteen MCP tools, and a SessionStart hook injects the ranked ready queue into context before the agent reads your first message. Adds nothing to AGENTS.md and needs no launcher flag. Silent in repositories that have no store, so it costs nothing where it is not used. Requires the keep binary on PATH.",
+  "description": "Puts the work queue in front of your agents instead of hoping they ask for it. Registers keep's fourteen MCP tools, and a SessionStart hook injects the ranked ready queue into context before the agent reads your first message. Adds nothing to AGENTS.md and needs no launcher flag. Silent in repositories that have no store, so it costs nothing where it is not used. Requires the keep binary on PATH.",
   "author": {
     "name": "gshepptech"
   },

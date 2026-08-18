@@ -560,15 +560,34 @@ func (s *Store) ReopenItem(ctx context.Context, in ReopenItemInput) (model.Item,
 // both "leave it" and "clear it" at once. This encoding is what plan 09's
 // `update` CLI is written against; if it ever changes, that CLI's `--score`
 // handling must change with it.
+// The json tags are what puts this type on the wire: `update` is an MCP
+// tool, and internal/mcp reuses this struct unmodified so its handler stays
+// the same branchless three lines as every other tool's (MCP-05 permits no
+// conditional in a handler, which rules out a conversion function).
+//
+// One thing the wire cannot express: clearing a score back to unscored.
+// encoding/json gives a **int field nil for both an absent key and an
+// explicit null, so "leave it alone" and "clear it" arrive identically. The
+// CLI keeps that ability through `--score none`, which has somewhere to put
+// the distinction. Setting a score works over both.
 type UpdateItemInput struct {
-	ID               string
-	Actor, SessionID string
+	ID        string `json:"id"`
+	Actor     string `json:"actor,omitempty"`
+	SessionID string `json:"-"`
 
-	Title, Body, Acceptance *string
-	Why, Type, Stage        *string
-	Repo, Paths, Assignee   *string
+	Title      *string `json:"title,omitempty"`
+	Body       *string `json:"body,omitempty"`
+	Acceptance *string `json:"acceptance,omitempty"`
+	Why        *string `json:"why,omitempty"`
+	Type       *string `json:"type,omitempty"`
+	Stage      *string `json:"stage,omitempty"`
+	Repo       *string `json:"repo,omitempty"`
+	Paths      *string `json:"paths,omitempty"`
+	Assignee   *string `json:"assignee,omitempty"`
 
-	Value, Confidence, Effort **int
+	Value      **int `json:"value,omitempty"`
+	Confidence **int `json:"confidence,omitempty"`
+	Effort     **int `json:"effort,omitempty"`
 }
 
 // updateEventPayload is the JSON body of the one `update` event UpdateItem

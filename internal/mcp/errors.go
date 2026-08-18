@@ -42,7 +42,8 @@ import (
 //	ErrConflict             | isError: true                     | Names the holding session and claim time
 //	ErrParentChildViaDep    | isError: true                     | Its own message already says `keep add --parent <id>`
 //	ErrSelfEdge             | isError: true                     | Well-formed values, refused for a semantic reason
-//	ErrNoFieldsToUpdate     | isError: true                     | Unreachable today (only UpdateItem produces it, and `update` is not one of the ten tools); classified anyway so a future `update` tool inherits the decision instead of re-litigating it
+//	ErrEmptyTitle           | isError: true                     | Same shape as ErrSelfEdge: the argument is a well-formed string, refused because a titleless item is unreadable in every list. Reachable from `add`, `capture` and `update`, and an agent that gets it back as a tool error can retry with a title -- as a protocol error it could not
+//	ErrNoFieldsToUpdate     | isError: true                     | Reached by the `update` tool. Classified before that tool existed so the decision was inherited rather than re-litigated, which is what happened
 //	ErrInvalidDepType       | protocol error, CodeInvalidParams | A value outside the closed vocabulary IS a malformed argument -- MCP-04's "schema validation failure -> protocol error" row, enforced by the store because the SDK will not (see note below)
 //	ErrSchemaVersion        | never reaches here                | Produced only by store.Open, so cmd/keep/mcp.go fails at startup before Run -- not a per-call failure, the store is unusable
 //
@@ -92,6 +93,7 @@ func resultFor(v any, err error) (*mcp.CallToolResult, error) {
 		errors.Is(err, store.ErrConflict),
 		errors.Is(err, store.ErrParentChildViaDep),
 		errors.Is(err, store.ErrSelfEdge),
+		errors.Is(err, store.ErrEmptyTitle),
 		errors.Is(err, store.ErrNoFieldsToUpdate):
 		res := &mcp.CallToolResult{}
 		res.SetError(err)

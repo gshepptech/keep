@@ -115,7 +115,7 @@ func TestMCPToolsListReturnsCommandSurface(t *testing.T) {
 	// is what 04-CONTEXT.md's decision 2 actually locks; asserting the
 	// SDK's own deterministic sort order in place of the plan's incorrect
 	// registration-order assumption.
-	want := []string{"add", "backlog", "capture", "close", "dep", "drop", "list", "log", "ready", "search", "show", "stale", "start"}
+	want := []string{"add", "backlog", "capture", "close", "dep", "drop", "list", "log", "ready", "search", "show", "stale", "start", "update"}
 
 	if len(res.Tools) != len(want) {
 		names := make([]string, len(res.Tools))
@@ -156,7 +156,7 @@ func TestMCPToolsListReturnsCommandSurface(t *testing.T) {
 
 	for _, tl := range res.Tools {
 		if tl.Description == "" {
-			t.Errorf("tool %q has an empty Description -- a model choosing between thirteen tools has only this to go on", tl.Name)
+			t.Errorf("tool %q has an empty Description -- a model choosing between fourteen tools has only this to go on", tl.Name)
 		}
 		m, ok := tl.InputSchema.(map[string]any)
 		if !ok {

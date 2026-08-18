@@ -33,7 +33,7 @@ env = { KEEP_ACTOR = "codex" }
 > `CODEX_HOME` produces exactly this, with `env` as a `[mcp_servers.rounce.env]`
 > sub-table — equivalent TOML to the inline form above.
 >
-> Still unverified: that the thirteen tools load and answer inside a real turn. The
+> Still unverified: that the fourteen tools load and answer inside a real turn. The
 > test session failed authentication before any turn ran, so the server was
 > never exercised by a model (`rnc-967360`).
 

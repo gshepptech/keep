@@ -303,6 +303,18 @@ func NewServer(st *store.Store, opts Options) (*mcp.Server, error) {
 		return resultFor(st.DropItem(ctx, in))
 	})
 
+	s.AddTool(&mcp.Tool{
+		Name:        "update",
+		Description: "Change fields on an existing item -- title, body, why, acceptance, score, type, stage, repo, paths, assignee. Status is not among them: use `start`, `close` or `drop`, so the log always records why a status moved. Supply at least one field. Omitting a field leaves it alone; a score can be set here but not cleared.",
+		InputSchema: sc["update"],
+	}, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		in := store.UpdateItemInput{Actor: opts.ActorFor(req.Session.InitializeParams()), SessionID: opts.Session}
+		if err := json.Unmarshal(req.Params.Arguments, &in); err != nil {
+			return nil, &jsonrpc.Error{Code: jsonrpc.CodeInvalidParams, Message: err.Error()}
+		}
+		return resultFor(st.UpdateItem(ctx, in))
+	})
+
 	return s, nil
 }
 

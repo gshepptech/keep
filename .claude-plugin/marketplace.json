@@ -9,7 +9,7 @@
     {
       "name": "keep",
       "source": "./plugin",
-      "description": "Puts the work queue in front of your agents instead of hoping they ask for it. Registers keep's thirteen MCP tools, and a SessionStart hook injects the ranked ready queue into context before the agent reads your first message — so it starts every session already knowing what is workable, what is blocked, and what is parked, without an instruction it can ignore. Adds /keep:ready, /keep:board, and /keep:file. Silent in repositories that have no store, so it costs nothing where it is not used. Requires the keep binary on PATH.",
+      "description": "Puts the work queue in front of your agents instead of hoping they ask for it. Registers keep's fourteen MCP tools, and a SessionStart hook injects the ranked ready queue into context before the agent reads your first message — so it starts every session already knowing what is workable, what is blocked, and what is parked, without an instruction it can ignore. Adds /keep:ready, /keep:board, and /keep:file. Silent in repositories that have no store, so it costs nothing where it is not used. Requires the keep binary on PATH.",
       "version": "0.1.0",
       "category": "productivity",
       "author": {
