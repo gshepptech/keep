@@ -248,7 +248,7 @@ func codexHooks(bin, cwd string) ([]hookMetadata, error) {
 	res, err := codexRPC(bin, []any{
 		map[string]any{"jsonrpc": "2.0", "id": 1, "method": "initialize",
 			"params": map[string]any{"clientInfo": map[string]any{
-				"name": "keep", "title": "keep", "version": version}}},
+				"name": "keep", "title": "keep", "version": resolveVersion()}}},
 		map[string]any{"jsonrpc": "2.0", "method": "initialized", "params": map[string]any{}},
 		map[string]any{"jsonrpc": "2.0", "id": 2, "method": "hooks/list",
 			"params": map[string]any{"cwds": []string{cwd}}},
@@ -289,7 +289,7 @@ func codexTrustHooks(bin string, hooks []hookMetadata) error {
 	_, err := codexRPC(bin, []any{
 		map[string]any{"jsonrpc": "2.0", "id": 1, "method": "initialize",
 			"params": map[string]any{"clientInfo": map[string]any{
-				"name": "keep", "title": "keep", "version": version}}},
+				"name": "keep", "title": "keep", "version": resolveVersion()}}},
 		map[string]any{"jsonrpc": "2.0", "method": "initialized", "params": map[string]any{}},
 		map[string]any{"jsonrpc": "2.0", "id": 2, "method": "config/batchWrite",
 			"params": map[string]any{"edits": edits}},

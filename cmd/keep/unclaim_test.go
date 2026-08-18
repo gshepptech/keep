@@ -1,6 +1,10 @@
 package main
 
 import (
+	"bufio"
+	"encoding/json"
+	"io"
+	"os/exec"
 	"strings"
 	"testing"
 )
@@ -137,6 +141,26 @@ func TestVersionIsCitable(t *testing.T) {
 		}
 	})
 
+	// Every consumer, not just `keep version`. Changing the var's zero value
+	// from "dev" to "" silently made the MCP handshake report an empty
+	// version, and the existing MCP tests missed it because they build with
+	// -ldflags set — the broken path is the one nothing was testing.
+	t.Run("the MCP handshake reports it too", func(t *testing.T) {
+		bin := buildKeep(t, "")
+		repo := tempDir(t)
+		home := tempDir(t)
+		e := env(home, "")
+		mustInit(t, bin, repo, e)
+
+		reported := mcpServerVersion(t, bin, repo, e)
+		if reported == "" {
+			t.Error("the MCP server reports an empty version; a client cannot tell what it is talking to")
+		}
+		if reported == "dev" {
+			t.Error(`the MCP server reports "dev" — resolveVersion is not reaching the handshake`)
+		}
+	})
+
 	// The case that was broken: no ldflags at all, which is what the README
 	// tells people to do.
 	t.Run("a plain build still identifies itself", func(t *testing.T) {
@@ -153,4 +177,60 @@ func TestVersionIsCitable(t *testing.T) {
 			t.Error(`a plain build reports "dev", which no bug report can cite — build info carries a revision and it is not being read`)
 		}
 	})
+}
+
+// mcpServerVersion completes one initialize handshake against a real
+// `keep mcp` process and returns the version it reports in serverInfo.
+//
+// It drives the binary rather than calling into internal/mcp because the
+// regression it guards lives in the wiring: the store package was fine, the
+// server package was fine, and cmd/keep handed the server an empty string.
+func mcpServerVersion(t *testing.T, bin, dir string, environ []string) string {
+	t.Helper()
+
+	cmd := exec.Command(bin, "mcp")
+	cmd.Dir = dir
+	cmd.Env = environ
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		t.Fatalf("stdin: %v", err)
+	}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		t.Fatalf("stdout: %v", err)
+	}
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	t.Cleanup(func() { stdin.Close(); cmd.Process.Kill(); cmd.Wait() })
+
+	req := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":` +
+		`{"protocolVersion":"2025-11-25","capabilities":{},` +
+		`"clientInfo":{"name":"version-probe","version":"0"}}}` + "\n"
+	if _, err := io.WriteString(stdin, req); err != nil {
+		t.Fatalf("write initialize: %v", err)
+	}
+
+	scanner := bufio.NewScanner(stdout)
+	scanner.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
+	for scanner.Scan() {
+		var msg struct {
+			ID     int `json:"id"`
+			Result struct {
+				ServerInfo struct {
+					Name    string `json:"name"`
+					Version string `json:"version"`
+				} `json:"serverInfo"`
+			} `json:"result"`
+		}
+		if json.Unmarshal(scanner.Bytes(), &msg) != nil || msg.ID != 1 {
+			continue
+		}
+		if msg.Result.ServerInfo.Name != "keep" {
+			t.Errorf("serverInfo.name = %q, want keep", msg.Result.ServerInfo.Name)
+		}
+		return msg.Result.ServerInfo.Version
+	}
+	t.Fatal("no initialize response from keep mcp")
+	return ""
 }

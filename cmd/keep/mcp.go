@@ -89,7 +89,7 @@ func runMCP(args []string, stdout, stderr io.Writer) int {
 	srv, err := internalmcp.NewServer(s, internalmcp.Options{
 		Actor:        actor,
 		Session:      session,
-		Version:      version,
+		Version:      resolveVersion(),
 		Logger:       logger,
 		Instructions: mcpInstructions(context.Background(), s),
 		ActorFor: func(p *mcp.InitializeParams) string {

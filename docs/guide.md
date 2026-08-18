@@ -469,7 +469,7 @@ is never ambiguous about where the write lands.
 The CLI is the primitive keep is built around, and it stays complete on
 its own specifically so hooks — which can call a binary but cannot call an
 MCP tool — always have something to call. On top of that, `keep mcp`
-serves the same operations as ten MCP tools over stdio, for agents that
+serves the same operations as thirteen MCP tools over stdio, for agents that
 reach for tools first.
 
 ```bash
@@ -487,8 +487,9 @@ Then you mostly just talk to the agent:
 | "park that, not yet" | `capture` (lands in the backlog) |
 
 `docs/agents.md` covers registration for Claude Code and Codex in full, lists
-what the ten MCP tools actually are (and which three CLI verbs — `init`,
-`blocked`, `update` — deliberately have no MCP tool), and has a `CLAUDE.md`
+what the thirteen MCP tools actually are (and which four CLI verbs — `init`,
+`blocked`, `update` and `unclaim` — deliberately have no MCP tool), and has a
+`CLAUDE.md`
 snippet you can drop into a project so agents check `ready` before starting
 work instead of keeping their own mental task list for the session.
 
@@ -542,6 +543,7 @@ sense below but are omitted from the table for space — see `keep <cmd>
 | `start <id>` | `--json` | Claims the item for `$KEEP_SESSION`. Same-session repeat is a silent no-op; a different session's claim fails. |
 | `close <id> --reason <text>` | — | `--reason` is required. |
 | `drop <id> --reason <text>` | — | Same shape as `close`, distinct status — never counted as done. |
+| `unclaim <id> --reason <text>` | — | Returns a claimed item to the queue. The third exit from in progress: `close` says it was done and `drop` says it was not worth doing, so neither fits an agent that simply stopped. Any session may release any claim — the holder is, by definition of the case, not coming back to release it — and the event records who did. |
 | `board` | `--limit` (default 10, 0=all), `--json`, `--web`, `--port` (requires `--web`) | Counts line plus the top of the queue, or (`--web`) the loopback dashboard. Read-only. |
 | `repos` | `--json` | Lists registered stores with counts and last activity. |
 | `repos add <path>` | — | Registers a repo directory or store file. Registry write failure is fatal here (unlike `init`'s best-effort). |

@@ -66,9 +66,9 @@ flowchart LR
     style B fill:#14171a,stroke:#6E56CF,stroke-width:3px,color:#e6e9ec
 ```
 
-> **keep never calls a model.** It is a store. Refinement, triage, and
-> estimation are things an agent does *using* keep — which is exactly why any
-> agent, any plugin, any editor works with it.
+> **keep never calls a model.** Refinement, triage and estimation are things
+> an agent does *using* keep — which is why any agent, any plugin and any
+> editor work with it.
 
 ---
 
@@ -223,9 +223,10 @@ nobody is doing.
 
 ## Principles
 
-1. **keep never calls a model.** It is a store. Refinement, triage, and
-   estimation are things an agent does *using* keep. This is why any plugin
-   or any agent works with it, and why the binary stays small.
+1. **It is a store, and only a store.** Nothing here reasons about your
+   work; it remembers what was decided about it. That is what keeps the
+   binary small, the dependencies at three, and the tool useful to an agent
+   nobody has written an integration for yet.
 2. **One core, three surfaces.** The CLI, the MCP server, and the dashboard are
    thin wrappers over `internal/store`. No surface carries behaviour of its own
    — enforced by an AST test, not by discipline.

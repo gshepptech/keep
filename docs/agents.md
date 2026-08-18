@@ -1,7 +1,7 @@
 # Using keep with agents
 
 keep is built to be driven by agents, not typed by you. This page covers
-just that: registering the MCP server, what the ten tools are, and what to
+just that: registering the MCP server, what the thirteen tools are, and what to
 put in a project's `CLAUDE.md` so agents actually use it instead of ignoring
 it.
 
@@ -75,9 +75,9 @@ probably-right rather than confirmed.
 - `keep mcp` serves over stdio only. Don't run it interactively — stdin and
   stdout are the protocol channel.
 
-## The ten tools
+## The thirteen tools
 
-The MCP server exposes ten of the CLI's thirteen verbs, in this order (also
+The MCP server exposes thirteen of the CLI's verbs, in this order (also
 `tools/list`'s order):
 
 | Tool | What it does |
@@ -88,6 +88,9 @@ The MCP server exposes ten of the CLI's thirteen verbs, in this order (also
 | `backlog` | List raw, unrefined items (captured documents and notes) waiting to be turned into tickets. |
 | `show` | Show one item's full detail: fields, dependencies in both directions, and its event history. |
 | `list` | List items with optional filters — stage, status, type, parent, repo — including raw and closed/dropped items `ready`/`backlog` omit. |
+| `search` | Find items by text, matching title, why, acceptance, paths and body, ranked by where the match landed. Use this before filing anything: the thing you noticed may already be filed. |
+| `log` | What has happened in this store, newest first: every add, claim, close, drop and edit, each with its item's title. Narrow with since, actor or kind. |
+| `stale` | Items claimed by someone who then went quiet — a session that died mid-work leaves one behind. Reports only; keep never releases a claim on its own. |
 | `dep` | Create a dependency edge between two items: blocks, related, or derived-from. Parent-child structure is created by `add`'s `parent_id`, not this tool. |
 | `start` | Claim an item and mark it in progress. Refused if the item is raw, already terminal, or blocked. |
 | `close` | Mark an item finished, recording why. Distinct from `drop`: close means done, drop means abandoned and must never be counted as done. |
@@ -96,26 +99,34 @@ The MCP server exposes ten of the CLI's thirteen verbs, in this order (also
 Descriptions above are the literal tool descriptions registered in
 `internal/mcp/server.go` — what a model actually sees.
 
-**`init`, `blocked`, and `update` have no MCP tool.** This is deliberate, not
-an oversight (`docs/design/phase-3.md`):
+**`init`, `blocked`, `update` and `unclaim` have no MCP tool.** This is
+deliberate, not an oversight (`docs/design/phase-3.md`):
 
 - `init` isn't exposed because an MCP client is, by definition, already
   pointed at a store — there's nothing useful "create the store I'm already
   talking to" would do over the protocol.
-- `blocked` and `update` were simply left off the locked ten-tool list.
+- `blocked` and `update` were simply left off the original locked list.
   `blocked` is a CLI/dashboard convenience; an agent that wants to know why
   something isn't in `ready` can call `show` on it. `update`'s omission means
   an agent that wants to change a field goes through `add`'s creation path or
   isn't offered a generic patch tool — narrower is the point (see below).
+- `unclaim` is withheld on different grounds: it is the one verb that can take
+  work away from an agent that is still running. That call belongs with
+  whoever can look at the terminal and see whether the session is actually
+  dead, not with another agent that has just been told the queue is empty.
+  `stale` is the MCP half of the same job — it reports the claim and stops.
 
-**Why exactly ten tools, not fewer, and not more.** The tool count tracks the
-CLI 1:1, minus the three above — it grows only when the CLI does, never as a
-convenience layer on top of it:
+**Why exactly these, not fewer, and not more.** The tool count tracks the CLI
+1:1, minus the four above — it grows only when the CLI does, never as a
+convenience layer on top of it. It has grown once, and by the rule: `search`,
+`log` and `stale` were built as CLI verbs first and mirrored here afterwards,
+which is the order the rule requires. Ten became thirteen because the product
+did, not because the protocol wanted a shortcut.
 
 > Block rebuilt their Linear MCP server three times and ended at 2 tools
 > instead of 30+ — the standing justification for **no MCP-only convenience
 > tools**: the count grows only when the CLI does, never otherwise... keep's
-> ten are flat, disjoint verbs with no pair a model would hesitate between.
+> are flat, disjoint verbs with no pair a model would hesitate between.
 > — `docs/design/phase-3.md`
 
 A few real surface differences from the CLI, all recorded as deliberate
