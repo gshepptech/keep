@@ -29,6 +29,16 @@ func nullableString(s string) any {
 	return s
 }
 
+// innerInt unwraps UpdateItemInput's double pointer to the value being set,
+// or nil when the field was left alone or is being cleared. Both of those
+// mean "no number to check".
+func innerInt(p **int) *int {
+	if p == nil {
+		return nil
+	}
+	return *p
+}
+
 // derefIntPtr converts a possibly-nil *int into a driver value: nil becomes
 // SQL NULL, a non-nil pointer becomes its dereferenced value. Used by
 // UpdateItem's score-input columns, which are cleared (set NULL) rather than
@@ -617,6 +627,12 @@ func (s *Store) UpdateItem(ctx context.Context, in UpdateItemInput) (model.Item,
 	// leaving the other open would just make the hole take two commands.
 	if in.Title != nil && strings.TrimSpace(*in.Title) == "" {
 		return model.Item{}, fmt.Errorf("UpdateItem: %w", ErrEmptyTitle)
+	}
+	// The outer pointer is "touched or not" and the inner is the value, which
+	// may legitimately be nil (clear this input back to unscored). Only an
+	// input being SET carries a number to check.
+	if err := checkScoreRange(innerInt(in.Value), innerInt(in.Confidence), innerInt(in.Effort)); err != nil {
+		return model.Item{}, fmt.Errorf("UpdateItem: %w", err)
 	}
 
 	var out model.Item

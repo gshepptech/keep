@@ -70,6 +70,28 @@ func (s *schemaSet) err() error {
 // call. The enum earns its place by steering a model toward a legal value,
 // and nothing in this package may depend on the SDK rejecting one that
 // isn't.
+// withRange publishes an integer property's bounds, the numeric parallel of
+// withEnum and subject to the same caveat: the SDK does not validate
+// arguments against InputSchema, so this steers a model toward a legal
+// number and nothing may depend on it refusing an illegal one.
+// store.ErrScoreOutOfRange is what actually refuses.
+//
+// jsonschema's Minimum/Maximum are *float64, so the bounds are taken by
+// value and addressed here -- one place, rather than a package-level var per
+// bound whose address could be shared by accident.
+func withRange(sc *jsonschema.Schema, prop string, min, max float64) {
+	sc.Properties[prop].Minimum = &min
+	sc.Properties[prop].Maximum = &max
+}
+
+// withScoreRange applies model's bounds to all three scoring inputs of one
+// tool, so a fourth caller cannot advertise two of the three.
+func withScoreRange(sc *jsonschema.Schema) {
+	for _, prop := range []string{"value", "confidence", "effort"} {
+		withRange(sc, prop, float64(model.ScoreMin), float64(model.ScoreMax))
+	}
+}
+
 func withEnum(sc *jsonschema.Schema, prop string, values []string) {
 	enum := make([]any, len(values))
 	for i, v := range values {
@@ -173,6 +195,9 @@ func BuildSchemas() (map[string]*jsonschema.Schema, error) {
 	withEnum(set.m["dep"], "type", depTypesForWire())
 	withEnum(set.m["update"], "type", model.TypesOrdered)
 	withEnum(set.m["update"], "stage", model.StagesOrdered)
+	withScoreRange(set.m["add"])
+	withScoreRange(set.m["capture"])
+	withScoreRange(set.m["update"])
 
 	return set.m, set.err()
 }

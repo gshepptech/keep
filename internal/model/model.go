@@ -159,6 +159,20 @@ var ValidTypes = map[string]bool{
 	TypeNote:    true,
 }
 
+// ScoreMin and ScoreMax bound each of an item's three scoring inputs.
+//
+// The range was documented in internal/rank's comment and enforced only by
+// cmd/keep's flag parser, which meant the store and therefore MCP accepted
+// anything: effort=100 scored -89, below an unscored item's 0, breaking
+// RANK-02's guarantee that a scored item always outranks an unscored one,
+// and value=1000 pinned an item to the top of the queue for good. The
+// numbers live here so the store's check and the MCP schema's advertised
+// bounds cannot drift apart.
+const (
+	ScoreMin = 0
+	ScoreMax = 10
+)
+
 // TypesOrdered is the type vocabulary in schema-enum order. It exists
 // because two things need an ORDER, not just a set: backlog's grouping
 // (internal/store/backlog.go's CASE expression) and the MCP tools' JSON

@@ -78,7 +78,7 @@ func TestResultFor(t *testing.T) {
 		}
 	})
 
-	// isErrorSentinels is the single source of truth for the eight sentinels
+	// isErrorSentinels is the single source of truth for the nine sentinels
 	// resultFor classifies as isError:true tool results -- decision 4's "the
 	// legitimate outcome of a well-formed call" arm. If a tenth store
 	// sentinel is ever added and not added here, it is invisible to this
@@ -94,6 +94,7 @@ func TestResultFor(t *testing.T) {
 		"ErrParentChildViaDep": store.ErrParentChildViaDep,
 		"ErrSelfEdge":          store.ErrSelfEdge,
 		"ErrEmptyTitle":        store.ErrEmptyTitle,
+		"ErrScoreOutOfRange":   store.ErrScoreOutOfRange,
 		"ErrNoFieldsToUpdate":  store.ErrNoFieldsToUpdate,
 	}
 	for name, sentinel := range isErrorSentinels {
@@ -135,8 +136,8 @@ func TestResultFor(t *testing.T) {
 		for name := range isErrorSentinels {
 			named[name] = true
 		}
-		if len(named) != 10 {
-			t.Fatalf("named %d sentinels, want 10: %v", len(named), named)
+		if len(named) != 11 {
+			t.Fatalf("named %d sentinels, want 11: %v", len(named), named)
 		}
 	})
 }

@@ -165,3 +165,72 @@ func TestMCPUpdateCannotChangeStatus(t *testing.T) {
 	}
 	t.Fatal("no update tool in tools/list")
 }
+
+// TestMCPRefusesAnOutOfRangeScore covers the path the CLI's flag parser never
+// guarded. Until the store enforced the range, an agent could file effort=100
+// through `add` for a score of -89 -- below an unscored item's 0 -- and bury
+// the item beneath work nobody had even estimated.
+//
+// The schema now advertises minimum and maximum, but the SDK does not
+// validate arguments against InputSchema (internal/mcp/input.go records that
+// a published enum was ignored on a real call), so the schema steers and the
+// store refuses. This test drives the real subprocess to prove which one is
+// actually load-bearing.
+func TestMCPRefusesAnOutOfRangeScore(t *testing.T) {
+	bin := buildKeep(t, "")
+	dir := tempDir(t)
+	environ := env(dir, "", "KEEP_SESSION=mcp-score-1")
+	if _, _, code := run(t, bin, dir, environ, "init"); code != 0 {
+		t.Fatal("init failed")
+	}
+	cs := mcpSession(t, bin, dir, environ)
+
+	// The bounds reach the agent, so a model has something to steer by.
+	tools, err := cs.ListTools(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("tools/list: %v", err)
+	}
+	for _, tl := range tools.Tools {
+		if tl.Name != "add" {
+			continue
+		}
+		m, ok := tl.InputSchema.(map[string]any)
+		if !ok {
+			t.Fatalf("add InputSchema is %T", tl.InputSchema)
+		}
+		props, _ := m["properties"].(map[string]any)
+		effort, _ := props["effort"].(map[string]any)
+		if effort["minimum"] == nil || effort["maximum"] == nil {
+			t.Errorf("add.effort advertises no bounds, so a model has nothing to steer by: %v", effort)
+		}
+	}
+
+	for _, tc := range []struct {
+		name, tool string
+		args       map[string]any
+	}{
+		{"add with an effort past the range", "add", map[string]any{"title": "wild", "effort": 100}},
+		{"add with a value past the range", "add", map[string]any{"title": "wild", "value": 1000}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			res, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: tc.tool, Arguments: tc.args})
+			if err != nil {
+				t.Fatalf("came back as a protocol error, which an agent cannot act on: %v", err)
+			}
+			if !res.IsError {
+				t.Fatal("accepted; the queue can now be inverted from an agent")
+			}
+			text, _ := res.Content[0].(*mcp.TextContent)
+			if !strings.Contains(text.Text, "0-10") {
+				t.Errorf("message %q does not say what the legal range is", text.Text)
+			}
+		})
+	}
+
+	// And the queue is intact: nothing got in.
+	var listed []model.Item
+	decodeInto(t, callTool(t, cs, "list", map[string]any{}), &listed)
+	if len(listed) != 0 {
+		t.Errorf("store holds %d items, want 0 -- a refused call must not write", len(listed))
+	}
+}

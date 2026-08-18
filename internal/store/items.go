@@ -223,6 +223,35 @@ type addEventPayload struct {
 // other would be a distinction nobody could see.
 var ErrEmptyTitle = errors.New("an item needs a title: it is the only field every list, search result and board row shows")
 
+// ErrScoreOutOfRange is returned when a scoring input falls outside
+// model.ScoreMin..ScoreMax.
+//
+// It is enforced HERE rather than at each surface because the surfaces do not
+// all validate: cmd/keep's flag parser did, and the MCP tools did not, so an
+// agent could file effort=100 and land the item below unscored work. The MCP
+// schema now advertises the bounds, but the SDK does not validate arguments
+// against InputSchema at all -- a published enum was confirmed ignored on a
+// real call (internal/mcp/input.go) -- so the schema steers and this refuses.
+var ErrScoreOutOfRange = fmt.Errorf("value, confidence and effort must each be %d-%d", model.ScoreMin, model.ScoreMax)
+
+// checkScoreRange refuses any supplied scoring input outside the range. A nil
+// input is "unscored" and always fine. Named per input so the message says
+// which one to fix rather than that something was wrong.
+func checkScoreRange(value, confidence, effort *int) error {
+	for _, in := range []struct {
+		name string
+		v    *int
+	}{{"value", value}, {"confidence", confidence}, {"effort", effort}} {
+		if in.v == nil {
+			continue
+		}
+		if *in.v < model.ScoreMin || *in.v > model.ScoreMax {
+			return fmt.Errorf("%s is %d: %w", in.name, *in.v, ErrScoreOutOfRange)
+		}
+	}
+	return nil
+}
+
 // AddItem creates a new item -- root or child -- inside one transaction:
 // hierarchical id allocation, the dual parent-child write, blocks/
 // derived-from edges, the computed score, and exactly one `add` event. The
@@ -236,6 +265,9 @@ func (s *Store) AddItem(ctx context.Context, in AddItemInput) (model.Item, error
 	}
 	if strings.TrimSpace(in.Title) == "" {
 		return model.Item{}, fmt.Errorf("AddItem: %w", ErrEmptyTitle)
+	}
+	if err := checkScoreRange(in.Value, in.Confidence, in.Effort); err != nil {
+		return model.Item{}, fmt.Errorf("AddItem: %w", err)
 	}
 
 	itemType := in.Type

@@ -125,6 +125,15 @@ deliberate, not an oversight (`docs/design/phase-3.md`):
   dead, not with another agent that has just been told the queue is empty.
   `stale` is the MCP half of the same job — it reports the claim and stops.
 
+**On `value`, `confidence` and `effort`.** Each is 0-10, and the schema now
+says so with `minimum` and `maximum`. Take that as steering, not as a gate:
+the SDK does not validate arguments against `InputSchema` at all — a
+published enum was confirmed ignored on a real call — so the store is what
+refuses an out-of-range number, and it returns a tool error naming the input
+and its value. Before it did, an agent could file `effort: 100` and score the
+item **-89**, below an unscored item's 0, burying it beneath work nobody had
+even estimated.
+
 **Why exactly these, not fewer, and not more.** The tool count tracks the CLI
 1:1, minus the four above — it grows only when the CLI does, never as a
 convenience layer on top of it. It has grown twice, both by the rule.
