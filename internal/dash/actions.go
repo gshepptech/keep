@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
-	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -400,16 +399,6 @@ func intField(r *http.Request, name string) (*int, bool) {
 		return nil, false
 	}
 	return &n, true
-}
-
-// hostOnly strips the port, for the Interlock actions below which take a
-// session id rather than an address.
-func hostOnly(hostport string) string {
-	host, _, err := net.SplitHostPort(hostport)
-	if err != nil {
-		return hostport
-	}
-	return host
 }
 
 // doRelease releases one session's file holds, through Interlock.

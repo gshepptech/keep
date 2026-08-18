@@ -1,9 +1,7 @@
 package dash
 
 import (
-	"bytes"
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/gshepptech/keep/internal/registry"
@@ -60,26 +58,6 @@ func (s *Server) handleAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.render(w, "all", s.newPage(r, "all", data))
-}
-
-// renderAllFor loads the registry, fans out, and renders. Split from the
-// handler so a test can assert on the bytes without a listener.
-//
-// A registry that will not load is a genuine failure of this page and is
-// reported as one -- unlike a single unreadable store, which is a row. The
-// distinction matters: an unreadable registry means the page cannot know
-// what it is missing, and rendering an empty queue would be a lie in
-// exactly the shape REPO-05 exists to prevent.
-func (s *Server) renderAllFor(ctx context.Context) ([]byte, error) {
-	data, err := s.allData(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var buf bytes.Buffer
-	if err := tmpl.ExecuteTemplate(&buf, "all", page{Data: data}); err != nil {
-		return nil, fmt.Errorf("render all: %w", err)
-	}
-	return buf.Bytes(), nil
 }
 
 // allData gathers the cross-repo queue.

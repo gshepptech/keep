@@ -8,17 +8,13 @@ import (
 	"github.com/gshepptech/keep/internal/store"
 )
 
-// readyItems is the queue view's store call and Interlock filter in one
-// place, because handleReady and handleInterlock must not disagree about
-// what is workable.
+// readyItemsFrom is one project's store call and Interlock filter in one
+// place, because the board's queue and its "held back" section must not
+// disagree about what is workable.
 //
-// It returns the kept items and what was held back. A caller that only
-// wants the queue ignores the second value; nothing recomputes it.
-func (s *Server) readyItems(ctx context.Context) ([]model.Item, []interlock.Collision, error) {
-	return s.readyItemsFrom(ctx, s.st, repoDirOf(s.dbPath))
-}
-
-// readyItemsFrom is the same for one named project's store.
+// It returns the kept items and what was held back from the same Exclude
+// call. A caller that only wants the queue ignores the second value;
+// nothing recomputes it.
 func (s *Server) readyItemsFrom(ctx context.Context, st *store.Store, dir string) ([]model.Item, []interlock.Collision, error) {
 	items, err := st.Ready(ctx, 0)
 	if err != nil {

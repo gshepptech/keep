@@ -394,7 +394,7 @@ func stubInterlock(t *testing.T, statusJSON string) string {
 // join. The board's queue and /who both answer "is this held", and if they
 // answered it separately they would drift -- producing a board that omits an
 // item while the page meant to explain the omission does not mention it.
-// They share one Exclude call through readyItems; this is what proves it.
+// They share one Exclude call through readyItemsFrom; this is what proves it.
 //
 // The break that motivated this test: changing handleReady back to calling
 // s.st.Ready directly leaves every other test in this package passing.

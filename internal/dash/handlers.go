@@ -63,9 +63,10 @@ func (s *Server) routes() *http.ServeMux {
 // happens to match a fixture's size today is exactly the coincidental pass
 // GATE-03 exists to catch.
 func (s *Server) handleReady(w http.ResponseWriter, r *http.Request) {
-	// readyItems, not s.st.Ready directly: the queue and /who must apply
-	// the same Interlock filter, computed once, or the board will omit an
-	// item that /who cannot explain.
+	// boardDataFrom, not s.st.Ready directly: it goes through
+	// readyItemsFrom so the queue and the "held back" section apply the
+	// same Interlock filter, computed once, or the board will omit an item
+	// that the section below it cannot explain.
 	st, done, name, err := s.storeFor(r)
 	if err != nil {
 		s.missOrFail(w, err)
