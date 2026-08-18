@@ -12,7 +12,7 @@ in **one SQLite file** and **one static binary**.
 ![Go](https://img.shields.io/badge/go-1.26-00ADD8?style=for-the-badge&logo=go&logoColor=white)
 ![SQLite](https://img.shields.io/badge/sqlite-pure_go%2C_no_cgo-003B57?style=for-the-badge&logo=sqlite&logoColor=white)
 ![MCP](https://img.shields.io/badge/MCP-13_tools-6E56CF?style=for-the-badge)
-![Runtime deps](https://img.shields.io/badge/runtime_deps-4-2ea043?style=for-the-badge)
+![Runtime deps](https://img.shields.io/badge/runtime_deps-3-2ea043?style=for-the-badge)
 ![Network calls](https://img.shields.io/badge/network_calls-0-b32428?style=for-the-badge)
 
 **`no account`** · **`no server`** · **`no SaaS`** · **`no JavaScript`** · **`no telemetry`**
@@ -82,6 +82,19 @@ cd ~/Projects/your-repo
 keep init                                 # → .rounce/db.sqlite
 ```
 
+File one thing and ask for it back — that is the whole store, working:
+
+```console
+$ keep add --score 9/8/2 "Expire refresh tokens after 30 days"
+rnc-7cf193
+
+$ keep ready
+rnc-7cf193  26  task  Expire refresh tokens after 30 days
+```
+
+<sub>`--score` is value/confidence/effort, each 0–10. It is optional; unscored
+items sort last.</sub>
+
 <sub>Private repository, so `go install …@latest` needs
 <code>GOPRIVATE=github.com/gshepptech/*</code> and git credentials. Cloning is
 simpler.</sub>
@@ -104,14 +117,13 @@ Then just talk to them:
 
 ---
 
-## Four surfaces, one store
+## Three surfaces, one store
 
 <table>
 <tr>
-<td width="25%" align="center"><h3>CLI</h3>13 verbs<br/><code>--json</code> on every read</td>
-<td width="25%" align="center"><h3>MCP</h3>10 tools over stdio<br/>zero logic of its own</td>
-<td width="25%" align="center"><h3>Dashboard</h3>loopback only<br/>no JS, no assets</td>
-<td width="25%" align="center"><h3>Registry</h3>every repo<br/>on one board</td>
+<td width="33%" align="center"><h3>CLI</h3>21 commands<br/><code>--json</code> on every read</td>
+<td width="33%" align="center"><h3>MCP</h3>13 tools over stdio<br/>zero logic of its own</td>
+<td width="33%" align="center"><h3>Dashboard</h3>loopback only<br/>no JS, no assets</td>
 </tr>
 </table>
 
@@ -193,8 +205,9 @@ queue can never drop an item the panel fails to explain.
 <img src="docs/images/interlock-panel.png" alt="Interlock's panel: what is workable next, above the files currently held" width="880">
 
 The same moment from Interlock's side. **Next** is keep's queue, already
-filtered. **Files held**, below it, is why the two higher-scoring items are not
-in it.
+filtered. **Files held**, below it, is why: an agent has
+`internal/payments/refund.go` open, so the two items that touch it are missing
+from Next — and Interlock shows you the lease that explains their absence.
 
 ```bash
 keep add --paths "internal/auth/token.go" --score 9/9/1 "Expire refresh tokens"
@@ -256,8 +269,8 @@ nobody is doing.
 | **59** requirements | every one closed with named evidence |
 | **6** phases | each with a machine-checkable exit gate |
 | **220** demo checks | run against a real built binary |
-| **225** tests | every one deliberately broken once to prove it fails |
-| **2** runtime dependencies | `modernc.org/sqlite`, `modelcontextprotocol/go-sdk` |
+| **324** tests | every one deliberately broken once to prove it fails |
+| **3** runtime dependencies | `modernc.org/sqlite`, `modelcontextprotocol/go-sdk`, `google/jsonschema-go` |
 | **0** cgo | `go build` gives you one static file |
 
 </div>
@@ -290,8 +303,6 @@ Hollis's 0-5.
 <div align="center">
 
 **[Roadmap](ROADMAP.md)** · **[Design docs](docs/design/)** · **[Data model](ROADMAP.md#data-model)**
-
-<sub>All rights reserved.</sub>
 
 </div>
 
