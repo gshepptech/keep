@@ -216,6 +216,7 @@ var (
 		"AddItem":     true,
 		"StartItem":   true,
 		"UnclaimItem": true,
+		"ReopenItem":  true,
 		"CloseItem":   true,
 		"DropItem":    true,
 		"UpdateItem":  true,

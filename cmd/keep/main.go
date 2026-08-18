@@ -102,7 +102,7 @@ commands:
   log       what happened, newest first
               --since <s>   24h, 7d, or an RFC3339 timestamp
               --actor <a>   only what this person or agent did
-              --kind <k>    add/start/unclaim/close/drop/update/dep
+              --kind <k>    add/start/unclaim/close/drop/reopen/update/dep
               --limit <n>   at most n entries (default 30, 0 = all)
               --json        machine-parseable output
   stale     claims nothing has happened to in a while
@@ -126,6 +126,11 @@ commands:
               drop says it was not worth doing; this says only that the
               claim ended. Any session may release any claim; the event
               records who did
+              --reason      required; records why (exit 2 if empty/absent)
+  reopen    bring a closed or dropped item back: keep reopen [flags] <id> --reason <text>
+              the way out of the two terminal statuses, for when the close
+              was wrong -- the item returns to open, never to in progress,
+              and the original close stays in the log
               --reason      required; records why (exit 2 if empty/absent)
   update    change fields on an existing item: keep update [flags] <id>
               --title/--body/--acceptance/--why/--score/--type/--stage
@@ -199,6 +204,8 @@ func main() {
 		os.Exit(runDrop(os.Args[2:], os.Stdout, os.Stderr))
 	case "unclaim":
 		os.Exit(runUnclaim(os.Args[2:], os.Stdout, os.Stderr))
+	case "reopen":
+		os.Exit(runReopen(os.Args[2:], os.Stdout, os.Stderr))
 	case "update":
 		os.Exit(runUpdate(os.Args[2:], os.Stdout, os.Stderr))
 	case "mcp":

@@ -447,6 +447,98 @@ func (s *Store) closeOrDrop(ctx context.Context, id, status, kind, reason, actor
 	return out, nil
 }
 
+// ReopenItemInput is the argument to ReopenItem.
+//
+// No json tags: there is no `reopen` MCP tool, on the same grounds that keep
+// `update` off the list -- the agent-facing surface stays narrow, and a
+// mis-close is a thing a person notices and corrects. If that changes, the
+// tags go on here and the count in docs/agents.md changes with them.
+type ReopenItemInput struct {
+	ID        string
+	Reason    string
+	Actor     string
+	SessionID string
+}
+
+// reopenEventPayload names the status the item came back FROM. Without it
+// the log cannot distinguish a close that was wrong from a drop that was
+// wrong, and those are different mistakes: one said the work was done, the
+// other said it was not worth doing (ITEM-08).
+type reopenEventPayload struct {
+	From   string `json:"from"`
+	Reason string `json:"reason"`
+}
+
+// ReopenItem returns a closed or dropped item to the queue.
+//
+// close and drop were the only terminal statuses with no way out, which made
+// a mis-typed id unrecoverable: the work had to be filed again, losing the
+// id, the event history, and every dependency edge pointing at the original.
+// That is the same hole UnclaimItem closed for in_progress, and it is closed
+// the same way -- not by editing the close, which EVENT-01 forbids, but by
+// appending a `reopen` event that says the close was wrong and when.
+//
+// It returns the item to open, never to in_progress. A claim is a live
+// assertion that some session is working on it, and reopening cannot make
+// that true again: the session that held it is long gone. Whoever wants it
+// calls start.
+//
+// closed_at is cleared, because a reopened item has no close date and
+// leaving a stale one would make `stale` and any date-ordered read lie.
+// The original close is still in the events table, which is where the
+// history belongs.
+//
+// The claim columns are cleared for the same reason. close and drop leave
+// claimed_by_session set -- on a finished item it records who did the work,
+// which is useful. On an open one it is a contradiction: open means nobody
+// holds this, and a leftover session id would show a phantom holder on the
+// board and in `stale`. UnclaimItem clears them on the same transition for
+// the same reason.
+func (s *Store) ReopenItem(ctx context.Context, in ReopenItemInput) (model.Item, error) {
+	// Reason is enforced in cmd/keep, not here -- the same placement close,
+	// drop and unclaim use. See UnclaimItem's note on why that split exists
+	// and why fixing it is a change to all four, not to one.
+	if in.Actor == "" {
+		return model.Item{}, fmt.Errorf("ReopenItem: Actor is required")
+	}
+
+	var out model.Item
+	err := s.withTx(ctx, func(tx *sql.Tx) error {
+		item, err := getItemForUpdateTx(ctx, tx, in.ID)
+		if err != nil {
+			return fmt.Errorf("ReopenItem: %w", err)
+		}
+
+		if item.Status != model.StatusClosed && item.Status != model.StatusDropped {
+			return fmt.Errorf("ReopenItem: item %q: status %q is not finished, so there is nothing to reopen: %w",
+				in.ID, item.Status, ErrInvalidTransition)
+		}
+		from := item.Status
+
+		now := nowFunc()
+		if _, err := tx.ExecContext(ctx,
+			`UPDATE items SET status = ?, closed_at = NULL, claimed_by_session = NULL, claimed_at = NULL, updated_at = ? WHERE id = ?`,
+			model.StatusOpen, now, in.ID,
+		); err != nil {
+			return err
+		}
+
+		item.Status = model.StatusOpen
+		item.ClosedAt = nil
+		item.ClaimedBySession = nil
+		item.ClaimedAt = nil
+		item.UpdatedAt = now
+		out = item
+
+		return writeEvent(ctx, tx, in.ID, "reopen", in.Actor, in.SessionID,
+			reopenEventPayload{From: from, Reason: in.Reason})
+	})
+	if err != nil {
+		return model.Item{}, err
+	}
+	return out, nil
+}
+
 // UpdateItemInput is the argument to UpdateItem. Every field is a pointer
 // so "not supplied" (nil) and "supplied" (non-nil, even if the pointed-to
 // value is the zero value) are different requests -- clearing a title to ""

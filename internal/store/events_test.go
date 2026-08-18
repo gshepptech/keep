@@ -114,6 +114,12 @@ func TestEveryMutationWritesExactlyOneEvent(t *testing.T) {
 	if _, err := s.StartItem(ctx, StartItemInput{ID: unclaimTarget.ID, Actor: "tester", SessionID: "sess-gone"}); err != nil {
 		t.Fatalf("preparing the unclaim target: %v", err)
 	}
+	// Reopen needs a finished item, so this one is closed before the timed
+	// window opens, for the same reason the unclaim target is started early.
+	reopenTarget := mustAdd(t, s, AddItemInput{Title: "reopen-target", Actor: "tester"})
+	if _, err := s.CloseItem(ctx, CloseItemInput{ID: reopenTarget.ID, Reason: "closed by mistake", Actor: "tester"}); err != nil {
+		t.Fatalf("preparing the reopen target: %v", err)
+	}
 	updateTitle := "update-target-renamed"
 
 	cases := []struct {
@@ -137,6 +143,10 @@ func TestEveryMutationWritesExactlyOneEvent(t *testing.T) {
 		}},
 		{"UnclaimItem", func() error {
 			_, err := s.UnclaimItem(ctx, UnclaimItemInput{ID: unclaimTarget.ID, Reason: "the agent stopped", Actor: "tester"})
+			return err
+		}},
+		{"ReopenItem", func() error {
+			_, err := s.ReopenItem(ctx, ReopenItemInput{ID: reopenTarget.ID, Reason: "the close was wrong", Actor: "tester"})
 			return err
 		}},
 		{"DropItem", func() error {

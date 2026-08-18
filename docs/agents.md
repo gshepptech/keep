@@ -99,7 +99,7 @@ The MCP server exposes thirteen of the CLI's verbs, in this order (also
 Descriptions above are the literal tool descriptions registered in
 `internal/mcp/server.go` — what a model actually sees.
 
-**`init`, `blocked`, `update` and `unclaim` have no MCP tool.** This is
+**`init`, `blocked`, `update`, `unclaim` and `reopen` have no MCP tool.** This is
 deliberate, not an oversight (`docs/design/phase-3.md`):
 
 - `init` isn't exposed because an MCP client is, by definition, already
@@ -110,6 +110,10 @@ deliberate, not an oversight (`docs/design/phase-3.md`):
   something isn't in `ready` can call `show` on it. `update`'s omission means
   an agent that wants to change a field goes through `add`'s creation path or
   isn't offered a generic patch tool — narrower is the point (see below).
+- `reopen` is withheld on the same grounds as `update`: it is a correction to
+  a call an agent already made, and the person who notices a mis-close can
+  reach the CLI. If an agent is ever given `update`, this should be
+  reconsidered with it — they are the same argument.
 - `unclaim` is withheld on different grounds: it is the one verb that can take
   work away from an agent that is still running. That call belongs with
   whoever can look at the terminal and see whether the session is actually
