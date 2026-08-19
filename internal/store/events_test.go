@@ -120,6 +120,12 @@ func TestEveryMutationWritesExactlyOneEvent(t *testing.T) {
 	if _, err := s.CloseItem(ctx, CloseItemInput{ID: reopenTarget.ID, Reason: "closed by mistake", Actor: "tester"}); err != nil {
 		t.Fatalf("preparing the reopen target: %v", err)
 	}
+	// NextItem claims whatever `ready` puts first, so its target cannot be
+	// named in advance -- it is whichever open ticket outranks the rest at
+	// the moment the case runs. That is the point of the verb, and it is
+	// why this fixture asserts the event count rather than the item id.
+	nextTarget := mustAdd(t, s, AddItemInput{Title: "next-target", Actor: "tester", Value: intPtr(10), Confidence: intPtr(10), Effort: intPtr(0)})
+	_ = nextTarget
 	updateTitle := "update-target-renamed"
 
 	cases := []struct {
@@ -153,6 +159,10 @@ func TestEveryMutationWritesExactlyOneEvent(t *testing.T) {
 			_, err := s.DropItem(ctx, DropItemInput{ID: dropTarget.ID, Reason: "abandoned", Actor: "tester"})
 			return err
 		}},
+		{"NextItem", func() error {
+			_, err := s.NextItem(ctx, NextInput{Actor: "tester", SessionID: "sess-next"})
+			return err
+		}},
 		{"UpdateItem", func() error {
 			_, err := s.UpdateItem(ctx, UpdateItemInput{ID: updateTarget.ID, Actor: "tester", Title: &updateTitle})
 			return err
@@ -162,12 +172,30 @@ func TestEveryMutationWritesExactlyOneEvent(t *testing.T) {
 	// Set-equality against the scan, not a count: a wrong-number failure
 	// ("enumerated 6, want 7") sends a reader to the wrong file, while a
 	// named-method failure sends them straight to the fix.
+	// exemptFromOneEvent names the mutating methods EVENT-01's "exactly one
+	// event" rule does not apply to, with the reason, so an exemption is a
+	// decision someone wrote down rather than a method quietly missing from
+	// the table below.
+	//
+	// Import restores a store from an export. It writes the events table
+	// directly, verbatim, in whatever number the source store held -- that
+	// is the point of it. An `import` event of its own would be a row in the
+	// audit trail claiming something happened to the work, when what
+	// happened was that a file was copied back; and the count could never be
+	// one, because the rows it writes ARE the history it is restoring.
+	exemptFromOneEvent := map[string]string{
+		"Import": "restores the events table verbatim; see internal/store/export.go",
+	}
+
 	scanned := mutatingStoreMethods(t)
 	enumerated := make(map[string]bool, len(cases))
 	for _, tc := range cases {
 		enumerated[tc.name] = true
 	}
 	for name := range scanned {
+		if _, exempt := exemptFromOneEvent[name]; exempt {
+			continue
+		}
 		if !enumerated[name] {
 			t.Fatalf("%s mutates the store but is not enumerated in EVENT-01's table -- add a row asserting it writes exactly one event", name)
 		}

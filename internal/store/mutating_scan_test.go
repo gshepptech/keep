@@ -221,6 +221,8 @@ var (
 		"DropItem":    true,
 		"UpdateItem":  true,
 		"CreateDep":   true,
+		"NextItem":    true,
+		"Import":      true,
 	}
 	wantReadOnly = map[string]bool{
 		"Ready":        true,
@@ -232,6 +234,9 @@ var (
 		"Backlog":      true,
 		"Tree":         true,
 		"LastActivity": true,
+		"WhyNot":       true,
+		"DeepestChain": true,
+		"Export":       true,
 	}
 )
 
