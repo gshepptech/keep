@@ -5,11 +5,13 @@ import (
 	"database/sql"
 	"errors"
 	"path/filepath"
+	"strconv"
 	"testing"
 )
 
 // TestInitCreatesSchema proves STORE-01: a fresh Init produces items, deps,
-// events, meta, and the ready view, and meta.schema_version is 1. Object
+// events, meta, the ready view, the full-text index and its triggers, and
+// meta.schema_version is this binary's. Object
 // presence is asserted directly against sqlite_master (name + type), not
 // inferred by trying an operation -- and the ready view is separately
 // queried, because a view with a broken body succeeds at CREATE time and
@@ -32,6 +34,16 @@ func TestInitCreatesSchema(t *testing.T) {
 		"events": "table",
 		"meta":   "table",
 		"ready":  "view",
+		// The full-text index and the three triggers that keep it in step
+		// with items. A store missing any of them still opens and still
+		// answers every query except `search`, which quietly returns
+		// nothing for items it should find -- so their presence is asserted
+		// here rather than left to the search tests, which pass on a
+		// LIKE-only fallback too.
+		"items_fts":              "table",
+		"items_fts_after_insert": "trigger",
+		"items_fts_after_delete": "trigger",
+		"items_fts_after_update": "trigger",
 	}
 	for name, wantType := range wantObjects {
 		var gotType string
@@ -61,8 +73,8 @@ func TestInitCreatesSchema(t *testing.T) {
 		"SELECT value FROM meta WHERE key = 'schema_version'").Scan(&version); err != nil {
 		t.Fatalf("read schema_version: %v", err)
 	}
-	if version != "1" {
-		t.Fatalf("schema_version = %q, want %q", version, "1")
+	if want := strconv.Itoa(schemaVersion); version != want {
+		t.Fatalf("schema_version = %q, want %q", version, want)
 	}
 }
 
@@ -129,8 +141,8 @@ func TestInitIsIdempotentAndPreservesData(t *testing.T) {
 		"SELECT value FROM meta WHERE key = 'schema_version'").Scan(&version); err != nil {
 		t.Fatalf("read schema_version: %v", err)
 	}
-	if version != "1" {
-		t.Fatalf("schema_version = %q, want %q", version, "1")
+	if want := strconv.Itoa(schemaVersion); version != want {
+		t.Fatalf("schema_version = %q, want %q", version, want)
 	}
 }
 
@@ -146,7 +158,7 @@ func TestOpenRejectsSchemaDrift(t *testing.T) {
 	}
 	ctx := context.Background()
 	if _, err := s.db.ExecContext(ctx,
-		"UPDATE meta SET value = '2' WHERE key = 'schema_version'"); err != nil {
+		"UPDATE meta SET value = ? WHERE key = 'schema_version'", schemaVersion+1); err != nil {
 		t.Fatalf("drift meta row: %v", err)
 	}
 	if err := s.Close(); err != nil {
@@ -189,7 +201,7 @@ func TestInitDDLIsAtomic(t *testing.T) {
 	const badDDL = "CREATE TABLE ddl_canary (x);\n" +
 		"CREATE INDEX idx_ddl_canary ON no_such_table(x);"
 
-	if _, err := initWithDDL(path, badDDL); err == nil {
+	if _, err := initWithDDL(path, badDDL, schemaVersion); err == nil {
 		t.Fatal("initWithDDL with a DDL that fails partway through returned no error")
 	}
 

@@ -53,18 +53,73 @@ type SearchResult struct {
 // would need a separate command.
 var searchFields = []string{"title", "why", "acceptance", "paths", "body"}
 
+// SearchFieldRank returns where a SearchResult.MatchedIn value sits in the
+// field order that decides rank -- 0 for title, up to len(searchFields) for
+// a value this package does not recognise.
+//
+// It is exported for one caller: `keep search --all`, which merges results
+// from several stores and has to re-rank them together. That caller needs
+// the same order this file's CASE expression uses, and the alternative --
+// a copy of searchFields in cmd/keep -- is a second definition of "title
+// beats body" that would silently disagree the first time a field is added
+// here.
+func SearchFieldRank(matchedIn string) int {
+	for i, f := range searchFields {
+		if f == matchedIn {
+			return i
+		}
+	}
+	return len(searchFields)
+}
+
 // Search finds items whose text contains Query, ranked by WHERE the match
 // landed and then by the store's usual score order.
 //
-// Substring matching over five columns rather than SQLite's FTS5, and that
-// is a deliberate trade rather than the easy road. FTS5 would rank better
-// and scan faster, but it needs its own virtual table, its own triggers to
-// stay in step with items, and a migration for every store that already
-// exists -- three new ways for a work store to disagree with itself, bought
-// for a corpus that is a few thousand rows of one person's tickets. A LIKE
-// scan over that is under a millisecond. If a store ever grows to where
-// that stops being true, the fix is FTS5 behind this same signature, and
-// nothing above this line has to know.
+// # FTS5, and why it is a prefilter rather than the search
+//
+// This used to be five LIKE '%x%' scans and nothing else, on the reasoning
+// that a corpus of a few thousand rows scans in under a millisecond and
+// FTS5's virtual table, triggers and migration were three new ways for a
+// work store to disagree with itself. That reasoning ended with a
+// measurement, which is what README principle 6 asks for. Searching a store
+// of items with 120-word bodies, before the index:
+//
+//	 1,000 items     14 ms
+//	10,000 items    178 ms
+//	50,000 items  1,008 ms
+//
+// A full second is not "under a millisecond", and a store an agent files
+// into all day reaches ten thousand items without anybody deciding to let
+// it. With the index, the same 50,000-item store answers a term that
+// actually narrows it in 0.2 ms.
+//
+// The cost, stated rather than buried: a term matching nearly every item
+// makes the index return nearly every row, so the lookup narrows nothing
+// and is paid for on top of the scan -- that case is about 55% slower than
+// it was. search_bench_test.go carries the full table and the reasoning for
+// accepting it.
+//
+// So there is now an items_fts index (internal/store/schema.go, migrations
+// rung 2), and it is used as a CANDIDATE FILTER in front of the LIKE
+// conditions rather than as a replacement for them. The LIKE clauses still
+// decide what matches and the CASE still decides the rank -- FTS5 only
+// narrows which rows they run over. Three reasons that shape, and not the
+// obvious one:
+//
+//  1. Semantics do not change. The index uses the trigram tokenizer, so
+//     MATCH is already an arbitrary case-insensitive substring search rather
+//     than a word search -- but "already" is not "provably", and leaving the
+//     LIKE in place means the answer is defined by the same expression it
+//     always was. TestSearchFTSAgreesWithAFullScan asserts the two agree.
+//  2. The index can only ever return a SUPERSET. Trigram folds ASCII case
+//     and LIKE does not fold non-ASCII case, so any row LIKE would match is
+//     a row MATCH returns. Narrowing by a superset cannot lose a result.
+//  3. Terms shorter than three characters have no trigram to look up. Those
+//     queries skip the prefilter and scan, exactly as before.
+//
+// The ranking stays in SQL rather than moving to FTS5's bm25(), because the
+// rank here is "which column matched", which is a decision about what a
+// person meant, not about term frequency.
 //
 // The rank is computed in SQL rather than by sorting in Go so that Limit
 // means "the best N", not "the first N found then sorted".
@@ -92,6 +147,16 @@ func (s *Store) Search(ctx context.Context, f SearchFilter) ([]SearchResult, err
 	}
 
 	where := "(" + strings.Join(conds, " OR ") + ")"
+
+	// The prefilter. It is prepended to the WHERE rather than joined, so
+	// SQLite evaluates the indexed lookup first and the LIKE conditions only
+	// over what survives.
+	var ftsArgs []any
+	if match, ok := ftsMatchQuery(query); ok {
+		where = "rowid IN (SELECT rowid FROM items_fts WHERE items_fts MATCH ?) AND " + where
+		ftsArgs = append(ftsArgs, match)
+	}
+
 	if !f.IncludeClosed {
 		where += " AND status NOT IN ('closed', 'dropped')"
 	}
@@ -113,7 +178,8 @@ func (s *Store) Search(ctx context.Context, f SearchFilter) ([]SearchResult, err
 		sqlText += " LIMIT ?"
 	}
 
-	all := append(rankArgs, args...)
+	all := append(rankArgs, ftsArgs...)
+	all = append(all, args...)
 	if f.Limit > 0 {
 		all = append(all, f.Limit)
 	}
@@ -124,7 +190,7 @@ func (s *Store) Search(ctx context.Context, f SearchFilter) ([]SearchResult, err
 	}
 	defer rows.Close()
 
-	var out []SearchResult
+	out := []SearchResult{}
 	for rows.Next() {
 		var r SearchResult
 		var rank int
@@ -208,6 +274,27 @@ func fieldName(rank int) string {
 		return "unknown"
 	}
 	return searchFields[rank]
+}
+
+// ftsMinTermLength is the trigram tokenizer's floor: it indexes every run of
+// three characters, so a term shorter than that has no trigram to look up
+// and MATCH returns nothing for it. Such a query skips the prefilter and
+// scans, which is what searching for "id" did before the index existed.
+const ftsMinTermLength = 3
+
+// ftsMatchQuery renders a user's query as an FTS5 phrase, and reports
+// whether the index can serve it at all.
+//
+// The query is wrapped in double quotes so FTS5 reads it as a phrase rather
+// than as its query language: an unquoted "token OR expiry" would be parsed
+// as an operator expression, and SearchFilter.Query's contract is that there
+// is no query language -- those characters are what the person is looking
+// for. Internal double quotes are doubled, FTS5's own escape.
+func ftsMatchQuery(query string) (string, bool) {
+	if len([]rune(query)) < ftsMinTermLength {
+		return "", false
+	}
+	return `"` + strings.ReplaceAll(query, `"`, `""`) + `"`, true
 }
 
 // escapeLike neutralises the three characters LIKE treats as syntax, so a
