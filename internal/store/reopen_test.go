@@ -210,4 +210,3 @@ func TestReopenIsTheWayOutOfTerminal(t *testing.T) {
 		}
 	})
 }
-

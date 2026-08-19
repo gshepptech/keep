@@ -37,6 +37,17 @@ func countEvents(t *testing.T, s *Store) int {
 	return n
 }
 
+// countItems returns the total number of rows in items, for tests that
+// assert a refused write left the table untouched.
+func countItems(t *testing.T, s *Store) int {
+	t.Helper()
+	var n int
+	if err := s.db.QueryRowContext(context.Background(), "SELECT COUNT(*) FROM items").Scan(&n); err != nil {
+		t.Fatalf("countItems: %v", err)
+	}
+	return n
+}
+
 // eventsFor returns every events row for itemID, oldest first, with an
 // explicit column list (never SELECT *, per 02-RESEARCH.md Pattern 6).
 func eventsFor(t *testing.T, s *Store, id string) []model.Event {

@@ -83,7 +83,7 @@ func queryDeps(ctx context.Context, db *sql.DB, query, id string) ([]model.Dep, 
 	}
 	defer rows.Close()
 
-	var out []model.Dep
+	out := []model.Dep{}
 	for rows.Next() {
 		var d model.Dep
 		if err := rows.Scan(&d.ItemID, &d.DependsOnID, &d.Type, &d.CreatedAt, &d.CreatedBy); err != nil {
@@ -107,7 +107,7 @@ func queryEvents(ctx context.Context, db *sql.DB, itemID string) ([]model.Event,
 	}
 	defer rows.Close()
 
-	var out []model.Event
+	out := []model.Event{}
 	for rows.Next() {
 		var e model.Event
 		if err := rows.Scan(&e.ID, &e.ItemID, &e.Kind, &e.Actor, &e.SessionID, &e.At, &e.Payload); err != nil {

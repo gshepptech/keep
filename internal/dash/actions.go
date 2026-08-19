@@ -291,10 +291,18 @@ func (s *Server) doDrop(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// reasonOr supplies a default reason. close and drop both require one,
-// deliberately -- the store will not record work as finished or abandoned
-// without saying why -- and a board that refused the action for want of a
-// sentence would just teach people to type "done".
+// reasonOr supplies a default reason. The store now REFUSES an empty one --
+// close, drop, unclaim and reopen all return ErrEmptyReason
+// (internal/store/validate.go) -- so this is the board supplying a true
+// statement, not the board routing around a rule. "closed from the board"
+// says where the close came from, which is more than the empty string the
+// MCP surface used to record before the store had an opinion.
+//
+// Close keeps the one-click path and drop does not, and the difference is
+// reversibility rather than inconsistency: drop abandons work and goes
+// through the confirmation page, which collects a real reason; close is
+// undoable from `keep reopen`. A board that demanded a sentence for every
+// close would just teach people to type "done".
 func reasonOr(given, fallback string) string {
 	if strings.TrimSpace(given) == "" {
 		return fallback

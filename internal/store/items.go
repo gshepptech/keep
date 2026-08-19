@@ -132,19 +132,25 @@ func itemExists(ctx context.Context, tx *sql.Tx, id string) (bool, error) {
 // of the prospective parent?" -- if so, the candidate edge would close the
 // loop. The argument order is the whole test; swapping it silently allows
 // every cycle it exists to catch (this is this plan's GATE-03 break 1). The
-// depth < 50 bound matches the ready view's own guard (schema.go) and stays
-// for the same reason: the cost of being wrong is an infinite loop inside a
-// user's shell.
-const parentChildCycleCheckSQL = `
+// The depth bound matches the ready view's own guard and stays for the same
+// reason: the cost of being wrong is an infinite loop inside a user's shell.
+// It is written once, in MaxDepth (depth.go), and substituted here -- it used
+// to be a hand-typed 50 in this file and three others, which is four places
+// for one number to drift.
+//
+// The bound is now a backstop rather than the thing keeping this query
+// honest: checkParentChildDepth refuses to create a chain that could reach
+// it, so the ancestor walk below can no longer stop short of a real cycle.
+var parentChildCycleCheckSQL = expandDepthSQL(`
 WITH RECURSIVE ancestors(id, depth) AS (
   SELECT depends_on_id, 1 FROM deps WHERE item_id = ? AND type = 'parent-child'
   UNION ALL
   SELECT d.depends_on_id, anc.depth + 1
   FROM ancestors anc
   JOIN deps d ON d.item_id = anc.id AND d.type = 'parent-child'
-  WHERE anc.depth < 50
+  WHERE anc.depth < $MAXDEPTH$
 )
-SELECT 1 FROM ancestors WHERE id = ? LIMIT 1`
+SELECT 1 FROM ancestors WHERE id = ? LIMIT 1`)
 
 // insertParentChildEdge writes the deps row that makes a parent-child
 // relationship visible to the ready view. THE SHIPPED ready VIEW READS ONLY
@@ -165,6 +171,10 @@ SELECT 1 FROM ancestors WHERE id = ? LIMIT 1`
 // between this check and the insert below -- both run inside the same
 // transaction the caller's withTx provides.
 func insertParentChildEdge(ctx context.Context, tx *sql.Tx, childID, parentID, actor, createdAt string) error {
+	if err := checkParentChildDepth(ctx, tx, childID, parentID); err != nil {
+		return err
+	}
+
 	var found int
 	err := tx.QueryRowContext(ctx, parentChildCycleCheckSQL, parentID, childID).Scan(&found)
 	if err == nil {
@@ -267,6 +277,18 @@ func (s *Store) AddItem(ctx context.Context, in AddItemInput) (model.Item, error
 		return model.Item{}, fmt.Errorf("AddItem: %w", ErrEmptyTitle)
 	}
 	if err := checkScoreRange(in.Value, in.Confidence, in.Effort); err != nil {
+		return model.Item{}, fmt.Errorf("AddItem: %w", err)
+	}
+	// Closed vocabularies, checked in Go before the schema's CHECK
+	// constraints get a chance to refuse them in SQLite's words. Both
+	// surfaces reach this; only cmd/keep used to check, which is why the
+	// MCP `add` tool returned "constraint failed: CHECK constraint failed:
+	// type IN ('roadmap', 'epic', 'task', 'bug', 'note') (275)" to a model
+	// and expected it to work out what to send instead.
+	if err := checkType(in.Type); err != nil {
+		return model.Item{}, fmt.Errorf("AddItem: %w", err)
+	}
+	if err := checkStage(in.Stage); err != nil {
 		return model.Item{}, fmt.Errorf("AddItem: %w", err)
 	}
 

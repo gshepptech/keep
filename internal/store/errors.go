@@ -29,6 +29,59 @@ var (
 	// produced by GSD Phase 2 (concurrent mutation).
 	ErrConflict = errors.New("conflict")
 
+	// ErrTooDeep is returned when a parent-child edge would put an item
+	// deeper than MaxDepth. Every recursive query in this package stops
+	// extending at that bound and returns a SHORTER answer rather than an
+	// error when it is hit, so the bound is enforced at write time instead --
+	// see depth.go.
+	ErrTooDeep = errors.New("tree too deep")
+
+	// ErrEmptyReason is returned by close, drop, unclaim and reopen when no
+	// reason is given. All four write a terminal or near-terminal fact about
+	// a piece of work, and a record that says it happened without saying why
+	// is the thing the `--reason` requirement exists to prevent.
+	//
+	// It is enforced HERE rather than in each caller, and that placement is
+	// the whole point: it used to live in cmd/keep alone, so the CLI refused
+	// an empty reason, the MCP `close` tool accepted one and recorded
+	// nothing, and the dashboard decided for itself twice -- `doDrop` learned
+	// to refuse and `doClose` still supplies its own. Three surfaces, three
+	// answers to one rule, which is exactly what README principle 2 says a
+	// surface may not carry.
+	ErrEmptyReason = errors.New("a reason is required")
+
+	// ErrInvalidType and ErrInvalidStage are returned when a value outside
+	// the closed vocabulary reaches the store.
+	//
+	// The schema's CHECK constraints already refused these, and that is not
+	// the same thing: a CHECK produces a raw driver message ("constraint
+	// failed: CHECK constraint failed: type IN ('roadmap', 'epic', 'task',
+	// 'bug', 'note') (275)") which cmd/keep never sees because it
+	// pre-validates, and which the MCP surface therefore returned verbatim
+	// as a generic protocol error carrying SQLite's own text. An agent
+	// reading that cannot tell a bad argument from a broken store. Named
+	// here, both surfaces get an error that says which value was wrong and
+	// what the legal ones are.
+	ErrInvalidType  = errors.New("invalid item type")
+	ErrInvalidStage = errors.New("invalid item stage")
+
+	// ErrStoreNotEmpty is returned by Import when the target store already
+	// holds items. Importing into a populated store would mean resolving
+	// collisions between two histories, which is a sync product -- see
+	// Import's doc comment and the README's refusal list.
+	ErrStoreNotEmpty = errors.New("store is not empty")
+
+	// ErrBadExport is returned by Import when the input is not a keep
+	// export this binary can read: a missing header, an unreadable line, or
+	// a record kind a newer keep wrote and this one would silently drop.
+	ErrBadExport = errors.New("not a readable keep export")
+
+	// ErrNeedsMigration is returned by Open when the store is at an OLDER
+	// schema_version than this binary expects. It is deliberately distinct
+	// from ErrSchemaVersion: this one has a fix (`keep migrate`), and a
+	// caller that cannot tell the two apart can only report both as fatal.
+	ErrNeedsMigration = errors.New("store needs migration")
+
 	// ErrSchemaVersion is returned by Open when the store's on-disk
 	// schema_version does not match the value this binary expects. First
 	// produced by this phase (plan 02's Open-time guard).

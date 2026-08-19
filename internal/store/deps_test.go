@@ -205,37 +205,104 @@ func TestCreateDepWritesOneEvent(t *testing.T) {
 	})
 }
 
-// TestCycleGuardDepthBoundLimitsAncestorWalk genuinely exercises the
-// depth < 50 bound in parentChildCycleCheckSQL (items.go), rather than
-// leaving it as a documented-but-untested backstop. It builds a real
-// 55-level parent-child chain through AddItem --parent (mustAdd's ParentID),
-// then asks whether the chain's root is an ancestor of its own deepest
-// descendant: it genuinely is, 55 hops up, but the guard's ancestor walk
-// stops extending once a row's own depth reaches 50 (parentChildCycleCheckSQL:
-// "WHERE anc.depth < 50" gates the recursive step), so the farthest ancestor
-// it ever reaches is 50 hops away. The root at hop 55 is never visited, so
-// the candidate edge is -- knowingly, not as an oversight -- allowed. This
-// is the exact same bound the shipped ready view carries, for the same
-// documented reason (schema.go): it is a backstop against pathological
-// input, not a claim that every chain length is defended.
-func TestCycleGuardDepthBoundLimitsAncestorWalk(t *testing.T) {
+// TestParentChildDepthBoundRefusesChainPastMaxDepth asserts the bound is now
+// enforced where the depth is CREATED, not where it is read.
+//
+// It used to assert the opposite. The old test built a real 55-level chain,
+// asked whether the chain's root was an ancestor of its own deepest
+// descendant -- it genuinely is, 55 hops up -- and asserted the guard said
+// no, because parentChildCycleCheckSQL's ancestor walk stops at MaxDepth and
+// so never visits hop 55. That was a documented blind spot, and it was a real
+// one: the same bound gates the shipped ready view, where stopping short does
+// not error, it just quietly stops propagating a block partway down a tree.
+//
+// checkParentChildDepth (depth.go) closes it by making the input unbuildable.
+// A chain of exactly MaxDepth hops is allowed; the hop that would create an
+// item at MaxDepth+1 is refused with ErrTooDeep and writes nothing. Every
+// recursive query in this package can therefore reach every item in any store
+// this binary wrote.
+func TestParentChildDepthBoundRefusesChainPastMaxDepth(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
 
-	const chainLen = 55 // exceeds the cycle guard's 50-hop ancestor walk
-	ids := make([]string, chainLen+1)
-	root := mustAdd(t, s, AddItemInput{Title: "p0", Actor: "tester"})
-	ids[0] = root.ID
-	for i := 1; i <= chainLen; i++ {
-		child := mustAdd(t, s, AddItemInput{Title: fmt.Sprintf("p%d", i), Actor: "tester", ParentID: ids[i-1]})
-		ids[i] = child.ID
+	ids := make([]string, MaxDepth+1)
+	ids[0] = mustAdd(t, s, AddItemInput{Title: "p0", Actor: "tester"}).ID
+	for i := 1; i <= MaxDepth; i++ {
+		ids[i] = mustAdd(t, s, AddItemInput{Title: fmt.Sprintf("p%d", i), Actor: "tester", ParentID: ids[i-1]}).ID
 	}
 
-	err := s.withTx(ctx, func(tx *sql.Tx) error {
-		return insertParentChildEdge(ctx, tx, ids[0], ids[chainLen], "tester", model.Now())
+	if got, err := s.DeepestChain(ctx); err != nil || got != MaxDepth {
+		t.Fatalf("DeepestChain after building a %d-hop chain = %d, %v; want %d, nil", MaxDepth, got, err, MaxDepth)
+	}
+
+	// One hop further is refused, and refused before anything is written.
+	before := countItems(t, s)
+	_, err := s.AddItem(ctx, AddItemInput{Title: "one too deep", Actor: "tester", ParentID: ids[MaxDepth]})
+	if !errors.Is(err, ErrTooDeep) {
+		t.Fatalf("AddItem at depth %d = %v, want ErrTooDeep", MaxDepth+1, err)
+	}
+	if after := countItems(t, s); after != before {
+		t.Fatalf("refused AddItem wrote %d items, want 0", after-before)
+	}
+
+	// The cycle guard's old blind spot: closing the loop by making the root a
+	// child of its own deepest descendant. It is now unreachable for the
+	// depth reason before the cycle reason is ever consulted, which is the
+	// point -- the store never holds a chain the ancestor walk cannot cross.
+	err = s.withTx(ctx, func(tx *sql.Tx) error {
+		return insertParentChildEdge(ctx, tx, ids[0], ids[MaxDepth], "tester", model.Now())
 	})
-	if err != nil {
-		t.Fatalf("insertParentChildEdge(root as child of its own 55th-generation descendant) = %v, want nil -- demonstrating the depth<50 bound's documented blind spot beyond 50 hops", err)
+	if !errors.Is(err, ErrTooDeep) {
+		t.Fatalf("insertParentChildEdge(root under its own deepest descendant) = %v, want ErrTooDeep", err)
+	}
+}
+
+// TestParentChildDepthBoundCountsTheChildsOwnSubtree covers the half of
+// checkParentChildDepth that a freshly-added leaf never exercises. AddItem
+// --parent always attaches a childless item, so parentDepth+1 alone would
+// pass every test in this file while silently allowing an existing subtree to
+// be grafted somewhere that puts its deepest leaf past MaxDepth.
+//
+// insertParentChildEdge is reachable with an existing child (this test, and
+// any future reparent command), so the guard measures the child's own height
+// too. Here a 30-hop subtree is grafted under an item already at depth 30:
+// the graft itself is legal arithmetic until you count what hangs off it.
+func TestParentChildDepthBoundCountsTheChildsOwnSubtree(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	const trunk = 30
+	trunkIDs := make([]string, trunk+1)
+	trunkIDs[0] = mustAdd(t, s, AddItemInput{Title: "t0", Actor: "tester"}).ID
+	for i := 1; i <= trunk; i++ {
+		trunkIDs[i] = mustAdd(t, s, AddItemInput{Title: fmt.Sprintf("t%d", i), Actor: "tester", ParentID: trunkIDs[i-1]}).ID
+	}
+
+	const branch = 30
+	branchRoot := mustAdd(t, s, AddItemInput{Title: "b0", Actor: "tester"}).ID
+	prev := branchRoot
+	for i := 1; i <= branch; i++ {
+		prev = mustAdd(t, s, AddItemInput{Title: fmt.Sprintf("b%d", i), Actor: "tester", ParentID: prev}).ID
+	}
+
+	// trunk depth 30, + 1 for the new edge, + the branch's own 30 = 61.
+	err := s.withTx(ctx, func(tx *sql.Tx) error {
+		return insertParentChildEdge(ctx, tx, branchRoot, trunkIDs[trunk], "tester", model.Now())
+	})
+	if !errors.Is(err, ErrTooDeep) {
+		t.Fatalf("grafting a %d-hop subtree under an item at depth %d = %v, want ErrTooDeep", branch, trunk, err)
+	}
+
+	// The same graft one level higher up the trunk lands its deepest leaf at
+	// exactly MaxDepth and is allowed -- the guard rejects what is too deep,
+	// not everything that is deep.
+	if err := s.withTx(ctx, func(tx *sql.Tx) error {
+		return insertParentChildEdge(ctx, tx, branchRoot, trunkIDs[MaxDepth-branch-1], "tester", model.Now())
+	}); err != nil {
+		t.Fatalf("grafting the same subtree so its deepest leaf lands at exactly %d = %v, want nil", MaxDepth, err)
+	}
+	if got, err := s.DeepestChain(ctx); err != nil || got != MaxDepth {
+		t.Fatalf("DeepestChain after the legal graft = %d, %v; want %d, nil", got, err, MaxDepth)
 	}
 }
 

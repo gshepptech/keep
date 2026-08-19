@@ -76,7 +76,7 @@ func (s *Store) StaleClaims(ctx context.Context, after time.Duration) ([]StaleCl
 	}
 	defer rows.Close()
 
-	var out []StaleClaim
+	out := []StaleClaim{}
 	for rows.Next() {
 		var c StaleClaim
 		if err := rows.Scan(

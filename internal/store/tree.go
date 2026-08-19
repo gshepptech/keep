@@ -31,8 +31,8 @@ import (
 //
 // path is a materialised depth-first sort key: the parent's path plus the
 // child's zero-padded ordinal. ORDER BY path (a plain TEXT sort) reproduces
-// exact tree reading order, so no caller sorts anything. depth < 50 mirrors
-// the ready view's own bound: `dep` refuses to create a parent-child cycle
+// exact tree reading order, so no caller sorts anything. the depth bound mirrors
+// the ready view's own, and both come from MaxDepth (depth.go): `dep` refuses to create a parent-child cycle
 // at write time, but the cost of being wrong is an unbounded loop inside a
 // browser request.
 //
@@ -49,7 +49,7 @@ import (
 // bare-column `MIN(depth)`: it depends on SQLite's single-`min()`
 // bare-column special case, and this query names `MIN(depth)` twice, which
 // that special case does not cover.
-const treeCTE = `,
+var treeCTE = expandDepthSQL(`,
   tree AS (
     SELECT id AS item_id, 0 AS depth, '' AS path
     FROM items WHERE id = ?
@@ -59,7 +59,7 @@ const treeCTE = `,
     FROM tree t
     JOIN deps d ON d.depends_on_id = t.item_id AND d.type = 'parent-child'
     JOIN items c ON c.id = d.item_id
-    WHERE t.depth < 50
+    WHERE t.depth < $MAXDEPTH$
   ),
   blocked_nearest AS (
     SELECT item_id,
@@ -67,7 +67,7 @@ const treeCTE = `,
            ROW_NUMBER() OVER (PARTITION BY item_id ORDER BY depth ASC, blocker_id ASC) AS rn
     FROM blocked_tree
   )
-`
+`)
 
 // Tree returns rootID and every descendant beneath it in the parent-child
 // tree, depth-first, each annotated with its depth and blocked state.
@@ -121,7 +121,7 @@ ORDER BY t.path`
 // two trailing columns scanItems does not expect, the same reason Blocked's
 // own scan loop does not call scanItems either.
 func scanTreeNodes(rows *sql.Rows) ([]model.TreeNode, error) {
-	var out []model.TreeNode
+	out := []model.TreeNode{}
 	for rows.Next() {
 		var n model.TreeNode
 		it := &n.Item

@@ -79,7 +79,7 @@ func (s *Store) Feed(ctx context.Context, f FeedFilter) ([]FeedEntry, error) {
 	}
 	defer rows.Close()
 
-	var out []FeedEntry
+	out := []FeedEntry{}
 	for rows.Next() {
 		var e FeedEntry
 		if err := rows.Scan(

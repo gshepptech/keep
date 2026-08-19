@@ -112,8 +112,9 @@ func openStoreWith(flagDB string, opts store.OpenOptions) (*store.Store, error) 
 // the same rule internal/store/errors.go states for SQLite codes and for the
 // same reason: messages are not a contract.
 //
-// store.ErrParentChildViaDep, store.ErrSelfEdge, and store.ErrInvalidDepType
-// are the three sentinels mapped to exit 2, not 1: each is a usage error --
+// store.ErrParentChildViaDep, store.ErrSelfEdge, store.ErrInvalidDepType,
+// store.ErrInvalidType, store.ErrInvalidStage and store.ErrEmptyReason are
+// the sentinels mapped to exit 2, not 1: each is a usage error --
 // the caller asked for something the CLI does not do (reparent through dep,
 // depend on itself, or an unrecognized dep type slipping past the CLI's own
 // pre-validation) -- not an operational failure of an otherwise well-formed
@@ -132,6 +133,9 @@ func exitFor(stderr io.Writer, err error) int {
 	case errors.Is(err, store.ErrParentChildViaDep),
 		errors.Is(err, store.ErrSelfEdge),
 		errors.Is(err, store.ErrInvalidDepType),
+		errors.Is(err, store.ErrInvalidType),
+		errors.Is(err, store.ErrInvalidStage),
+		errors.Is(err, store.ErrEmptyReason),
 		errors.Is(err, store.ErrEmptyTitle):
 		fmt.Fprintf(stderr, "keep: %v\n", err)
 		return 2

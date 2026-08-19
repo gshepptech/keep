@@ -170,3 +170,58 @@ func TestUnclaimIsTheThirdExitFromInProgress(t *testing.T) {
 		}
 	})
 }
+
+// TestUnclaimRequireOwnClaimRefusesAnotherSessionsClaim covers the half of
+// this verb that exists so it can be exposed over MCP at all. Unrestricted,
+// unclaim can take work away from a live agent, which is why it stayed a
+// CLI-only capability for a person who can see that the holding agent is
+// gone. RequireOwnClaim is what makes an agent releasing ITS OWN claim a
+// different, safe operation -- and it must be unreachable over the wire, or
+// it is not a restriction at all.
+func TestUnclaimRequireOwnClaimRefusesAnotherSessionsClaim(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	item := mustAdd(t, s, AddItemInput{Title: "held by someone else", Actor: "tester"})
+	if _, err := s.StartItem(ctx, StartItemInput{ID: item.ID, Actor: "agent-a", SessionID: "sess-a"}); err != nil {
+		t.Fatalf("StartItem: %v", err)
+	}
+
+	_, err := s.UnclaimItem(ctx, UnclaimItemInput{
+		ID: item.ID, Reason: "I want this", Actor: "agent-b",
+		SessionID: "sess-b", RequireOwnClaim: true,
+	})
+	if !errors.Is(err, ErrConflict) {
+		t.Fatalf("UnclaimItem(RequireOwnClaim, other session's claim) = %v, want ErrConflict", err)
+	}
+
+	// The claim survived, untouched.
+	after, err := s.GetItem(ctx, item.ID)
+	if err != nil {
+		t.Fatalf("GetItem: %v", err)
+	}
+	if after.Item.Status != model.StatusInProgress {
+		t.Errorf("status = %q after a refused unclaim, want it still %q", after.Item.Status, model.StatusInProgress)
+	}
+	if after.Item.ClaimedBySession == nil || *after.Item.ClaimedBySession != "sess-a" {
+		t.Errorf("claimed_by_session = %v after a refused unclaim, want sess-a", after.Item.ClaimedBySession)
+	}
+
+	// The same session releasing its own claim is allowed.
+	if _, err := s.UnclaimItem(ctx, UnclaimItemInput{
+		ID: item.ID, Reason: "cannot do this one", Actor: "agent-a",
+		SessionID: "sess-a", RequireOwnClaim: true,
+	}); err != nil {
+		t.Fatalf("UnclaimItem(RequireOwnClaim, own claim) = %v, want nil", err)
+	}
+
+	// And a person at a terminal, who does not set it, still can.
+	if _, err := s.StartItem(ctx, StartItemInput{ID: item.ID, Actor: "agent-a", SessionID: "sess-a"}); err != nil {
+		t.Fatalf("re-claim: %v", err)
+	}
+	if _, err := s.UnclaimItem(ctx, UnclaimItemInput{
+		ID: item.ID, Reason: "the agent is gone", Actor: "a person", SessionID: "sess-person",
+	}); err != nil {
+		t.Fatalf("UnclaimItem(unrestricted, another session's claim) = %v, want nil -- the rescue case must still work", err)
+	}
+}

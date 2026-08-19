@@ -24,8 +24,18 @@ const itemColumns = `id, parent_id, ordinal, stage, type, title, body, acceptanc
 // exact order, into a []model.Item. This is the one place the 23
 // rows.Scan destinations are written -- Ready and every later plan's item
 // query in this package call this instead of each writing its own Scan call.
+// An empty result is []model.Item{}, never nil. This is the store's
+// contract, not a courtesy to one surface: a nil slice marshals to JSON
+// `null` and an empty one to `[]`, and until this line cmd/keep normalised
+// that for itself while internal/mcp did not -- so `keep ready --json`
+// printed `[]` on an empty queue and the `ready` MCP tool returned the text
+// `null` for the same store, in the same second. That divergence was
+// recorded in internal/mcp/server.go as accepted. It was surface behaviour,
+// which README principle 2 says no surface is allowed to carry; fixing it
+// here fixes it for the CLI, the MCP server, the dashboard, and whatever
+// reads the store next.
 func scanItems(rows *sql.Rows) ([]model.Item, error) {
-	var out []model.Item
+	out := []model.Item{}
 	for rows.Next() {
 		var it model.Item
 		if err := rows.Scan(
@@ -68,7 +78,7 @@ func scanItems(rows *sql.Rows) ([]model.Item, error) {
 // LIMIT 1) tolerate or collapse duplicates themselves; Blocked() returns
 // whatever distinct-by-construction rows blocked_tree produces for the
 // simple/common case this phase's fixtures exercise.
-const blockedTreeCTE = `
+var blockedTreeCTE = expandDepthSQL(`
 WITH RECURSIVE
   blocked_directly AS (
     SELECT DISTINCT d.item_id, d.depends_on_id AS blocker_id
@@ -86,9 +96,9 @@ WITH RECURSIVE
     SELECT d.item_id, bt.nearest_blocked_id, bt.blocker_id, bt.depth + 1
     FROM blocked_tree bt
     JOIN deps d ON d.depends_on_id = bt.item_id
-    WHERE d.type = 'parent-child' AND bt.depth < 50
+    WHERE d.type = 'parent-child' AND bt.depth < $MAXDEPTH$
   )
-`
+`)
 
 // Ready returns the open, unblocked tickets the shipped ready view already
 // computes, in the view's own order (score DESC, created_at ASC), honouring
@@ -151,7 +161,7 @@ ORDER BY i.score DESC, i.created_at ASC`
 	}
 	defer rows.Close()
 
-	var out []model.BlockedItem
+	out := []model.BlockedItem{}
 	for rows.Next() {
 		var it model.Item
 		var blockedBy string

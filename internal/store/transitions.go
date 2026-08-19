@@ -170,85 +170,9 @@ func (s *Store) StartItem(ctx context.Context, in StartItemInput) (model.Item, e
 
 	var out model.Item
 	err := s.withTx(ctx, func(tx *sql.Tx) error {
-		item, err := getItemForUpdateTx(ctx, tx, in.ID)
-		if err != nil {
-			return fmt.Errorf("StartItem: %w", err)
-		}
-
-		if item.Stage != model.StageTicket {
-			return fmt.Errorf("StartItem: item %q: raw items are not workable; promote it first (README principle 4): %w", in.ID, ErrInvalidTransition)
-		}
-		if item.Status == model.StatusClosed || item.Status == model.StatusDropped {
-			return fmt.Errorf("StartItem: item %q: status %q cannot be started: %w", in.ID, item.Status, ErrInvalidTransition)
-		}
-
-		if item.Status == model.StatusInProgress {
-			holder := ""
-			if item.ClaimedBySession != nil {
-				holder = *item.ClaimedBySession
-			}
-			if holder == in.SessionID {
-				// Idempotent no-op: this is the same session retrying its
-				// own claim. NO update, NO event -- the deliberate
-				// exception to "every mutation writes one event"
-				// (02-CONTEXT.md decision 3: a retried event would put a
-				// claim in the audit trail that never happened).
-				out = item
-				return nil
-			}
-			claimedAt := ""
-			if item.ClaimedAt != nil {
-				claimedAt = *item.ClaimedAt
-			}
-			return fmt.Errorf("StartItem: item %q already claimed by session %q since %s: %w", in.ID, holder, claimedAt, ErrConflict)
-		}
-
-		// item.Status == open here: every other status was handled above.
-		blockerID, blocked, err := isBlockedTx(ctx, tx, in.ID)
-		if err != nil {
-			return fmt.Errorf("StartItem: %w", err)
-		}
-		if blocked {
-			return fmt.Errorf("StartItem: item %q is blocked by %q: %w", in.ID, blockerID, ErrInvalidTransition)
-		}
-
-		now := nowFunc()
-
-		// A claim says someone picked this up, so it records who. Without
-		// this the item is in progress with an empty assignee, and every
-		// view asking "who is working on this?" has to answer "nobody" for
-		// something a person just claimed -- which is how this was found.
-		//
-		// An assignee already on the item is left alone: assigning work to
-		// someone and then claiming it yourself is a real sequence, and the
-		// event trail already names who did the claiming.
-		assignee := item.Assignee
-		if assignee == nil || *assignee == "" {
-			assignee = &in.Actor
-		}
-
-		if _, err := tx.ExecContext(ctx,
-			`UPDATE items SET status = ?, claimed_by_session = ?, claimed_at = ?, assignee = ?, updated_at = ? WHERE id = ?`,
-			model.StatusInProgress, nullableString(in.SessionID), now, nullableString(*assignee), now, in.ID,
-		); err != nil {
-			return err
-		}
-
-		item.Assignee = assignee
-		item.Status = model.StatusInProgress
-		if in.SessionID != "" {
-			session := in.SessionID
-			item.ClaimedBySession = &session
-		} else {
-			item.ClaimedBySession = nil
-		}
-		claimedAt := now
-		item.ClaimedAt = &claimedAt
-		item.UpdatedAt = now
-		out = item
-
-		payload := startEventPayload{SessionID: in.SessionID}
-		return writeEvent(ctx, tx, in.ID, "start", in.Actor, in.SessionID, payload)
+		var err error
+		out, err = claimItemTx(ctx, tx, in)
+		return err
 	})
 	if err != nil {
 		return model.Item{}, err
@@ -256,16 +180,115 @@ func (s *Store) StartItem(ctx context.Context, in StartItemInput) (model.Item, e
 	return out, nil
 }
 
-// UnclaimItemInput is the argument to UnclaimItem.
+// claimItemTx is StartItem's six-row state table, lifted out so NextItem can
+// run the identical claim inside its own transaction rather than carrying a
+// second copy of it. Both entry points therefore refuse a raw item, a
+// terminal item, another session's claim and a blocked item in the same way,
+// and a change to the table is a change to one function.
 //
-// It carries no json tags because there is no `unclaim` MCP tool and there
-// must not be one -- see UnclaimItem's doc comment. Actor and SessionID
-// record who performed the rescue, not who held the claim.
+// It takes a *sql.Tx rather than opening one, because NextItem's whole point
+// is that choosing the item and claiming it happen in ONE transaction.
+func claimItemTx(ctx context.Context, tx *sql.Tx, in StartItemInput) (model.Item, error) {
+	item, err := getItemForUpdateTx(ctx, tx, in.ID)
+	if err != nil {
+		return model.Item{}, fmt.Errorf("StartItem: %w", err)
+	}
+
+	if item.Stage != model.StageTicket {
+		return model.Item{}, fmt.Errorf("StartItem: item %q: raw items are not workable; promote it first (README principle 4): %w", in.ID, ErrInvalidTransition)
+	}
+	if item.Status == model.StatusClosed || item.Status == model.StatusDropped {
+		return model.Item{}, fmt.Errorf("StartItem: item %q: status %q cannot be started: %w", in.ID, item.Status, ErrInvalidTransition)
+	}
+
+	if item.Status == model.StatusInProgress {
+		holder := ""
+		if item.ClaimedBySession != nil {
+			holder = *item.ClaimedBySession
+		}
+		if holder == in.SessionID {
+			// Idempotent no-op: this is the same session retrying its own
+			// claim. NO update, NO event -- the deliberate exception to
+			// "every mutation writes one event" (02-CONTEXT.md decision 3:
+			// a retried event would put a claim in the audit trail that
+			// never happened).
+			return item, nil
+		}
+		claimedAt := ""
+		if item.ClaimedAt != nil {
+			claimedAt = *item.ClaimedAt
+		}
+		return model.Item{}, fmt.Errorf("StartItem: item %q already claimed by session %q since %s: %w", in.ID, holder, claimedAt, ErrConflict)
+	}
+
+	// item.Status == open here: every other status was handled above.
+	blockerID, blocked, err := isBlockedTx(ctx, tx, in.ID)
+	if err != nil {
+		return model.Item{}, fmt.Errorf("StartItem: %w", err)
+	}
+	if blocked {
+		return model.Item{}, fmt.Errorf("StartItem: item %q is blocked by %q: %w", in.ID, blockerID, ErrInvalidTransition)
+	}
+
+	now := nowFunc()
+
+	// A claim says someone picked this up, so it records who. Without this
+	// the item is in progress with an empty assignee, and every view asking
+	// "who is working on this?" has to answer "nobody" for something a
+	// person just claimed -- which is how this was found.
+	//
+	// An assignee already on the item is left alone: assigning work to
+	// someone and then claiming it yourself is a real sequence, and the
+	// event trail already names who did the claiming.
+	assignee := item.Assignee
+	if assignee == nil || *assignee == "" {
+		assignee = &in.Actor
+	}
+
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE items SET status = ?, claimed_by_session = ?, claimed_at = ?, assignee = ?, updated_at = ? WHERE id = ?`,
+		model.StatusInProgress, nullableString(in.SessionID), now, nullableString(*assignee), now, in.ID,
+	); err != nil {
+		return model.Item{}, err
+	}
+
+	item.Assignee = assignee
+	item.Status = model.StatusInProgress
+	if in.SessionID != "" {
+		session := in.SessionID
+		item.ClaimedBySession = &session
+	} else {
+		item.ClaimedBySession = nil
+	}
+	claimedAt := now
+	item.ClaimedAt = &claimedAt
+	item.UpdatedAt = now
+
+	payload := startEventPayload{SessionID: in.SessionID}
+	if err := writeEvent(ctx, tx, in.ID, "start", in.Actor, in.SessionID, payload); err != nil {
+		return model.Item{}, err
+	}
+	return item, nil
+}
+
+// UnclaimItemInput is the argument to UnclaimItem. Actor and SessionID
+// record who performed the release, not who held the claim.
+//
+// json tags: this struct doubles as the `unclaim` MCP tool's wire type.
+// RequireOwnClaim is `json:"-"` and deliberately unreachable over the wire
+// -- the MCP handler pre-seeds it true and no argument can turn it off. See
+// UnclaimItem's doc comment for why that distinction is the whole reason
+// there is an MCP tool at all.
 type UnclaimItemInput struct {
-	ID        string
-	Reason    string
-	Actor     string
-	SessionID string
+	ID        string `json:"id"`
+	Reason    string `json:"reason"`
+	Actor     string `json:"actor,omitempty"`
+	SessionID string `json:"-"`
+
+	// RequireOwnClaim refuses to release a claim held by a session other
+	// than SessionID. False for a person at a terminal, who is the one who
+	// can see that the holding agent is gone; true for another agent.
+	RequireOwnClaim bool `json:"-"`
 }
 
 // unclaimEventPayload names both halves of the rescue: the session whose
@@ -301,25 +324,35 @@ type unclaimEventPayload struct {
 // The event records who did the releasing, so a rescue is never anonymous.
 //
 // That openness is also why `stale` still only reports (internal/store/
-// stale.go) and why there is no `unclaim` MCP tool. A verb that can take work
-// away from a live agent belongs with the person who can look at the
-// terminal, not in the hands of another agent that has just been told the
-// queue is empty. It joins `init`, `blocked` and `update` as a CLI capability
-// with no MCP counterpart.
+// stale.go), and it used to be why there was no `unclaim` MCP tool at all:
+// a verb that can take work away from a LIVE agent belongs with the person
+// who can look at the terminal, not in the hands of another agent that has
+// just been told the queue is empty.
+//
+// That argument holds for someone else's claim and does not hold for your
+// own. An agent that claimed an item and then found it could not do the work
+// had, until RequireOwnClaim, exactly the two exits UnclaimItem was written
+// to avoid forcing on anyone: close, which says it was done, and drop, which
+// says it was not worth doing. It had no way to say only that it was putting
+// the item back. So the wire surface is the narrow half of this verb --
+// RequireOwnClaim true, releasing your own claim and nothing else -- and the
+// unrestricted rescue stays where it was, with the person at the terminal.
 //
 // The status returns to open and the claim fields clear. Assignee is left
 // alone: "who has this right now" and "who should do this" are different
 // questions, and only the first one ended.
 func (s *Store) UnclaimItem(ctx context.Context, in UnclaimItemInput) (model.Item, error) {
-	// Reason is not validated here, and that is consistency rather than an
-	// oversight: `close` and `drop` enforce theirs in cmd/keep, not in the
-	// store. Adding a store-level check for this one verb would make three
-	// verbs with the same contract enforce it in two different places.
-	// (That the requirement lives outside the store at all is a real gap --
+	// Reason is validated here now, along with close, drop and reopen. The
+	// note that used to sit at this spot called the placement "a real gap --
 	// the board had to re-implement it and got it wrong once -- but moving
-	// all three is a change to close and drop, not to this.)
+	// all three is a change to close and drop, not to this", and that was
+	// the correct diagnosis and the wrong conclusion: all four moved, see
+	// validate.go.
 	if in.Actor == "" {
 		return model.Item{}, fmt.Errorf("UnclaimItem: Actor is required")
+	}
+	if err := requireReason("UnclaimItem", in.Reason); err != nil {
+		return model.Item{}, err
 	}
 
 	var out model.Item
@@ -337,6 +370,14 @@ func (s *Store) UnclaimItem(ctx context.Context, in UnclaimItemInput) (model.Ite
 		held := ""
 		if item.ClaimedBySession != nil {
 			held = *item.ClaimedBySession
+		}
+
+		// The narrow half of the verb: release your own claim only. Set by
+		// the MCP handler and unreachable over the wire, so an agent cannot
+		// opt out of it by supplying an argument.
+		if in.RequireOwnClaim && held != in.SessionID {
+			return fmt.Errorf("UnclaimItem: item %q is claimed by session %q, not by this one -- releasing another session's claim is a `keep unclaim` a person runs, not something an agent does on its behalf: %w",
+				in.ID, held, ErrConflict)
 		}
 
 		now := nowFunc()
@@ -422,6 +463,9 @@ func (s *Store) closeOrDrop(ctx context.Context, id, status, kind, reason, actor
 	if actor == "" {
 		return model.Item{}, fmt.Errorf("%s: Actor is required", kind)
 	}
+	if err := requireReason(kind, reason); err != nil {
+		return model.Item{}, err
+	}
 
 	var out model.Item
 	err := s.withTx(ctx, func(tx *sql.Tx) error {
@@ -459,15 +503,23 @@ func (s *Store) closeOrDrop(ctx context.Context, id, status, kind, reason, actor
 
 // ReopenItemInput is the argument to ReopenItem.
 //
-// No json tags: there is no `reopen` MCP tool, on the same grounds that keep
-// `update` off the list -- the agent-facing surface stays narrow, and a
-// mis-close is a thing a person notices and corrects. If that changes, the
-// tags go on here and the count in docs/agents.md changes with them.
+// json tags: this struct doubles as the `reopen` MCP tool's wire type. It
+// used to carry none, on the grounds that the agent-facing surface stays
+// narrow and a mis-close is a thing a person notices and corrects. The
+// person is not the one who makes this mistake. An agent that closes the
+// wrong id notices within the same turn, and before this it had no way to
+// undo it -- it had to file the work again, losing the id, the history and
+// every dependency edge pointing at the original, which is exactly the loss
+// ReopenItem was added to prevent.
+//
+// Reopen is also the safest verb to expose: it destroys nothing, the
+// original close stays in the events table (EVENT-01 forbids editing it),
+// and the item returns to open rather than to anybody's claim.
 type ReopenItemInput struct {
-	ID        string
-	Reason    string
-	Actor     string
-	SessionID string
+	ID        string `json:"id"`
+	Reason    string `json:"reason"`
+	Actor     string `json:"actor,omitempty"`
+	SessionID string `json:"-"`
 }
 
 // reopenEventPayload names the status the item came back FROM. Without it
@@ -505,11 +557,11 @@ type reopenEventPayload struct {
 // board and in `stale`. UnclaimItem clears them on the same transition for
 // the same reason.
 func (s *Store) ReopenItem(ctx context.Context, in ReopenItemInput) (model.Item, error) {
-	// Reason is enforced in cmd/keep, not here -- the same placement close,
-	// drop and unclaim use. See UnclaimItem's note on why that split exists
-	// and why fixing it is a change to all four, not to one.
 	if in.Actor == "" {
 		return model.Item{}, fmt.Errorf("ReopenItem: Actor is required")
+	}
+	if err := requireReason("ReopenItem", in.Reason); err != nil {
+		return model.Item{}, err
 	}
 
 	var out model.Item
@@ -633,6 +685,19 @@ func (s *Store) UpdateItem(ctx context.Context, in UpdateItemInput) (model.Item,
 	// input being SET carries a number to check.
 	if err := checkScoreRange(innerInt(in.Value), innerInt(in.Confidence), innerInt(in.Effort)); err != nil {
 		return model.Item{}, fmt.Errorf("UpdateItem: %w", err)
+	}
+	// Closed vocabularies. The schema's CHECK constraints would refuse these
+	// too, several statements later and in SQLite's own words; naming them
+	// here is what lets a caller be told which value was wrong.
+	if in.Type != nil {
+		if err := checkType(*in.Type); err != nil {
+			return model.Item{}, fmt.Errorf("UpdateItem: %w", err)
+		}
+	}
+	if in.Stage != nil {
+		if err := checkStage(*in.Stage); err != nil {
+			return model.Item{}, fmt.Errorf("UpdateItem: %w", err)
+		}
 	}
 
 	var out model.Item
