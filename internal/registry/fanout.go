@@ -139,19 +139,18 @@ func withStore(path string, fn func(*store.Store) error) error {
 // .planning/research/ARCHITECTURE.md, and calling the shipped one is what
 // makes `ready --all`'s per-repo view structurally unable to disagree with
 // that repository's own single-store `keep ready`.
+// It is now a thin call on FetchEach (each.go), which is the generic form
+// of the loop this function used to own. The behaviour is unchanged and the
+// signature is unchanged; what changed is that `backlog --all`,
+// `search --all` and `log --all` share the loop rather than each writing
+// their own, and getting the read-only open wrong in a new way.
 func FetchReady(ctx context.Context, repos []Repo) []RepoResult {
-	out := make([]RepoResult, 0, len(repos))
-	for _, r := range repos {
-		res := RepoResult{Repo: r.Name, Path: r.Path}
-		res.Err = withStore(r.Path, func(st *store.Store) error {
-			items, err := st.Ready(ctx, 0)
-			if err != nil {
-				return err
-			}
-			res.Items = items
-			return nil
-		})
-		out = append(out, res)
+	fanned := FetchEach(ctx, repos, func(ctx context.Context, st *store.Store) ([]model.Item, error) {
+		return st.Ready(ctx, 0)
+	})
+	out := make([]RepoResult, 0, len(fanned))
+	for _, f := range fanned {
+		out = append(out, RepoResult{Repo: f.Repo, Path: f.Path, Items: f.Rows, Err: f.Err})
 	}
 	return out
 }
