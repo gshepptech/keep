@@ -29,3 +29,7 @@
 .redpen/
 
 # redpen writes its state here now (project root, since 8f95248).
+
+# Python bytecode from plugin/scripts.
+__pycache__/
+*.pyc
