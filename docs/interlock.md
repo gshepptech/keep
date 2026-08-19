@@ -221,8 +221,12 @@ leaves items with no declared paths alone. It then releases the lease and
 checks the item comes back, and runs `keep ready` with Interlock off `PATH`
 to confirm the queue is untouched where the peer is absent.
 
+Listing is not taking, so it checks both: `keep start` on a held item is
+refused, naming the file and the holder, and `keep next` chooses past it
+rather than handing over the collision. An agent that already knows the id
+it wants never sees the queue's omission.
+
 It builds Interlock from `$INTERLOCK_SRC`, or `~/Projects/interlock`. Absent
 both, it skips — keep must build and pass alone. Set
-`KEEP_REQUIRE_INTERLOCK=1` to make that skip a failure, which is what CI
-should do once it has Interlock: a skip nobody notices is the same blind spot
-in a new place.
+`KEEP_REQUIRE_INTERLOCK=1` to make that skip a failure: a skip nobody
+notices is the same blind spot in a new place.
