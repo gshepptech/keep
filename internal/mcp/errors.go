@@ -26,7 +26,7 @@ import (
 // "call one store method, marshal the result" becomes one expression with
 // nowhere for logic to hide.
 //
-// # The classification of all nine store sentinels
+// # The classification of every store sentinel
 //
 // Write this table into the file as a comment (this comment) and implement
 // exactly it -- if a tenth sentinel is ever added to internal/store, add its
@@ -45,16 +45,22 @@ import (
 //	ErrScoreOutOfRange      | isError: true                     | Same shape as ErrEmptyTitle: a well-formed integer refused for a semantic reason. The schema advertises the bounds but the SDK does not enforce them, so this is where an agent finds out -- and it needs to read the message to correct the number
 //	ErrEmptyTitle           | isError: true                     | Same shape as ErrSelfEdge: the argument is a well-formed string, refused because a titleless item is unreadable in every list. Reachable from `add`, `capture` and `update`, and an agent that gets it back as a tool error can retry with a title -- as a protocol error it could not
 //	ErrNoFieldsToUpdate     | isError: true                     | Reached by the `update` tool. Classified before that tool existed so the decision was inherited rather than re-litigated, which is what happened
+//	ErrEmptyReason          | isError: true                     | Same shape as ErrEmptyTitle: a well-formed call refused because a close, drop, unclaim or reopen with no stated why is the record the requirement exists to prevent. An agent that gets this back can retry with a reason; as a protocol error it could not. Before it was named, the `close` tool ACCEPTED an empty reason and recorded nothing
+//	ErrInvalidType          | protocol error, CodeInvalidParams | A value outside the closed vocabulary IS a malformed argument -- the same row ErrInvalidDepType occupies, for the same reason. This is 04-RESEARCH.md Open Question 5, closed: it used to fall to the default arm carrying SQLite's own "CHECK constraint failed" text
+//	ErrInvalidStage         | protocol error, CodeInvalidParams | As ErrInvalidType
+//	ErrTooDeep              | isError: true                     | Reached by `add` with a parent_id at the bottom of a MaxDepth chain. A well-formed call refused for a reason inherent to the data, and the message names the depth and the bound so an agent can pick a shallower parent
 //	ErrInvalidDepType       | protocol error, CodeInvalidParams | A value outside the closed vocabulary IS a malformed argument -- MCP-04's "schema validation failure -> protocol error" row, enforced by the store because the SDK will not (see note below)
-//	ErrSchemaVersion        | never reaches here                | Produced only by store.Open, so cmd/keep/mcp.go fails at startup before Run -- not a per-call failure, the store is unusable
+//	ErrSchemaVersion        | never reaches here                | Produced only by store.Open/Migrate, so cmd/keep/mcp.go fails at startup before Run -- not a per-call failure, the store is unusable
+//	ErrNeedsMigration       | never reaches here                | Same: store.Open refuses an out-of-date store at startup. It is not a per-call outcome, and an agent cannot fix it -- `keep migrate` is a person's command
 //
 // Everything unclassified falls through to `default: return nil, err` -- a
-// protocol error with a generic code. The one real case today is a schema
-// CHECK violation (`add`/`capture` with an invalid type/stage produces a raw
-// *sqlite.Error, extended code 275, because AddItem does not pre-validate
-// Type/Stage in Go the way CreateDep validates its dep type). This is a
-// genuine, accepted CLI/MCP surface difference -- 04-RESEARCH.md Open
-// Question 5, deliberately left out of this phase's locked scope.
+// protocol error with a generic code. That arm used to have a real occupant:
+// `add`/`capture` with an invalid type or stage produced a raw *sqlite.Error
+// (extended code 275) because AddItem did not pre-validate the way CreateDep
+// validated its dep type, so a model received "constraint failed: CHECK
+// constraint failed: type IN ('roadmap', 'epic', 'task', 'bug', 'note')" and
+// was expected to work out what to send instead. AddItem validates in Go now
+// (internal/store/validate.go) and the two sentinels are classified above.
 //
 // # ErrInvalidDepType was going to be handled by the schema enum, and cannot be
 //
@@ -79,6 +85,13 @@ import (
 // A json.Marshal failure on the success path is not a business outcome
 // either -- it is returned as the Go error it is (a protocol error), never
 // as an isError result; see the single `if err == nil` branch below.
+// errNoRegistry is what the `ready_all` tool reports when the server was
+// started without a cross-repository reader -- Options.ReadyAll nil. It is
+// deliberately a plain error, so it falls to resultFor's default arm and
+// becomes a protocol error: the call was well-formed, and the answer is that
+// this server cannot serve it at all, which is not a fact about the work.
+var errNoRegistry = errors.New("this keep mcp server was started without registry access, so it cannot answer across repositories; use `ready` for this repository's queue")
+
 func resultFor(v any, err error) (*mcp.CallToolResult, error) {
 	if err == nil {
 		b, merr := json.Marshal(v)
@@ -86,7 +99,9 @@ func resultFor(v any, err error) (*mcp.CallToolResult, error) {
 	}
 
 	switch {
-	case errors.Is(err, store.ErrInvalidDepType):
+	case errors.Is(err, store.ErrInvalidDepType),
+		errors.Is(err, store.ErrInvalidType),
+		errors.Is(err, store.ErrInvalidStage):
 		return nil, &jsonrpc.Error{Code: jsonrpc.CodeInvalidParams, Message: err.Error()}
 	case errors.Is(err, store.ErrNotFound),
 		errors.Is(err, store.ErrCycle),
@@ -96,7 +111,9 @@ func resultFor(v any, err error) (*mcp.CallToolResult, error) {
 		errors.Is(err, store.ErrSelfEdge),
 		errors.Is(err, store.ErrEmptyTitle),
 		errors.Is(err, store.ErrScoreOutOfRange),
-		errors.Is(err, store.ErrNoFieldsToUpdate):
+		errors.Is(err, store.ErrNoFieldsToUpdate),
+		errors.Is(err, store.ErrTooDeep),
+		errors.Is(err, store.ErrEmptyReason):
 		res := &mcp.CallToolResult{}
 		res.SetError(err)
 		return res, nil

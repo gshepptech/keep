@@ -24,6 +24,27 @@ type ShowInput struct {
 	ID string `json:"id"`
 }
 
+// BlockedInput is the `blocked` tool's argument shape. store.Blocked takes
+// no arguments at all, so this is deliberately empty: it exists so the
+// handler has something to unmarshal into and therefore has the same shape
+// as every other handler in this package -- one unmarshal, one store call,
+// one resultFor. A handler that skipped the unmarshal would be the only one
+// without it, and internal/mcp/structure_test.go asserts the shape rather
+// than trusting it.
+type BlockedInput struct{}
+
+// ReadyAllInput is the `ready_all` tool's argument shape. It is empty for
+// the same reason BlockedInput is: the underlying read takes no arguments,
+// and a handler with nothing to unmarshal would be the only one in this
+// package without the shape structure_test.go asserts.
+type ReadyAllInput struct{}
+
+// WhyNotInput is the `why_not` tool's argument shape. store.WhyNot takes a
+// bare string id, like ShowInput.
+type WhyNotInput struct {
+	ID string `json:"id"`
+}
+
 // BacklogInput is the `backlog` tool's argument shape. store.Backlog takes
 // (ctx, typeFilter string), so, like ReadyInput, there is no store *Input
 // struct to reuse.
@@ -31,7 +52,7 @@ type BacklogInput struct {
 	Type string `json:"type,omitempty"`
 }
 
-// schemaSet collects the ten generated schemas and every generation error,
+// schemaSet collects the generated schemas and every generation error,
 // so BuildSchemas needs exactly ONE error check rather than ten. errors.Join
 // returns nil when every element is nil, so no conditional is needed here
 // either -- which is what keeps MCP-05's structural test able to say the
@@ -119,6 +140,23 @@ func depTypesForWire() []string {
 	})
 }
 
+// ToolNames is every tool this server registers, in registration order --
+// which is the order tools/list returns.
+//
+// It exists because the count was written out in four places (a schema-count
+// test, an AST handler-count constant, a wire-level tools/list assertion,
+// and a prose sentence in server.go's own doc comment) and three of them had
+// already drifted. Each of those places now derives from this one, and each
+// still checks something independent: BuildSchemas is checked against it by
+// map key, the AST walk counts real function literals, and cmd/keep's MCP
+// test reads the list back over a real stdio session. Agreeing with this
+// slice is a claim about three different mechanisms, not one.
+var ToolNames = []string{
+	"capture", "add", "ready", "backlog", "show", "list", "search", "log",
+	"stale", "dep", "start", "close", "drop", "update",
+	"blocked", "ready_all", "why_not", "next", "unclaim", "reopen",
+}
+
 // BuildSchemas generates every tool's InputSchema value via
 // jsonschema.For[T] -- the same reflection helper the SDK's generic
 // AddTool[In,Out] uses
@@ -176,8 +214,20 @@ func BuildSchemas() (map[string]*jsonschema.Schema, error) {
 	set.put("stale", sc, err)
 	sc, err = jsonschema.For[store.UpdateItemInput](nil)
 	set.put("update", sc, err)
+	sc, err = jsonschema.For[BlockedInput](nil)
+	set.put("blocked", sc, err)
+	sc, err = jsonschema.For[ReadyAllInput](nil)
+	set.put("ready_all", sc, err)
+	sc, err = jsonschema.For[WhyNotInput](nil)
+	set.put("why_not", sc, err)
+	sc, err = jsonschema.For[store.NextInput](nil)
+	set.put("next", sc, err)
+	sc, err = jsonschema.For[store.UnclaimItemInput](nil)
+	set.put("unclaim", sc, err)
+	sc, err = jsonschema.For[store.ReopenItemInput](nil)
+	set.put("reopen", sc, err)
 
-	// No error-guard branch here: every one of the fourteen types above is a
+	// No error-guard branch here: every one of the nineteen types above is a
 	// fixed, concrete struct (plain strings/ints/slices/pointers, no map
 	// with a non-string key, no func/chan/complex/unsafe-pointer field), so
 	// jsonschema.For genuinely cannot fail for any of them -- verified by

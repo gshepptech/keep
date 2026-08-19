@@ -32,16 +32,27 @@ func sortedCopy(s []string) []string {
 	return out
 }
 
-// TestBuildSchemasReturnsFourteenWithNoError proves BuildSchemas produces exactly
-// the ten tool schemas the plan names, and that generation itself returns no
-// error -- the schemaSet accumulator's single error check covers all ten.
-func TestBuildSchemasReturnsFourteenWithNoError(t *testing.T) {
+// TestBuildSchemasCoversExactlyToolNames proves BuildSchemas produces a
+// schema for every registered tool and for nothing else, and that generation
+// itself returns no error -- the schemaSet accumulator's single error check
+// covers them all.
+//
+// It compares against ToolNames rather than a number. The number was written
+// out here, in structure_test.go, in cmd/keep/mcp_test.go and in prose in
+// server.go, and adding a tool meant remembering four places; it had already
+// drifted in two of them.
+func TestBuildSchemasCoversExactlyToolNames(t *testing.T) {
 	schemas, err := BuildSchemas()
 	if err != nil {
 		t.Fatalf("BuildSchemas() error = %v, want nil", err)
 	}
-	if len(schemas) != 14 {
-		t.Fatalf("BuildSchemas() returned %d schemas, want 14: %v", len(schemas), schemas)
+	if len(schemas) != len(ToolNames) {
+		t.Fatalf("BuildSchemas() returned %d schemas, ToolNames lists %d: %v", len(schemas), len(ToolNames), schemas)
+	}
+	for _, name := range ToolNames {
+		if _, ok := schemas[name]; !ok {
+			t.Errorf("BuildSchemas() missing tool %q", name)
+		}
 	}
 	for name := range wantRequired {
 		if _, ok := schemas[name]; !ok {

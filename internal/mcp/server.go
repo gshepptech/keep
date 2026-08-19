@@ -101,6 +101,26 @@ type Options struct {
 	// does not use keep.
 	Instructions string
 
+	// ReadyAll answers the cross-repository queue -- the `ready_all` tool.
+	//
+	// It is a function on Options rather than something this package
+	// computes, and that placement is the whole design. internal/mcp holds a
+	// *store.Store, which is ONE store; the cross-repository read needs the
+	// machine's registry, has to open every other store read-only, and has
+	// to report which of them it could not read. None of that is this
+	// package's business, and importing internal/registry here would make a
+	// package whose entire claim is "zero logic of its own" the place where
+	// a fan-out lives.
+	//
+	// cmd/keep supplies it, from the same code path `keep ready --all` uses,
+	// so the tool and the flag cannot answer differently.
+	//
+	// A nil ReadyAll is legitimate: the tool is registered either way, and a
+	// nil one reports that this server was started without registry access
+	// rather than panicking. NewServer wraps it so the handler still makes
+	// exactly one call and carries no branch of its own.
+	ReadyAll func(ctx context.Context) (any, error)
+
 	// Logger MUST NOT write to stdout (MCP-07) -- stdout carries protocol
 	// bytes only, and anything else on it is fatal to an MCP stdio session.
 	// A nil Logger is safe here: the SDK's own default is
@@ -108,7 +128,7 @@ type Options struct {
 	Logger *slog.Logger
 }
 
-// NewServer builds the keep MCP server: all ten tools, wired to st,
+// NewServer builds the keep MCP server: every tool, wired to st,
 // registered through the low-level mcp.Server.AddTool -- never the SDK's
 // generic AddTool[In, Out].
 //
@@ -130,7 +150,7 @@ type Options struct {
 // json.Unmarshal and a plain (or *jsonrpc.Error) Go error return on
 // failure, produces one -- verified live to emit exactly
 // {"jsonrpc":"2.0","id":N,"error":{"code":-32602,"message":"..."}}. Used
-// uniformly for all ten tools; mixing the two styles would make error
+// uniformly for every tool; mixing the two styles would make error
 // behaviour differ per tool for no benefit.
 func NewServer(st *store.Store, opts Options) (*mcp.Server, error) {
 	sc, err := BuildSchemas()
@@ -143,9 +163,12 @@ func NewServer(st *store.Store, opts Options) (*mcp.Server, error) {
 		&mcp.ServerOptions{Logger: opts.Logger, Instructions: opts.Instructions},
 	)
 
-	// Registration order matches 04-CONTEXT.md decision 2's list -- the
-	// order tools/list returns and the order plan 04's MCP-01 test asserts:
-	// capture, add, ready, backlog, show, list, dep, start, close, drop.
+	// Registration order is the order tools/list returns and the order
+	// plan 04's MCP-01 test asserts. It opens with 04-CONTEXT.md decision
+	// 2's original list -- capture, add, ready, backlog, show, list, dep,
+	// start, close, drop -- and later tools are appended rather than
+	// interleaved, so a client diffing two versions sees additions rather
+	// than a reshuffle.
 
 	s.AddTool(&mcp.Tool{
 		Name:        "capture",
@@ -315,29 +338,133 @@ func NewServer(st *store.Store, opts Options) (*mcp.Server, error) {
 		return resultFor(st.UpdateItem(ctx, in))
 	})
 
+	// readyAll is opts.ReadyAll with the nil case already decided, so the
+	// handler below is the same one-unmarshal-one-call shape as every other
+	// handler in this file. Deciding it here rather than in the handler is
+	// what keeps MCP-05's "no conditional in a handler" true -- NewServer is
+	// one of the two places this package is allowed a branch.
+	readyAll := opts.ReadyAll
+	if readyAll == nil {
+		readyAll = func(context.Context) (any, error) {
+			return nil, errNoRegistry
+		}
+	}
+
+	s.AddTool(&mcp.Tool{
+		Name:        "ready_all",
+		Description: "The ranked queue across every repository this machine knows about, merged and ranked by score, each row naming which repository it came from. Use it when the work spans more than the repository you are standing in. `ready` is the one you want otherwise -- it is the queue for here.",
+		InputSchema: sc["ready_all"],
+	}, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		in := ReadyAllInput{}
+		if err := json.Unmarshal(req.Params.Arguments, &in); err != nil {
+			return nil, &jsonrpc.Error{Code: jsonrpc.CodeInvalidParams, Message: err.Error()}
+		}
+		return resultFor(readyAll(ctx))
+	})
+
+	s.AddTool(&mcp.Tool{
+		Name:        "blocked",
+		Description: "The open tickets `ready` is holding back, each naming the nearest item in its way. Read this when `ready` comes back empty -- an empty queue with a full blocked list means go unblock something, not stop.",
+		InputSchema: sc["blocked"],
+	}, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		in := BlockedInput{}
+		if err := json.Unmarshal(req.Params.Arguments, &in); err != nil {
+			return nil, &jsonrpc.Error{Code: jsonrpc.CodeInvalidParams, Message: err.Error()}
+		}
+		return resultFor(st.Blocked(ctx))
+	})
+
+	s.AddTool(&mcp.Tool{
+		Name:        "why_not",
+		Description: "Why one specific item is not in `ready`: raw, not open, or blocked by something named. Ask this instead of guessing from `show`.",
+		InputSchema: sc["why_not"],
+	}, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		in := WhyNotInput{}
+		if err := json.Unmarshal(req.Params.Arguments, &in); err != nil {
+			return nil, &jsonrpc.Error{Code: jsonrpc.CodeInvalidParams, Message: err.Error()}
+		}
+		return resultFor(st.WhyNot(ctx, in.ID))
+	})
+
+	s.AddTool(&mcp.Tool{
+		Name:        "next",
+		Description: "Take the top of the queue and claim it, in one step. Prefer this over `ready` then `start`: those are two calls with a gap in between, and another agent can take the item during it. An empty queue is a normal answer here, not an error -- it comes back with how many items are blocked.",
+		InputSchema: sc["next"],
+	}, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		in := store.NextInput{Actor: opts.ActorFor(req.Session.InitializeParams()), SessionID: opts.Session}
+		if err := json.Unmarshal(req.Params.Arguments, &in); err != nil {
+			return nil, &jsonrpc.Error{Code: jsonrpc.CodeInvalidParams, Message: err.Error()}
+		}
+		return resultFor(st.NextItem(ctx, in))
+	})
+
+	s.AddTool(&mcp.Tool{
+		Name:        "unclaim",
+		Description: "Put an item YOU claimed back in the queue, recording why. Use it when you started something and cannot finish it: `close` would say it was done and `drop` would say it was not worth doing, and neither is true. Refused for an item another session holds -- releasing someone else's claim is `keep unclaim`, run by a person.",
+		InputSchema: sc["unclaim"],
+	}, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		in := store.UnclaimItemInput{Actor: opts.ActorFor(req.Session.InitializeParams()), SessionID: opts.Session, RequireOwnClaim: true}
+		if err := json.Unmarshal(req.Params.Arguments, &in); err != nil {
+			return nil, &jsonrpc.Error{Code: jsonrpc.CodeInvalidParams, Message: err.Error()}
+		}
+		return resultFor(st.UnclaimItem(ctx, in))
+	})
+
+	s.AddTool(&mcp.Tool{
+		Name:        "reopen",
+		Description: "Bring a closed or dropped item back to open, recording why the close was wrong. Use it the moment you notice you closed the wrong id: filing the work again loses the id, the history and every dependency edge pointing at the original. The original close stays in the log.",
+		InputSchema: sc["reopen"],
+	}, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		in := store.ReopenItemInput{Actor: opts.ActorFor(req.Session.InitializeParams()), SessionID: opts.Session}
+		if err := json.Unmarshal(req.Params.Arguments, &in); err != nil {
+			return nil, &jsonrpc.Error{Code: jsonrpc.CodeInvalidParams, Message: err.Error()}
+		}
+		return resultFor(st.ReopenItem(ctx, in))
+	})
+
 	return s, nil
 }
 
-// Three accepted surface differences from the CLI, recorded here per this
-// plan's own instruction (plan 07 carries them into docs/design/phase-3.md):
+// Accepted surface differences from the CLI, recorded here per plan 07's
+// instruction (it carries them into docs/design/phase-3.md).
 //
-//  1. `blocked` and `update` have no tool. The CLI has thirteen verbs; the
-//     locked ten omit `init` (an MCP client cannot usefully create the store
-//     it was already pointed at), `blocked`, and `update` --
-//     04-CONTEXT.md decision 2's list verbatim, not extended here.
-//  2. `add` cannot set `stage`. The CLI's `add --stage raw` has no MCP
+// This note used to say "the CLI has thirteen verbs; the locked ten omit
+// init, blocked and update". Both numbers were stale and three of the
+// omissions have since been closed, which is the ordinary fate of a
+// hand-maintained count -- so the differences are now stated as reasons
+// rather than as arithmetic, and cmd/keep/mcp_parity_test.go compares the
+// two surfaces mechanically.
+//
+//  1. `init` has no tool, and must not: an MCP client cannot usefully create
+//     the store it was already pointed at.
+//  2. `unclaim` is narrower over MCP than over the CLI. The tool sets
+//     RequireOwnClaim, so an agent may release its own claim and nothing
+//     else; taking work away from a live agent stays with the person at the
+//     terminal. See store.UnclaimItem for the full argument.
+//  3. `migrate`, `repos`, `board` and `codex` have no tool. Each is
+//     operator-facing -- rewriting a store's schema, editing the machine's
+//     registry, binding a port, granting hook trust -- and none of them is
+//     something an agent should reach for while doing the work.
+//  4. `add` cannot set `stage`. The CLI's `add --stage raw` has no MCP
 //     equivalent; `capture` is the verb for a raw item (input.go, plan 02).
-//  3. An invalid `type`/`stage` on `add`/`capture` produces a raw SQLite
+//  5. An invalid `type`/`stage` on `add`/`capture` produces a raw SQLite
 //     constraint message, because AddItem does not pre-validate against the
 //     closed vocabulary in Go (only cmd/keep/add.go does, at the CLI
 //     boundary). The published enum steers a model away from it; when one
 //     arrives anyway it falls to resultFor's default arm and becomes a
 //     protocol error carrying driver text (04-RESEARCH.md Open Question 5).
-//     Moving that validation into AddItem would improve both surfaces and is
-//     out of this phase's locked scope.
+//     Moving that validation into AddItem would improve both surfaces.
 //
-// Nil slices marshal to `null`, not `[]`: store.Ready/Backlog/ListItems
-// return a nil slice when empty, so an empty `ready` tool result is the text
-// `null` -- whereas `keep ready --json` prints `[]`, because cmd/keep
-// normalises it. Normalising here would be a conditional in a handler.
-// Accepted and recorded, not fixed.
+// Empty results marshal to `[]`, not `null`. That used to be false and was
+// recorded here as accepted: store.Ready/Backlog/ListItems returned a nil
+// slice when empty, cmd/keep substituted an empty one before encoding, and
+// internal/mcp did not -- so the same empty queue read as `[]` from the CLI
+// and as the text `null` from this server, in the same second.
+//
+// It was fixed where it belonged rather than here. Normalising in this
+// package would have meant a conditional in a handler, which MCP-05 forbids
+// for good reason; more to the point it was the SECOND surface to carry the
+// same fix, and README principle 2 says no surface carries behaviour of its
+// own. internal/store now returns an empty, non-nil slice from every list
+// query, so the CLI, this server, the dashboard and anything written next
+// all get it without knowing it was ever a question.

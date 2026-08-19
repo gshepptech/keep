@@ -78,7 +78,7 @@ func TestResultFor(t *testing.T) {
 		}
 	})
 
-	// isErrorSentinels is the single source of truth for the nine sentinels
+	// isErrorSentinels is the single source of truth for the sentinels
 	// resultFor classifies as isError:true tool results -- decision 4's "the
 	// legitimate outcome of a well-formed call" arm. If a tenth store
 	// sentinel is ever added and not added here, it is invisible to this
@@ -96,6 +96,8 @@ func TestResultFor(t *testing.T) {
 		"ErrEmptyTitle":        store.ErrEmptyTitle,
 		"ErrScoreOutOfRange":   store.ErrScoreOutOfRange,
 		"ErrNoFieldsToUpdate":  store.ErrNoFieldsToUpdate,
+		"ErrTooDeep":           store.ErrTooDeep,
+		"ErrEmptyReason":       store.ErrEmptyReason,
 	}
 	for name, sentinel := range isErrorSentinels {
 		t.Run(name, func(t *testing.T) {
@@ -131,13 +133,18 @@ func TestResultFor(t *testing.T) {
 	t.Run("every sentinel is named", func(t *testing.T) {
 		named := map[string]bool{
 			"ErrInvalidDepType": true, // protocol error, tested separately above
-			"ErrSchemaVersion":  true, // never reaches resultFor, tested nowhere
+			"ErrSchemaVersion":  true, // never reaches resultFor: store.Open fails first
+			"ErrNeedsMigration": true, // never reaches resultFor: store.Open fails first
+			"ErrInvalidType":    true, // protocol error, tested with ErrInvalidDepType above
+			"ErrInvalidStage":   true, // protocol error, tested with ErrInvalidDepType above
+			"ErrStoreNotEmpty":  true, // Import has no tool; a store-replacing verb is not an agent's to call
+			"ErrBadExport":      true, // as ErrStoreNotEmpty
 		}
 		for name := range isErrorSentinels {
 			named[name] = true
 		}
-		if len(named) != 11 {
-			t.Fatalf("named %d sentinels, want 11: %v", len(named), named)
+		if len(named) != 18 {
+			t.Fatalf("named %d sentinels, want 18: %v", len(named), named)
 		}
 	})
 }

@@ -8,15 +8,21 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"testing"
 )
 
-// wantHandlerCount is the number of MCP tools this package registers
-// (04-CONTEXT.md decision 2). Fewer than this must fail loudly -- a broken
-// matcher (or a broken registration path, see GATE-03 break 1 in this
-// plan's verification section) must not pass vacuously.
-const wantHandlerCount = 14
+// wantHandlerCount is the number of MCP tools this package registers,
+// derived from ToolNames rather than typed again. Fewer than this must fail
+// loudly -- a broken matcher (or a broken registration path, see GATE-03
+// break 1 in this plan's verification section) must not pass vacuously.
+//
+// This is still an independent check despite sharing a source with the
+// schema test: that one reads a map BuildSchemas built, this one counts
+// function literals in the parsed AST. A tool listed in ToolNames with a
+// schema and no handler fails here and passes there.
+var wantHandlerCount = len(ToolNames)
 
 // TestNoConditionalInToolHandlers is the AST proof of MCP-05 --
 // docs/design/phase-3.md line 63's "no tool handler contains a conditional",
@@ -162,16 +168,55 @@ func findStoreParamName(t *testing.T, files []*ast.File) string {
 	return name
 }
 
+// injectedReaders names the local identifiers a handler may call INSTEAD of
+// a *store.Store method, and there is exactly one.
+//
+// MCP-05's rule was "exactly one exported call on the store parameter", and
+// that rule was right for every tool that reads or writes THIS store. The
+// `ready_all` tool does not: the cross-repository queue needs the machine's
+// registry, opens every other store read-only, and reports which of them it
+// could not read. None of that belongs in internal/mcp -- importing
+// internal/registry here would put a fan-out inside the package whose whole
+// claim is that it has no logic of its own -- so cmd/keep injects it as
+// Options.ReadyAll and NewServer binds it to this local.
+//
+// The property the rule was protecting is preserved exactly: ONE data call
+// per handler, its result passed straight to resultFor, with nowhere for
+// logic to hide. What changed is that the call may now be to one named,
+// injected reader instead of to the store. Widening the rule by name rather
+// than by loosening the count is what stops this becoming "handlers may call
+// anything": a second entry here is a decision someone has to write down.
+//
+// opts.ActorFor is NOT in this list and must not be. Every mutating handler
+// calls it to resolve who is asking, which is not a data read -- counting it
+// would let a handler make a store call AND a second call to something else
+// while still totalling one.
+var injectedReaders = map[string]bool{
+	"readyAll": true,
+}
+
+// injectedReaderNames renders injectedReaders for a failure message, sorted
+// so the message is identical between runs.
+func injectedReaderNames() []string {
+	out := make([]string, 0, len(injectedReaders))
+	for name := range injectedReaders {
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return out
+}
+
 // checkHandlerShape enforces MCP-05's per-handler property: exactly one if
 // statement (the json.Unmarshal error check), no switch/type-switch/for/
-// range/select, and exactly one call to an exported method on the
-// *store.Store parameter.
+// range/select, and exactly one data call -- either an exported method on
+// the *store.Store parameter or one of injectedReaders.
 func checkHandlerShape(t *testing.T, fset *token.FileSet, lit *ast.FuncLit, storeParamName string) {
 	pos := fset.Position(lit.Pos())
 
 	var ifStmts []*ast.IfStmt
 	var forbidden []ast.Node
 	storeCalls := 0
+	injectedCalls := 0
 
 	ast.Inspect(lit.Body, func(n ast.Node) bool {
 		switch node := n.(type) {
@@ -180,9 +225,14 @@ func checkHandlerShape(t *testing.T, fset *token.FileSet, lit *ast.FuncLit, stor
 		case *ast.SwitchStmt, *ast.TypeSwitchStmt, *ast.ForStmt, *ast.RangeStmt, *ast.SelectStmt:
 			forbidden = append(forbidden, n)
 		case *ast.CallExpr:
-			if sel, ok := node.Fun.(*ast.SelectorExpr); ok {
-				if id, ok := sel.X.(*ast.Ident); ok && id.Name == storeParamName && ast.IsExported(sel.Sel.Name) {
+			switch fun := node.Fun.(type) {
+			case *ast.SelectorExpr:
+				if id, ok := fun.X.(*ast.Ident); ok && id.Name == storeParamName && ast.IsExported(fun.Sel.Name) {
 					storeCalls++
+				}
+			case *ast.Ident:
+				if injectedReaders[fun.Name] {
+					injectedCalls++
 				}
 			}
 		}
@@ -200,8 +250,9 @@ func checkHandlerShape(t *testing.T, fset *token.FileSet, lit *ast.FuncLit, stor
 		t.Errorf("tool handler at %s:%d has exactly one if statement, but its shape is not `if err := json.Unmarshal(...); err != nil` -- MCP-05 only permits this one conditional per handler", pos.Filename, pos.Line)
 	}
 
-	if storeCalls != 1 {
-		t.Errorf("tool handler at %s:%d calls %d exported method(s) on %q (the *store.Store parameter), want exactly 1 -- MCP-05 requires one store call per handler, its result passed straight to resultFor", pos.Filename, pos.Line, storeCalls, storeParamName)
+	if storeCalls+injectedCalls != 1 {
+		t.Errorf("tool handler at %s:%d makes %d data call(s) -- %d exported method(s) on %q (the *store.Store parameter) and %d on an injected reader (%v) -- want exactly 1 in total. MCP-05 requires one data call per handler, its result passed straight to resultFor. If this handler needs a second source, the composition belongs in cmd/keep, injected as one function.",
+			pos.Filename, pos.Line, storeCalls+injectedCalls, storeCalls, storeParamName, injectedCalls, injectedReaderNames())
 	}
 }
 
@@ -250,12 +301,28 @@ type ifOutsideHandler struct {
 	fn   string
 }
 
+// wantIfsOutsideHandlers is how many *ast.IfStmt may exist outside every
+// tool handler, and what each one is for:
+//
+//  1. resultFor's `err == nil` success check.
+//  2. NewServer's schema-error check.
+//  3. NewServer's nil-Options.ReadyAll default.
+//
+// The third is the newest and the one worth explaining. `ready_all` is
+// served by an injected function, and a server started without one has to
+// answer something rather than panic. Deciding that once, in NewServer,
+// where the handlers are built, is what keeps the handler itself branchless
+// -- the alternative was `if opts.ReadyAll == nil` inside the handler, which
+// is exactly the conditional MCP-05 exists to forbid. The branch did not
+// disappear; it moved to one of the two places this package allows one, and
+// this count is what made that a decision rather than a drift.
+const wantIfsOutsideHandlers = 3
+
 // checkOnlyBranchOutsideHandlers enforces the package-wide half of MCP-05:
 // exactly one *ast.SwitchStmt in the whole package (resultFor's sentinel
-// classification), and exactly two *ast.IfStmt outside every tool handler
-// (NewServer's schema-error check, and resultFor's err == nil success
-// check) -- named by enclosing function, so a new one anywhere else fails
-// by name, not just by count.
+// classification), and exactly wantIfsOutsideHandlers *ast.IfStmt outside
+// every tool handler -- named by enclosing function, so a new one anywhere
+// else fails by name, not just by count.
 func checkOnlyBranchOutsideHandlers(t *testing.T, fset *token.FileSet, files []*ast.File, handlers []*ast.FuncLit) {
 	handlerSet := make(map[*ast.FuncLit]bool, len(handlers))
 	for _, h := range handlers {
@@ -305,13 +372,18 @@ func checkOnlyBranchOutsideHandlers(t *testing.T, fset *token.FileSet, files []*
 		t.Errorf("the package's one *ast.SwitchStmt is in %q at %s, want it inside resultFor (internal/mcp/errors.go)", switches[0].fn, fset.Position(switches[0].node.Pos()))
 	}
 
+	// Which FUNCTIONS may hold one, and how MANY there may be in total, are
+	// two separate assertions on purpose. The set is what stops a branch
+	// appearing in a third function; the count is what stops NewServer
+	// quietly accumulating them, which is the likelier drift now that it
+	// legitimately holds two.
 	wantIfFuncs := map[string]bool{"NewServer": true, "resultFor": true}
-	if len(ifs) != len(wantIfFuncs) {
+	if len(ifs) != wantIfsOutsideHandlers {
 		var locs []string
 		for _, e := range ifs {
 			locs = append(locs, fmt.Sprintf("%s (in %s)", fset.Position(e.node.Pos()), e.fn))
 		}
-		t.Fatalf("package contains %d *ast.IfStmt outside tool handlers, want exactly %d (NewServer's schema-error check and resultFor's err == nil success check): %v", len(ifs), len(wantIfFuncs), locs)
+		t.Fatalf("package contains %d *ast.IfStmt outside tool handlers, want exactly %d (resultFor's err == nil check, NewServer's schema-error check, and NewServer's nil-ReadyAll default -- see wantIfsOutsideHandlers): %v", len(ifs), wantIfsOutsideHandlers, locs)
 	}
 	seen := map[string]bool{}
 	for _, e := range ifs {
