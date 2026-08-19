@@ -1,7 +1,7 @@
 # Using keep with agents
 
 keep is built to be driven by agents, not typed by you. This page covers
-just that: registering the MCP server, what the fourteen tools are, and what to
+just that: registering the MCP server, what the twenty tools are, and what to
 put in a project's `CLAUDE.md` so agents actually use it instead of ignoring
 it.
 
@@ -75,10 +75,12 @@ probably-right rather than confirmed.
 - `keep mcp` serves over stdio only. Don't run it interactively — stdin and
   stdout are the protocol channel.
 
-## The fourteen tools
+## The twenty tools
 
-The MCP server exposes fourteen of the CLI's verbs, in this order (also
-`tools/list`'s order):
+The MCP server exposes twenty of the CLI's verbs, in this order (also
+the order `internal/mcp.ToolNames` lists them; note that `tools/list` itself
+returns them alphabetically, which is the SDK's own doing and not a choice
+keep makes):
 
 | Tool | What it does |
 |---|---|
@@ -95,35 +97,70 @@ The MCP server exposes fourteen of the CLI's verbs, in this order (also
 | `start` | Claim an item and mark it in progress. Refused if the item is raw, already terminal, or blocked. |
 | `close` | Mark an item finished, recording why. Distinct from `drop`: close means done, drop means abandoned and must never be counted as done. |
 | `drop` | Mark an item abandoned, recording why. Distinct from `close`: drop means abandoned and must never be counted as done. |
+| `update` | Change fields on an existing item — title, body, why, acceptance, score, type, stage, repo, paths, assignee. Status is not among them: use `start`, `close` or `drop`, so the log always records why a status moved. |
+| `ready_all` | The ranked queue across every repository this machine knows about, merged and ranked by score, each row naming which repository it came from. Use it when the work spans more than the repository you are standing in. |
+| `blocked` | The open tickets `ready` is holding back, each naming the nearest item in its way. Read this when `ready` comes back empty — an empty queue with a full blocked list means go unblock something, not stop. |
+| `why_not` | Why one specific item is not in `ready`: raw, not open, or blocked by something named. Ask this instead of guessing from `show`. |
+| `next` | Take the top of the queue and claim it, in one step. Prefer this over `ready` then `start`: those are two calls with a gap in between, and another agent can take the item during it. |
+| `unclaim` | Put an item **you** claimed back in the queue, recording why. Refused for an item another session holds. |
+| `reopen` | Bring a closed or dropped item back to open, recording why the close was wrong. The original close stays in the log. |
 
 Descriptions above are the literal tool descriptions registered in
 `internal/mcp/server.go` — what a model actually sees.
 
-**`init`, `blocked`, `unclaim` and `reopen` have no MCP tool.** This is
-deliberate, not an oversight (`docs/design/phase-3.md`):
+**What has no MCP tool, and why.** `init`, `migrate`, `repos`, `board`,
+`export`, `import` and `codex` are absent, and that is deliberate rather than
+an oversight (`docs/design/phase-3.md`):
 
 - `init` isn't exposed because an MCP client is, by definition, already
   pointed at a store — there's nothing useful "create the store I'm already
   talking to" would do over the protocol.
-- `blocked` was simply left off the original locked list. It is a
-  CLI/dashboard convenience; an agent that wants to know why something isn't
-  in `ready` can call `show` on it.
-- `update` was left off the same way, and that omission has been corrected.
-  The honest account is that it was an artifact rather than a decision: it
-  left the agent-facing surface write-once, so an agent that filed an item
-  with a wrong title or score could only go back through `add`, producing a
-  duplicate with a new id while the original stood. The count grows when the
-  argument for a tool is real, and this one was.
-- `reopen` is withheld because it undoes a finished decision rather than
-  correcting a field, and the person who notices a mis-close can reach the
-  CLI. That is a weaker argument now that `update` is a tool, and it should
-  be revisited the next time an agent is seen filing a duplicate because it
-  could not undo its own close.
-- `unclaim` is withheld on different grounds: it is the one verb that can take
-  work away from an agent that is still running. That call belongs with
-  whoever can look at the terminal and see whether the session is actually
-  dead, not with another agent that has just been told the queue is empty.
-  `stale` is the MCP half of the same job — it reports the claim and stops.
+- `migrate`, `export` and `import` rewrite or replace the whole store. A
+  migration copies the file first and then changes its schema; an import only
+  works into an empty store. Neither is something to do while a model is
+  reasoning about the work inside it.
+- `repos`, `board` and `codex` are operator-facing — editing the machine's
+  registry, binding a port, granting hook trust.
+
+**Three that used to be absent and no longer are.** Worth recording, because
+each was withheld for a stated reason and each reason turned out to be wrong
+in a specific way:
+
+- `update` left the agent-facing surface write-once, so an agent that filed an
+  item with a wrong title or score could only go back through `add`, producing
+  a duplicate with a new id while the original stood.
+- `blocked` was left off the original locked list and never argued for. An
+  agent that gets an empty `ready` needs to tell "there is no work" from
+  "there is work and something is in its way", and those call for opposite
+  responses. `why_not` answers the same question about one item.
+- `reopen` was withheld because "a mis-close is a thing a person notices and
+  corrects". The person is not the one who makes this mistake. An agent that
+  closes the wrong id notices within the same turn, and had no way to undo it
+  — it had to file the work again, losing the id, the history and every
+  dependency edge pointing at the original, which is the exact loss `reopen`
+  was added to prevent. It is also the safest verb to expose: it destroys
+  nothing and the original close stays in the events table.
+
+**`unclaim` is narrower here than on the CLI, and that is the whole reason it
+exists as a tool at all.** Unrestricted, it can take work away from an agent
+that is still running, and that call belongs with whoever can look at the
+terminal and see whether the session is actually dead. The tool sets
+`RequireOwnClaim`, unreachable over the wire, so an agent may release **its
+own** claim and nothing else. An agent that started something and then found
+it could not do the work previously had only the two exits `unclaim` was
+written to avoid forcing on anyone: `close`, which says it was done, and
+`drop`, which says it was not worth doing. `stale` still only reports.
+
+**On `reason`, and on `type`/`stage`.** Both were enforced in `cmd/keep` and
+nowhere else, which meant the rule held only for whoever went through the
+command line. `close` over MCP accepted an omitted `reason` and recorded a
+close with no why at all; `add` with an invalid `type` came back as SQLite's
+own text — `constraint failed: CHECK constraint failed: type IN ('roadmap',
+'epic', 'task', 'bug', 'note') (275)` — which is indistinguishable from a
+broken store. Both now live in `internal/store` and both surfaces get them:
+an empty reason is a tool error you can retry from, and a value outside a
+closed vocabulary is a protocol error that names the value and the legal
+ones.
 
 **On `value`, `confidence` and `effort`.** Each is 0-10, and the schema now
 says so with `minimum` and `maximum`. Take that as steering, not as a gate:
@@ -134,17 +171,36 @@ and its value. Before it did, an agent could file `effort: 100` and score the
 item **-89**, below an unscored item's 0, burying it beneath work nobody had
 even estimated.
 
-**Why exactly these, not fewer, and not more.** The tool count tracks the CLI
-1:1, minus the four above — it grows only when the CLI does, never as a
-convenience layer on top of it. It has grown twice, both by the rule.
-`search`, `log` and `stale` were built as CLI verbs first and mirrored here
-afterwards, which is the order the rule requires; ten became thirteen because
-the product did, not because the protocol wanted a shortcut. `update` is the
-fourteenth, and it is a different case: the CLI verb had existed since Phase
-2, and its absence here was an artifact of the original locked list rather
-than a decision. Correcting an artifact is not the same as adding a
-convenience layer, but it is the closer call of the two, which is why it is
-written down.
+**Why exactly these, not fewer, and not more.** The tool count tracks the CLI,
+minus the operator-facing verbs above — it grows only when the CLI does, never
+as a convenience layer on top of it, and **every tool is one call to one store
+method with no logic in between**, which `internal/mcp/structure_test.go`
+proves by walking the AST rather than by review.
+
+Ten became twenty in three moves, and only the first was the rule working as
+originally imagined. `search`, `log` and `stale` were built as CLI verbs first
+and mirrored here afterwards. `update`, `blocked` and `reopen` were corrections
+to an artifact: the CLI verbs already existed and the original locked list had
+simply not included them. `next` and `why_not` are the only two that were built
+for the agent-facing surface first — and they went into `internal/store`, so
+the CLI has them too, which is what stops "built for agents" turning into "an
+MCP-only shortcut".
+
+`ready_all` is the one tool whose answer does not come from the store this
+server is pointed at. It reads the machine's registry, opens every other
+store read-only and reports which of them it could not read — none of which
+belongs in `internal/mcp`, whose entire claim is that it holds no logic. So
+`cmd/keep` injects it as one function, from the same code path `keep ready
+--all` renders from, and the structural test was widened by NAME rather than
+by loosening its count: a handler may make one data call, to the store or to
+one named injected reader, and a second entry on that list is a decision
+someone has to write down.
+
+The count itself now lives in one place, `internal/mcp.ToolNames`. It used to
+be typed out in four — a schema test, an AST constant, a wire-level assertion
+and a sentence in a doc comment — and it had already drifted in two of them,
+which is how this document came to say "thirteen verbs" while the binary
+served fourteen tools.
 
 > Block rebuilt their Linear MCP server three times and ended at 2 tools
 > instead of 30+ — the standing justification for **no MCP-only convenience

@@ -11,7 +11,7 @@ in **one SQLite file** and **one static binary**.
 
 ![Go](https://img.shields.io/badge/go-1.26-00ADD8?style=for-the-badge&logo=go&logoColor=white)
 ![SQLite](https://img.shields.io/badge/sqlite-pure_go%2C_no_cgo-003B57?style=for-the-badge&logo=sqlite&logoColor=white)
-![MCP](https://img.shields.io/badge/MCP-14_tools-6E56CF?style=for-the-badge)
+![MCP](https://img.shields.io/badge/MCP-20_tools-6E56CF?style=for-the-badge)
 ![Runtime deps](https://img.shields.io/badge/runtime_deps-3-2ea043?style=for-the-badge)
 ![Network calls](https://img.shields.io/badge/network_calls-0-b32428?style=for-the-badge)
 
@@ -115,14 +115,35 @@ Then just talk to them:
 | *"done — merged in #42"* | `close --reason` |
 | *"park that, not yet"* | `capture` → the backlog |
 
+**One call, not two.** `ready` then `start` has a gap in it, and the agent
+that stopped reading the queue and just asked for work is the one that gets
+bitten by it:
+
+```console
+$ keep next
+rnc-7cf193  26  task  Expire refresh tokens after 30 days
+```
+
+Picking the item and claiming it happen in one transaction, so ten agents
+calling `next` at once get ten different items. An empty queue is a normal
+answer, and it says why:
+
+```console
+$ keep next
+keep: next: nothing is workable (3 open ticket(s) blocked, 1 held by another agent)
+
+$ keep why-not rnc-4ff9e2
+rnc-4ff9e2 blocked by rnc-2f5770: it or an ancestor waits on something that is not closed.
+```
+
 ---
 
 ## Three surfaces, one store
 
 <table>
 <tr>
-<td width="33%" align="center"><h3>CLI</h3>23 commands<br/><code>--json</code> on every read</td>
-<td width="33%" align="center"><h3>MCP</h3>14 tools over stdio<br/>zero logic of its own</td>
+<td width="33%" align="center"><h3>CLI</h3>28 commands<br/><code>--json</code> on every read</td>
+<td width="33%" align="center"><h3>MCP</h3>20 tools over stdio<br/>zero logic of its own</td>
 <td width="33%" align="center"><h3>Dashboard</h3>loopback only<br/>no JS, no assets</td>
 </tr>
 </table>
@@ -159,6 +180,35 @@ old-thing   error: store not found (deleted or moved): …
 A deleted store **reports on its row and is skipped** — never a crash, never a
 failed render for the others. Stores open read-only, so a missing one fails
 cleanly instead of being silently recreated as an empty database.
+
+</details>
+
+<details>
+<summary><b>Back it up, move it, read it without this binary</b></summary>
+
+<br>
+
+```console
+$ keep export | gzip > keep-$(date +%F).jsonl.gz
+keep: export: 214 items, 63 deps, 891 events (schema_version 2)
+
+$ keep migrate --check
+/Users/you/Projects/keep/.rounce/db.sqlite is at schema_version 2; nothing to do
+```
+
+One JSON object per line: a header, then every item, dep and event. Two
+exports of an unchanged store are byte-identical, so a diff between them
+means something.
+
+`import` reads it back into an **empty** store and refuses a populated one —
+merging two histories means resolving id collisions, and that is a sync
+product. Restoring is all-or-nothing: a file that goes bad on its last line
+leaves the target exactly as it was.
+
+Schema changes go through an ordered ladder. `keep migrate` copies the store
+to `<path>.v<n>.bak` before touching it, runs every rung in one transaction,
+and every other command refuses an out-of-date store by name rather than
+limping along against columns it does not expect.
 
 </details>
 
@@ -223,6 +273,17 @@ keep add --paths "internal/auth/token.go" --score 9/9/1 "Expire refresh tokens"
 keep would rather offer work someone has quietly started than hide work
 nobody is doing.
 
+The join applies where the work is **taken**, not only where it is listed.
+`ready` omits a held item, `next` chooses past it, and `start` refuses it by
+name — because an agent that already knows the id it wants is exactly the one
+that never sees the queue's omission:
+
+```console
+$ keep start rnc-8746bb
+keep: start: rnc-8746bb declares internal/payments/refund.go, which is held by
+claude (session agent-a) -- wait for it, or pass --force
+```
+
 **[Full guide →](docs/interlock.md)**
 
 ---
@@ -235,7 +296,10 @@ nobody is doing.
    nobody has written an integration for yet.
 2. **One core, three surfaces.** The CLI, the MCP server, and the dashboard are
    thin wrappers over `internal/store`. No surface carries behaviour of its own
-   — enforced by an AST test, not by discipline.
+   — enforced by an AST test, not by discipline. When a rule does escape into a
+   surface it does not stay one rule for long: `--reason` was enforced in the
+   CLI alone, and the three surfaces ended up refusing an empty one, silently
+   recording nothing, and inventing a reason, respectively.
 3. **A new concept gets a new table, never a new column on `items`.** Beads'
    `issues` type reached roughly five dozen fields by absorbing an event bus and
    a scheduler. An escape-hatch JSON column does not prevent this and has been
@@ -246,11 +310,15 @@ nobody is doing.
    no external assets, and ships no JavaScript — asserted over *rendered*
    output, because `html/template` does not enforce same-host on its own.
 6. **Correct before fast.** Materialize a computed column only after measuring
-   that the query is too slow, not in anticipation.
+   that the query is too slow, not in anticipation. `search` was five `LIKE`
+   scans for most of this project's life on exactly that reasoning; it is now
+   FTS5-indexed because the benchmark said 1,008 ms at fifty thousand items,
+   and `internal/store/search_bench_test.go` is in the tree so the next
+   person can re-run it rather than take the claim on trust.
 
 ---
 
-## What keep is not, as of 2026-08-12
+## What keep is not, as of 2026-08-18
 
 > This list exists because every item on it will one day arrive as a reasonable
 > ten-minute change. Adding one is a decision to be made deliberately and dated
@@ -258,12 +326,12 @@ nobody is doing.
 
 | | why |
 |---|---|
-| **No multi-machine sync** | No JSONL export, no Dolt, no CRDT, no merge resolution. Sharing a store means sharing a repository |
+| **No multi-machine sync** | No Dolt, no CRDT, no merge resolution, no reconciliation. `keep export`/`import` is a round trip into an *empty* store — a backup and a move, not a sync — and `import` refuses a store that already holds items rather than guessing what to do about a collision. Sharing a live store still means sharing a repository |
 | **No external tracker bridges** | No Jira, Linear, GitHub Issues, GitLab, Azure DevOps, or Notion. `items.external_ref` is a string nobody reads |
 | **No HTTP API** | Beyond the loopback dashboard. No federation, no remote |
 | **No orchestration primitives in `items`** | No awaits, timeouts, waiters, agent state, or roles. Coordination belongs in Interlock, which observes agents deterministically through hooks — keep says *what needs doing*, Interlock says *who is doing what and where* |
 | **No model calls** | No embeddings, no semantic search |
-| **No migration framework** | Beyond a `schema_version` integer, until there is data worth not breaking |
+| **No orchestration of the agents themselves** | keep says what needs doing and refuses a claim on work another agent has files open in. Deciding *which* agent runs *when* is Interlock's, over keep's graph |
 
 ---
 
@@ -276,16 +344,16 @@ nobody is doing.
 | **59** requirements | every one closed with named evidence |
 | **6** phases | each with a machine-checkable exit gate |
 | **220** demo checks | run against a real built binary |
-| **356** tests | every one deliberately broken once to prove it fails |
+| **399** tests | every one deliberately broken once to prove it fails |
 | **3** runtime dependencies | `modernc.org/sqlite`, `modelcontextprotocol/go-sdk`, `google/jsonschema-go` |
 | **0** cgo | `go build` gives you one static file |
 
 </div>
 
 `scripts/coverage.sh` reports what those tests actually cover. `go test
--cover` puts `cmd/keep` at 3.3%, which is a blind spot rather than a gap:
+-cover` puts `cmd/keep` at 2.6%, which is a blind spot rather than a gap:
 most of its behaviour runs in a real built binary that the in-process
-instrument cannot see into. Measured through the binary it is 67.7%.
+instrument cannot see into. Measured through the binary it is 69.1%.
 
 Every test here was broken on purpose and confirmed to fail before it was
 believed. That discipline caught, among other things: an AST scan that would

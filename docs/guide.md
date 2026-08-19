@@ -469,7 +469,7 @@ is never ambiguous about where the write lands.
 The CLI is the primitive keep is built around, and it stays complete on
 its own specifically so hooks — which can call a binary but cannot call an
 MCP tool — always have something to call. On top of that, `keep mcp`
-serves the same operations as fourteen MCP tools over stdio, for agents that
+serves the same operations as twenty MCP tools over stdio, for agents that
 reach for tools first.
 
 ```bash
@@ -487,8 +487,9 @@ Then you mostly just talk to the agent:
 | "park that, not yet" | `capture` (lands in the backlog) |
 
 `docs/agents.md` covers registration for Claude Code and Codex in full, lists
-what the fourteen MCP tools actually are (and which four CLI verbs — `init`,
-`blocked`, `unclaim` and `reopen` — deliberately have no MCP tool), and has a
+what the twenty MCP tools actually are (and which CLI verbs — `init`,
+`migrate`, `export`, `import`, `repos`, `board` and `codex` — deliberately
+have no MCP tool), and has a
 `CLAUDE.md`
 snippet you can drop into a project so agents check `ready` before starting
 work instead of keeping their own mental task list for the session.
