@@ -7,6 +7,7 @@ import (
 	"io"
 
 	"github.com/gshepptech/keep/internal/model"
+	"github.com/gshepptech/keep/internal/registry"
 	"github.com/gshepptech/keep/internal/store"
 )
 
@@ -29,7 +30,8 @@ func runSearch(args []string, stdout, stderr io.Writer) int {
 	dbFlag := addDBFlag(fs)
 	jsonFlag := addJSONFlag(fs)
 	limitFlag := fs.Int("limit", 0, "at most n results")
-	allFlag := fs.Bool("closed", false, "search closed and dropped items too")
+	closedFlag := fs.Bool("closed", false, "search closed and dropped items too")
+	allFlag := fs.Bool("all", false, "search every registered store (see keep repos)")
 
 	if err := fs.Parse(permuteArgs(fs, args)); err != nil {
 		return 2
@@ -38,11 +40,19 @@ func runSearch(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "usage: keep search [flags] <text>")
 		return 2
 	}
+	if *allFlag && *dbFlag != "" {
+		fmt.Fprintln(stderr, "keep: search: --db and --all are mutually exclusive (--db names one store; --all reads the registry)")
+		return 2
+	}
 
 	// Every remaining argument joins into one query, so `keep search token
 	// expiry` works without quoting. Quoting to search for two words is the
 	// kind of papercut that makes people stop using a search.
 	query := joinArgs(fs.Args())
+
+	if *allFlag {
+		return runSearchAll(query, *closedFlag, *limitFlag, *jsonFlag, stdout, stderr)
+	}
 
 	s, err := openStore(*dbFlag)
 	if err != nil {
@@ -53,7 +63,7 @@ func runSearch(args []string, stdout, stderr io.Writer) int {
 
 	results, err := s.Search(context.Background(), store.SearchFilter{
 		Query:         query,
-		IncludeClosed: *allFlag,
+		IncludeClosed: *closedFlag,
 		Limit:         *limitFlag,
 	})
 	if err != nil {
@@ -115,4 +125,65 @@ func joinArgs(args []string) string {
 		out += a
 	}
 	return out
+}
+
+// searchAllJSON is `search --all --json`'s payload.
+type searchAllJSON struct {
+	Results []registry.Tagged[store.SearchResult] `json:"results"`
+	Errors  []readyAllError                       `json:"errors"`
+}
+
+// runSearchAll searches every registered store and re-ranks the results
+// together.
+//
+// The cross-store rank is the single-store rank, applied again over the
+// merged set: which field matched first, then score, then repository and id
+// to make the order total. It uses store.SearchFieldRank rather than a copy
+// of the field order, so "title beats body" is defined once -- a second copy
+// here would silently disagree the first time a field is added to the
+// search.
+//
+// Each store is searched UNLIMITED and --limit slices the merged result, the
+// same discipline ready --all follows: a per-store limit would let each
+// store's own tiebreak decide which rows even reach the cross-store ranking.
+func runSearchAll(query string, includeClosed bool, limit int, asJSON bool, stdout, stderr io.Writer) int {
+	rows, results, err := acrossRepos(context.Background(), stderr, "search",
+		func(ctx context.Context, st *store.Store) ([]store.SearchResult, error) {
+			return st.Search(ctx, store.SearchFilter{Query: query, IncludeClosed: includeClosed})
+		},
+		func(a, b registry.Tagged[store.SearchResult]) bool {
+			ra, rb := store.SearchFieldRank(a.Row.MatchedIn), store.SearchFieldRank(b.Row.MatchedIn)
+			if ra != rb {
+				return ra < rb
+			}
+			if a.Row.Score != b.Row.Score {
+				return a.Row.Score > b.Row.Score
+			}
+			if a.Repository != b.Repository {
+				return a.Repository < b.Repository
+			}
+			return a.Row.ID < b.Row.ID
+		},
+	)
+	if err != nil {
+		fmt.Fprintf(stderr, "keep: search: %v\n", err)
+		return 1
+	}
+
+	if limit > 0 && limit < len(rows) {
+		rows = rows[:limit]
+	}
+
+	if asJSON {
+		if err := emitJSON(stdout, searchAllJSON{Results: rows, Errors: repoErrorsJSON(results)}); err != nil {
+			fmt.Fprintf(stderr, "keep: search --all: %v\n", err)
+			return 1
+		}
+		return 0
+	}
+
+	renderTagged(stdout, rows, func(r store.SearchResult) []string {
+		return []string{r.ID, r.MatchedIn, r.Title}
+	})
+	return 0
 }

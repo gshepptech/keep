@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gshepptech/keep/internal/registry"
 	"github.com/gshepptech/keep/internal/store"
 )
 
@@ -29,6 +30,7 @@ func runLog(args []string, stdout, stderr io.Writer) int {
 	sinceFlag := fs.String("since", "", "only what happened since: 24h, 7d, or an RFC3339 timestamp")
 	actorFlag := fs.String("actor", "", "only what this person or agent did")
 	kindFlag := fs.String("kind", "", "only this kind of event (add, start, close, drop, update, dep)")
+	allFlag := fs.Bool("all", false, "merge the activity of every registered store (see keep repos)")
 
 	if err := fs.Parse(permuteArgs(fs, args)); err != nil {
 		return 2
@@ -37,11 +39,26 @@ func runLog(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "usage: keep log [flags]")
 		return 2
 	}
+	if *allFlag && *dbFlag != "" {
+		fmt.Fprintln(stderr, "keep: log: --db and --all are mutually exclusive (--db names one store; --all reads the registry)")
+		return 2
+	}
 
 	since, err := resolveSince(*sinceFlag)
 	if err != nil {
 		fmt.Fprintf(stderr, "keep: log: %v\n", err)
 		return 2
+	}
+
+	filter := store.FeedFilter{
+		Since: since,
+		Actor: *actorFlag,
+		Kind:  *kindFlag,
+		Limit: *limitFlag,
+	}
+
+	if *allFlag {
+		return runLogAll(filter, *jsonFlag, stdout, stderr)
 	}
 
 	s, err := openStore(*dbFlag)
@@ -170,4 +187,62 @@ func agoOrRaw(at string) string {
 	default:
 		return fmt.Sprintf("%dd ago", int(d.Hours()/24))
 	}
+}
+
+// logAllJSON is `log --all --json`'s payload.
+type logAllJSON struct {
+	Entries []registry.Tagged[store.FeedEntry] `json:"entries"`
+	Errors  []readyAllError                    `json:"errors"`
+}
+
+// runLogAll merges every registered store's activity into one feed.
+//
+// This is the cross-repository read with the clearest reason to exist and
+// the one that was hardest to fake: "what did the agents do this morning"
+// spans every repository they were let loose in, and answering it meant
+// running `keep log` once per repository and interleaving the output by eye.
+//
+// Ordering is by timestamp, newest first, which merge.go's own comment warns
+// against for ranked work and which is exactly right here -- see byNewest.
+// Every registered store is a file on this machine, stamped by this
+// machine's clock, and time is the question being asked.
+//
+// --limit is applied per store AND to the merged result. Per store because
+// Feed's own limit is what stops a decade of history being read off disk to
+// produce thirty lines; to the merged result because n repositories each
+// contributing their newest n entries is n*n entries, of which the caller
+// asked for n.
+func runLogAll(filter store.FeedFilter, asJSON bool, stdout, stderr io.Writer) int {
+	rows, results, err := acrossRepos(context.Background(), stderr, "log",
+		func(ctx context.Context, st *store.Store) ([]store.FeedEntry, error) {
+			return st.Feed(ctx, filter)
+		},
+		byNewest(func(e store.FeedEntry) string { return e.At }, func(e store.FeedEntry) string { return e.ItemID }),
+	)
+	if err != nil {
+		fmt.Fprintf(stderr, "keep: log: %v\n", err)
+		return 1
+	}
+
+	if filter.Limit > 0 && filter.Limit < len(rows) {
+		rows = rows[:filter.Limit]
+	}
+
+	if asJSON {
+		if err := emitJSON(stdout, logAllJSON{Entries: rows, Errors: repoErrorsJSON(results)}); err != nil {
+			fmt.Fprintf(stderr, "keep: log --all: %v\n", err)
+			return 1
+		}
+		return 0
+	}
+
+	if len(rows) == 0 {
+		fmt.Fprintln(stderr, "nothing has happened yet in any registered store")
+		return 0
+	}
+
+	renderTagged(stdout, rows, func(e store.FeedEntry) []string {
+		return []string{agoOrRaw(e.At), e.Kind, e.Actor, e.ItemID, e.Title}
+	})
+	return 0
 }

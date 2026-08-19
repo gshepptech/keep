@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -95,6 +96,18 @@ func runMCP(args []string, stdout, stderr io.Writer) int {
 		ActorFor: func(p *mcp.InitializeParams) string {
 			return mcpActor(envActor, p, actor)
 		},
+		// The cross-repository queue, injected rather than computed in
+		// internal/mcp: that package holds one store and must not grow a
+		// registry fan-out. This is the same function `keep ready --all`
+		// renders from, so the tool and the flag cannot disagree.
+		ReadyAll: func(ctx context.Context) (any, error) {
+			// Warnings go through the SDK logger, which is pointed at
+			// stderr: stdout carries protocol bytes only (MCP-07), and a
+			// malformed registry is worth saying out loud rather than
+			// dropping just because this surface has nowhere obvious to
+			// put it.
+			return readyAllPayload(ctx, loggerWriter{logger})
+		},
 	})
 	if err != nil {
 		fmt.Fprintf(stderr, "keep mcp: %v\n", err)
@@ -111,4 +124,14 @@ func runMCP(args []string, stdout, stderr io.Writer) int {
 	}
 	fmt.Fprintf(stderr, "keep mcp: %v\n", err)
 	return 1
+}
+
+// loggerWriter adapts a *slog.Logger to io.Writer so cmd/keep helpers that
+// warn to a writer can be reused by `keep mcp`, where writing to stdout
+// would corrupt the protocol stream.
+type loggerWriter struct{ l *slog.Logger }
+
+func (w loggerWriter) Write(p []byte) (int, error) {
+	w.l.Warn(strings.TrimRight(string(p), "\n"))
+	return len(p), nil
 }

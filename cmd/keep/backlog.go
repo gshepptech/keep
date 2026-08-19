@@ -7,6 +7,8 @@ import (
 	"io"
 
 	"github.com/gshepptech/keep/internal/model"
+	"github.com/gshepptech/keep/internal/registry"
+	"github.com/gshepptech/keep/internal/store"
 )
 
 // runBacklog implements the `backlog` subcommand (CAP-03) -- the pen: every
@@ -30,6 +32,7 @@ func runBacklog(args []string, stdout, stderr io.Writer) int {
 	dbFlag := addDBFlag(fs)
 	jsonFlag := addJSONFlag(fs)
 	typeFlag := fs.String("type", "", "filter by item type ("+validTypesList()+")")
+	allFlag := fs.Bool("all", false, "merge the backlogs of every registered store (see keep repos)")
 
 	if err := fs.Parse(permuteArgs(fs, args)); err != nil {
 		return 2
@@ -38,12 +41,23 @@ func runBacklog(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "usage: keep backlog [flags]")
 		return 2
 	}
+	// --db names exactly one store; --all reads the registry. Silently
+	// picking one would be worse than refusing, the same reasoning
+	// ready.go and init.go apply.
+	if *allFlag && *dbFlag != "" {
+		fmt.Fprintln(stderr, "keep: backlog: --db and --all are mutually exclusive (--db names one store; --all reads the registry)")
+		return 2
+	}
 
 	// Validated against the closed vocabulary before the store is opened,
 	// matching list's/add's own pre-validation discipline.
 	if *typeFlag != "" && !model.ValidTypes[*typeFlag] {
 		fmt.Fprintf(stderr, "keep: backlog: --type %q is not one of %s\n", *typeFlag, validTypesList())
 		return 2
+	}
+
+	if *allFlag {
+		return runBacklogAll(*typeFlag, *jsonFlag, stdout, stderr)
 	}
 
 	s, err := openStore(*dbFlag)
@@ -123,4 +137,50 @@ func createdDate(createdAt string) string {
 		return createdAt
 	}
 	return createdAt[:10]
+}
+
+// backlogAllJSON is `backlog --all --json`'s payload, shaped like
+// readyAllJSON's: rows and errors, both always present and never nil, so an
+// empty errors array is a positive statement that every registered store was
+// read rather than the absence of a field.
+type backlogAllJSON struct {
+	Items  []registry.Tagged[model.Item] `json:"items"`
+	Errors []readyAllError               `json:"errors"`
+}
+
+// runBacklogAll merges every registered store's pen.
+//
+// Ordering is newest first across all of them, which is a different decision
+// from `ready --all`'s and deliberately so -- see byNewest. `backlog` is
+// "what have I parked", and the answer to that is chronological; the pen is
+// not ranked, and a raw item has no score to rank it by in the first place.
+//
+// This does NOT preserve single-store backlog's grouping by type. Grouping
+// depends on rows of one type being contiguous, and interleaving several
+// stores breaks that; --type narrows to one type when the grouping is what
+// you wanted.
+func runBacklogAll(typeFilter string, asJSON bool, stdout, stderr io.Writer) int {
+	rows, results, err := acrossRepos(context.Background(), stderr, "backlog",
+		func(ctx context.Context, st *store.Store) ([]model.Item, error) {
+			return st.Backlog(ctx, typeFilter)
+		},
+		byNewest(func(it model.Item) string { return it.CreatedAt }, func(it model.Item) string { return it.ID }),
+	)
+	if err != nil {
+		fmt.Fprintf(stderr, "keep: backlog: %v\n", err)
+		return 1
+	}
+
+	if asJSON {
+		if err := emitJSON(stdout, backlogAllJSON{Items: rows, Errors: repoErrorsJSON(results)}); err != nil {
+			fmt.Fprintf(stderr, "keep: backlog --all: %v\n", err)
+			return 1
+		}
+		return 0
+	}
+
+	renderTagged(stdout, rows, func(it model.Item) []string {
+		return []string{it.ID, it.Type, it.Title}
+	})
+	return 0
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/gshepptech/keep/internal/model"
 	"github.com/gshepptech/keep/internal/store"
 )
 
@@ -37,6 +38,7 @@ func runStart(args []string, stdout, stderr io.Writer) int {
 	dbFlag := addDBFlag(fs)
 	jsonFlag := addJSONFlag(fs)
 	actorFlag := addActorFlag(fs)
+	forceFlag := fs.Bool("force", false, "claim even if another agent holds a file this item declares")
 
 	if err := fs.Parse(permuteArgs(fs, args)); err != nil {
 		return 2
@@ -60,8 +62,35 @@ func runStart(args []string, stdout, stderr io.Writer) int {
 	}
 	defer s.Close()
 
+	ctx := context.Background()
+
+	// The join, at the point of claiming. `ready` has always omitted items
+	// whose declared files another agent holds, but nothing stopped an
+	// agent claiming one by id -- and an agent that already knows the id it
+	// wants is exactly the one that never sees the queue's omission. The
+	// check is here rather than in internal/store because it means running
+	// another program, which the store does not do, and must never do from
+	// inside the transaction that holds the write lock.
+	//
+	// --force exists because this is advisory. A person who can see that
+	// the holding agent is gone should not have to release someone else's
+	// lease to get on with their own work; what they should not do is claim
+	// it without being told.
+	if !*forceFlag {
+		detail, err := s.GetItem(ctx, id)
+		if err != nil {
+			return exitFor(stderr, err)
+		}
+		if _, held := heldBack(ctx, []model.Item{detail.Item}); len(held) > 0 {
+			c := held[0]
+			fmt.Fprintf(stderr, "keep: start: %s declares %s, which is held by %s (session %s) -- wait for it, or pass --force\n",
+				c.Item.ID, c.Path, c.Lease.Agent, c.Lease.SessionID)
+			return 1
+		}
+	}
+
 	session := resolveSession()
-	item, err := s.StartItem(context.Background(), store.StartItemInput{
+	item, err := s.StartItem(ctx, store.StartItemInput{
 		ID:        id,
 		Actor:     actor,
 		SessionID: session,

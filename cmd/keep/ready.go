@@ -79,18 +79,9 @@ func runReady(args []string, stdout, stderr io.Writer) int {
 	// its store. Passing the store's path instead would ask Interlock about
 	// whichever repository --db pointed at, which is not where the agent is
 	// working.
-	if st, ok := interlock.Fetch(ctx, ""); ok {
-		var held []interlock.Collision
-		items, held = interlock.Exclude(items, st)
-		// Diagnostics on stderr, never stdout: stdout is the queue, and an
-		// agent piping it must not have to strip prose. Naming the holder
-		// is the point -- an item that merely vanished would be
-		// indistinguishable from one that was closed.
-		for _, c := range held {
-			fmt.Fprintf(stderr, "keep: ready: %s held back -- %s is held by %s (session %s)\n",
-				c.Item.ID, c.Path, c.Lease.Agent, c.Lease.SessionID)
-		}
-	}
+	var held []interlock.Collision
+	items, held = heldBack(ctx, items)
+	explainHolds(stderr, "ready", held)
 
 	if *limitFlag > 0 && *limitFlag < len(items) {
 		items = items[:*limitFlag]
@@ -155,40 +146,19 @@ type readyAllError struct {
 // the key that is not comparable across stores -- the same "one unlimited
 // call feeds everything" discipline board.go already applies.
 func runReadyAll(limit int, asJSON bool, stdout, stderr io.Writer) int {
-	home, err := os.UserHomeDir()
+	payload, err := readyAllPayload(context.Background(), stderr)
 	if err != nil {
 		fmt.Fprintf(stderr, "keep: %v\n", err)
 		return 1
 	}
 
-	// A malformed registry is never fatal (06-CONTEXT.md decision 2): Load
-	// hands back BOTH a usable empty envelope and the error, so this reports
-	// and continues. Returning here would be the failure that decision
-	// forbids.
-	env, err := registry.Load(home)
-	if err != nil {
-		fmt.Fprintf(stderr, "keep: warning: %v\n", err)
-	}
-
-	rows := registry.FetchReady(context.Background(), env.Repos)
-	merged := registry.Merge(rows)
-
+	merged := payload.Items
 	if limit > 0 && limit < len(merged) {
 		merged = merged[:limit]
 	}
 
 	if asJSON {
-		out := readyAllJSON{Items: merged, Errors: make([]readyAllError, 0)}
-		for _, r := range rows {
-			if r.Err != nil {
-				out.Errors = append(out.Errors, readyAllError{
-					Repository: r.Repo,
-					Path:       r.Path,
-					Error:      r.Err.Error(),
-				})
-			}
-		}
-		if err := emitJSON(stdout, out); err != nil {
+		if err := emitJSON(stdout, readyAllJSON{Items: merged, Errors: payload.Errors}); err != nil {
 			fmt.Fprintf(stderr, "keep: ready --all: %v\n", err)
 			return 1
 		}
@@ -200,28 +170,23 @@ func runReadyAll(limit int, asJSON bool, stdout, stderr io.Writer) int {
 	//
 	// One failure is named in full, because it is probably the thing the
 	// person needs to see. Several are summarised to a single line: `init`
-	// registers automatically and nothing unregistered until `repos forget
+	// registers automatically and nothing unregisters until `repos forget
 	// --gone`, so a registry with a dozen dead scratch repositories used to
 	// print a dozen paragraphs above every queue, which is how a person
 	// learns to stop reading stderr.
-	var failed []string
-	for _, r := range rows {
-		if r.Err != nil {
-			failed = append(failed, r.Repo)
-		}
-	}
-	switch len(failed) {
+	switch len(payload.Errors) {
 	case 0:
 	case 1:
-		for _, r := range rows {
-			if r.Err != nil {
-				fmt.Fprintf(stderr, "keep: repo %s: %v\n", r.Repo, r.Err)
-			}
-		}
+		fmt.Fprintf(stderr, "keep: repo %s: %s\n", payload.Errors[0].Repository, payload.Errors[0].Error)
 	default:
+		names := make([]string, len(payload.Errors))
+		for i, e := range payload.Errors {
+			names[i] = e.Repository
+		}
 		fmt.Fprintf(stderr, "keep: %d registered stores could not be read (%s). `keep repos` names the errors; `keep repos forget --gone` drops the ones that are gone.\n",
-			len(failed), strings.Join(failed, ", "))
+			len(payload.Errors), strings.Join(names, ", "))
 	}
+
 	renderMerged(stdout, merged)
 	return 0
 }
@@ -271,4 +236,44 @@ func renderMerged(w io.Writer, items []registry.MergedItem) {
 		fmt.Fprintf(w, "%-*s  %-*s  %*s  %-*s  %s\n",
 			repoW, it.Repository, idW, it.ID, scoreW, scores[i], typeW, it.Type, truncateTitle(it.Title, titleBudget))
 	}
+}
+
+// readyAllPayload is the cross-repository queue as data, with no rendering
+// and no exit code: the same {items, errors} shape `ready --all --json`
+// prints, built by the same registry calls.
+//
+// It exists so the `ready_all` MCP tool and the `--all` flag cannot answer
+// differently. internal/mcp holds one *store.Store and has no business
+// knowing about the registry, so cmd/keep injects this as
+// mcp.Options.ReadyAll -- which is the same shape the CLI has always had
+// here, just named and handed to something else as well.
+//
+// A malformed registry is never fatal (06-CONTEXT.md decision 2):
+// registry.Load hands back BOTH a usable empty envelope and the error, so
+// this reports and continues. Refusing the whole read because one line of
+// JSON is wrong is the failure that decision forbids.
+//
+// It is reported to warn rather than returned, because it is a warning about
+// the machine's configuration and not a property of the queue -- it does not
+// belong in the payload a consumer reads rows out of. The CLI passes stderr;
+// `keep mcp` passes a writer onto its own logger, because there stdout is
+// protocol bytes and nothing else may touch it.
+func readyAllPayload(ctx context.Context, warn io.Writer) (readyAllJSON, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return readyAllJSON{}, err
+	}
+	env, loadErr := registry.Load(home)
+	if loadErr != nil {
+		fmt.Fprintf(warn, "keep: warning: %v\n", loadErr)
+	}
+
+	rows := registry.FetchReady(ctx, env.Repos)
+	out := readyAllJSON{Items: registry.Merge(rows), Errors: make([]readyAllError, 0)}
+	for _, r := range rows {
+		if r.Err != nil {
+			out.Errors = append(out.Errors, readyAllError{Repository: r.Repo, Path: r.Path, Error: r.Err.Error()})
+		}
+	}
+	return out, nil
 }

@@ -14,6 +14,7 @@ import (
 
 	"github.com/gshepptech/keep/internal/dash"
 	"github.com/gshepptech/keep/internal/model"
+	"github.com/gshepptech/keep/internal/registry"
 	"github.com/gshepptech/keep/internal/store"
 )
 
@@ -53,6 +54,7 @@ func runBoard(args []string, stdout, stderr io.Writer) int {
 	limitFlag := fs.Int("limit", defaultBoardLimit, "queue rows after the counts (0 = all)")
 	webFlag := fs.Bool("web", false, "serve the dashboard on 127.0.0.1 and print the URL")
 	portFlag := fs.Int("port", 0, "a fixed port instead of an OS-assigned one (requires --web)")
+	allFlag := fs.Bool("all", false, "counts and queue across every registered store (see keep repos)")
 
 	if err := fs.Parse(permuteArgs(fs, args)); err != nil {
 		return 2
@@ -76,6 +78,21 @@ func runBoard(args []string, stdout, stderr io.Writer) int {
 	if fs.NArg() != 0 {
 		fmt.Fprintln(stderr, "usage: keep board [flags]")
 		return 2
+	}
+	if *allFlag && *dbFlag != "" {
+		fmt.Fprintln(stderr, "keep: board: --db and --all are mutually exclusive (--db names one store; --all reads the registry)")
+		return 2
+	}
+	if *allFlag && *webFlag {
+		// The dashboard already has its own cross-repository page, served
+		// from the registry (internal/dash/projects.go). Two answers to
+		// "show me everything" reachable from one command is how they drift.
+		fmt.Fprintln(stderr, "keep: board: --all and --web cannot be combined; the dashboard's own projects page is the cross-repository view")
+		return 2
+	}
+
+	if *allFlag {
+		return runBoardAll(*limitFlag, *jsonFlag, stdout, stderr)
 	}
 
 	s, err := openStoreReadOnly(*dbFlag)
@@ -219,4 +236,103 @@ func serveWeb(st *store.Store, port int, dbFlag string, stdout, stderr io.Writer
 		}
 		return 0
 	}
+}
+
+// boardAllJSON is `board --all --json`'s payload: the same {counts, items}
+// shape single-store board uses, summed across every registered store, plus
+// the errors field every cross-repository command carries so a consumer
+// knows whether it saw everything.
+type boardAllJSON struct {
+	Counts boardCounts                   `json:"counts"`
+	Items  []registry.Tagged[model.Item] `json:"items"`
+	Errors []readyAllError               `json:"errors"`
+}
+
+// runBoardAll is the status glance across every registered store.
+//
+// The counts are summed from four cross-store reads rather than from
+// registry.FetchCounts, which reports per-repository totals for `keep
+// repos` and has no notion of in-progress or blocked. Four fan-outs is four
+// passes over the same files; that is the same "correct before fast" trade
+// single-store board already makes when it calls Ready, ListItems, Blocked
+// and Backlog purely to take len() of each.
+//
+// The queue is ranked by score across all stores, exactly as ready --all
+// ranks it, because it IS ready --all's ranking -- the same registry.Merge
+// ordering, so the number in the counts line and the rows beneath it can
+// never come from two different ideas of what is workable.
+func runBoardAll(limit int, asJSON bool, stdout, stderr io.Writer) int {
+	ctx := context.Background()
+
+	ready, results, err := acrossRepos(ctx, stderr, "board",
+		func(ctx context.Context, st *store.Store) ([]model.Item, error) { return st.Ready(ctx, 0) },
+		func(a, b registry.Tagged[model.Item]) bool {
+			if a.Row.Score != b.Row.Score {
+				return a.Row.Score > b.Row.Score
+			}
+			if a.Repository != b.Repository {
+				return a.Repository < b.Repository
+			}
+			return a.Row.ID < b.Row.ID
+		},
+	)
+	if err != nil {
+		fmt.Fprintf(stderr, "keep: board: %v\n", err)
+		return 1
+	}
+
+	// The remaining three counts. Failures are already reported once, above,
+	// so these fan-outs report nothing -- a store that will not open would
+	// otherwise be named four times for one glance.
+	inProgress := countAcross(ctx, func(ctx context.Context, st *store.Store) ([]model.Item, error) {
+		return st.ListItems(ctx, store.ListFilter{Status: model.StatusInProgress})
+	})
+	blocked := countAcross(ctx, func(ctx context.Context, st *store.Store) ([]model.BlockedItem, error) {
+		return st.Blocked(ctx)
+	})
+	backlog := countAcross(ctx, func(ctx context.Context, st *store.Store) ([]model.Item, error) {
+		return st.Backlog(ctx, "")
+	})
+
+	counts := boardCounts{Ready: len(ready), InProgress: inProgress, Blocked: blocked, Backlog: backlog}
+
+	rows := ready
+	if limit > 0 && limit < len(rows) {
+		rows = rows[:limit]
+	}
+
+	if asJSON {
+		if err := emitJSON(stdout, boardAllJSON{Counts: counts, Items: rows, Errors: repoErrorsJSON(results)}); err != nil {
+			fmt.Fprintf(stderr, "keep: board --all: %v\n", err)
+			return 1
+		}
+		return 0
+	}
+
+	fmt.Fprintf(stdout, "ready %d   in progress %d   blocked %d   backlog %d   across %d repositories\n\n",
+		counts.Ready, counts.InProgress, counts.Blocked, counts.Backlog, len(results))
+	renderTagged(stdout, rows, func(it model.Item) []string {
+		return []string{it.ID, fmt.Sprint(it.Score), it.Type, it.Title}
+	})
+	return 0
+}
+
+// countAcross sums one query's row count over every registered store.
+//
+// It reports no failures of its own: runBoardAll has already named them
+// once from its first fan-out, and a store that will not open would
+// otherwise be named four times for a single glance. The count is therefore
+// a count of what could be READ, which is the same thing every other number
+// on this line is.
+func countAcross[T any](ctx context.Context, query func(context.Context, *store.Store) ([]T, error)) int {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return 0
+	}
+	env, _ := registry.Load(home)
+	n := 0
+	for _, r := range registry.FetchEach(ctx, env.Repos, query) {
+		n += len(r.Rows)
+	}
+	return n
 }

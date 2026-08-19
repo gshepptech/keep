@@ -80,6 +80,8 @@ commands:
   backlog   list every raw item still parked, grouped by type, newest first
               --type <t>    show only this type (roadmap/epic/task/bug/note)
               --json        machine-parseable output (flat array, not grouped)
+              --all         merge every registered store's pen, newest first,
+                            repository shown per row (grouping is dropped)
   dep       create a dependency edge: keep dep <item-id> <type> <depends-on-id>
   ready     list workable items, ranked
               --limit <n>   at most n items
@@ -88,6 +90,13 @@ commands:
                             ranked across all of them (see keep repos);
                             cannot combine with --db
   blocked   list blocked items, each naming the item blocking it
+              --json        machine-parseable output
+  next      claim the top of the queue in one step: ready and start, with
+              no window between them for another agent to take it
+              --json        machine-parseable output
+              an empty queue exits 0 and says how much is blocked
+  why-not   why one item is not in ready: raw, not open, or blocked by
+              something named. exit 0 if it is workable, 1 if it is not
               --json        machine-parseable output
   show      show one item's full detail: keep show [flags] <id>
               --json        machine-parseable output
@@ -99,12 +108,16 @@ commands:
               --closed      search closed and dropped items too
               --limit <n>   at most n results
               --json        machine-parseable output
+              --all         search every registered store, re-ranked
+                            together, repository shown per row
   log       what happened, newest first
               --since <s>   24h, 7d, or an RFC3339 timestamp
               --actor <a>   only what this person or agent did
               --kind <k>    add/start/unclaim/close/drop/reopen/update/dep
               --limit <n>   at most n entries (default 30, 0 = all)
               --json        machine-parseable output
+              --all         merge every registered store's activity into one
+                            feed, newest first, repository shown per row
   stale     claims nothing has happened to in a while
               --after <d>   how much silence counts (default 2h)
               --json        machine-parseable output
@@ -113,6 +126,8 @@ commands:
               --stage/--status/--type/--parent/--repo/--limit
               --json        machine-parseable output
   start     claim an item: keep start [flags] <id>
+              --force       claim even when another agent holds a file the
+                            item declares (refused without it, naming who)
               session comes from $KEEP_SESSION, not a flag; same-session
               repeat is a silent no-op, a different session's claim exits 1
               --json        machine-parseable output
@@ -146,6 +161,9 @@ commands:
               --json        one object: the counts and the items
               --web         serve the dashboard on 127.0.0.1 and print the URL
               --port <n>    a fixed port instead of an OS-assigned one
+              --all         counts and queue across every registered store
+                            (cannot combine with --web -- the dashboard has
+                            its own projects page)
               the page writes: file, edit, claim, close, promote,
               assign, and start an agent where Interlock is installed
   repos     the registry of known stores across repositories
@@ -163,6 +181,21 @@ commands:
                              --dry-run  report, change nothing
               codex status   what Codex says about keep's hooks
                              --all      every hook, not just keep's
+  export    write the whole store to stdout as JSONL, one record per line
+              --out <path>  write to this file instead (never overwrites)
+              a round-trip, not sync: for backups, moving a store between
+              machines, and reading one without this binary
+  import    read an export back into an EMPTY store: keep import [file]
+              reads stdin when no file is given
+              refused if the store already holds items -- merging two
+              stores means resolving collisions, which keep does not do
+  migrate   bring a store created by an older keep up to this one's schema
+              --check       report what is needed and change nothing;
+                            exit 0 if current, 1 if a migration is due
+              --json        machine-parseable output
+              the store is copied to <path>.v<n>.bak before anything is
+              changed, and the whole ladder runs in one transaction --
+              a failure part-way leaves the store exactly as it was
   version   print the version
 
 See ROADMAP.md.
@@ -219,6 +252,16 @@ func main() {
 		os.Exit(runRepos(os.Args[2:], os.Stdout, os.Stderr))
 	case "codex":
 		os.Exit(runCodex(os.Args[2:], os.Stdout, os.Stderr))
+	case "migrate":
+		os.Exit(runMigrate(os.Args[2:], os.Stdout, os.Stderr))
+	case "next":
+		os.Exit(runNext(os.Args[2:], os.Stdout, os.Stderr))
+	case "why-not":
+		os.Exit(runWhyNot(os.Args[2:], os.Stdout, os.Stderr))
+	case "export":
+		os.Exit(runExport(os.Args[2:], os.Stdout, os.Stderr))
+	case "import":
+		os.Exit(runImport(os.Args[2:], os.Stdout, os.Stderr))
 	case "version", "--version":
 		fmt.Println(resolveVersion())
 	case "help", "--help", "-h":

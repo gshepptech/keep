@@ -4,13 +4,24 @@ import (
 	"context"
 	"encoding/json"
 	"os/exec"
+	"sort"
 	"testing"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	mcpsrv "github.com/gshepptech/keep/internal/mcp"
 	"github.com/gshepptech/keep/internal/model"
 )
+
+// sortedCopy returns s sorted, without disturbing s. tools/list is
+// unconditionally alphabetical (see the note in the caller), so the
+// registration-ordered ToolNames has to be sorted before comparison.
+func sortedCopy(s []string) []string {
+	out := append([]string(nil), s...)
+	sort.Strings(out)
+	return out
+}
 
 // mcpSession starts a real `keep mcp` subprocess and connects the SDK's
 // own client to it over its real stdin/stdout pipes.
@@ -115,7 +126,12 @@ func TestMCPToolsListReturnsCommandSurface(t *testing.T) {
 	// is what 04-CONTEXT.md's decision 2 actually locks; asserting the
 	// SDK's own deterministic sort order in place of the plan's incorrect
 	// registration-order assumption.
-	want := []string{"add", "backlog", "capture", "close", "dep", "drop", "list", "log", "ready", "search", "show", "stale", "start", "update"}
+	// Sorted copy of internal/mcp.ToolNames -- the registration order lives
+	// there, and this asserts the same set arrives over a real stdio
+	// session. Reading it back off the wire is what makes this independent
+	// of the Go slice: a tool present in ToolNames but never registered
+	// fails here.
+	want := sortedCopy(mcpsrv.ToolNames)
 
 	if len(res.Tools) != len(want) {
 		names := make([]string, len(res.Tools))

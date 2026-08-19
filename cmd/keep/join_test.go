@@ -145,6 +145,57 @@ func TestInterlockJoinAgainstARealBinary(t *testing.T) {
 		t.Errorf("an item touching a free file was hidden:\n%s", queue)
 	}
 
+	// The queue omitting a held item is only half the join. An agent that
+	// already knows the id it wants never sees the omission, so `start` has
+	// to refuse too -- and `next`, which claims for you, has to choose past
+	// it rather than hand you the collision the queue existed to prevent.
+	t.Run("start refuses an item whose file is held", func(t *testing.T) {
+		_, errOut, code := run(t, keepBin, repo, environ, "start", held)
+		if code == 0 {
+			t.Fatalf("start on a held item exited 0; the queue hides it and the claim allowed it, which is worse than either alone")
+		}
+		for _, want := range []string{"internal/shared.go", "claude", "agent-a", "--force"} {
+			if !strings.Contains(errOut, want) {
+				t.Errorf("the refusal does not name %q:\n%s", want, errOut)
+			}
+		}
+
+		// It really did not claim it.
+		out, _, _ := run(t, keepBin, repo, environ, "show", held, "--json")
+		if !strings.Contains(out, `"status":"open"`) && !strings.Contains(out, `"status": "open"`) {
+			t.Errorf("the refused start changed the item's status:\n%s", out)
+		}
+	})
+
+	t.Run("next chooses past a held item rather than claiming it", func(t *testing.T) {
+		// held scores highest (9/9/2), so without the join this is exactly
+		// the item `next` would take.
+		out, errOut, code := run(t, keepBin, repo, environ, "next")
+		if code != 0 {
+			t.Fatalf("next exited %d: %s", code, errOut)
+		}
+		if strings.Contains(out, held) {
+			t.Fatalf("next claimed the held item:\n%s", out)
+		}
+		if !strings.Contains(out, free) {
+			t.Fatalf("next claimed %q, want the highest-ranked workable item %s:\n%s", out, free, out)
+		}
+		if !strings.Contains(errOut, "internal/shared.go") {
+			t.Errorf("next did not say why it passed over the top of the queue:\n%s", errOut)
+		}
+	})
+
+	t.Run("--force claims anyway, for the person who can see the holder is gone", func(t *testing.T) {
+		if _, errOut, code := run(t, keepBin, repo, environ, "start", held, "--force"); code != 0 {
+			t.Fatalf("start --force exited %d: %s", code, errOut)
+		}
+		// Put it back, so the release assertion below still measures the
+		// lease rather than this claim.
+		if _, errOut, code := run(t, keepBin, repo, environ, "unclaim", held, "--reason", "restoring the fixture"); code != 0 {
+			t.Fatalf("unclaim exited %d: %s", code, errOut)
+		}
+	})
+
 	if _, errOut, code := run(t, interlockBin, repo, environ, "lease", "release", "agent-a", "--confirm", "agent-a"); code != 0 {
 		t.Fatalf("releasing the lease exited %d: %s", code, errOut)
 	}
