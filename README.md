@@ -102,7 +102,7 @@ simpler.</sub>
 **Give your agents the tools:**
 
 ```bash
-claude mcp add keep -e KEEP_ACTOR="$USER" -- keep mcp
+claude mcp add keep -e KEEP_ACTOR="$USER" -e KEEP_SESSION="$USER-claude" -- keep mcp
 ```
 
 Then just talk to them:

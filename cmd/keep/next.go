@@ -54,7 +54,7 @@ func runNext(args []string, stdout, stderr io.Writer) int {
 	defer s.Close()
 
 	ctx := context.Background()
-	session := resolveSession()
+	session := resolveClaimSession()
 
 	// The join, applied where it matters most. `ready` already omits items
 	// whose files another agent holds; `next` CLAIMS one, so offering a held

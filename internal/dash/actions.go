@@ -234,7 +234,7 @@ func (s *Server) routesMutating(mux *http.ServeMux) {
 func (s *Server) doStart(w http.ResponseWriter, r *http.Request) {
 	s.mutate(w, r, "", func(st *store.Store) (string, error) {
 		id := r.PostFormValue("id")
-		_, err := st.StartItem(r.Context(), store.StartItemInput{ID: id, Actor: s.actor})
+		_, err := st.StartItem(r.Context(), store.StartItemInput{ID: id, Actor: s.actor, SessionID: s.session})
 		return "", err
 	})
 }

@@ -350,7 +350,7 @@ func TestStartRecordsWhoClaimedIt(t *testing.T) {
 	st, ctx := openTestStore(t), context.Background()
 	item := mustAdd(t, st, AddItemInput{Title: "a thing to claim", Actor: "someone"})
 
-	got, err := st.StartItem(ctx, StartItemInput{ID: item.ID, Actor: "dev"})
+	got, err := st.StartItem(ctx, StartItemInput{ID: item.ID, Actor: "dev", SessionID: "sess-assignee"})
 	if err != nil {
 		t.Fatalf("StartItem: %v", err)
 	}
@@ -377,7 +377,7 @@ func TestStartLeavesAnExistingAssigneeAlone(t *testing.T) {
 	assigned := "rae"
 	item := mustAdd(t, st, AddItemInput{Title: "already assigned", Actor: "someone", Assignee: assigned})
 
-	got, err := st.StartItem(ctx, StartItemInput{ID: item.ID, Actor: "dev"})
+	got, err := st.StartItem(ctx, StartItemInput{ID: item.ID, Actor: "dev", SessionID: "sess-assignee"})
 	if err != nil {
 		t.Fatalf("StartItem: %v", err)
 	}

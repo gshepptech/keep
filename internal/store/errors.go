@@ -36,6 +36,35 @@ var (
 	// see depth.go.
 	ErrTooDeep = errors.New("tree too deep")
 
+	// ErrNoSession is returned when a CLAIM is attempted without a session
+	// id. Every other verb may leave one empty -- the session on an `add` or
+	// a `close` event is attribution, and a missing one costs nothing but
+	// detail.
+	//
+	// A claim is different: it is an assertion that one specific worker
+	// holds this item, and three separate rules read that id back to decide
+	// what happens next. With an empty session all three collapse, because
+	// "" equals "", and every anonymous worker becomes the same worker:
+	//
+	//   - StartItem's idempotent-retry arm treats a SECOND worker's claim on
+	//     a held item as the first one retrying. Silent success, no event,
+	//     no ErrConflict -- two workers each believing they own it, which is
+	//     the exact collision `start` exists to prevent.
+	//   - UnclaimItem's RequireOwnClaim guard, which is the whole reason
+	//     `unclaim` is safe to expose over MCP, passes for anybody.
+	//   - `stale` reports a claim it cannot attribute to anyone.
+	//
+	// Reproduced before this was added: two StartItem calls with different
+	// actors and no session both succeeded, and the second actor then
+	// released the first's claim through the own-claim-only path.
+	//
+	// This is refused in the store rather than in the callers because all
+	// three rules live here. cmd/keep and internal/dash each derive a
+	// non-empty id appropriate to what they are -- see resolveClaimSession
+	// and the board's own session -- so nothing legitimate has to stop
+	// working to close it.
+	ErrNoSession = errors.New("a claim needs a session id")
+
 	// ErrEmptyReason is returned by close, drop, unclaim and reopen when no
 	// reason is given. All four write a terminal or near-terminal fact about
 	// a piece of work, and a record that says it happened without saying why

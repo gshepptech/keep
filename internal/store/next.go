@@ -75,6 +75,12 @@ func (s *Store) NextItem(ctx context.Context, in NextInput) (NextResult, error) 
 	if in.Actor == "" {
 		return NextResult{}, fmt.Errorf("NextItem: Actor is required")
 	}
+	// Checked before the queue is read, not inside claimItemTx: `next` picks
+	// the item AND claims it, so a session that cannot hold a claim should
+	// not consume the top of somebody's queue first and fail afterwards.
+	if in.SessionID == "" {
+		return NextResult{}, fmt.Errorf("NextItem: %w -- set $KEEP_SESSION, or claim through a surface that derives one", ErrNoSession)
+	}
 
 	var out NextResult
 	err := s.withTx(ctx, func(tx *sql.Tx) error {

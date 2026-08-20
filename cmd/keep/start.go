@@ -89,7 +89,7 @@ func runStart(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-	session := resolveSession()
+	session := resolveClaimSession()
 	item, err := s.StartItem(ctx, store.StartItemInput{
 		ID:        id,
 		Actor:     actor,

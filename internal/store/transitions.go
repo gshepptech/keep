@@ -189,6 +189,10 @@ func (s *Store) StartItem(ctx context.Context, in StartItemInput) (model.Item, e
 // It takes a *sql.Tx rather than opening one, because NextItem's whole point
 // is that choosing the item and claiming it happen in ONE transaction.
 func claimItemTx(ctx context.Context, tx *sql.Tx, in StartItemInput) (model.Item, error) {
+	if in.SessionID == "" {
+		return model.Item{}, fmt.Errorf("StartItem: item %q: %w -- set $KEEP_SESSION, or claim through a surface that derives one", in.ID, ErrNoSession)
+	}
+
 	item, err := getItemForUpdateTx(ctx, tx, in.ID)
 	if err != nil {
 		return model.Item{}, fmt.Errorf("StartItem: %w", err)
@@ -206,6 +210,14 @@ func claimItemTx(ctx context.Context, tx *sql.Tx, in StartItemInput) (model.Item
 		if item.ClaimedBySession != nil {
 			holder = *item.ClaimedBySession
 		}
+		// A legacy anonymous claim -- claimed_by_session NULL, written by a
+		// binary from before ErrNoSession existed -- reads back as "" and
+		// cannot match here, because the check at the top of this function
+		// guarantees in.SessionID is not "". So it falls through to the
+		// ErrConflict below rather than being handed to whoever asked next
+		// as their own retry. A `holder != ""` clause was written here for
+		// that case and removed again: it is unreachable, and a guard that
+		// cannot fire is a claim about the code that no test can check.
 		if holder == in.SessionID {
 			// Idempotent no-op: this is the same session retrying its own
 			// claim. NO update, NO event -- the deliberate exception to
@@ -375,7 +387,11 @@ func (s *Store) UnclaimItem(ctx context.Context, in UnclaimItemInput) (model.Ite
 		// The narrow half of the verb: release your own claim only. Set by
 		// the MCP handler and unreachable over the wire, so an agent cannot
 		// opt out of it by supplying an argument.
-		if in.RequireOwnClaim && held != in.SessionID {
+		// An empty session on either side means the same thing it means for
+		// a claim: nobody in particular. Comparing two of them would let
+		// any anonymous caller release any anonymous claim, which is the
+		// restriction inverted rather than enforced.
+		if in.RequireOwnClaim && (in.SessionID == "" || held == "" || held != in.SessionID) {
 			return fmt.Errorf("UnclaimItem: item %q is claimed by session %q, not by this one -- releasing another session's claim is a `keep unclaim` a person runs, not something an agent does on its behalf: %w",
 				in.ID, held, ErrConflict)
 		}

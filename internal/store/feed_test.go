@@ -14,7 +14,7 @@ func TestFeedAnswersWhatHappened(t *testing.T) {
 	st, ctx := openTestStore(t), context.Background()
 	a := mustAdd(t, st, AddItemInput{Title: "Expire refresh tokens", Actor: "claude"})
 	mustAdd(t, st, AddItemInput{Title: "Something else", Actor: "dev"})
-	if _, err := st.StartItem(ctx, StartItemInput{ID: a.ID, Actor: "claude"}); err != nil {
+	if _, err := st.StartItem(ctx, StartItemInput{ID: a.ID, Actor: "claude", SessionID: "sess-feed"}); err != nil {
 		t.Fatalf("StartItem: %v", err)
 	}
 	if _, err := st.CloseItem(ctx, CloseItemInput{ID: a.ID, Reason: "shipped it", Actor: "claude"}); err != nil {

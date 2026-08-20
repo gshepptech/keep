@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
 	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
@@ -61,7 +64,7 @@ func runMCP(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "keep mcp: %v\n", err)
 		return 2
 	}
-	session := resolveSession()
+	session := resolveMCPSession()
 
 	s, err := openStore(*dbFlag)
 	if err != nil {
@@ -124,6 +127,37 @@ func runMCP(args []string, stdout, stderr io.Writer) int {
 	}
 	fmt.Fprintf(stderr, "keep mcp: %v\n", err)
 	return 1
+}
+
+// resolveMCPSession returns the session id this server's tools claim under.
+//
+// $KEEP_SESSION wins, as everywhere else. Absent it, this derives a
+// PER-PROCESS id -- which is the opposite of resolveClaimSession's stable
+// one, and correct for the opposite reason. One MCP server process serves
+// one agent session (Options.Session says so), so two agents on this machine
+// are two processes and must not share an identity; a stable per-user id
+// would put them both under the same session and re-open the collapse this
+// exists to close: each would be handed the other's claim as its own retry,
+// and either could release the other's through the own-claim-only path.
+//
+// The pid alone is not enough. Pids are reused, and a stale claim left by a
+// dead server could collide with a new one that happened to inherit its
+// number -- rare, silent, and exactly the class of thing that only shows up
+// under the concurrency this is meant to make safe. The random half removes
+// it; crypto/rand rather than math/rand because a guessable session id is a
+// session id another process can impersonate.
+func resolveMCPSession() string {
+	if s := store.Env("SESSION"); s != "" {
+		return s
+	}
+	var b [6]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		// Cannot happen on any supported platform, and if it somehow does,
+		// a pid-only id is still non-empty and still unique among LIVE
+		// processes -- which is better than refusing to start.
+		return fmt.Sprintf("mcp:%d", os.Getpid())
+	}
+	return fmt.Sprintf("mcp:%d:%s", os.Getpid(), hex.EncodeToString(b[:]))
 }
 
 // loggerWriter adapts a *slog.Logger to io.Writer so cmd/keep helpers that

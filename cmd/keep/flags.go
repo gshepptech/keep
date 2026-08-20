@@ -68,12 +68,48 @@ func resolveActor(flagActor string) (string, error) {
 	return "", fmt.Errorf("no --actor given and neither $KEEP_ACTOR nor $USER is set")
 }
 
-// resolveSession returns $KEEP_SESSION, or "" when it is unset. There is
-// no requirement that an agent set one (StartItemInput's doc comment,
-// internal/store/transitions.go) -- an empty SessionID is a legitimate
-// value throughout this package, not an error.
+// resolveSession returns $KEEP_SESSION, or "" when it is unset. An empty
+// session is a legitimate value for every verb that merely RECORDS one: the
+// session on an `add` or a `close` event is attribution, and a missing one
+// costs detail and nothing else.
+//
+// It is not legitimate for a CLAIM. Use resolveClaimSession there.
 func resolveSession() string {
 	return store.Env("SESSION")
+}
+
+// resolveClaimSession returns the session id `start` and `next` claim under.
+//
+// $KEEP_SESSION wins: Interlock sets it for hook invocations, which is how
+// the two programs line up without either knowing about the other.
+//
+// Absent it, this derives one rather than passing "" down to a store that
+// now refuses anonymous claims (store.ErrNoSession). Refusing here instead
+// would break `keep start` for the ordinary case of a person at a terminal
+// who has never heard of KEEP_SESSION -- and the README's own quickstart
+// registers the MCP server without setting it.
+//
+// The derived id is STABLE for a person on a machine, deliberately, and not
+// per-process. A per-invocation id would make `keep start` on an item you
+// already hold return ErrConflict against your own earlier claim, because
+// each invocation would be a different session -- turning the idempotent
+// retry that `start` guarantees into a failure that looks like a collision.
+//
+// It is prefixed so it is obvious in `keep stale` and in the event trail
+// that this is a terminal rather than an agent session.
+func resolveClaimSession() string {
+	if s := store.Env("SESSION"); s != "" {
+		return s
+	}
+	user := os.Getenv("USER")
+	if user == "" {
+		user = "unknown"
+	}
+	host, err := os.Hostname()
+	if err != nil || host == "" {
+		host = "localhost"
+	}
+	return fmt.Sprintf("cli:%s@%s", user, host)
 }
 
 // openStore resolves flagDB the way every subcommand needs (store.Resolve's

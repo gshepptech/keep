@@ -28,7 +28,7 @@ func TestStaleClaimsFindsWorkThatWentQuiet(t *testing.T) {
 		a := mustAdd(t, s, AddItemInput{Title: "claimed then abandoned", Actor: "claude"})
 		b := mustAdd(t, s, AddItemInput{Title: "claimed and still going", Actor: "claude"})
 		quiet, busy = a.ID, b.ID
-		if _, err := s.StartItem(ctx, StartItemInput{ID: quiet, Actor: "claude"}); err != nil {
+		if _, err := s.StartItem(ctx, StartItemInput{ID: quiet, Actor: "claude", SessionID: "sess-quiet"}); err != nil {
 			t.Fatalf("StartItem: %v", err)
 		}
 	})
@@ -36,7 +36,7 @@ func TestStaleClaimsFindsWorkThatWentQuiet(t *testing.T) {
 	// Six hours later the second item is claimed -- so it has a recent
 	// event -- and we ask what has gone quiet.
 	atClock(t, "2026-01-01T06:00:00.000000000Z", func() {
-		if _, err := s.StartItem(ctx, StartItemInput{ID: busy, Actor: "claude"}); err != nil {
+		if _, err := s.StartItem(ctx, StartItemInput{ID: busy, Actor: "claude", SessionID: "sess-busy"}); err != nil {
 			t.Fatalf("StartItem: %v", err)
 		}
 
@@ -73,7 +73,7 @@ func TestStaleClaimsMeasuresSilenceNotAge(t *testing.T) {
 	atClock(t, "2026-01-01T00:00:00.000000000Z", func() {
 		it := mustAdd(t, s, AddItemInput{Title: "long but live", Actor: "claude"})
 		id = it.ID
-		if _, err := s.StartItem(ctx, StartItemInput{ID: id, Actor: "claude"}); err != nil {
+		if _, err := s.StartItem(ctx, StartItemInput{ID: id, Actor: "claude", SessionID: "sess-silence"}); err != nil {
 			t.Fatalf("StartItem: %v", err)
 		}
 	})

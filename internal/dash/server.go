@@ -55,6 +55,23 @@ type Server struct {
 	csrf  string
 	actor string
 
+	// session is who the board's claims are held by. It is fixed for the
+	// process and derived at startup, never empty: store.StartItem refuses
+	// an anonymous claim (store.ErrNoSession), because an empty session id
+	// makes every anonymous worker the same worker -- the second one to
+	// claim an item is handed it as its own retry, and either can release
+	// the other's hold.
+	//
+	// The board used to claim with no session at all, so a person clicking
+	// Claim and an agent that had not set $KEEP_SESSION were, to every rule
+	// that reads the id back, indistinguishable.
+	//
+	// Per-process rather than stable: two boards are two people at two
+	// terminals, and the whole point of the id is telling them apart. A
+	// person's own repeat click is idempotent anyway, because the same
+	// board serves it.
+	session string
+
 	// dbPath is what writable() reopens. The read path keeps its read-only
 	// handle -- docs/design/phase-4.md made that true by construction and it
 	// stays true for every GET; only a POST opens for writing, and only for
@@ -92,7 +109,13 @@ func NewServer(st *store.Store, hostport, home string, opts ...Option) (*Server,
 	if err != nil {
 		return nil, err
 	}
-	s := &Server{st: st, home: home, ln: ln, csrf: token, actor: "board"}
+	sessionToken, err := newToken()
+	if err != nil {
+		ln.Close()
+		return nil, fmt.Errorf("derive a board session: %w", err)
+	}
+
+	s := &Server{st: st, home: home, ln: ln, csrf: token, actor: "board", session: "board:" + sessionToken}
 	for _, opt := range opts {
 		opt(s)
 	}
