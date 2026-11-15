@@ -7,13 +7,13 @@ import (
 
 // TestAskingForHelpDoesNotFileAnItem.
 //
-// `keep add --help` used to print an id and exit 0, having filed an item
-// titled "--help" into the real store. So did `-h`. The mechanism was
-// permuteArgs: -h and --help are handled by the flag package itself and so
-// are absent from fs.VisitAll, which made the pre-pass classify them as
-// value-taking flags. Being last on the line with no value after them, they
-// took the "dump the rest verbatim" branch into the positionals, arrived at
-// flag.Parse behind a `--`, and became the title.
+// `keep add --help` must print usage, not file an item titled "--help"
+// into the real store. The hazard is permuteArgs: -h and --help are
+// handled by the flag package itself and so are absent from fs.VisitAll,
+// so a pre-pass that classified them as value-taking flags would send them,
+// last on the line with no value after them, down the "dump the rest
+// verbatim" branch into the positionals, to arrive at flag.Parse behind a
+// `--` and become the title.
 //
 // Two things make this worth a cross-process test rather than a unit test
 // on permuteArgs. It is a whole-binary behaviour -- parse, then write, then
@@ -23,8 +23,7 @@ import (
 // item.
 //
 // Checked on every subcommand that takes a positional argument, because the
-// pre-pass is shared: they all had it, and a fix in one of them would not
-// be a fix.
+// pre-pass is shared: a fix in one of them alone would not be a fix.
 func TestAskingForHelpDoesNotFileAnItem(t *testing.T) {
 	bin := buildKeep(t, "")
 

@@ -38,13 +38,11 @@ func tempDir(t *testing.T) string {
 // builtBinaries caches one compiled keep per -ldflags version, for the
 // lifetime of the package's tests.
 //
-// buildKeep used to shell out to `go build` on every call, and it is
-// called 115 times across this package. On macOS that cost about two
-// minutes; on Windows, where spawning a process is far more expensive, it
-// blew through `go test`'s 600-second timeout and CI failed on the clock
-// rather than on any assertion. The binaries are identical per version --
-// nothing here mutates one -- so building each exactly once is the same
-// test with the waste removed.
+// buildKeep is called from most tests in this package. Running `go build`
+// on every call takes minutes, and on Windows, where spawning a process is
+// far more expensive, it can exceed `go test`'s 600-second timeout. The
+// binaries are identical per version -- nothing here mutates one -- so
+// building each exactly once is the same test with the waste removed.
 var (
 	builtMu       sync.Mutex
 	builtBinaries = map[string]string{}
@@ -93,7 +91,7 @@ func buildKeep(t *testing.T, version string) string {
 	if version != "" {
 		args = append(args, "-ldflags", "-X main.version="+version)
 	}
-	// GATE-05 puts most of this package's behaviour in a subprocess, which
+	// Most of this package's behaviour is tested in a subprocess, which
 	// the in-process coverage instrument cannot see -- `go test -cover`
 	// reports cmd/keep at a few percent and measures almost nothing. When
 	// scripts/coverage.sh sets $KEEP_COVERDIR the binary is built
@@ -145,8 +143,7 @@ func run(t *testing.T, bin, dir string, env []string, args ...string) (stdout, s
 	return "", "", -1
 }
 
-// runStdin is run's stdin-aware sibling, needed because no command before
-// this phase reads stdin (03-RESEARCH.md Pitfall 3): args is variadic-last
+// runStdin is run's stdin-aware sibling: args is variadic-last
 // in run's signature, so a stdin parameter cannot be inserted into it
 // without touching every existing call site, and an unset cmd.Stdin
 // correctly defaults to os.DevNull for every other command's test -- so run
@@ -155,10 +152,9 @@ func run(t *testing.T, bin, dir string, env []string, args ...string) (stdout, s
 // A non-*os.File io.Reader (strings.NewReader here) is copied to the
 // child's stdin via an internal os/exec goroutine, so Wait() (inside
 // cmd.Run()) blocks until copying finishes -- no manual pipe/goroutine
-// plumbing is needed here, confirmed against os/exec's own documentation
-// and 03-RESEARCH.md's live proof that a 5MB payload round-trips
-// byte-identically through a real os/exec-spawned process with no
-// truncation.
+// plumbing is needed here, per os/exec's own documentation; a multi-megabyte
+// payload round-trips byte-identically through a real os/exec-spawned
+// process with no truncation.
 func runStdin(t *testing.T, bin, dir string, env []string, stdin string, args ...string) (stdout, stderr string, code int) {
 	t.Helper()
 
@@ -194,10 +190,9 @@ func runStdin(t *testing.T, bin, dir string, env []string, stdin string, args ..
 // verbatim (e.g. "KEEP_SESSION=s1"). Deliberately not os.Environ() plus
 // overrides -- inheriting the developer's real HOME or a real KEEP_DB is
 // exactly the leak that makes these tests pass on one machine and fail on
-// another. USER is part of the base set (not left to extra) because plan
-// 07 onward's mutating commands resolve an actor via resolveActor, which
-// falls back to $USER -- every existing call site up through plan 06's
-// CLI tests keeps compiling unchanged because extra is variadic.
+// another. USER is part of the base set (not left to extra) because
+// mutating commands resolve an actor via resolveActor, which falls back to
+// $USER.
 func env(home, keepDB string, extra ...string) []string {
 	e := []string{
 		"PATH=/usr/bin:/bin:/usr/local/bin",

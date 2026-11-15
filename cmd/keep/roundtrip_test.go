@@ -6,8 +6,8 @@ import (
 )
 
 // mustCapture runs `keep capture <title> --body -` (the canonical
-// docs/design/phase-2.md invocation order: title first, flags after,
-// proving 03-01's permuteArgs handles it) with stdin as the body, and fails
+// invocation order: title first, flags after, proving permuteArgs handles
+// it) with stdin as the body, and fails
 // the test immediately if it does not succeed, returning the trimmed id.
 func mustCapture(t *testing.T, bin, repo string, e []string, stdin, title string) string {
 	t.Helper()
@@ -51,13 +51,11 @@ func buildLargeMarkdownDoc() string {
 	return b.String()
 }
 
-// TestCaptureShowBodyRoundTripsByteIdentical is CAP-02's exit gate: a real
-// document, piped into `capture --body -`, must come back out of
-// `show --body` byte-identical -- no normalisation in either direction
-// (03-CONTEXT.md decision 2, 03-RESEARCH.md's empirical byte-identical
-// proof). Every document shape the research verified at the storage layer
-// is exercised here again at the CLI/process boundary, through a real pipe
-// and the real binary.
+// TestCaptureShowBodyRoundTripsByteIdentical: a real document, piped into
+// `capture --body -`, must come back out of `show --body` byte-identical --
+// no normalisation in either direction. Every document shape that
+// round-trips at the storage layer is exercised here again at the
+// CLI/process boundary, through a real pipe and the real binary.
 func TestCaptureShowBodyRoundTripsByteIdentical(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)
@@ -81,8 +79,8 @@ func TestCaptureShowBodyRoundTripsByteIdentical(t *testing.T) {
 	withoutTrailingNewline := strings.TrimSuffix(markdown, "\n")
 	crlf := strings.ReplaceAll(markdown, "\n", "\r\n")
 	// The NUL/invalid-UTF-8 case is a regression lock, not an open
-	// question: 03-RESEARCH.md verified this round-trips today with zero
-	// transform through TEXT NOT NULL on the pinned driver. It exists to
+	// question: it round-trips with zero transform through TEXT NOT NULL on
+	// the pinned driver. It exists to
 	// catch someone later adding "defensive" encoding, not to discover new
 	// behavior.
 	nulAndInvalidUTF8 := "before\x00after " + string([]byte{0xff, 0xfe, 0xfd}) + " end\x00"
@@ -127,7 +125,7 @@ func TestCaptureShowBodyRoundTripsByteIdentical(t *testing.T) {
 
 // TestShowBodyAndJSONAreMutuallyExclusive proves --body and --json cannot be
 // combined: two different output contracts, combining them means nothing
-// (03-CONTEXT.md decision 2).
+// in combination.
 func TestShowBodyAndJSONAreMutuallyExclusive(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)

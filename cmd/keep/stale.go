@@ -88,11 +88,9 @@ func runStale(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "%-*s  silent %-8s  claimed by %-16s  %s\n",
 			idW, c.ID, roundSilence(c.Silent), who, c.Title)
 	}
-	// This used to offer `drop` as the way to "hand it back", which is the
-	// exact false record `unclaim` exists to avoid: drop says the work was
-	// not worth doing, and a claim going quiet says nothing of the sort.
-	// Three exits, and the middle one is the one this command is usually
-	// about.
+	// `drop` is not the way to "hand it back": drop says the work was not
+	// worth doing, and a claim going quiet says nothing of the sort. Three
+	// exits, and the middle one is the one this command is usually about.
 	fmt.Fprintf(stderr, "\n%d claim%s with nothing happening. Put one back with `keep unclaim <id> --reason ...`,\nfinish it with `keep close <id> --reason ...`, or let it go with `keep drop <id> --reason ...`.\n",
 		len(claims), map[bool]string{true: "", false: "s"}[len(claims) == 1])
 	return 0

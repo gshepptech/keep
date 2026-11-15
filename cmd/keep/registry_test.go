@@ -29,7 +29,7 @@ func readRegistry(t *testing.T, home string) registry.Envelope {
 	return env
 }
 
-// TestInitRegistersStoreInRepoList proves REPO-01's core behaviour: a fresh
+// TestInitRegistersStoreInRepoList proves a fresh
 // `keep init` in a directory named "myrepo" writes exactly one repo row
 // naming the repository directory (never the store's own filename, which is
 // always "db.sqlite"), whose path is the absolute store path `init` printed
@@ -72,8 +72,8 @@ func TestInitRegistersStoreInRepoList(t *testing.T) {
 	}
 }
 
-// TestInitRegistrationIsIdempotentAndRefreshesLastSeen proves REPO-01's
-// idempotency requirement: running `keep init` a second time in the same
+// TestInitRegistrationIsIdempotentAndRefreshesLastSeen proves registration
+// is idempotent: running `keep init` a second time in the same
 // repository leaves exactly ONE row, with a last_seen strictly greater than
 // the first run's. The row count is asserted, not only the timestamp -- a
 // bug that always appended would still refresh a *different* row's
@@ -112,8 +112,8 @@ func TestInitRegistrationIsIdempotentAndRefreshesLastSeen(t *testing.T) {
 	}
 }
 
-// TestInitRegistrationSurvivesUnwritableHome proves REPO-01's best-effort
-// contract (06-CONTEXT.md decision 3): with $HOME pointing at a REGULAR FILE
+// TestInitRegistrationSurvivesUnwritableHome proves registration is
+// best-effort: with $HOME pointing at a REGULAR FILE
 // (so ~/.rounce cannot be created under it), `init` still exits 0, stdout is
 // still exactly the one store-path line, stderr carries a warning naming the
 // store path, and -- critically -- the store `init` created is real and
@@ -162,8 +162,8 @@ func TestInitRegistrationSurvivesUnwritableHome(t *testing.T) {
 	}
 }
 
-// TestGlobalInitRegistersStoreNotSpecialCased proves REPO-01's `--global`
-// requirement: `keep init --global` registers $HOME/.rounce/db.sqlite like
+// TestGlobalInitRegistersStoreNotSpecialCased proves `keep init --global`
+// registers $HOME/.rounce/db.sqlite like
 // any other store -- one row whose path is that file -- with no special
 // case, and the registry file sits beside the store in the same directory.
 func TestGlobalInitRegistersStoreNotSpecialCased(t *testing.T) {

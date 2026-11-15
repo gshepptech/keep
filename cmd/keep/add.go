@@ -12,27 +12,27 @@ import (
 	"github.com/gshepptech/keep/internal/store"
 )
 
-// runAdd implements the `add` subcommand (ITEM-01): create a new item and
+// runAdd implements the `add` subcommand: create a new item and
 // print its id. Mirrors runInit's shape (cmd/keep/init.go) exactly --
 // flag.NewFlagSet(..., flag.ContinueOnError), fs.SetOutput(stderr), return 2
 // on parse failure.
 //
 // Invocation shape is `keep add [flags] <title>`, and flags are also
-// accepted AFTER the title (03-CONTEXT.md decision 1a) -- stdlib
+// accepted AFTER the title -- stdlib
 // flag.Parse itself still stops consuming flags at the first non-flag
 // argument, unchanged, and that is still what lets a multi-word unquoted
 // title work: everything left in fs.Args() after flags are consumed is
 // joined with a space into the title, so a title needs no quoting even
-// when it has multiple words, as long as it comes last. What changed is
-// that fs.Parse(permuteArgs(fs, args)) runs on a pre-pass that moves every
-// well-formed flag ahead of the title first, so both orders now reach
+// when it has multiple words, as long as it comes last.
+// fs.Parse(permuteArgs(fs, args)) runs on a pre-pass that moves every
+// well-formed flag ahead of the title first, so both orders reach
 // flag.Parse identically -- see permuteArgs's doc comment
 // (cmd/keep/flags.go) for the mechanism and the silent-corruption failure
 // mode it avoids.
 //
 // cmd/keep must never import a database driver package, must never
 // contain a SQL string, and must never receive a raw DB handle or a row
-// (STORE-10) -- runAdd builds exactly one store.AddItemInput and makes
+// -- runAdd builds exactly one store.AddItemInput and makes
 // exactly one store.AddItem call.
 func runAdd(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("add", flag.ContinueOnError)
@@ -52,7 +52,7 @@ func runAdd(args []string, stdout, stderr io.Writer) int {
 	// insertEdge doc comment): a deps row (item_id=A, depends_on_id=B,
 	// type='blocks') means "A is blocked until B closes". This reading is
 	// genuinely easy to invert -- this help text is where a user resolves
-	// it, per 02-07-PLAN.md task 2's explicit instruction.
+	// it.
 	var blocksFlag stringSlice
 	fs.Var(&blocksFlag, "blocks", "id that blocks this new item -- the NEW item is blocked until <id> closes; repeatable")
 
@@ -103,7 +103,7 @@ func runAdd(args []string, stdout, stderr io.Writer) int {
 	}
 
 	// Resolved before the store is opened, so a stdin read failure exits
-	// without leaving an open store behind (03-03-PLAN.md task 1).
+	// without leaving an open store behind.
 	body, err := resolveBody(*bodyFlag)
 	if err != nil {
 		fmt.Fprintf(stderr, "keep: add: %v\n", err)
@@ -160,7 +160,7 @@ func runAdd(args []string, stdout, stderr io.Writer) int {
 // ValidTypes/ValidStages (maps) would produce a different order on every
 // process, which would make a captured test assertion or a demo transcript
 // flaky. model.TypesOrdered/StagesOrdered are the one place this order is
-// spelled out (04-01-PLAN.md task 1); this function only joins it.
+// spelled out; this function only joins it.
 func validTypesList() string {
 	return strings.Join(model.TypesOrdered, ", ")
 }
@@ -170,8 +170,7 @@ func validStagesList() string {
 }
 
 // parseScore validates and splits "v/c/e" into three ints, each in [0,10].
-// strings.Split (not SplitN) is deliberate (02-RESEARCH.md "Code Examples
-// -- --score v/c/e parsing and validation", used verbatim): "8//3" must
+// strings.Split (not SplitN) is deliberate: "8//3" must
 // split into exactly three parts (["8","","3"]) so the empty middle part
 // fails strconv.Atoi with a clear, specific error naming "confidence",
 // rather than being silently absorbed into a wider third part.

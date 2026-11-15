@@ -21,8 +21,7 @@ import (
 //
 // cmd/keep must never import a database driver package, must never
 // contain a SQL string, and must never receive a raw DB handle or a row
-// (STORE-10). The only internal/store symbols used below are the ones
-// listed in 01-04-PLAN.md's <interfaces> section.
+// -- only internal/store's exported API.
 func runInit(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("init", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -39,7 +38,7 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
-	// Target selection, in this order and no other (settled decision 5):
+	// Target selection, in this order and no other:
 	// init does not consult the four-rule resolver or KEEP_DB.
 	var target string
 	switch {
@@ -92,7 +91,7 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 	}
 	defer s.Close()
 
-	// Nested-store warning (settled decision 2, research Open Question 3):
+	// Nested-store warning:
 	// walk up starting one directory ABOVE the directory whose .rounce/ now
 	// holds the new store -- target is <dir>/.rounce/db.sqlite, so
 	// Dir(Dir(Dir(target))) is the parent of <dir>. Starting at <dir> itself
@@ -105,7 +104,7 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-	// KEEP_DB shadow warning (settled decision 6): init never consults
+	// KEEP_DB shadow warning: init never consults
 	// KEEP_DB to choose its target, so if it is set to somewhere else, the
 	// store just written is one no other command will read by default.
 	if envDB := store.Env("DB"); envDB != "" {
@@ -114,9 +113,9 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-	// REPO-01: register the store just created in ~/.rounce/repos.json.
+	// Register the store just created in ~/.rounce/repos.json.
 	//
-	// Best-effort by decision (06-CONTEXT.md decision 3). The store this command
+	// Best-effort by decision. The store this command
 	// was asked to create WAS created; a bookkeeping failure -- a read-only home,
 	// a full disk, a HOME that is not a directory -- warns on stderr and leaves
 	// the exit code at 0. Failing init over the registry would let a convenience

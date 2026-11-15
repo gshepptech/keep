@@ -11,13 +11,13 @@ import (
 	"github.com/gshepptech/keep/internal/store"
 )
 
-// runDep implements the `dep` subcommand (DEP-01/DEP-02): `keep dep <a>
+// runDep implements the `dep` subcommand: `keep dep <a>
 // <type> <b>` creates one edge. Three positional arguments after flag
 // parsing (fs.Arg(0..2)); anything else is a usage error.
 //
 // The dep type is validated against model.ValidDepTypes before the store is
 // even opened -- an unrecognized type exits 2 naming the four legal values.
-// `parent-child` IS in that closed vocabulary (DEP-01 lists it), so it
+// `parent-child` IS in that closed vocabulary, so it
 // passes this check and reaches store.CreateDep, which is the single place
 // that refuses it (store.ErrParentChildViaDep, whose own message names
 // `keep add --parent`) -- exitFor maps that sentinel to exit 2, not 1,

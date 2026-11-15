@@ -14,15 +14,14 @@ import (
 	"github.com/gshepptech/keep/internal/registry"
 )
 
-// runReady implements the `ready` subcommand (READY-01): the ranked queue of
+// runReady implements the `ready` subcommand: the ranked queue of
 // workable items, exactly as the shipped `ready` view computes it.
 //
-// cmd/keep may not contain SQL or filtering/sorting logic (STORE-10,
-// READY-03) -- runReady makes exactly one store.Ready call and renders its
-// result unmodified. It does not re-sort, does not drop raw items, does not
-// check status: every predicate lives in the view, per 02-CONTEXT.md's
-// carried-forward decision and docs/design/phase-1.md's warning against
-// re-adding a filter in a caller "for clarity".
+// cmd/keep may not contain SQL or filtering/sorting logic -- runReady makes
+// exactly one store.Ready call and renders its result unmodified. It does
+// not re-sort, does not drop raw items, does not check status: every
+// predicate lives in the view, and re-adding a filter in a caller "for
+// clarity" would give it a second place to drift.
 func runReady(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("ready", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -90,7 +89,7 @@ func runReady(args []string, stdout, stderr io.Writer) int {
 	if *jsonFlag {
 		// A nil []model.Item marshals to `null`, and an agent doing
 		// `for item in $(jq '.[]')` breaks on null. An empty queue is
-		// exit 0, not an error (RANK-02/CLI-01), so the JSON shape must
+		// exit 0, not an error, so the JSON shape must
 		// say so unambiguously: substitute an empty, non-nil slice
 		// before encoding.
 		if items == nil {
@@ -130,21 +129,20 @@ type readyAllError struct {
 	Error      string `json:"error"`
 }
 
-// runReadyAll implements REPO-03. It reads the registry, fans out read-only
+// runReadyAll implements `ready --all`. It reads the registry, fans out read-only
 // through internal/registry, merges by score across every store, and
 // renders.
 //
 // It never opens a store itself and never re-implements the ready query: the
 // per-store rows come from store.Ready via registry.FetchReady, which is
 // what makes ready --all's view of a repository structurally unable to
-// disagree with that repository's own `keep ready` (Anti-Pattern 1 in
-// .planning/research/ARCHITECTURE.md).
+// disagree with that repository's own `keep ready`.
 //
 // --limit slices the MERGED result. Each store is fetched unlimited. A
 // per-store limit would let each store's own created_at tiebreak decide
 // which rows even reach the cross-store ranking, and created_at is exactly
 // the key that is not comparable across stores -- the same "one unlimited
-// call feeds everything" discipline board.go already applies.
+// call feeds everything" discipline board.go applies.
 func runReadyAll(limit int, asJSON bool, stdout, stderr io.Writer) int {
 	payload, err := readyAllPayload(context.Background(), stderr)
 	if err != nil {
@@ -166,14 +164,14 @@ func runReadyAll(limit int, asJSON bool, stdout, stderr io.Writer) int {
 	}
 
 	// Errors go to stderr, never to stdout, which carries the queue only
-	// (CLI-01). Exit 0 even when some repos failed, matching `repos`.
+	// Exit 0 even when some repos failed, matching `repos`.
 	//
 	// One failure is named in full, because it is probably the thing the
 	// person needs to see. Several are summarised to a single line: `init`
 	// registers automatically and nothing unregisters until `repos forget
-	// --gone`, so a registry with a dozen dead scratch repositories used to
-	// print a dozen paragraphs above every queue, which is how a person
-	// learns to stop reading stderr.
+	// --gone`, so a registry with a dozen dead scratch repositories would
+	// otherwise print a dozen paragraphs above every queue, which is how a
+	// person learns to stop reading stderr.
 	switch len(payload.Errors) {
 	case 0:
 	case 1:
@@ -248,10 +246,10 @@ func renderMerged(w io.Writer, items []registry.MergedItem) {
 // mcp.Options.ReadyAll -- which is the same shape the CLI has always had
 // here, just named and handed to something else as well.
 //
-// A malformed registry is never fatal (06-CONTEXT.md decision 2):
-// registry.Load hands back BOTH a usable empty envelope and the error, so
-// this reports and continues. Refusing the whole read because one line of
-// JSON is wrong is the failure that decision forbids.
+// A malformed registry is never fatal: registry.Load hands back BOTH a
+// usable empty envelope and the error, so this reports and continues.
+// Refusing the whole read because one line of JSON is wrong would be
+// worse than a warning.
 //
 // It is reported to warn rather than returned, because it is a warning about
 // the machine's configuration and not a property of the queue -- it does not

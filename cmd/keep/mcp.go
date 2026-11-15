@@ -28,8 +28,7 @@ import (
 //
 // It is what Run returns when the client closes stdin while a request is
 // still in flight, which is an ordinary disconnect and not a keep
-// failure. Verified live, 10 runs out of 10 (04-RESEARCH.md/04-04-PLAN.md):
-// piping a batch of requests and closing immediately produces
+// failure. Piping a batch of requests and closing immediately produces
 // *fmt.wrapError wrapping *jsonrpc.Error{Code: -32004, Message: "server is
 // closing"}, message "server is closing: EOF". The same batch with stdin
 // held open until every response is written returns nil. Without this
@@ -40,11 +39,10 @@ const codeServerClosing = -32004
 // runMCP serves the MCP protocol over stdio against the store the same
 // four-rule resolver every other command uses. It blocks until the client
 // disconnects -- the one runX that does not return promptly -- but keeps
-// every other runX's (args, stdout, stderr) int shape (04-CONTEXT.md:
-// "registration follows the same shape").
+// every other runX's (args, stdout, stderr) int shape.
 //
-// No --json: the protocol IS the output format. No --actor: 04-CONTEXT.md
-// decision 3 makes actor a per-call tool argument with a server default: a
+// No --json: the protocol IS the output format. No --actor: actor is a
+// per-call tool argument with a server default: a
 // --actor flag here would be a third place the default could come from,
 // alongside $KEEP_ACTOR and $USER.
 func runMCP(args []string, stdout, stderr io.Writer) int {
@@ -80,7 +78,7 @@ func runMCP(args []string, stdout, stderr io.Writer) int {
 	// The SDK's default Logger is slog.New(slog.DiscardHandler) -- it
 	// writes nowhere. Set one explicitly, pointed at stderr (never
 	// os.Stdout, never the stdout parameter): stdout carries protocol
-	// bytes only (MCP-07), and an MCP server with no diagnostics at all is
+	// bytes only, and an MCP server with no diagnostics at all is
 	// hard to debug.
 	logger := slog.New(slog.NewTextHandler(stderr, nil))
 
@@ -105,7 +103,7 @@ func runMCP(args []string, stdout, stderr io.Writer) int {
 		// renders from, so the tool and the flag cannot disagree.
 		ReadyAll: func(ctx context.Context) (any, error) {
 			// Warnings go through the SDK logger, which is pointed at
-			// stderr: stdout carries protocol bytes only (MCP-07), and a
+			// stderr: stdout carries protocol bytes only, and a
 			// malformed registry is worth saying out loud rather than
 			// dropping just because this surface has nowhere obvious to
 			// put it.

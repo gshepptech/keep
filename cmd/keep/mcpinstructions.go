@@ -22,19 +22,18 @@ const instructionRows = 5
 //
 // # Why this exists at all
 //
-// plugin/README.md's argument for the SessionStart hook was that an
-// instruction to a model can be ignored while a hook fires regardless. That
-// is true, and it is also not the whole picture: the hook and this field
-// both inject text, and neither compels the model to act on it.
+// The argument for the SessionStart hook is that an instruction to a model
+// can be ignored while a hook fires regardless. That is true, and it is
+// also not the whole picture: the hook and this field both inject text,
+// and neither compels the model to act on it.
 //
-// This was proposed as the cheap channel that covers every MCP client and
-// so makes the per-agent hook work optional. Measurement killed half of
-// that (see internal/mcp's Options.Instructions for the detail): Claude
-// Code renders it under an "MCP Server Instructions" block, and Codex
-// 0.147 does not put it in the model's prompt at all. It is the whole
+// This field looks like a cheap channel that covers every MCP client, but
+// clients differ (see internal/mcp's Options.Instructions for the detail):
+// Claude Code renders it under an "MCP Server Instructions" block, and
+// Codex does not put it in the model's prompt at all. It is the whole
 // delivery mechanism on one agent and nothing on the other.
 //
-// It stays because it earns its hour on the Claude Code side and costs
+// It stays because it is useful on the Claude Code side and costs
 // nothing elsewhere -- an MCP server that receives it but hides it is the
 // client's choice, not a bug here. It does not replace the hook.
 //
@@ -132,8 +131,7 @@ func mcpInstructions(ctx context.Context, s *store.Store) string {
 // $KEEP_ACTOR is how you say "record this as something other than the
 // tool you happen to be driving" -- a named human, a CI identity, a second
 // agent behind a proxy. A client name that overrode it would make that
-// unsayable. Existing setups that set it keep working unchanged, which
-// includes the Codex registration documented before this existed.
+// unsayable. Setups that set it keep working unchanged.
 //
 // This lives in cmd/keep, not internal/mcp, for the reason that package's
 // Options.ActorFor states: it takes the raw params nil and all, and every

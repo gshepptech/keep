@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// captureFields is the subset of `show --json`'s output CAP-01's tests
+// captureFields is the subset of `show --json`'s output the capture tests
 // assert on, decoded rather than grepped so a body containing the words
 // "stage" or "type" cannot produce a false match.
 type captureFields struct {
@@ -33,7 +33,7 @@ func showFields(t *testing.T, bin, dir string, e []string, id string) captureFie
 // docFixture is a multi-section markdown document with headings, a fenced
 // code block, and a blank line -- deliberately more structure than a bare
 // string, so a naive line-trimming bug in a later change has something to
-// fail on (03-03-PLAN.md task 3's explicit instruction). No trailing
+// fail on. No trailing
 // newline, so the byte-identical contract is exercised in both directions.
 const docFixture = `# Q3 roadmap
 
@@ -49,8 +49,8 @@ func main() {}
 ` + "```" + `
 Last line, no trailing newline`
 
-// TestCaptureCanonicalInvocation proves docs/design/phase-2.md's exact
-// documented invocation -- title FIRST, flags after, a document piped in --
+// TestCaptureCanonicalInvocation proves the canonical invocation -- title
+// FIRST, flags after, a document piped in --
 // exits 0, prints one id, and show --json reports stage=raw, the given
 // type, and a body equal to the piped bytes.
 func TestCaptureCanonicalInvocation(t *testing.T) {

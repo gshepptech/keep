@@ -10,11 +10,9 @@ import (
 	"github.com/gshepptech/keep/internal/store"
 )
 
-// runUpdate implements the `update` subcommand (02-CONTEXT.md decision 4):
-// change any of add's fields except status on an existing item. This closes
-// the gap 02-CONTEXT.md found: docs/design/phase-1.md says score is
-// "recomputed on any write that changes an input", but until this plan the
-// shipped command surface had no write that could change one.
+// runUpdate implements the `update` subcommand: change any of add's fields
+// except status on an existing item. Score is recomputed on any write that
+// changes one of its inputs, and this is the write that can.
 //
 // --status is deliberately NOT a registered flag. open -> in_progress ->
 // closed/dropped moves only through start/close/drop, so the event log
@@ -27,7 +25,7 @@ import (
 // which is a better outcome than a custom message pretending to explain a
 // flag that was never there.
 //
-// cmd/keep may not contain SQL (STORE-10) -- every flag's help text below
+// cmd/keep may not contain SQL -- every flag's help text below
 // says "change fields on an existing item", never a fragment resembling a
 // SQL statement, so TestNoSQLAboveStore's literal scan does not trip on it.
 func runUpdate(args []string, stdout, stderr io.Writer) int {
@@ -91,7 +89,7 @@ func runUpdate(args []string, stdout, stderr io.Writer) int {
 	// UpdateItemInput doc comment): the outer pointer means "touched"; the
 	// inner pointer is nil to CLEAR the score back to unscored, or points
 	// at the parsed value to SET it. "none" is the spelling that wires the
-	// clearing path plan 06's encoding supports.
+	// clearing path that encoding supports.
 	var value, confidence, effort **int
 	if visited["score"] {
 		if *scoreFlag == "none" {
@@ -133,11 +131,11 @@ func runUpdate(args []string, stdout, stderr io.Writer) int {
 	}
 
 	// No fields supplied is a usage error (exit 2), not a silent no-op
-	// (02-CONTEXT.md decision 4) -- checked, and returned, BEFORE opening
+	// -- checked, and returned, BEFORE opening
 	// the store: opening a database to discover the caller asked for
 	// nothing is wasted work and a worse error message. Checking the built
 	// UpdateItemInput's own fields (rather than counting fs.NFlag()) is the
-	// robust form the plan calls for -- --db/--actor/--json also count
+	// robust form -- --db/--actor/--json also count
 	// toward NFlag but are not field flags.
 	anyFieldSet := in.Title != nil || in.Body != nil || in.Acceptance != nil || in.Why != nil ||
 		in.Type != nil || in.Stage != nil || in.Repo != nil || in.Paths != nil || in.Assignee != nil ||

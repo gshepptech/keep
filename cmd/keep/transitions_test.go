@@ -43,9 +43,8 @@ func mustShow(t *testing.T, bin, repo string, e []string, id string) showDetail 
 // database directly -- is the whole point of TestStartClaimsAndIsIdempotent
 // below: asserting "exit 0 twice" alone would also pass for an
 // implementation that appends a second claim event, which is exactly the
-// failure 02-CONTEXT.md decision 3 exists to prevent (02-06-SUMMARY.md
-// proved this once at the store layer; this proves it again at the CLI
-// boundary the plan is built on).
+// failure the idempotent retry exists to prevent (proven at the store
+// layer too; this proves it again at the CLI boundary).
 func countEventsOfKind(d showDetail, kind string) int {
 	n := 0
 	for _, ev := range d.Events {
@@ -56,8 +55,8 @@ func countEventsOfKind(d showDetail, kind string) int {
 	return n
 }
 
-// TestStartClaimsAndIsIdempotent proves 02-CONTEXT.md decision 3's central
-// claim: a same-session repeat of `start` succeeds again (exit 0) without
+// TestStartClaimsAndIsIdempotent proves a same-session repeat of `start`
+// succeeds again (exit 0) without
 // writing a second `start` event.
 func TestStartClaimsAndIsIdempotent(t *testing.T) {
 	bin := buildKeep(t, "")
@@ -166,7 +165,7 @@ func TestStartRefusesRawAndBlocked(t *testing.T) {
 	})
 }
 
-// TestCloseAndDropAreDistinguishableOnCLI proves ITEM-08 end to end through
+// TestCloseAndDropAreDistinguishableOnCLI proves end to end through
 // the CLI: both close and drop remove an item from ready, but items.status
 // and events.kind (and the --reason text carried in the event payload)
 // stay distinguishable between the two verbs.
@@ -335,7 +334,7 @@ func TestUpdateChangesFieldsAndScore(t *testing.T) {
 }
 
 // TestUpdateNoFlagsExitsTwo proves `update <id>` with no field flags is a
-// usage error, not a silent no-op (02-CONTEXT.md decision 4).
+// usage error, not a silent no-op.
 func TestUpdateNoFlagsExitsTwo(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)

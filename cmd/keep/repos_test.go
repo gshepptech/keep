@@ -41,7 +41,7 @@ func makeRepo(t *testing.T, bin, root, home, name string, n int) string {
 	return storePath
 }
 
-// TestReposListsCountsAndLastActivity proves the core of REPO-02: two real
+// TestReposListsCountsAndLastActivity proves the core of `keep repos`: two real
 // repos with different, known item counts show up in --json with the right
 // items/ready per row and a last_activity that parses with model.TimeFormat,
 // and the rendered output carries a row whose exact first field is the
@@ -111,8 +111,8 @@ func TestReposListsCountsAndLastActivity(t *testing.T) {
 	}
 }
 
-// TestReposShowsErrorRowForBrokenStoreAndExitsZero proves REPO-05's visible
-// half: three registered repos, one's store file deleted, still all appear,
+// TestReposShowsErrorRowForBrokenStoreAndExitsZero: three registered repos,
+// one's store file deleted, still all appear,
 // the deleted one carrying a non-empty error and zeroed counts, the other
 // two carrying their real counts, and the command exits 0 regardless.
 func TestReposShowsErrorRowForBrokenStoreAndExitsZero(t *testing.T) {
@@ -282,8 +282,8 @@ func TestReposForgetRemovesRowAndLeavesStoreOnDisk(t *testing.T) {
 	}
 }
 
-// TestReposMalformedRegistryIsNotFatal proves 06-CONTEXT.md decision 2's
-// never-fatal contract end to end: a malformed ~/.rounce/repos.json makes
+// TestReposMalformedRegistryIsNotFatal proves the registry's never-fatal
+// contract end to end: a malformed ~/.rounce/repos.json makes
 // `keep repos` exit 0 with a warning on stderr and no rows on stdout --
 // and, the more important half, does not stop `keep ready` from working
 // in the repository the user is standing in.

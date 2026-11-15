@@ -52,7 +52,7 @@ func idsFromLines(stdout string) []string {
 // TestReadyOrderAndLimit proves runReady renders store.Ready's own
 // score-descending order untouched -- items are added in an order that
 // deliberately does NOT match score order (so a created_at-based sort would
-// produce a different, wrong result -- see GATE-03 break 1 below), and
+// produce a different, wrong result), and
 // --limit trims the result without altering the order.
 func TestReadyOrderAndLimit(t *testing.T) {
 	bin := buildKeep(t, "")
@@ -102,7 +102,7 @@ func TestReadyOrderAndLimit(t *testing.T) {
 }
 
 // TestReadyEmptyIsExitZero proves an empty workable queue is a normal
-// answer, not an error (RANK-02/CLI-01): exit 0, empty stdout, empty stderr,
+// answer, not an error: exit 0, empty stdout, empty stderr,
 // and --json prints "[]", never "null".
 func TestReadyEmptyIsExitZero(t *testing.T) {
 	bin := buildKeep(t, "")
@@ -135,7 +135,7 @@ func TestReadyEmptyIsExitZero(t *testing.T) {
 }
 
 // TestReadyExcludesRawFromCLI proves an item added with --stage raw never
-// appears in ready output through the CLI -- READY-03 enforced end to end,
+// appears in ready output through the CLI -- raw is never workable, enforced end to end,
 // not just at the store layer.
 func TestReadyExcludesRawFromCLI(t *testing.T) {
 	bin := buildKeep(t, "")
@@ -167,12 +167,11 @@ func TestReadyExcludesRawFromCLI(t *testing.T) {
 	}
 }
 
-// TestBlockedNamesBlockerOnCLI proves READY-04 end to end through the CLI:
+// TestBlockedNamesBlockerOnCLI proves end to end through the CLI:
 // after `dep <epic> blocks <blocker>`, the epic's child (blocked
 // transitively, through the parent-child tree) appears in `blocked` output
 // naming the EPIC's id, not the root blocker's id -- the nearest blocked
-// ancestor, matching store.Blocked's own documented behaviour (02-04-
-// SUMMARY.md).
+// ancestor, matching store.Blocked's own documented behaviour.
 func TestBlockedNamesBlockerOnCLI(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)
@@ -232,9 +231,7 @@ func TestBlockedNamesBlockerOnCLI(t *testing.T) {
 
 // TestShowBodyVerbatim proves the body prints byte-for-byte after the "body"
 // header -- multi-line, a blank line, a non-ASCII character, and a trailing
-// newline all survive the round trip through `show`. This is CAP-02's same
-// assertion (Phase 3), proven once here at the smaller scale this phase
-// controls.
+// newline all survive the round trip through `show`.
 func TestShowBodyVerbatim(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)
@@ -282,12 +279,9 @@ func TestShowUnknownID(t *testing.T) {
 }
 
 // TestListFiltersCompose proves list's filters compose as AND, asserted as
-// an exact id set. --status cannot vary in this plan's fixtures (start/
-// close/drop are plan 09's CLI, not yet built; every item add produces is
-// status=open) so --stage and --repo are the two axes exercised here --
-// both settable at `add` time, giving a genuine two-filter AND composition
-// through the real CLI, the same property the plan's literal
-// "--stage ticket --status open" example tests.
+// an exact id set. Every item `add` produces is status=open, so --stage
+// and --repo are the two axes exercised here -- both settable at `add`
+// time, giving a genuine two-filter AND composition through the real CLI.
 func TestListFiltersCompose(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)
@@ -316,11 +310,11 @@ func TestListFiltersCompose(t *testing.T) {
 	}
 }
 
-// TestReadJSONStreamPurity is the CLI-01 test that matters most: for all
+// TestReadJSONStreamPurity is the --json test that matters most: for all
 // four read commands, --json's ENTIRE stdout must parse as JSON with no
 // leading or trailing non-JSON bytes, and stderr must be empty. Unmarshalling
 // the whole buffer (not a line, not a prefix) is what catches a stray
-// fmt.Println -- see GATE-03 break 3 below.
+// fmt.Println.
 func TestReadJSONStreamPurity(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)

@@ -28,9 +28,9 @@ var licenceIdentifier = map[string]string{
 
 // TestEveryDeclaredLicenceAgreesWithTheLicenceFile.
 //
-// Both plugin manifests declared Apache-2.0 while LICENSE and the README
-// said MIT. Nothing in the build cares, which is exactly why it survived:
-// a manifest's licence field is read by a marketplace, at install time, by
+// Nothing in the build cares whether the plugin manifests' licence fields
+// agree with LICENSE, which is exactly why a mismatch would survive: a
+// manifest's licence field is read by a marketplace, at install time, by
 // somebody who is not us -- so the only person the mistake is visible to is
 // the one person who cannot fix it.
 //
@@ -65,9 +65,8 @@ func TestEveryDeclaredLicenceAgreesWithTheLicenceFile(t *testing.T) {
 		if d.IsDir() {
 			// .git is huge and .agents holds vendored third-party skills
 			// whose licences are their authors' business, not ours.
-			// .planning is the historical archive.
 			switch d.Name() {
-			case ".git", ".agents", ".planning", "node_modules":
+			case ".git", ".agents", "node_modules":
 				return filepath.SkipDir
 			}
 			return nil

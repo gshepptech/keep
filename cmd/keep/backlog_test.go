@@ -50,8 +50,7 @@ func lineIndexOfHeader(lines []string, header string) int {
 // literal prefix of its own children's ids (rnc-a3f8e9 vs rnc-a3f8e9.1), so
 // a substring/prefix match on the whole line would silently pass for the
 // wrong row; matching the row's own first field, split on whitespace, is
-// the pattern this codebase already uses (idsFromLines, read_test.go;
-// demo-phase-1.sh's has_id via awk; 02-10-SUMMARY.md records why).
+// the pattern this codebase already uses (idsFromLines, read_test.go).
 func lineIndexOfID(lines []string, id string) int {
 	for i, l := range lines {
 		fields := strings.Fields(l)

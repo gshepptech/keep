@@ -13,10 +13,11 @@ import (
 // runReopen implements the `reopen` subcommand: bring a closed or dropped
 // item back into the queue.
 //
-// Before this, close and drop were the only statuses with no way out. An
-// agent that closed the wrong id could not undo it: the work had to be filed
-// again under a new id, losing the event history and every dependency edge
-// that pointed at the original. Filing a duplicate is not a recovery, it is
+// Without it, close and drop would be statuses with no way out. An
+// agent that closed the wrong id could not undo it: the work would have to
+// be filed again under a new id, losing the event history and every
+// dependency edge that pointed at the original. Filing a duplicate is not a
+// recovery, it is
 // a second record of the same work with the first one still claiming to be
 // done.
 //

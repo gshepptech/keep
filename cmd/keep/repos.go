@@ -18,7 +18,7 @@ import (
 
 // runRepos is the project's first command with a sub-subcommand. The literal
 // string match on args[0] is safe because bare `keep repos` takes no
-// positional argument at all (REPO-02's decision: it just lists), so there
+// positional argument at all (it just lists), so there
 // is no ambiguity between the word "add" and a path that happens to be named
 // add. Keep the dispatch shape -- do not reach for a CLI framework.
 func runRepos(args []string, stdout, stderr io.Writer) int {
@@ -56,8 +56,8 @@ type reposJSON struct {
 // runReposList implements the bare `keep repos`: load the registry, fan
 // out read-only counts for every registered store, and render one row per
 // store -- a failed row carries its error in place of the counts and is
-// never dropped, and the command exits 0 regardless (06-CONTEXT.md decision
-// 4). Deliberately registers no --db: repos reads the registry, not one
+// never dropped, and the command exits 0 regardless. Deliberately
+// registers no --db: repos reads the registry, not one
 // store, and a --db flag here would do nothing. Enforced the way
 // `update --status` and `capture --stage` already are: by NOT registering
 // the flag, so flag's own "flag provided but not defined: -db" is the
@@ -80,10 +80,8 @@ func runReposList(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	// A malformed registry is never fatal (06-CONTEXT.md decision 2): Load
-	// hands back BOTH a usable empty envelope and the error, so this reports
-	// and continues. Returning here would be the failure that decision
-	// forbids.
+	// A malformed registry is never fatal: Load hands back BOTH a usable
+	// empty envelope and the error, so this reports and continues.
 	env, err := registry.Load(home)
 	if err != nil {
 		fmt.Fprintf(stderr, "keep: warning: %v\n", err)
@@ -134,7 +132,7 @@ func runReposList(args []string, stdout, stderr io.Writer) int {
 // A failed row is never dropped and never collapses the whole command: it
 // prints "<name>  error: <message>" in place of the counts, since the error
 // text already names the path (classify builds it that way) and repeating
-// the path column would be redundant. This is the visible half of REPO-05.
+// the path column would be redundant.
 func renderRepos(w io.Writer, rows []registry.RepoResult) {
 	if len(rows) == 0 {
 		return
@@ -185,10 +183,9 @@ func renderRepos(w io.Writer, rows []registry.RepoResult) {
 // `repos forget` call, so the two cannot disagree about what a path means.
 //
 // It deliberately does NOT check that the path exists or that it holds a
-// real keep store (06-RESEARCH.md Open Question 3, settled). A
-// registered-but-currently-broken store is REPO-05's normal case, not an
-// error state at registration time -- validating here would make `repos add`
-// refuse exactly the situation the rest of this phase exists to handle
+// real keep store. A registered-but-currently-broken store is a normal
+// case, not an error state at registration time -- validating here would
+// make `repos add` refuse exactly the situation the registry exists to handle
 // gracefully, and would make re-registering a store on a disconnected volume
 // impossible.
 func normaliseStorePath(arg string) (string, error) {
@@ -289,8 +286,7 @@ func runReposForget(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "keep: not registered: %s\n", path)
 		return 1
 	}
-	// Forgetting is not deleting, and the message says so -- 06-CONTEXT.md
-	// decision 4 asks for exactly this.
+	// Forgetting is not deleting, and the message says so.
 	fmt.Fprintf(stdout, "forgotten: %s (the store itself was not touched)\n", path)
 	return 0
 }

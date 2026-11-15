@@ -50,18 +50,16 @@ func blockedRowFor(output, id string) (string, bool) {
 
 // rowNamesBlocker reports whether row (a blocked row from blockedRowFor)
 // ends with the renderItems-produced "← blocked by <blockerID>" suffix
-// exactly -- matching scripts/demo-phase-1.sh's row_names_blocker.
+// exactly.
 func rowNamesBlocker(row, blockerID string) bool {
 	return strings.HasSuffix(row, "← blocked by "+blockerID)
 }
 
-// TestRefineFromCapturedRoadmap proves CAP-04, CAP-05, and CAP-06 end to end
-// against items that entered the store through `capture`, not against raw
-// store-level fixtures: store.AddItem's dual parent-child/derived-from write
-// and store.Blocked's tree propagation were already proven in Phase 2
-// (02-02-SUMMARY.md, 02-04-SUMMARY.md); what has never been shown is that
-// both reach a document captured through this phase's own `capture` command,
-// which is exactly what docs/design/phase-2.md's exit gate claims.
+// TestRefineFromCapturedRoadmap proves refinement end to end against items
+// that entered the store through `capture`, not against raw store-level
+// fixtures: store.AddItem's dual parent-child/derived-from write and
+// store.Blocked's tree propagation are proven at the store layer; this
+// shows both reach a document captured through the `capture` command.
 func TestRefineFromCapturedRoadmap(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)
@@ -75,8 +73,8 @@ func TestRefineFromCapturedRoadmap(t *testing.T) {
 		"## Phase B\n\n" +
 		"Add integration coverage for it.\n"
 
-	// The canonical docs/design/phase-2.md invocation: title first, flags
-	// after -- 03-01's permuteArgs is what makes this parse.
+	// The canonical invocation: title first, flags after -- permuteArgs is
+	// what makes this parse.
 	docOut, stderr, code := runStdin(t, bin, repo, e, doc, "capture", "Q3 roadmap", "--type", "roadmap", "--body", "-")
 	if code != 0 {
 		t.Fatalf("capture: exit %d, stderr=%q", code, stderr)
@@ -84,12 +82,11 @@ func TestRefineFromCapturedRoadmap(t *testing.T) {
 	docID := strings.TrimSpace(docOut)
 
 	// Two tickets refined from the document, structure and provenance both
-	// pointed at it in one `add` call each (docs/design/phase-2.md's
-	// refinement recipe).
+	// pointed at it in one `add` call each (the refinement recipe).
 	t1 := mustAdd(t, bin, repo, e, "--parent", docID, "--derived-from", docID, "--score", "8/7/3", "Extract the shared config loader")
 	t2 := mustAdd(t, bin, repo, e, "--parent", docID, "--derived-from", docID, "--score", "6/6/2", "Add integration tests for the loader")
 
-	// CAP-04: each ticket's show names BOTH a parent-child and a
+	// Each ticket's show names BOTH a parent-child and a
 	// derived-from edge to the document -- two SEPARATE edges, asserted by
 	// type rather than by counting deps, since a count of 2 would also pass
 	// if both edges happened to be the same type.
@@ -107,7 +104,7 @@ func TestRefineFromCapturedRoadmap(t *testing.T) {
 		}
 	}
 
-	// CAP-05: the document's own show names both tickets under "depended on
+	// The document's own show names both tickets under "depended on
 	// by" -- provenance resolves in both directions.
 	docShowOut, stderr, code := run(t, bin, repo, e, "show", docID)
 	if code != 0 {
@@ -139,7 +136,7 @@ func TestRefineFromCapturedRoadmap(t *testing.T) {
 		t.Fatalf("ready = %q, want the captured roadmap %s absent", readyOut, docID)
 	}
 
-	// CAP-06: blocking the document removes both refined tickets from
+	// Blocking the document removes both refined tickets from
 	// ready, and `blocked` names the DOCUMENT for each (not the underlying
 	// blocker task) -- ticket1/ticket2 are not blocked directly, they are
 	// blocked because their nearest ancestor (the document) is, which is
@@ -176,8 +173,7 @@ func TestRefineFromCapturedRoadmap(t *testing.T) {
 	}
 
 	// Closing the underlying blocker returns both tickets -- a one-way
-	// propagation bug is a real failure mode Phase 2's own blockedTreeCTE
-	// work found once already.
+	// propagation bug is a real failure mode for blockedTreeCTE.
 	if _, stderr, code := run(t, bin, repo, e, "close", "--reason", "shipped", blocker); code != 0 {
 		t.Fatalf("close %s: exit %d, stderr=%q", blocker, code, stderr)
 	}

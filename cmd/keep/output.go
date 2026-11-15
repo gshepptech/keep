@@ -12,8 +12,8 @@ import (
 )
 
 // defaultTitleWidth is the title-truncation budget used whenever stdout is
-// not a character device (02-CONTEXT.md decision 2: "Title truncates to the
-// terminal width, or to 100 columns when not a TTY"). This is also what
+// not a character device: titles truncate to the terminal width, or to 100
+// columns when not a TTY. This is also what
 // makes every CLI test's captured stdout deterministic: a test's stdout is
 // always a pipe, never a real terminal, so titleWidth always returns this
 // constant under `go test`.
@@ -30,7 +30,7 @@ const minTitleBudget = 10
 // terminal and $COLUMNS parses as an integer above 20, defaultTitleWidth
 // otherwise. Stdlib only (os.File.Stat + os.ModeCharDevice) -- pulling in
 // x/term or go-isatty for this single check would make an indirect
-// dependency direct for a cosmetic gain (02-07-PLAN.md).
+// dependency direct for a cosmetic gain.
 func titleWidth(w io.Writer) int {
 	f, ok := w.(*os.File)
 	if !ok {
@@ -48,9 +48,9 @@ func titleWidth(w io.Writer) int {
 }
 
 // renderOpts controls renderItems's optional columns. showStatus adds a
-// status column (list, since it shows non-open items -- 02-CONTEXT.md
-// decision 2). blockedBy, when non-nil, appends "<- blocked by <id>" for
-// any item present in the map (blocked, READY-04).
+// status column (list, since it shows non-open items). blockedBy, when
+// non-nil, appends "<- blocked by <id>" for any item present in the map
+// (blocked).
 type renderOpts struct {
 	showStatus bool
 	blockedBy  map[string]string
@@ -65,10 +65,8 @@ type renderOpts struct {
 
 // renderItems writes one space-padded line per item -- id, [status,] score,
 // type, title[, blocked-by suffix] -- with every column aligned to the
-// widest value in THIS result set, never a fixed width (02-CONTEXT.md
-// decision 2: "columns aligned to the widest value in the set"). No box
-// drawing, no colour, ever, in this phase -- alignment is plain space
-// padding so `awk`/`cut` keep working.
+// widest value in THIS result set, never a fixed width. No box drawing, no
+// colour -- alignment is plain space padding so `awk`/`cut` keep working.
 func renderItems(w io.Writer, items []model.Item, opts renderOpts) {
 	if len(items) == 0 {
 		return
@@ -96,8 +94,7 @@ func renderItems(w io.Writer, items []model.Item, opts renderOpts) {
 
 	// The title column gets whatever remains of the total width budget
 	// after the fixed columns and their two-space separators are
-	// subtracted -- "the remaining budget" (02-07-PLAN.md task 1's
-	// <action>), not the total width itself.
+	// subtracted -- the remaining budget, not the total width itself.
 	used := idW + 2 + scoreW + 2 + typeW + 2
 	if opts.showStatus {
 		used += statusW + 2
@@ -131,8 +128,7 @@ func renderItems(w io.Writer, items []model.Item, opts renderOpts) {
 }
 
 // truncateTitle cuts title to at most width columns, appending a trailing
-// "…" when cut (02-CONTEXT.md decision 2's worked examples; 02-07-PLAN.md
-// task 1's <action> names the ellipsis explicitly). Operates on runes, not
+// "…" when cut. Operates on runes, not
 // bytes, so a multi-byte title is never cut mid-rune.
 func truncateTitle(title string, width int) string {
 	r := []rune(title)
@@ -145,8 +141,8 @@ func truncateTitle(title string, width int) string {
 	return string(r[:width-1]) + "…"
 }
 
-// emitJSON writes v to w as indented JSON and nothing else -- CLI-01's
-// "parseable JSON on stdout with nothing else mixed in". Indented output is
+// emitJSON writes v to w as indented JSON and nothing else -- parseable
+// JSON on stdout with nothing else mixed in. Indented output is
 // still machine-parseable (any JSON decoder ignores whitespace) and is far
 // easier to read in a failing test's captured stdout than a single line.
 func emitJSON(w io.Writer, v any) error {

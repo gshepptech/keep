@@ -80,7 +80,7 @@ func TestAddScoreValidation(t *testing.T) {
 	e := env(home, "")
 	mustInit(t, bin, repo, e)
 
-	// Each row's wantSubstr is the fragment the plan requires stderr to
+	// Each row's wantSubstr is the fragment stderr must
 	// name for that malformed input: a specific part label ("value",
 	// "confidence", "effort") when parseScore got exactly three parts but
 	// one was bad, or "part(s)" when the part count itself was wrong.

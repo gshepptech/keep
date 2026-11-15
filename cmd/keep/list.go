@@ -11,7 +11,7 @@ import (
 	"github.com/gshepptech/keep/internal/store"
 )
 
-// runList implements the `list` subcommand (ITEM-05): six flags mapping
+// runList implements the `list` subcommand: six flags mapping
 // straight onto store.ListFilter, composing as AND, over items directly --
 // never the ready view -- so raw items and closed/dropped items show up
 // alongside open tickets, which ready/blocked deliberately exclude.
@@ -86,7 +86,7 @@ func runList(args []string, stdout, stderr io.Writer) int {
 	}
 
 	// list shows non-open items too, so it adds the status column
-	// ready/blocked don't (02-CONTEXT.md decision 2).
+	// ready/blocked don't.
 	renderItems(stdout, items, renderOpts{showStatus: true})
 	return 0
 }

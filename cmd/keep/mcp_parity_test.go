@@ -91,13 +91,13 @@ func assertEventsMatchExceptIDAndAt(t *testing.T, wantKind string, cli, mcpEv mo
 	}
 }
 
-// TestCLIAndMCPWriteIdenticalEventRows proves MCP-03: the same logical
+// TestCLIAndMCPWriteIdenticalEventRows proves the same logical
 // operation (add, then close), driven through the CLI and through MCP with
 // the same explicit actor and the same fixed session, writes `events` rows
 // that differ only in the two columns that cannot match (id, at).
 //
-// docs/design/phase-3.md is explicit that this must be "asserted by test,
-// comparing rows, not by reading output" -- two surfaces can print identical
+// This is asserted by comparing rows, not by reading output -- two surfaces
+// can print identical
 // text while writing a different actor or a NULL session_id underneath, and
 // a rendered-output comparison would never catch that.
 func TestCLIAndMCPWriteIdenticalEventRows(t *testing.T) {
@@ -113,9 +113,9 @@ func TestCLIAndMCPWriteIdenticalEventRows(t *testing.T) {
 	}
 
 	// Path A: the CLI. Two real processes. --actor is explicit, not left to
-	// $USER/$KEEP_ACTOR fallback -- 04-CONTEXT.md decision 3's point is
-	// that making actor explicit on both sides is what makes MCP-03
-	// "precisely testable": two fallbacks agreeing would prove nothing about
+	// $USER/$KEEP_ACTOR fallback -- making actor explicit on both sides is
+	// what makes this precisely testable: two fallbacks agreeing would prove
+	// nothing about
 	// the mechanism, only that they happened to agree.
 	stdoutAdd, stderrAdd, code := run(t, bin, dir, environ, "add", "Parity A", "--actor", "parity-actor")
 	if code != 0 {
@@ -157,13 +157,13 @@ func TestCLIAndMCPWriteIdenticalEventRows(t *testing.T) {
 	assertEventsMatchExceptIDAndAt(t, "close", detailA.Events[len(detailA.Events)-1], detailB.Events[len(detailB.Events)-1])
 }
 
-// TestMCPMalformedArgumentsAreProtocolErrorsAndChangeNothing proves MCP-04.
+// TestMCPMalformedArgumentsAreProtocolErrorsAndChangeNothing.
 // Three separate claims, and the third is the one that rots:
 //
 //  1. a protocol error, specifically -- NOT an isError tool result. This is
 //     the claim that forced the whole package onto the SDK's low-level
 //     Server.AddTool path (internal/mcp/server.go): the ergonomic generic
-//     mcp.AddTool[In,Out] was verified live (04-RESEARCH.md) to route a JSON
+//     mcp.AddTool[In,Out] routes a JSON
 //     type mismatch into isError:true, through a code path that never even
 //     calls the tool handler.
 //  2. not a panic -- proven by the server still answering a normal call on
@@ -178,8 +178,8 @@ func TestCLIAndMCPWriteIdenticalEventRows(t *testing.T) {
 //
 // Deliberately NOT asserted here: that the SDK rejects a *schema*-invalid
 // argument. It does not. mcp.Server.AddTool performs no argument validation
-// at all -- verified live that a published `enum` and
-// `additionalProperties:false` were both ignored on a real call. Enforcement
+// at all -- a published `enum` and `additionalProperties:false` are both
+// ignored on a real call. Enforcement
 // for the one closed vocabulary that matters here (dep's type) comes from
 // store.CreateDep's ErrInvalidDepType, which is why case 2 below exists and
 // why internal/mcp/errors.go's resultFor routes that sentinel to a protocol
@@ -218,10 +218,10 @@ func TestMCPMalformedArgumentsAreProtocolErrorsAndChangeNothing(t *testing.T) {
 
 	// Case 1: a JSON type mismatch -- title sent as a number, not a string.
 	// This is a genuine json.Unmarshal failure, the only malformed input the
-	// low-level path actually rejects (04-RESEARCH.md's live-verified
-	// finding: a bogus enum value or an unknown field reaches the handler
-	// and unmarshals fine, since Server.AddTool performs no schema
-	// validation). CallTool directly, NOT plan 04's callTool helper -- that
+	// low-level path actually rejects (a bogus enum value or an unknown
+	// field reaches the handler and unmarshals fine, since Server.AddTool
+	// performs no schema validation). CallTool directly, NOT the callTool
+	// helper -- that
 	// helper fails the test on error, the opposite of what is wanted here.
 	if _, err := cs.CallTool(context.Background(), &mcp.CallToolParams{
 		Name:      "add",
@@ -232,9 +232,8 @@ func TestMCPMalformedArgumentsAreProtocolErrorsAndChangeNothing(t *testing.T) {
 
 	// Case 2: a value outside dep's closed vocabulary. Correctly-typed
 	// JSON, but store.CreateDep's ErrInvalidDepType classifies it as a
-	// protocol error (internal/mcp/errors.go's resultFor) -- this is the arm
-	// 04-CONTEXT.md originally expected the schema `enum` to handle; the
-	// store handles it instead, because the SDK does not enforce the enum.
+	// protocol error (internal/mcp/errors.go's resultFor) -- the store
+	// handles it, because the SDK does not enforce the schema `enum`.
 	if _, err := cs.CallTool(context.Background(), &mcp.CallToolParams{
 		Name:      "dep",
 		Arguments: map[string]any{"item_id": "a", "depends_on_id": "b", "type": "nonsense"},
@@ -254,7 +253,7 @@ func TestMCPMalformedArgumentsAreProtocolErrorsAndChangeNothing(t *testing.T) {
 	// Contrast case, in the SAME test: a store sentinel from a WELL-FORMED
 	// call is a NIL Go error carrying IsError == true, not a protocol
 	// error. Without this the test cannot distinguish "everything fails as
-	// a protocol error" from the intended split (04-CONTEXT.md decision 4).
+	// a protocol error" from the intended split.
 	res, err := cs.CallTool(context.Background(), &mcp.CallToolParams{
 		Name:      "show",
 		Arguments: map[string]any{"id": "rnc-doesnotexist"},

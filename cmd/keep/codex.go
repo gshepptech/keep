@@ -81,7 +81,7 @@ func runCodex(args []string, stdout, stderr io.Writer) int {
 // # Why this command exists rather than a documented config snippet
 //
 // Codex will not run a hook it has not been told to trust, and installing
-// the plugin does not grant that -- measured 2026-08-13: a freshly
+// the plugin does not grant that: a freshly
 // installed keep plugin reports trustStatus "untrusted", and the hook
 // does not fire until the trust entry exists. That is a security control
 // working as designed, and this command grants it on purpose rather than
@@ -90,14 +90,13 @@ func runCodex(args []string, stdout, stderr io.Writer) int {
 //
 // # Why it asks Codex for the hash instead of computing one
 //
-// This is the whole design. Interlock computes the hash itself
-// (internal/install/install.go, codexHookHash) and it broke silently when
-// codex-cli 0.146.0-alpha.9.2 changed how trust is recorded -- Interlock's
-// own commit 0e1c72a: "the entries Interlock writes are no longer accepted,
-// so Codex skips its hooks without saying anything", while its doctor kept
-// reporting the trust as healthy because it was verifying its own
-// bookkeeping. A reimplementation of someone else's hash is a silent
-// failure waiting for their next release.
+// This is the whole design. Computing the hash locally means
+// reimplementing how Codex records trust, and when a Codex release changes
+// that, the entries written stop being accepted and Codex skips the hooks
+// without saying anything -- while any local check keeps reporting the
+// trust as healthy because it is verifying its own bookkeeping. A
+// reimplementation of someone else's hash is a silent failure waiting for
+// their next release.
 //
 // hooks/list hands over `key` and `currentHash` directly. Writing back what
 // Codex just said cannot drift from what Codex expects.
@@ -105,8 +104,7 @@ func runCodex(args []string, stdout, stderr io.Writer) int {
 // # Why it writes through Codex rather than editing config.toml
 //
 // config/value/write makes Codex edit its own config. keep needs no TOML
-// parser -- Interlock took that dependency on for exactly this job, and it
-// is the one dependency its README singles out as regrettable.
+// parser, which would be a dependency taken on for this one job.
 func runCodexTrust(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("codex trust", flag.ContinueOnError)
 	fs.SetOutput(stderr)

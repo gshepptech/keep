@@ -23,7 +23,7 @@ func idsOfJSONItems(t *testing.T, items []map[string]any) []string {
 	return ids
 }
 
-// TestBoardAgreesWithReady is DASH-07's cross-process same-call proof:
+// TestBoardAgreesWithReady is the cross-process same-call proof:
 // `board --json --limit 0`'s items and `ready --json`'s items must be the
 // exact same ids, in the exact same order, against the same store.
 // board.go's own comment names why this holds: one unlimited

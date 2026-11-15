@@ -18,7 +18,7 @@ import (
 
 // boardFixture builds a store with several ready tickets (well above
 // defaultBoardLimit, so a hard-coded --limit-shaped break is caught
-// immediately rather than growing stale -- 05-RESEARCH.md Pattern 6), one
+// immediately rather than growing stale), one
 // claimed (in-progress) item, one blocked epic with a child (transitively
 // blocked), and one raw note (backlog, never ready).
 type boardFixture struct {
@@ -36,8 +36,8 @@ func buildBoardFixture(t *testing.T, bin, repo string, e []string) boardFixture 
 
 	// 12 ready tickets, deliberately more than defaultBoardLimit (10) -- the
 	// exact fixture size this test's own TestBoardLimitTruncatesRowsNotCounts
-	// and TestBoardJSONShape rely on to catch a hard-coded-limit break
-	// (05-RESEARCH.md Pattern 6). value/confidence/effort are each clamped
+	// and TestBoardJSONShape rely on to catch a hard-coded-limit break.
+	// value/confidence/effort are each clamped
 	// to the CLI's 0-10 range; the actual expected order is derived from a
 	// live `ready` call in each test, never asserted by construction here,
 	// so exact score values (and any ties) do not matter.

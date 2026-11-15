@@ -11,20 +11,16 @@ import (
 	"github.com/gshepptech/keep/internal/store"
 )
 
-// runBacklog implements the `backlog` subcommand (CAP-03) -- the pen: every
+// runBacklog implements the `backlog` subcommand -- the pen: every
 // raw item still parked, grouped by type in schema-enum order, newest first
 // within each group, filterable by --type.
 //
-// Grouping and ordering now live entirely in store.Backlog (04-01-PLAN.md
-// task 2/3), not here: `keep backlog` and the MCP `backlog` tool both call
-// the same store method, so the two surfaces walk one order by construction
-// rather than by two implementations agreeing -- Phase 3 wave 5 already
-// shipped and fixed exactly this class of disagreement once, between
-// backlog's own rendered and --json output, where it escaped notice until
-// two types interleaved in time. renderBacklog still derives its group
-// boundaries from Type changing between consecutive rows, which continues
-// to work only because store.Backlog guarantees each type's rows are
-// contiguous.
+// Grouping and ordering live entirely in store.Backlog, not here: `keep
+// backlog` and the MCP `backlog` tool both call the same store method, so
+// the two surfaces walk one order by construction rather than by two
+// implementations agreeing. renderBacklog derives its group boundaries
+// from Type changing between consecutive rows, which works only because
+// store.Backlog guarantees each type's rows are contiguous.
 func runBacklog(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("backlog", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -87,7 +83,7 @@ func runBacklog(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-// renderBacklog writes the locked output shape (03-CONTEXT.md decision 4):
+// renderBacklog writes a fixed output shape:
 // a bare, unadorned header line per non-empty type group in schema-enum
 // order, a blank line BETWEEN groups (never after the last one), and one
 // "id  created  title" line per item, newest first within its group. Empty
@@ -128,8 +124,8 @@ func renderBacklog(w io.Writer, ordered []model.Item) {
 // model.TimeFormat ("2006-01-02T15:04:05.000000000Z") is fixed-width and
 // always UTC by construction (internal/model/model.go), so the first ten
 // characters are always exactly YYYY-MM-DD -- a parse/format round trip
-// would only add a timezone-conversion class of bug that cannot occur here
-// (03-RESEARCH.md Open Question 2). The length guard protects against a
+// would only add a timezone-conversion class of bug that cannot occur
+// here. The length guard protects against a
 // malformed or truncated CreatedAt value rather than assuming the schema's
 // NOT NULL guarantee always holds in every future caller.
 func createdDate(createdAt string) string {

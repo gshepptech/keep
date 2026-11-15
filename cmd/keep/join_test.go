@@ -10,15 +10,14 @@ import (
 	"testing"
 )
 
-// The Interlock join is the one feature of keep that no test could break.
+// The Interlock join is the one feature of keep that unit tests cannot
+// break.
 //
-// Both READMEs lead with it, and until this test both suites were blind to
-// it: keep's internal/interlock tests drive a /bin/sh stub that answers
+// keep's internal/interlock tests drive a /bin/sh stub that answers
 // whatever they wrote into it, and Interlock's own suite has never heard of
-// keep. The only end-to-end proof was scripts/join-keep.sh in the Interlock
-// repository, which nothing runs. A contract change on either side -- a
-// renamed JSON field, a bumped version, a different exit code -- would have
-// shipped green on both sides and been found by a person looking at a board.
+// keep. A contract change on either side -- a renamed JSON field, a bumped
+// version, a different exit code -- would ship green on both sides and be
+// found by a person looking at a board.
 //
 // So this builds a real interlock from source, takes a real lease through a
 // real hook, and asserts that a real `keep ready` drops the item. It is the

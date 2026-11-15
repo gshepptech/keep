@@ -10,11 +10,10 @@ import (
 	"github.com/gshepptech/keep/internal/model"
 )
 
-// runShow implements the `show` subcommand (ITEM-04): the labelled block an
+// runShow implements the `show` subcommand: the labelled block an
 // agent reads before starting an item -- id, stage/type/status, score with
 // its raw value/confidence/effort, dependencies in both directions, event
-// history oldest first, then the body verbatim last (02-CONTEXT.md
-// decision 2).
+// history oldest first, then the body verbatim last.
 //
 // One store.GetItem call. An unknown id returns store.ErrNotFound, already
 // wrapped with the id by GetItem, mapped to exit 1 with nothing on stdout by
@@ -38,7 +37,7 @@ func runShow(args []string, stdout, stderr io.Writer) int {
 
 	// --body and --json are two different output contracts -- one raw
 	// bytes, one a labelled structure -- and combining them means nothing
-	// (03-CONTEXT.md decision 2). Checked before the store is opened, same
+	// Checked before the store is opened, same
 	// as every other CLI-boundary validation in this package.
 	if *bodyFlag && *jsonFlag {
 		fmt.Fprintln(stderr, "keep: show: --body and --json are mutually exclusive")
@@ -57,12 +56,12 @@ func runShow(args []string, stdout, stderr io.Writer) int {
 		return exitFor(stderr, err)
 	}
 
-	// The byte-identical surface CAP-02 rests on: no header, no label, no
+	// The byte-identical surface `capture` rests on: no header, no label, no
 	// newline added, none stripped, nothing printed before or after it --
 	// `keep show <id> --body | diff - <original>` must be silent. Reached
 	// only after a successful GetItem, so an unknown id already exits 1
-	// with nothing on stdout by construction (03-RESEARCH.md Open
-	// Question 3) -- no special-case handling needed here.
+	// with nothing on stdout by construction -- no special-case handling
+	// needed here.
 	if *bodyFlag {
 		io.WriteString(stdout, detail.Body)
 		return 0
@@ -84,7 +83,7 @@ func runShow(args []string, stdout, stderr io.Writer) int {
 	// The body goes last and verbatim: one blank line, the "body" header,
 	// then the body's own bytes with nothing appended -- no trailing
 	// decoration, so `keep show <id> | tail -n +N` gets the document
-	// back intact. Phase 3's CAP-02 requires this exact discipline.
+	// back intact.
 	fmt.Fprintln(stdout)
 	fmt.Fprintln(stdout, "body")
 	io.WriteString(stdout, detail.Body)
@@ -100,7 +99,6 @@ const showLabelWidth = 11
 
 // writeShowHeader renders the fixed-order labelled block: id, stage, type,
 // status, score, parent, repo, paths, why, acceptance, created, updated
-// (02-CONTEXT.md decision 2 / 02-08-PLAN.md task 2's exact worked example).
 // A field's line is omitted entirely when the underlying column is null or
 // empty, rather than printed with an empty value -- a show full of blank
 // labels is harder to read than a short one.
@@ -134,7 +132,7 @@ func writeShowHeader(w io.Writer, it model.Item) {
 }
 
 // scoreDetail renders the raw value/confidence/effort inputs alongside the
-// stored score. Per RANK-02/02-CONTEXT.md decision 1, "unscored" is only the
+// stored score. "Unscored" is only the
 // all-NULL case; any other combination shows the raw inputs, missing ones
 // counted as 0 -- the same substitution rank.Score itself already applied to
 // produce the stored score.

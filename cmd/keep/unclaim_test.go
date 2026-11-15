@@ -90,7 +90,7 @@ func TestUnclaimRefusesWithoutAReason(t *testing.T) {
 	}
 }
 
-// TestStaleOffersUnclaimRatherThanDrop. `stale` used to tell the reader to
+// TestStaleOffersUnclaimRatherThanDrop. `stale` must not tell the reader to
 // "hand it back with keep drop", which is the exact false record unclaim
 // exists to prevent: drop says the work was not worth doing, and a claim
 // going quiet says nothing of the sort. The wording is the whole finding, so
@@ -161,8 +161,7 @@ func TestVersionIsCitable(t *testing.T) {
 		}
 	})
 
-	// The case that was broken: no ldflags at all, which is what the README
-	// tells people to do.
+	// No ldflags at all, which is what a plain `go install` does.
 	t.Run("a plain build still identifies itself", func(t *testing.T) {
 		bin := buildKeep(t, "")
 		out, _, code := run(t, bin, tempDir(t), env(tempDir(t), ""), "version")

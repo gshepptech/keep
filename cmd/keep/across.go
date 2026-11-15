@@ -14,16 +14,13 @@ import (
 // acrossRepos runs one store query against every registered store and
 // returns the merged rows, ordered by less.
 //
-// It is the shared half of every `--all`. Before it, `ready --all` was the
-// only cross-repository command and carried the registry load, the fan-out,
-// the merge and the failure reporting inline; the second command to want
-// `--all` would have copied all four, and the copy that mattered is the
-// last one -- a partial view reported as a complete one is the failure this
-// whole surface is shaped against.
+// It is the shared half of every `--all`: the registry load, the fan-out,
+// the merge and the failure reporting, written once so no command copies
+// them and gets the reporting wrong -- a partial view reported as a
+// complete one is the failure this whole surface is shaped against.
 //
-// A malformed registry is reported and survived, never fatal (06-CONTEXT.md
-// decision 2): registry.Load hands back both a usable empty envelope and the
-// error.
+// A malformed registry is reported and survived, never fatal:
+// registry.Load hands back both a usable empty envelope and the error.
 func acrossRepos[T any](
 	ctx context.Context,
 	stderr io.Writer,
@@ -47,15 +44,15 @@ func acrossRepos[T any](
 }
 
 // reportRepoFailures writes the unreadable repositories to stderr, never to
-// stdout, which carries the rows only (CLI-01). Exit code is unaffected --
+// stdout, which carries the rows only. Exit code is unaffected --
 // a partial view is reported, not fatal, matching `repos`.
 //
 // One failure is named in full, because it is probably the thing the person
 // needs to see. Several are summarised to a single line: `init` registers
 // automatically and nothing unregisters until `repos forget --gone`, so a
-// registry with a dozen dead scratch repositories used to print a dozen
-// paragraphs above every queue, which is how a person learns to stop reading
-// stderr.
+// registry with a dozen dead scratch repositories would otherwise print a
+// dozen paragraphs above every queue, which is how a person learns to stop
+// reading stderr.
 func reportRepoFailures[T any](stderr io.Writer, verb string, failed []registry.Fanout[T]) {
 	switch len(failed) {
 	case 0:

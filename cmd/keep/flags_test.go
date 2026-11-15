@@ -9,8 +9,8 @@ import (
 	"time"
 )
 
-// newTestFlagSet registers the same three flag shapes 03-RESEARCH.md Pattern
-// 2 verified permuteArgs against: a string flag (--type), a bool flag
+// newTestFlagSet registers the three flag shapes permuteArgs must handle:
+// a string flag (--type), a bool flag
 // (--json), and a repeatable stringSlice (--blocks). Every subtest below
 // gets a fresh FlagSet -- flag state must not leak between table rows.
 func newTestFlagSet() (*flag.FlagSet, *string, *bool, *stringSlice) {
@@ -89,11 +89,11 @@ func TestPermuteArgs(t *testing.T) {
 		}
 	})
 
-	// This is the silent-corruption regression lock (03-RESEARCH.md Pitfall
-	// 1): a naive pre-pass that unconditionally inserts "--" ahead of
-	// positionals sets a missing value to the literal string "--", silently,
-	// with exit 0. Do not "tidy this up" as a weird edge case later -- it is
-	// the exact defect this plan exists to prevent.
+	// This is the silent-corruption regression lock: a naive pre-pass that
+	// unconditionally inserts "--" ahead of positionals sets a missing value
+	// to the literal string "--", silently, with exit 0. Do not "tidy this
+	// up" as a weird edge case later -- it is the exact defect permuteArgs
+	// is written to avoid.
 	t.Run("missing value regression lock -- value-taking flag with nothing after it", func(t *testing.T) {
 		fs, typeFlag, _, _ := newTestFlagSet()
 		if err := fs.Parse(permuteArgs(fs, []string{"title", "--type"})); err != nil {
@@ -105,8 +105,8 @@ func TestPermuteArgs(t *testing.T) {
 		if *typeFlag != "" {
 			t.Errorf("type = %q, want empty (flag.Parse's own native handling of the malformed tail)", *typeFlag)
 		}
-		// The tail stays in fs.Args() exactly as flag would have left it
-		// before this change: flag.Parse on the un-permuted
+		// The tail stays in fs.Args() exactly as flag alone would leave it:
+		// flag.Parse on the un-permuted
 		// ["title", "--type"] stops at "title" and never touches --type.
 		if got, want := fs.Args(), []string{"title", "--type"}; !reflect.DeepEqual(got, want) {
 			t.Errorf("fs.Args() = %v, want %v", got, want)
@@ -132,7 +132,7 @@ func TestPermuteArgs(t *testing.T) {
 // through the real binary lives in capture_test.go's
 // TestAddBodyDashReadsStdin, but this table proves resolveBody's own gating
 // logic directly and fast, including the "never touches stdin unless the
-// flag is literally -" contract (03-RESEARCH.md Pitfall 4).
+// flag is literally -" contract.
 func TestResolveBody(t *testing.T) {
 	t.Run(`"-" reads everything from stdin, byte for byte`, func(t *testing.T) {
 		r, w, err := os.Pipe()
@@ -198,7 +198,7 @@ func TestResolveBody(t *testing.T) {
 // TestResolveActor proves --actor > $KEEP_ACTOR > $USER, including the
 // ""-set-but-empty-behaves-as-unset case every nullable convention in this
 // codebase already uses, and the terminal error case with no third
-// fallback (04-01-PLAN.md task 4's five in-process cases).
+// fallback.
 func TestResolveActor(t *testing.T) {
 	cases := []struct {
 		name       string

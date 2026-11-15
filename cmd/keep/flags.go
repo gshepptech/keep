@@ -11,19 +11,19 @@ import (
 	"github.com/gshepptech/keep/internal/store"
 )
 
-// addDBFlag registers --db, present on every subcommand (plan 07's
-// "Deliberately do not build one shared options struct" -- each runX
-// registers only the flags it actually has). The flag/KEEP_DB/discovery
+// addDBFlag registers --db, present on every subcommand. There is
+// deliberately no shared options struct -- each runX registers only the
+// flags it actually has. The flag/KEEP_DB/discovery
 // precedence itself lives in store.Resolve; every runX just forwards the
 // flag's value through openStore.
 func addDBFlag(fs *flag.FlagSet) *string {
 	return fs.String("db", "", "path to the store (overrides KEEP_DB and discovery)")
 }
 
-// addJSONFlag registers --json (CLI-01): every read command (show, list,
-// ready, blocked -- plan 08), add (plan 07), and the two mutating commands
-// whose success output is genuinely useful as structured data, start and
-// update (plan 09) -- all three return the item just created or changed,
+// addJSONFlag registers --json: every read command (show, list, ready,
+// blocked), add, and the two mutating commands whose success output is
+// genuinely useful as structured data, start and update -- all three
+// return the item just created or changed,
 // which a caller may want to inspect programmatically. dep, close, and drop
 // deliberately do NOT register it: their only output is a one-line
 // confirmation, and a --json flag that only ever echoed back an id or
@@ -33,28 +33,27 @@ func addJSONFlag(fs *flag.FlagSet) *bool {
 }
 
 // addActorFlag registers --actor, present only on mutating commands
-// (EVENT-01 needs an actor on every events row). resolveActor supplies the
+// (every events row needs an actor). resolveActor supplies the
 // $USER fallback below.
 func addActorFlag(fs *flag.FlagSet) *string {
 	return fs.String("actor", "", "actor recorded on the events row (default: $KEEP_ACTOR, then $USER)")
 }
 
-// resolveActor applies CLI-01/EVENT-01's precedence: --actor, then
+// resolveActor applies the actor precedence: --actor, then
 // $KEEP_ACTOR, then $USER. Returns a usage-shaped error (caller maps it to
 // exit 2) when none of the three is set -- there is no fourth fallback,
-// because a silently-empty actor would make EVENT-01's audit trail
-// unfalsifiable. $KEEP_ACTOR set but empty ("") behaves as unset and
+// because a silently-empty actor would make the audit trail meaningless.
+// $KEEP_ACTOR set but empty ("") behaves as unset and
 // falls through to $USER -- the same ""-means-absent convention
 // resolveSession and every nullable column in this codebase already use.
 //
-// The middle rule exists for 04-CONTEXT.md decision 3: the MCP server's
-// default actor is fixed at $KEEP_ACTOR, else $USER, resolved once at
-// server start. Plan 04's runMCP resolves that default through this same
-// function rather than reading the environment itself, which is what makes
-// MCP-03's identical-events-rows claim a property of shared code instead of
-// two implementations independently agreeing. A --actor-only CLI and a
-// KEEP_ACTOR-aware MCP would be exactly the divergence phase-3.md's "if a
-// capability is worth having, both surfaces get it" forbids.
+// The middle rule exists for the MCP server: its default actor is
+// $KEEP_ACTOR, else $USER, resolved once at server start. runMCP resolves
+// that default through this same function rather than reading the
+// environment itself, which is what makes "the CLI and MCP write identical
+// events rows" a property of shared code instead of two implementations
+// independently agreeing. If a capability is worth having, both surfaces
+// get it.
 func resolveActor(flagActor string) (string, error) {
 	if flagActor != "" {
 		return flagActor, nil
@@ -84,10 +83,10 @@ func resolveSession() string {
 // the two programs line up without either knowing about the other.
 //
 // Absent it, this derives one rather than passing "" down to a store that
-// now refuses anonymous claims (store.ErrNoSession). Refusing here instead
+// refuses anonymous claims (store.ErrNoSession). Refusing here instead
 // would break `keep start` for the ordinary case of a person at a terminal
-// who has never heard of KEEP_SESSION -- and the README's own quickstart
-// registers the MCP server without setting it.
+// who has never heard of KEEP_SESSION, or an MCP server registered without
+// setting it.
 //
 // The derived id is STABLE for a person on a machine, deliberately, and not
 // per-process. A per-invocation id would make `keep start` on an item you
@@ -120,14 +119,10 @@ func openStore(flagDB string) (*store.Store, error) {
 	return openStoreWith(flagDB, store.OpenOptions{})
 }
 
-// openStoreReadOnly is the dashboard's opener. `board` is read-only by
-// design (docs/design/phase-4.md's first non-goal: "Editing from the page.
-// Read-only in this phase; the store is the CLI's job"), and mode=ro makes
-// that true by construction rather than by review. Phase 1 added
-// OpenOptions.ReadOnly and deliberately left it unused; this is its first
-// consumer. Confirmed live during 05 planning that a read-only open
-// coexists with the DSN's _txlock=immediate: a bare BEGIN succeeds and only
-// an actual write fails, with SQLITE_READONLY.
+// openStoreReadOnly is the dashboard's opener for reads. mode=ro makes
+// "a GET never writes" true by construction rather than by review. A
+// read-only open coexists with the DSN's _txlock=immediate: a bare BEGIN
+// succeeds and only an actual write fails, with SQLITE_READONLY.
 func openStoreReadOnly(flagDB string) (*store.Store, error) {
 	return openStoreWith(flagDB, store.OpenOptions{ReadOnly: true})
 }
@@ -183,18 +178,17 @@ func exitFor(stderr io.Writer, err error) int {
 
 // permuteArgs reorders args so every well-formed flag (and its value, when
 // it takes one) moves ahead of the first positional argument, before
-// fs.Parse ever runs (03-CONTEXT.md decision 1a) -- Go's flag.Parse stops
-// consuming flags at the first non-flag argument, so without this pre-pass
-// every command taking a positional id or title would reject flags placed
-// after it, including the canonical `keep capture "Q3 roadmap" --type
-// roadmap --body -` docs/design/phase-2.md documents.
+// fs.Parse ever runs -- Go's flag.Parse stops consuming flags at the first
+// non-flag argument, so without this pre-pass every command taking a
+// positional id or title would reject flags placed after it, including the
+// canonical `keep capture "Q3 roadmap" --type roadmap --body -`.
 //
 // fs MUST already have every flag registered on it before this is called:
 // permuteArgs asks fs (via fs.VisitAll + each flag's IsBoolFlag() bool)
 // which registered flags take a value, NEVER a hard-coded list -- a name
 // alone cannot say whether a flag takes a value, because the same name can
 // mean different things on different commands in this exact binary: --body
-// is a string flag on add/capture and a bool flag on show (plan 04). Called
+// is a string flag on add/capture and a bool flag on show. Called
 // before flags are registered, fs.VisitAll sees an empty set and
 // mis-permutes everything.
 //
@@ -203,8 +197,8 @@ func exitFor(stderr io.Writer, err error) int {
 // in original order as trailing "positionals" -- this is load-bearing, not
 // defensive padding. The naive alternative (unconditionally inserting a
 // synthetic "--" ahead of positionals regardless of whether every
-// value-taking flag actually got a value) was reproduced live during
-// 03-RESEARCH.md: `keep add "title" --body` (--body missing its value)
+// value-taking flag actually got a value) fails silently:
+// `keep add "title" --body` (--body missing its value)
 // permutes to ["--body", "--", "title"], and flag.Parse's own unconditional
 // "next token is the value" behavior sets body = "--" with exit 0 and no
 // error -- silent corruption, not a bug in flag.Parse. Leaving the malformed
@@ -289,10 +283,10 @@ tokenLoop:
 }
 
 // resolveBody implements --body -'s "read from stdin" contract, shared by
-// add and capture (03-CONTEXT.md decision 3: "having --body - mean two
-// different things in two commands would be worse than either meaning
-// alone" -- there is exactly one definition of this function, and add.go/
-// capture.go are its only two call sites).
+// add and capture. Having --body - mean two different things in two
+// commands would be worse than either meaning alone, so there is exactly
+// one definition of this function, and add.go/capture.go are its only two
+// call sites.
 //
 // It reads os.Stdin directly rather than taking an io.Reader parameter,
 // because every runX in this package has the fixed signature
@@ -304,7 +298,7 @@ tokenLoop:
 // no test-only reason to prefer an injected reader here.
 //
 // The read is gated STRICTLY on bodyFlag being the literal string "-",
-// never on "is stdin non-empty" or a TTY check (03-RESEARCH.md Pitfall 4):
+// never on "is stdin non-empty" or a TTY check:
 // an unconditional read would make a plain, interactive `keep add
 // "title"` (no --body at all) block forever waiting for EOF a real
 // terminal never sends. Any other value, including "", is returned
@@ -324,7 +318,7 @@ func resolveBody(bodyFlag string) (string, error) {
 // stringSlice implements flag.Value for a repeatable string flag: each
 // -flag <value> occurrence appends, rather than the flag package's default
 // last-one-wins behaviour for a *string. Used by add's --blocks/
-// --derived-from (plan 07): a comma-joined string was deliberately rejected
+// --derived-from: a comma-joined string was deliberately rejected
 // -- a comma-separated list is a parsing rule nobody documents, and an id
 // containing a comma would be unrepresentable.
 type stringSlice []string

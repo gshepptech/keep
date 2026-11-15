@@ -70,7 +70,7 @@ func readyWith(t *testing.T, bin, repo string, e []string) (string, string) {
 }
 
 // TestReadyExcludesItemsWhosePathsInterlockHolds is the join, driven across
-// two real processes -- GATE-04's rule, and the right one here: the whole
+// two real processes -- the right choice here: the whole
 // design is that keep shells out rather than importing, so an in-process
 // test would prove nothing about the thing that can break.
 func TestReadyExcludesItemsWhosePathsInterlockHolds(t *testing.T) {
@@ -114,7 +114,7 @@ func TestReadyExcludesItemsWhosePathsInterlockHolds(t *testing.T) {
 	}
 
 	// stdout is the queue. A diagnostic there would break an agent piping
-	// it, which is CLI-01's whole point.
+	// it.
 	if strings.Contains(stdout, "held back") {
 		t.Errorf("the diagnostic leaked onto stdout:\n%s", stdout)
 	}

@@ -16,8 +16,8 @@ import (
 // This is the third exit from in_progress, and it exists because the other
 // two both lie about a dead agent. `close` records that the work was done;
 // `drop` records that it was abandoned as not worth doing. When a session
-// crashes mid-item, neither is true, and before this the only options were
-// to pick one anyway or leave the item stuck out of `ready` forever.
+// crashes mid-item, neither is true, and without this the only options
+// would be to pick one anyway or leave the item stuck out of `ready` forever.
 //
 // Shaped after close.go and drop.go deliberately -- same flag set, same
 // required --reason, same exit codes -- because it is the same kind of

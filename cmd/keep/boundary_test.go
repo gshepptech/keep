@@ -13,9 +13,9 @@ import (
 )
 
 // forbiddenImports are import paths that would give a package above
-// internal/store direct access to a SQL driver -- exactly what STORE-10
-// forbids: "Nothing above internal/store ever sees a *sql.DB, a row, or a
-// query string."
+// internal/store direct access to a SQL driver -- exactly what the store
+// boundary forbids: nothing above internal/store ever sees a *sql.DB, a
+// row, or a query string.
 var forbiddenImports = []string{
 	"database/sql",
 	"modernc.org/sqlite",
@@ -40,8 +40,8 @@ var forbiddenSQLLiterals = []string{
 // internal/store2.
 var storeDirPrefix = "internal" + string(filepath.Separator) + "store" + string(filepath.Separator)
 
-// TestNoSQLAboveStore mechanically enforces STORE-10 -- "internal/store is
-// the only package containing SQL" -- rather than relying on doc.go comments
+// TestNoSQLAboveStore mechanically enforces "internal/store is the only
+// package containing SQL" rather than relying on doc.go comments
 // and code review. It parses every non-vendored .go file in the module and
 // fails if any file outside internal/store imports a SQL driver package or
 // contains a SQL keyword string literal.
@@ -76,7 +76,7 @@ func TestNoSQLAboveStore(t *testing.T) {
 		}
 		if d.IsDir() {
 			switch d.Name() {
-			case ".git", ".planning", "testdata":
+			case ".git", "testdata":
 				return filepath.SkipDir
 			}
 			return nil
@@ -126,20 +126,14 @@ func TestNoSQLAboveStore(t *testing.T) {
 
 	// The walk root reaches every package by construction, so this loop
 	// should never fire -- which is exactly why it is here. A walk that
-	// silently stops reaching a package would pass forever. internal/dash in
-	// particular was never added to this file: it fell inside the walk
-	// automatically the moment the directory existed (confirmed by reading
-	// the WalkDir root during 05 planning, and again by this assertion).
-	// Naming the four packages explicitly is what turns "it happens to be
-	// covered" into "it is required to be covered".
-	//
-	// internal/registry (Phase 6) is reached by the walk automatically, exactly
-	// as internal/dash was before it was named here. 06-CONTEXT.md's
-	// carried-forward decision requires it be named explicitly anyway, so a walk
-	// whose reach shrinks fails by name rather than by accident.
+	// silently stops reaching a package would pass forever. Every package
+	// falls inside the walk automatically the moment its directory exists;
+	// naming them explicitly is what turns "it happens to be covered" into
+	// "it is required to be covered", so a walk whose reach shrinks fails by
+	// name rather than by accident.
 	for _, pkg := range []string{"cmd/keep", "internal/mcp", "internal/model", "internal/dash", "internal/registry"} {
 		if coveredPkgs[filepath.FromSlash(pkg)] == 0 {
-			t.Errorf("STORE-10 walk visited zero .go files in %s -- the walk's reach has shrunk", pkg)
+			t.Errorf("SQL-boundary walk visited zero .go files in %s -- the walk's reach has shrunk", pkg)
 		}
 	}
 }
@@ -154,7 +148,7 @@ func checkImports(t *testing.T, fset *token.FileSet, path, rel string) error {
 		importPath := strings.Trim(imp.Path.Value, `"`)
 		for _, forbidden := range forbiddenImports {
 			if importPath == forbidden {
-				t.Errorf("STORE-10 violation: %s imports %q -- internal/store is the only package containing SQL, so nothing else may import a SQL driver package", rel, importPath)
+				t.Errorf("SQL boundary violation: %s imports %q -- internal/store is the only package containing SQL, so nothing else may import a SQL driver package", rel, importPath)
 			}
 		}
 	}
@@ -174,7 +168,7 @@ func checkSQLLiterals(t *testing.T, fset *token.FileSet, path, rel string) error
 		}
 		for _, kw := range forbiddenSQLLiterals {
 			if strings.Contains(lit.Value, kw) {
-				t.Errorf("STORE-10 violation: %s contains SQL literal %s (matches forbidden fragment %q) -- internal/store is the only package containing SQL", rel, lit.Value, kw)
+				t.Errorf("SQL boundary violation: %s contains SQL literal %s (matches forbidden fragment %q) -- internal/store is the only package containing SQL", rel, lit.Value, kw)
 			}
 		}
 		return true

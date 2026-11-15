@@ -16,7 +16,7 @@ import (
 	"github.com/gshepptech/keep/internal/store"
 )
 
-// TestConcurrentInitSameDirectory is the GATE-04 proof: four real OS
+// TestConcurrentInitSameDirectory is the cross-process proof: four real OS
 // processes, all Start()-ed before any of them is Wait()-ed on, contending
 // over `keep init` against one empty shared directory.
 //
@@ -83,8 +83,8 @@ func TestConcurrentInitSameDirectory(t *testing.T) {
 		t.Fatalf("%s does not exist after four concurrent inits", target)
 	}
 
-	// The real integrity assertion: Open reads schema_version through the
-	// guard added in plan 02. If any of the four concurrent inits left a
+	// The real integrity assertion: Open reads schema_version through its
+	// guard. If any of the four concurrent inits left a
 	// partial or corrupt schema, this is what would catch it.
 	s, err := store.Open(target, store.OpenOptions{})
 	if err != nil {
@@ -132,7 +132,8 @@ func TestConcurrentInitSameDirectory(t *testing.T) {
 	}
 }
 
-// TestConcurrentAddChildrenNoOrdinalCollision is GATE-04's ITEM-03 proof:
+// TestConcurrentAddChildrenNoOrdinalCollision is the cross-process proof for
+// child ids:
 // eight real `keep add --parent <epic>` processes, all Start()-ed before
 // any of them is Wait()-ed on, contending over one parent's ordinal
 // allocation.
@@ -142,21 +143,17 @@ func TestConcurrentInitSameDirectory(t *testing.T) {
 // arbitrated by the OS via fcntl/flock on the file descriptor, a mechanism
 // eight goroutines sharing one process -- and therefore one *sql.DB, one
 // connection pool, one address space -- can never actually exercise, no
-// matter how a sync.WaitGroup is arranged around them. Interlock learned
-// this the hard way with an in-process race test that stayed green for the
-// entire time a real cross-process lease bug was live; Phase 1's own
-// stress-testing found a genuine 1-in-8 WAL-bootstrap race no goroutine test
-// could have seen (01-05-SUMMARY.md). If this test is ever "simplified" into
-// a WaitGroup over in-process calls, it stops proving anything about the
+// matter how a sync.WaitGroup is arranged around them. An in-process race
+// test can stay green while a real cross-process bug is live, and the
+// WAL-bootstrap race documented in internal/store/schema.go is one no
+// goroutine test could see. If this test is ever "simplified" into a
+// WaitGroup over in-process calls, it stops proving anything about the
 // ordinal allocator at all.
 //
-// 02-RESEARCH.md Pattern 2 measured this exact scenario at up to 8 real
-// processes x 40 inserts against one parent (320 total) with zero
-// SQLITE_BUSY and zero SQLITE_CONSTRAINT_UNIQUE hits: BEGIN IMMEDIATE blocks
-// a second process's own BeginTx call until the first commits, so the two
-// transactions are never concurrently in flight from the application's
-// point of view. This test is a regression lock on that finding, not an
-// investigation -- it is expected to pass cleanly, with zero retries
+// BEGIN IMMEDIATE blocks a second process's own BeginTx call until the
+// first commits, so the two transactions are never concurrently in flight
+// from the application's point of view. This test is a regression lock on
+// that, not an investigation -- it is expected to pass cleanly, with zero retries
 // observed, on every run; its job is to keep that true as AddItem evolves,
 // not to manufacture contention this DSN structurally prevents. No
 // time.Sleep anywhere: contention comes from starting all eight processes
@@ -172,8 +169,8 @@ func TestConcurrentAddChildrenNoOrdinalCollision(t *testing.T) {
 	}
 
 	// `add [flags] <title>`, flags before the title -- the same stdlib
-	// flag.Parse stopping-point constraint plan 07 documented and every
-	// later CLI test in this package follows.
+	// flag.Parse stopping-point constraint every CLI test in this package
+	// follows.
 	epicOut, epicErr, epicCode := run(t, bin, repo, e, "add", "--type", "epic", "epic")
 	if epicCode != 0 {
 		t.Fatalf("add epic: exit code = %d, want 0 (stderr=%q)", epicCode, epicErr)
@@ -274,8 +271,8 @@ func TestConcurrentAddChildrenNoOrdinalCollision(t *testing.T) {
 	}
 }
 
-// TestConcurrentInitDifferentRepositoriesLeavesRegistryValid is GATE-04 for
-// Phase 6: six real `keep init` processes, in six different directories,
+// TestConcurrentInitDifferentRepositoriesLeavesRegistryValid: six real
+// `keep init` processes, in six different directories,
 // sharing one HOME, all Start()-ed before any is Wait()-ed on, contending
 // over one ~/.rounce/repos.json.
 //
@@ -284,26 +281,17 @@ func TestConcurrentAddChildrenNoOrdinalCollision(t *testing.T) {
 // rename(2) guarantees any concurrent reader sees either the old file or the
 // new file, never a partial write -- so the registry is never torn, never
 // half-written, and never left in a state that breaks every future `keep
-// repos` call. That is the guarantee this test checks.
+// repos` call. That is the first guarantee this test checks.
 //
-// IT NOW ALSO ASSERTS THAT ALL SIX SURVIVE. That is a change of contract,
-// recorded here because the old comment argued at length that it must not.
+// IT ALSO ASSERTS THAT ALL SIX SURVIVE. Atomicity of the WRITE does not
+// imply isolation of the read-modify-write sequence around it: without a
+// lock, two processes registering two DIFFERENT repositories -- each
+// having read before the other's rename landed -- would have one rename
+// discard the other's addition. internal/registry/lock.go closes that
+// window: Register and Forget hold an exclusive lock file across Load AND
+// Save, and no lock file is left behind.
 //
-// The old reasoning was right about its premise and right to stop where it
-// did: atomicity of the WRITE does not imply isolation of the
-// read-modify-write sequence around it, so two processes registering two
-// DIFFERENT repositories -- each having read before the other's rename
-// landed -- had one rename discard the other's addition. Measured at
-// 1-of-6 survivors, 10 runs out of 10 (06-03-SUMMARY.md). Asserting set
-// equality against that design would have been testing a guarantee it did
-// not make.
-//
-// internal/registry/lock.go now makes it. Register and Forget hold an
-// exclusive lock file across Load AND Save, so the window that lost updates
-// is closed rather than narrowed. Re-measured after the change: 6-of-6, 10
-// runs out of 10, with no lock file left behind. rnc-245572.
-//
-// This now sits alongside TestConcurrentInitSameDirectory and
+// This sits alongside TestConcurrentInitSameDirectory and
 // TestConcurrentAddChildrenNoOrdinalCollision, which assert set equality
 // from store-level constraints (UNIQUE(parent_id, ordinal),
 // _txlock=immediate) rather than from a lock.
@@ -328,8 +316,8 @@ func TestConcurrentInitDifferentRepositoriesLeavesRegistryValid(t *testing.T) {
 
 	// Start() all six before Wait()-ing on any of them -- the same discipline
 	// as TestConcurrentInitSameDirectory and
-	// TestConcurrentAddChildrenNoOrdinalCollision above. Goroutine simulation
-	// does not satisfy GATE-04.
+	// TestConcurrentAddChildrenNoOrdinalCollision above. A goroutine
+	// simulation would not exercise cross-process contention.
 	for i := 0; i < n; i++ {
 		dir := filepath.Join(base, fmt.Sprintf("repo-%d", i))
 		if err := os.MkdirAll(dir, 0o755); err != nil {

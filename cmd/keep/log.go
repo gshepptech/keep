@@ -15,11 +15,10 @@ import (
 // runLog implements the `log` subcommand: what happened, newest first.
 //
 // keep's whole premise is agents working while nobody is watching, and
-// until this the only way to find out what they did was to open items one
-// at a time. The events table has always held the answer -- EVENT-01 makes
-// it the complete append-only record of every mutation -- so this reads it
-// rather than recording anything new. There is nothing here that can drift
-// from what actually happened.
+// without this the only way to find out what they did would be to open
+// items one at a time. The events table is the complete append-only record
+// of every mutation, so this reads it rather than recording anything new.
+// There is nothing here that can drift from what actually happened.
 func runLog(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("log", flag.ContinueOnError)
 	fs.SetOutput(stderr)

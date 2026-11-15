@@ -31,11 +31,10 @@ func sortedCopy(s []string) []string {
 // not the SDK's in-memory-transports constructor, which is an in-process
 // net.Pipe and would prove nothing about `keep mcp`.
 //
-// This is the harness for CORRECTNESS assertions (MCP-01, MCP-02, MCP-03,
-// MCP-04). It is deliberately NOT used for MCP-06 or MCP-07, which need
-// literal control over write timing and over the raw stdout bytes before
-// the SDK's own decoder touches them -- plan 06 adds a second, raw harness
-// for those.
+// This is the harness for CORRECTNESS assertions. It is deliberately NOT
+// used for pipelining or stdout-purity tests, which need literal control
+// over write timing and over the raw stdout bytes before the SDK's own
+// decoder touches them -- mcp_raw_test.go is the raw harness for those.
 func mcpSession(t *testing.T, bin, dir string, environ []string) *mcp.ClientSession {
 	t.Helper()
 
@@ -90,8 +89,8 @@ func decodeInto(t *testing.T, text string, v any) {
 	}
 }
 
-// TestMCPToolsListReturnsCommandSurface proves MCP-01: a real `keep mcp`
-// subprocess answers tools/list with exactly the ten locked tools, each with
+// TestMCPToolsListReturnsCommandSurface proves a real `keep mcp`
+// subprocess answers tools/list with exactly the registered tools, each with
 // a description and an object input schema.
 func TestMCPToolsListReturnsCommandSurface(t *testing.T) {
 	bin := buildKeep(t, "")
@@ -109,23 +108,14 @@ func TestMCPToolsListReturnsCommandSurface(t *testing.T) {
 		t.Fatalf("tools/list: %v", err)
 	}
 
-	// This is 04-CONTEXT.md decision 2's locked ten. It grows only when the
-	// CLI grows -- an eleventh tool arriving here is a design decision, not
-	// a test to update.
+	// It grows only when the CLI grows -- a new tool arriving here is a
+	// design decision, not a test to update.
 	//
-	// NOTE: this is NOT registration order (04-04-PLAN.md's own behaviour
-	// spec assumed tools/list would return registration order -- capture,
-	// add, ready, backlog, show, list, dep, start, close, drop). Verified
-	// live against the real SDK (go-sdk@v1.7.0 mcp/features.go: tools are
-	// held in a featureSet keyed by name, and featureSet.all() always
-	// iterates s.sortedKeys, a lexically-sorted key slice recomputed after
-	// every add/remove) that tools/list is unconditionally alphabetical by
-	// tool name, with no way to opt out -- registration order is not
-	// observable on the wire at all. This is deterministic SDK behavior,
-	// not a race: rerun 5 times, byte-identical order every time. The set
-	// is what 04-CONTEXT.md's decision 2 actually locks; asserting the
-	// SDK's own deterministic sort order in place of the plan's incorrect
-	// registration-order assumption.
+	// NOTE: this is NOT registration order. The SDK (go-sdk mcp/features.go)
+	// holds tools in a featureSet keyed by name, and featureSet.all() always
+	// iterates a lexically-sorted key slice, so tools/list is unconditionally
+	// alphabetical by tool name -- registration order is not observable on
+	// the wire at all. This is deterministic SDK behavior, not a race.
 	// Sorted copy of internal/mcp.ToolNames -- the registration order lives
 	// there, and this asserts the same set arrives over a real stdio
 	// session. Reading it back off the wire is what makes this independent
@@ -183,12 +173,11 @@ func TestMCPToolsListReturnsCommandSurface(t *testing.T) {
 		}
 	}
 
-	// 04-RESEARCH.md's live probe used a hand-rolled JSON-RPC client that
-	// explicitly sent "protocolVersion":"2025-11-25" in its initialize
-	// request, and observed the classic initialize handshake cap the
-	// negotiated version at that value. mcp.NewClient's own default
-	// (opts == nil, as used by mcpSession above) does not behave that way:
-	// verified live, reproducibly, that Client.Connect tries the newer
+	// A hand-rolled JSON-RPC client that explicitly sends
+	// "protocolVersion":"2025-11-25" in its initialize request sees the
+	// classic initialize handshake cap the negotiated version at that
+	// value. mcp.NewClient's own default (opts == nil, as used by
+	// mcpSession above) does not behave that way: Client.Connect tries the newer
 	// SEP-2575 server/discover RPC first at latestProtocolVersion
 	// (2026-07-28, mcp/shared.go), the negotiate-when-supported branch in
 	// discover() takes it (keep's server supports every version, since
@@ -197,18 +186,18 @@ func TestMCPToolsListReturnsCommandSurface(t *testing.T) {
 	// legacy `initialize` fallback path this client never takes.
 	// ClientSessionOptions' protocolVersion field is unexported ("reserved
 	// for future use" / "for testing"), so this package cannot force the
-	// older handshake to observe the capped value directly. Asserting the
-	// actual, verified value here rather than the plan's predicted one.
+	// older handshake to observe the capped value directly. This asserts
+	// the value the SDK actually negotiates.
 	if got := cs.InitializeResult().ProtocolVersion; got != "2026-07-28" {
-		t.Errorf("negotiated protocol version = %q, want \"2026-07-28\" (mcp.NewClient's default discover-first negotiation, verified live)", got)
+		t.Errorf("negotiated protocol version = %q, want \"2026-07-28\" (mcp.NewClient's default discover-first negotiation)", got)
 	}
 }
 
-// TestMCPCallSequenceCaptureRefineReadyStartClose proves MCP-02: over ONE
+// TestMCPCallSequenceCaptureRefineReadyStartClose proves that over ONE
 // `keep mcp` session, capture -> refine (add) -> show -> ready -> start ->
 // close -> ready completes with the payload asserted at every step. This is
-// docs/design/phase-3.md's exit-gate item 2 and the whole reason MCP exists:
-// one agent session driving the entire loop without shelling out.
+// the whole reason MCP exists: one agent session driving the entire loop
+// without shelling out.
 func TestMCPCallSequenceCaptureRefineReadyStartClose(t *testing.T) {
 	bin := buildKeep(t, "")
 	dir := tempDir(t)
@@ -341,7 +330,7 @@ sentence so this is a realistic document body rather than a one-liner.
 	// Step 5: start the ticket -- status becomes in_progress and
 	// claimed_by_session is the server's fixed session, the value runMCP
 	// read once from $KEEP_SESSION. This is the only assertion that
-	// proves decision 3's fixed-session rule end to end.
+	// proves the fixed-session rule end to end.
 	text = callTool(t, cs, "start", map[string]any{"id": ticket.ID})
 	var started model.Item
 	decodeInto(t, text, &started)

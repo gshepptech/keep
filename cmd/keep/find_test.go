@@ -7,7 +7,7 @@ import (
 
 // TestSearchFindsAndSeparatesItsStreams.
 //
-// GATE-04: a cross-process run, because the thing being checked is what a
+// A cross-process run, because the thing being checked is what a
 // person and a script each see, and that only exists once the binary has
 // actually run.
 func TestSearchFindsAndSeparatesItsStreams(t *testing.T) {

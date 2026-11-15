@@ -18,8 +18,8 @@ import (
 // That is not belt-and-braces. cmd/keep's job is exit codes, which stream
 // output lands on, and flag interaction, and none of those exist at the
 // store layer: `why-not` returning the right answer with the wrong exit code
-// passes every store test in the repository. GATE-05 puts this package's
-// behaviour in a subprocess for exactly that reason, and scripts/coverage.sh
+// passes every store test in the repository. This package's tests run a
+// subprocess for exactly that reason, and scripts/coverage.sh
 // is what measures whether it actually got there.
 
 // addScored files an item and returns its id.
@@ -428,11 +428,11 @@ func TestMCPRefusesAnEmptyReason(t *testing.T) {
 	}
 }
 
-// TestMCPRefusesAnInvalidTypeByName. This used to reach the schema's CHECK
-// constraint and come back as SQLite's own text -- "constraint failed: CHECK
-// constraint failed: type IN ('roadmap', 'epic', 'task', 'bug', 'note')
-// (275)" -- forwarded verbatim as a generic protocol error. A model reading
-// that cannot tell a bad argument from a broken store.
+// TestMCPRefusesAnInvalidTypeByName. Without the Go-side check this would
+// reach the schema's CHECK constraint and come back as SQLite's own text --
+// "constraint failed: CHECK constraint failed: type IN (...) (275)" --
+// forwarded verbatim as a generic protocol error. A model reading that
+// cannot tell a bad argument from a broken store.
 func TestMCPRefusesAnInvalidTypeByName(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo, home := tempDir(t), tempDir(t)

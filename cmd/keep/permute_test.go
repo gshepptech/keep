@@ -230,10 +230,10 @@ func TestPermuteDashDashWeirdTitle(t *testing.T) {
 // TestPermuteMissingValueDoesNotCorrupt proves `add "title" --body` (a
 // value-taking flag with nothing after it, a genuine user error) exits 0
 // and stores a body that is empty -- specifically NOT "--" -- with --body
-// folded into the title, exactly matching this exact malformed
-// invocation's behaviour before this plan. The fix's contract is "never
-// silently wrong", not "now accepts everything" -- this test deliberately
-// asserts UNCHANGED, pre-fix behaviour for a malformed invocation.
+// folded into the title, exactly as flag.Parse alone would treat it.
+// permuteArgs's contract is "never silently wrong", not "accepts
+// everything" -- this test deliberately asserts flag.Parse's native
+// behaviour for a malformed invocation.
 func TestPermuteMissingValueDoesNotCorrupt(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)

@@ -21,8 +21,8 @@ import (
 // a filter that matches nothing is a normal `list` result, while a search
 // that matches nothing is worth saying out loud.
 //
-// One store.Search call and no re-filtering in Go, the same STORE-10
-// discipline every other read command follows.
+// One store.Search call and no re-filtering in Go, the same discipline
+// every other read command follows.
 func runSearch(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("search", flag.ContinueOnError)
 	fs.SetOutput(stderr)

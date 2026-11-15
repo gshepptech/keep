@@ -9,7 +9,7 @@ import (
 	"github.com/gshepptech/keep/internal/store"
 )
 
-// runClose implements the `close` subcommand (ITEM-07/08): mark an item
+// runClose implements the `close` subcommand: mark an item
 // closed, recording why. See drop.go's runDrop for the near-identical
 // dropped path.
 //
@@ -17,10 +17,9 @@ import (
 // runCloseOrDrop: they are two commands with two help texts and two usage
 // lines, and the shared logic that actually must never drift
 // (store.closeOrDrop, internal/store/transitions.go) already lives in the
-// store, reachable identically by this CLI and, later, Phase 4's MCP
-// surface. Collapsing the two into one Go function here would buy nothing
-// this package needs and would risk the opposite of ITEM-08's point: close
-// and drop staying genuinely distinct.
+// store, reachable identically by this CLI and the MCP surface. Collapsing
+// the two into one Go function here would buy nothing this package needs
+// and would work against close and drop staying genuinely distinct.
 func runClose(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("close", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -40,7 +39,7 @@ func runClose(args []string, stdout, stderr io.Writer) int {
 
 	// An absent --reason and an explicit --reason "" are indistinguishable
 	// through flag's *string default (both leave *reasonFlag == "") --
-	// both must exit 2. ITEM-07 says the command records WHY; a blank
+	// both must exit 2. The command records WHY; a blank
 	// reason is an audit trail that records that something happened and
 	// nothing else.
 	if *reasonFlag == "" {

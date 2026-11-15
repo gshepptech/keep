@@ -116,10 +116,9 @@ func TestMCPActorFallsBackWhenClientIsAnonymous(t *testing.T) {
 	}
 }
 
-// TestMCPActorPerCallStillWins locks the behaviour 04-CONTEXT.md decision 3
-// established and this change must not quietly remove: actor is an optional
-// argument on every mutating tool, defaulting to the server's own. The
-// default is what changed here; the override is not.
+// TestMCPActorPerCallStillWins locks the per-call override: actor is an
+// optional argument on every mutating tool, defaulting to the server's own,
+// and an explicit argument always wins over the default.
 func TestMCPActorPerCallStillWins(t *testing.T) {
 	bin := buildKeep(t, "")
 	dir := tempDir(t)

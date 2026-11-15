@@ -17,9 +17,8 @@ import (
 // A stub rather than the real binary because the real one is a 218MB
 // dependency that is not on $PATH, may not be installed at all, and would
 // make this test a check on OpenAI's release cadence. The live end-to-end
-// path was verified by hand against codex-cli 0.147.0-alpha.6.5; what these
-// tests lock is keep's half of the exchange, which is the half that can
-// regress here.
+// path is checked by scripts/verify-codex-tools.py; what these tests lock
+// is keep's half of the exchange, which is the half that can regress here.
 func fakeCodex(t *testing.T, hooksListResult string) (bin, logPath string) {
 	t.Helper()
 	if runtime.GOOS == "windows" {
@@ -98,9 +97,9 @@ func readRequests(t *testing.T, logPath string) []map[string]any {
 }
 
 // TestCodexTrustWritesTheHashCodexReported is the design decision this
-// whole command exists for. Interlock computes the hash itself and broke
-// silently when 0.146 changed the format (its commit 0e1c72a). keep must
-// write back exactly what hooks/list said and never a value of its own.
+// whole command exists for. A locally computed hash breaks silently when
+// Codex changes its format, so keep must write back exactly what
+// hooks/list said and never a value of its own.
 func TestCodexTrustWritesTheHashCodexReported(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)

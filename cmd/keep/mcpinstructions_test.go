@@ -86,7 +86,7 @@ func TestMCPInstructionsCarryTheQueue(t *testing.T) {
 	}
 
 	// Counts must be exact. "ready 2" specifically -- the raw note must not
-	// be counted as ready, which is READY-03 restated at this boundary.
+	// be counted as ready: raw is never workable, restated at this boundary.
 	if !strings.Contains(ins, "ready 2,") {
 		t.Errorf("instructions do not report exactly 2 ready (the raw note must not count):\n%s", ins)
 	}

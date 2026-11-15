@@ -92,9 +92,8 @@ func TestMCPUpdateRefusalsComeBackAsToolErrors(t *testing.T) {
 			want: "no fields supplied",
 		},
 		{
-			// ErrEmptyTitle was the tenth store sentinel and went
-			// unclassified, so it escaped as a raw protocol error from
-			// `add` and `capture` too until this change.
+			// ErrEmptyTitle must be classified, or it escapes as a raw
+			// protocol error from `update`, `add` and `capture`.
 			name: "a blank title",
 			args: map[string]any{"id": filed.ID, "title": "   "},
 			want: "needs a title",

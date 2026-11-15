@@ -19,15 +19,11 @@ import (
 )
 
 // defaultBoardLimit is the number of queue rows the terminal board prints
-// after its counts line, absent --limit (05-CONTEXT.md decision 2: "a
-// summary plus the top ten").
+// after its counts line, absent --limit: a summary plus the top ten.
 const defaultBoardLimit = 10
 
-// boardCounts is board --json's counts object -- this shape settles
-// 05-RESEARCH.md's open question 3 ("one object with the counts and the
-// items"; field names left to discretion) and becomes the standard the
-// same way every other --json shape in this codebase has: written once,
-// consistently.
+// boardCounts is board --json's counts object: one object with the counts
+// and the items.
 type boardCounts struct {
 	Ready      int `json:"ready"`
 	InProgress int `json:"in_progress"`
@@ -41,7 +37,7 @@ type boardJSON struct {
 	Items  []model.Item `json:"items"`
 }
 
-// runBoard implements `keep board` (DASH-01, DASH-02): a terminal status
+// runBoard implements `keep board`: a terminal status
 // glance -- counts, then the top of the ready queue -- or, with --web, the
 // loopback dashboard server. It mutates nothing, so it registers no --actor
 // and writes no events row.
@@ -110,12 +106,12 @@ func runBoard(args []string, stdout, stderr io.Writer) int {
 
 	// ONE unlimited store.Ready call feeds both the count and the printed
 	// rows -- --limit slices the already-fetched slice in Go. This is
-	// deliberate and load-bearing, not laziness (05-CONTEXT.md decision 2):
-	// the count must be exact regardless of --limit, and the rows must be a
-	// prefix of the same list. Calling Ready twice with different limits,
-	// or calling it once with *limitFlag for both, would each be a way for
-	// the count to silently disagree with the queue plan 06's DASH-07 test
-	// exists to catch -- do not "optimise" this into two calls.
+	// deliberate and load-bearing, not laziness: the count must be exact
+	// regardless of --limit, and the rows must be a prefix of the same
+	// list. Calling Ready twice with different limits, or calling it once
+	// with *limitFlag for both, would each be a way for the count to
+	// silently disagree with the queue -- do not "optimise" this into two
+	// calls.
 	ready, err := s.Ready(ctx, 0)
 	if err != nil {
 		return exitFor(stderr, err)
@@ -160,8 +156,7 @@ func runBoard(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 
-	// No colour, no box drawing, ever, in this phase (05-CONTEXT.md
-	// decision 3): the terminal already has the better signal --
+	// No colour, no box drawing: the terminal already has the better signal --
 	// renderItems' "<- blocked by <id>" names the blocker, which colour
 	// cannot. Three spaces between count pairs.
 	fmt.Fprintf(stdout, "ready %d   in progress %d   blocked %d   backlog %d\n",
@@ -176,7 +171,7 @@ func runBoard(args []string, stdout, stderr io.Writer) int {
 // SIGINT/SIGTERM. The host is the literal string "127.0.0.1" here and
 // nowhere else -- there is no flag between the user and this constant;
 // dash.NewServer's loopback validation is the backstop for a future flag,
-// not the primary gate today (05-CONTEXT.md decision 4).
+// not the primary gate today.
 func serveWeb(st *store.Store, port int, dbFlag string, stdout, stderr io.Writer) int {
 	// A registry that cannot be located is not fatal to the board: the
 	// per-repository views still work, and /all renders its own empty

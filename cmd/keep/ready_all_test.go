@@ -12,7 +12,7 @@ import (
 )
 
 // initRepo creates dir and runs a real `keep init` in it, registering it
-// in home's registry exactly the way production does (REPO-01) -- unlike
+// in home's registry exactly the way production does -- unlike
 // makeRepo (repos_test.go), it adds no tickets, so callers can add scored
 // items themselves with mustAdd.
 func initRepo(t *testing.T, bin, dir string, e []string) {
@@ -25,7 +25,7 @@ func initRepo(t *testing.T, bin, dir string, e []string) {
 	}
 }
 
-// TestReadyAllRanksAcrossStores proves REPO-03's core claim: three real
+// TestReadyAllRanksAcrossStores proves `ready --all`'s core claim: three real
 // repos, each holding items with explicitly-set --score values chosen so
 // the correct global order INTERLEAVES the repositories (alpha holds ranks
 // 1 and 4, beta ranks 2 and 5, gamma rank 3). An order that merely
@@ -179,7 +179,7 @@ func TestReadyAllRejectsDBFlag(t *testing.T) {
 	}
 }
 
-// TestReadyWithoutAllResolvesExactlyOneStore is REPO-06's positive proof:
+// TestReadyWithoutAllResolvesExactlyOneStore is the positive proof:
 // with three repos registered, keep ready --json run inside repo A
 // returns exactly repo A's ids and none of B's or C's, and its output is a
 // flat ARRAY (not the --all envelope object) -- decoded as []model.Item to
@@ -214,7 +214,7 @@ func TestReadyWithoutAllResolvesExactlyOneStore(t *testing.T) {
 	}
 }
 
-// TestReadyWithoutAllSurvivesAMalformedRegistry is REPO-06's negative proof:
+// TestReadyWithoutAllSurvivesAMalformedRegistry is the negative proof:
 // with $HOME/.rounce/repos.json set to `{ not json`, plain keep ready
 // inside a real repo exits 0 with its items and writes nothing to stderr --
 // ready without --all never reads the registry at all -- while ready --all

@@ -10,7 +10,7 @@ import (
 // runWhyNot implements the `why-not` subcommand: the reason one item is not
 // in `ready`.
 //
-// Before this the answer had to be assembled by eye from `show` (stage and
+// Without it the answer has to be assembled by eye from `show` (stage and
 // status) and `blocked` (the propagated case), against a predicate that
 // lives in a SQL view. A person can do that; an agent reliably cannot, and
 // the failure is silent -- it concludes the item is simply low-priority and

@@ -9,11 +9,11 @@ import (
 	"github.com/gshepptech/keep/internal/model"
 )
 
-// runBlocked implements the `blocked` subcommand (READY-04): the structural
+// runBlocked implements the `blocked` subcommand: the structural
 // inverse of `ready`, each item naming the nearest item blocking it.
 //
-// One store.Blocked call, no re-filtering in Go (same STORE-10/READY-03
-// discipline runReady follows). The blockedBy map built from the results is
+// One store.Blocked call, no re-filtering in Go (the same discipline
+// runReady follows). The blockedBy map built from the results is
 // passed through renderOpts so `blocked` shares renderItems with `ready`
 // rather than a second, independently-drifting formatter.
 func runBlocked(args []string, stdout, stderr io.Writer) int {

@@ -7,12 +7,12 @@ import (
 	"testing"
 )
 
-// `init` registers a store automatically and, until this, nothing ever
-// unregistered one. The registry only grew: a few days of scratch
-// repositories under /tmp was enough to bury the real rows, and every dead
-// one printed a full error line to stderr on each `ready --all` -- the
-// command someone working across repositories runs most. The registry is
-// most useful to exactly the person who accumulates dead entries fastest.
+// `init` registers a store automatically, so without `repos forget --gone`
+// the registry would only grow: a few days of scratch repositories under
+// /tmp is enough to bury the real rows, and every dead one prints an error
+// on each `ready --all` -- the command someone working across repositories
+// runs most. The registry is most useful to exactly the person who
+// accumulates dead entries fastest.
 func TestReposForgetGoneDropsOnlyWhatIsGone(t *testing.T) {
 	bin := buildKeep(t, "")
 	home := tempDir(t)

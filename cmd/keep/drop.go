@@ -9,7 +9,7 @@ import (
 	"github.com/gshepptech/keep/internal/store"
 )
 
-// runDrop implements the `drop` subcommand (ITEM-07/08): mark an item
+// runDrop implements the `drop` subcommand: mark an item
 // dropped, recording why. See close.go's runClose for the near-identical
 // closed path and its doc comment for why the two are separate files
 // rather than one shared runCloseOrDrop.
