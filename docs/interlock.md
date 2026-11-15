@@ -20,7 +20,7 @@ Together, the second agent never gets offered the work in the first place.
 ```
 agent A                          agent B
    |                                |
-   |-- keep ready --------------->|  both see rnc-18da17 (28)
+   |-- keep ready                   |  both see rnc-18da17 (28)
    |                                |
    |-- edits internal/auth/token.go |
    |     Interlock takes a lease    |
@@ -37,7 +37,8 @@ files are spoken for.
 
 ## Install
 
-Both are single Go binaries with no runtime services.
+Both are single Go binaries with no runtime services. Interlock lives at
+[github.com/gshepptech/interlock](https://github.com/gshepptech/interlock).
 
 ```bash
 go install github.com/gshepptech/keep/cmd/keep@latest
@@ -81,8 +82,7 @@ someone has quietly started than hide work nobody is doing.
 | `interlock next` | keep's queue | `keep ready --json` | one sentence saying there is no work list |
 
 Both directions are a subprocess and a versioned CLI contract, never a Go
-import. That is what keeps "either works alone" true rather than aspirational:
-a Go import would mean keep stops building without Interlock.
+import, so each program builds and runs without the other.
 
 An unrecognised version on either side filters nothing rather than guessing.
 
@@ -226,7 +226,6 @@ refused, naming the file and the holder, and `keep next` chooses past it
 rather than handing over the collision. An agent that already knows the id
 it wants never sees the queue's omission.
 
-It builds Interlock from `$INTERLOCK_SRC`, or `~/Projects/interlock`. Absent
-both, it skips — keep must build and pass alone. Set
-`KEEP_REQUIRE_INTERLOCK=1` to make that skip a failure: a skip nobody
-notices is the same blind spot in a new place.
+It builds Interlock from `$INTERLOCK_SRC`, or `~/Projects/interlock`. If
+neither exists, it skips, because keep must build and pass alone. Set
+`KEEP_REQUIRE_INTERLOCK=1` to turn that skip into a failure.

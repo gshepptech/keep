@@ -15,20 +15,20 @@ done. You show up occasionally to look at the board, block something that
 shouldn't be worked on yet, or point a fresh agent at the queue.
 
 **What it is not:** it's not a tracker with sync (no Jira/Linear/GitHub
-Issues bridge, no cross-machine merge — see `docs/concepts.md`'s "deliberate
-refusals"), it's not an orchestrator (it doesn't know which agent is doing
+Issues bridge, no cross-machine merge; see "Out of scope" in
+[concepts.md](concepts.md)), it's not an orchestrator (it doesn't know which agent is doing
 what right now — that's a different tool's job), and it doesn't parse
 anything itself. If a document needs turning into tickets, an agent reads it
 and issues `add` commands; keep never touches a model to do that for you.
 
-For the reasoning behind specific decisions, `docs/concepts.md` has the full
-argument with citations to the design docs. This guide is the walkthrough.
+For the reasoning behind specific decisions, see [concepts.md](concepts.md).
+This guide is the walkthrough.
 
 ## A five-minute first session
 
 ```console
 $ keep init
-/Users/you/Projects/demo/.rounce/db.sqlite
+~/Projects/demo/.rounce/db.sqlite
 ```
 
 That's it for setup — one SQLite file under `.rounce/` in the current
@@ -79,7 +79,7 @@ drop it out of `ready` — you don't need to close something to stop seeing it
 as workable. The empty session id (`claimed by session ""`) is normal here:
 `start` records whatever `$KEEP_SESSION` is set to, and a human typing
 commands directly usually hasn't set it. Agents running through MCP do —
-`docs/agents.md` covers that.
+[agents.md](agents.md) covers that.
 
 Notice `close` needed `--reason`. There's a separate `drop` command for
 abandoned work, with the identical shape:
@@ -110,7 +110,7 @@ propagates down the tree.** Block an epic and every ticket beneath it, at any
 depth, disappears from `ready` — not dimmed, not deprioritized, gone, so an
 agent asking "what's workable?" cannot pick any of it up. This is enforced
 inside the `ready` SQL view itself, not by any caller remembering to check —
-see `docs/concepts.md` for exactly how.
+see [concepts.md](concepts.md) for exactly how.
 
 Start with an epic and two children:
 
@@ -418,8 +418,8 @@ remembers where they all are.
 
 ```console
 $ keep repos
-keep        41  187  2026-08-12T01:47:51Z  /Users/you/Projects/keep/.rounce/db.sqlite
-interlock   12   64  2026-08-11T18:02:11Z  /Users/you/Projects/interlock/.rounce/db.sqlite
+keep        41  187  2026-08-12T01:47:51Z  ~/Projects/keep/.rounce/db.sqlite
+interlock   12   64  2026-08-11T18:02:11Z  ~/Projects/interlock/.rounce/db.sqlite
 ```
 
 Columns are name, item count, ready count, last activity, path — right-aligned
@@ -443,8 +443,8 @@ it on that row instead of crashing or silently dropping it:
 
 ```console
 $ keep repos
-keep        41  187  2026-08-12T01:47:51Z  /Users/you/Projects/keep/.rounce/db.sqlite
-old-thing   error: store not found at /Users/you/Projects/old-thing/.rounce/db.sqlite (deleted or moved): open /Users/you/Projects/old-thing/.rounce/db.sqlite: no such file or directory
+keep        41  187  2026-08-12T01:47:51Z  ~/Projects/keep/.rounce/db.sqlite
+old-thing   error: store not found at ~/Projects/old-thing/.rounce/db.sqlite (deleted or moved): open ~/Projects/old-thing/.rounce/db.sqlite: no such file or directory
 ```
 
 That's not an accident of error handling — it's load-bearing. Every store
@@ -486,37 +486,13 @@ Then you mostly just talk to the agent:
 | "done — merged in #42" | `close --reason` |
 | "park that, not yet" | `capture` (lands in the backlog) |
 
-`docs/agents.md` covers registration for Claude Code and Codex in full, lists
+[agents.md](agents.md) covers registration for Claude Code and Codex in full, lists
 what the twenty MCP tools actually are (and which CLI verbs — `init`,
 `migrate`, `export`, `import`, `repos`, `board` and `codex` — deliberately
 have no MCP tool), and has a
 `CLAUDE.md`
 snippet you can drop into a project so agents check `ready` before starting
 work instead of keeping their own mental task list for the session.
-
-## If you used this when it was called rounce
-
-The tool was renamed. Nothing on your disk has to change.
-
-**Your stores keep working, untouched.** The store still lives at
-`.rounce/db.sqlite`, and item ids still start with `rnc-`. Both are on-disk
-identifiers rather than branding: renaming them would either break every
-store that already exists or need a migration that invalidates every id
-you have written down in a commit message. `.keep` would also be a poor
-directory name at a repository root, where it already means "this empty
-directory is on purpose" to git.
-
-**The environment variables gained `KEEP_` names and kept the old ones.**
-`KEEP_DB`, `KEEP_ACTOR`, `KEEP_SESSION`, `KEEP_CODEX` and `KEEP_INTERLOCK`
-are the names to use. The matching `ROUNCE_` name is still read when the
-`KEEP_` one is unset, so a shell profile written a year ago still works and
-still attributes your events to you. Setting the `KEEP_` name to the empty
-string counts as unset and falls through, which is how you clear one.
-
-**What did change:** the binary is `keep`, the module is
-`github.com/gshepptech/keep`, the MCP server registers as `keep`, and the
-Codex plugin id is `keep@keep` — so `keep codex trust` has to be run once
-more to grant trust under the new id.
 
 ## Command reference
 
@@ -537,20 +513,26 @@ sense below but are omitted from the table for space — see `keep <cmd>
 | `backlog` | `--type`, `--json` | Every raw item, grouped by type, newest first. No score column. |
 | `show <id>` | `--json`, `--body` | Full detail: fields, deps both directions, event history, body last. `--body` prints only the raw body (mutually exclusive with `--json`). |
 | `list` | `--stage`, `--status`, `--type`, `--parent`, `--repo`, `--limit`, `--json` | Reads items directly, not the `ready` view — the only place raw and closed/dropped items show up alongside open ones. |
-| `search <text>` | `--closed`, `--limit`, `--json` | Finds items by text across title, why, acceptance, paths and body, ranked by where the match landed and saying which field it came from. Finished work is left out unless `--closed`. A miss goes to stderr so a script piping stdout gets an empty result, not prose. |
+| `search <text>` | `--closed`, `--limit`, `--json`, `--all` | Finds items by text across title, why, acceptance, paths and body, ranked by where the match landed and saying which field it came from. Finished work is left out unless `--closed`. A miss goes to stderr so a script piping stdout gets an empty result, not prose. |
 | `log` | `--since` (`24h`, `7d`, RFC3339), `--actor`, `--kind`, `--limit`, `--json` | What happened, newest first, each entry carrying its item's title and — for a close or drop — the reason. Reads the events table, which is already the complete record of every mutation. |
 | `stale` | `--after` (default `2h`), `--json` | Claims nothing has happened to in a while. Silence is measured from the item's last **event**, not from when it was claimed, so a long piece of work being actively touched is never flagged. Reports only — keep never releases a claim on its own. |
 | `dep <a> <type> <b>` | `--db`, `--actor` | `<type>` is `blocks`, `related`, or `derived-from`. `parent-child` is a valid dep type but `dep` refuses to create one — use `add --parent` instead. `blocks` reads "a waits on b." |
-| `start <id>` | `--json` | Claims the item for `$KEEP_SESSION`. Same-session repeat is a silent no-op; a different session's claim fails. |
+| `next` | `--json` | Claims the top of `ready` in one transaction. An empty queue exits 0 and says how much is blocked. |
+| `why-not <id>` | `--json` | Why an item is not in `ready`: raw, not open, or blocked by a named item. Exits 0 if it is workable, 1 if not. |
+| `start <id>` | `--json`, `--force` | Claims the item for `$KEEP_SESSION`. Same-session repeat is a silent no-op; a different session's claim fails. With Interlock installed, refused while another agent holds a file the item declares, unless `--force`. |
 | `close <id> --reason <text>` | — | `--reason` is required. |
 | `drop <id> --reason <text>` | — | Same shape as `close`, distinct status — never counted as done. |
 | `unclaim <id> --reason <text>` | — | Returns a claimed item to the queue. The third exit from in progress: `close` says it was done and `drop` says it was not worth doing, so neither fits an agent that simply stopped. Any session may release any claim — the holder is, by definition of the case, not coming back to release it — and the event records who did. |
 | `reopen <id> --reason <text>` | — | Brings a closed or dropped item back to open. The way out of the two terminal statuses, for when the close was wrong: without it a mis-typed id could only be recovered by filing a duplicate, which loses the id, the history and every dependency edge pointing at the original. The item returns to `open`, never to `in progress` — the session that held it is gone — and the close it undoes stays in the log. |
-| `board` | `--limit` (default 10, 0=all), `--json`, `--web`, `--port` (requires `--web`) | Counts line plus the top of the queue, or (`--web`) the loopback dashboard. Read-only. |
+| `board` | `--limit` (default 10, 0=all), `--json`, `--web`, `--port` (requires `--web`) | Counts line plus the top of the queue, or (`--web`) the loopback dashboard. `--all` gives counts and queue across every registered store. |
 | `repos` | `--json` | Lists registered stores with counts and last activity. |
 | `repos add <path>` | — | Registers a repo directory or store file. Registry write failure is fatal here (unlike `init`'s best-effort). |
 | `repos forget <path>` | — | Unregisters; never touches the store file itself. |
-| `repos forget --gone` | — | Unregisters every store whose file no longer exists. `init` registers automatically and nothing unregistered, so the registry only grew — a few scratch repositories are enough to bury the real rows, and each dead one printed an error above every `ready --all`. A store that exists but will not open, because of a permission or an unmounted disk, is deliberately **kept**: dropping it would lose the only record that the repository was ever known. |
+| `repos forget --gone` | — | Unregisters every store whose file no longer exists. A store that exists but will not open (a permission problem, an unmounted disk) is kept, so the registry does not forget a repository it may still need. |
+| `export` | `--out <path>` | Writes the whole store as JSONL: a header, then every item, dep and event. Two exports of an unchanged store are byte-identical. |
+| `import [file]` | — | Reads an export into an **empty** store; refuses one that already holds items. All-or-nothing. |
+| `migrate` | `--check`, `--json` | Upgrades an older store's schema. Copies the store to `<path>.v<n>.bak` first and runs every step in one transaction. Other commands refuse an out-of-date store. |
+| `codex trust` / `codex status` | `--dry-run`, `--all` | Grants Codex the hook trust the keep plugin needs, using the hash Codex reports; `status` shows what Codex thinks of keep's hooks. |
 | `mcp` | `--db` | Serves the protocol over stdio. Actor/session resolved once at start from env, not per call. |
 
 Every read command's `--json` output is parseable JSON on stdout with

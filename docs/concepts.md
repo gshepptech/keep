@@ -1,76 +1,65 @@
 # Concepts
 
-This is the "why is it like this" page. If `docs/guide.md` is the walkthrough,
-this is the reference for the decisions underneath it, with pointers to the
-design docs that settled each one.
+This page covers the data model and the reasons behind it. For a hands-on
+walkthrough, see [guide.md](guide.md).
 
-## Stage: raw vs. ticket
+## Stage: raw versus ticket
 
-Every item has a `stage`, either `raw` or `ticket`. This is the single
-column the whole tool pivots on.
+Every item has a `stage`, either `raw` or `ticket`.
 
-`raw` means captured and not workable: a document dropped in verbatim, an
-idea parked mid-session, a finding an agent surfaced that isn't wanted yet.
-`ticket` means refined: it has a title that means something on its own,
-usually acceptance criteria, and usually a score. `ready` only ever shows
-`ticket`s.
+- `raw` means the item is captured but not workable yet. It might be a
+  document stored as written, an idea parked mid-session, or a finding nobody
+  has agreed to work on.
+- `ticket` means the item has been refined. Its title stands on its own, and
+  it usually has acceptance criteria and a score.
 
-The reason this matters more than it sounds like it should: `stage = 'ticket'`
-is a predicate inside the `ready` SQL view, not a filter some caller applies.
-A raw item can't leak into the work queue because a command forgot to check
-its stage — there's no code path where that check could be skipped, because
-there's no code path that queries `ready` without going through the view.
-"Parking an item has to actually remove it from the work queue, or 'not yet'
-means nothing" is stated as a project principle in the README, and this is
-the mechanism that makes it true rather than aspirational.
+`ready` only ever shows tickets. `stage = 'ticket'` is a condition inside the
+`ready` SQL view, not a filter that callers apply. No code path queries the
+queue without going through the view, so no command can forget the check.
+Parking an item really does take it out of the work queue.
 
-There's no `refine` command that moves an item from `raw` to `ticket`.
-Refinement is just an agent reading `show` on a raw item and issuing
-`add --parent <id> --derived-from <id>` to create a new ticket — the raw
-item itself never changes stage. See `docs/design/phase-2.md`.
+keep has no `refine` command. Refining means an agent reads a raw item with
+`show` and runs `add --parent <id> --derived-from <id>` to create tickets from
+it. When a parked note turns out to be the ticket itself,
+`update --stage ticket` promotes it in place.
 
-## The four dependency types
+## Dependency types
 
-`deps` is one table of typed edges: `item_id`, `depends_on_id`, `type`,
-where `type` is one of `blocks`, `parent-child`, `related`, `derived-from`.
+`deps` is one table of typed edges (`item_id`, `depends_on_id`, `type`):
 
-- **`blocks`** — `(A, B, blocks)` means A is blocked until B closes. This is
-  the one that feeds `ready`'s filtering.
-- **`parent-child`** — structure. Created only by `add --parent`, never by
-  `keep dep`; `dep` explicitly refuses to create a `parent-child` edge and
-  tells you to use `add --parent` instead (`store.ErrParentChildViaDep`).
-  This is what block-propagation walks.
-- **`related`** — a plain cross-reference with no behavior attached.
-- **`derived-from`** — provenance: which raw document or note a ticket was
-  refined out of.
+- **`blocks`**: `(A, B, blocks)` means A waits until B closes. These edges
+  are what filter `ready`.
+- **`parent-child`**: tree structure, which blocking walks down. Only
+  `add --parent` creates these edges. `keep dep` refuses to.
+- **`related`**: a cross-reference with no behaviour attached.
+- **`derived-from`**: provenance, meaning the raw document or note a ticket
+  was refined from.
 
-`parent-child` and `derived-from` are kept as two separate edges rather than
-folded into one, because they answer two different questions. `--parent`
-answers "where does this sit in the tree" (so blocking an epic reaches it).
-`--derived-from` answers "what document or note did this come out of" (so
-the ticket's origin survives past the session that created it). A ticket can
-be parented under one epic while derived from an entirely different parked
-note — that's not an edge case the model has to special-case, it's just two
-independent facts recorded independently. See `docs/design/phase-2.md`,
-"Why provenance matters here."
+`parent-child` and `derived-from` are separate edges because they answer
+separate questions. The parent says where an item sits in the tree, so that
+blocking an epic reaches it. The derived-from edge says which document the
+item came from, so its origin is still known after the session that created
+it has ended. A ticket can sit under one epic and be derived from a different
+note.
 
 ## Hierarchical ids
 
-A root item gets `rnc-<6 hex chars>`, hashed from its title plus creation
-timestamp. A child gets `.1`, `.2`, ...; a grandchild gets `.1.1`. This is
-taken from Beads (see the README's Prior Art section) because it means an
-agent reading an id in a log already knows where the item sits in the tree,
-with no lookup required.
+A root item gets an id of `rnc-` plus six hex characters, hashed from its title
+and creation time. Its children get `.1`, `.2` and so on, and a grandchild
+gets `.1.1`. An agent reading an id in a log can tell where the item sits in
+the tree without looking it up.
 
-Child ordinals are allocated `MAX(ordinal) + 1` inside the same transaction
-as the insert, and a `UNIQUE(parent_id, ordinal)` index backstops it, so two
-concurrent `add --parent` calls under the same epic can't collide on the
-same ordinal. This is tested across real separate processes, not goroutines
-in one process — a purely in-process race test can pass while a real
-cross-process race still exists, which is exactly the trap Interlock hit
-once already.
+Child ordinals are allocated as `MAX(ordinal) + 1` in the same transaction as
+the insert, and a `UNIQUE(parent_id, ordinal)` index backs this up. Two
+concurrent `add --parent` calls under the same epic therefore cannot get the
+same ordinal. This is tested across separate processes, not just goroutines,
+because a race test inside one process can pass while a race between
+processes still exists.
 
-## The `ready` view, and why blocking propagates
+The store directory is `.rounce/` and ids use the `rnc-` prefix. Both are
+fixed on-disk identifiers.
+
+## The `ready` view
 
 ```sql
 CREATE VIEW ready AS
@@ -96,135 +85,102 @@ WHERE i.stage = 'ticket' AND i.status = 'open' AND bt.item_id IS NULL
 ORDER BY i.score DESC, i.created_at ASC;
 ```
 
-Two things carry the whole design (`docs/design/phase-1.md`):
+**Blocking propagates down the tree.** `blocked_directly` finds every item
+with a `blocks` edge to something still open. `blocked_tree` then walks down
+the `parent-child` edges from each of those items. Blocking an epic hides
+everything beneath it, so a roadmap acts as a control surface. Block one
+epic, and no agent asking for work will see anything under it.
 
-**Blocking propagates down the parent-child tree.** `blocked_directly` finds
-items with an open `blocks` edge pointing at something not yet closed.
-`blocked_tree` then walks *down* the `parent-child` edges from every
-directly-blocked item, at any depth. So blocking an epic doesn't just hide
-the epic — it hides everything under it, recursively, because every child
-(and grandchild, and so on) is reachable from the blocked epic by walking
-`parent-child` downward. This is what makes a roadmap a control surface
-instead of decoration: block the epic once, and an agent asking `ready`
-"what's workable" simply never sees any of it, at any depth.
+**The filtering lives in the view.** The CLI, the MCP tools and the dashboard
+all call the same `store.Ready`. The dashboard's tree view embeds the same
+blocked-tree query. Because only one query decides what is blocked, the
+surfaces cannot drift apart.
 
-**The filtering lives in the view, never in a caller.** No CLI command,
-no MCP tool, and no dashboard query re-implements this logic — they all
-call the same `store.Ready` (or in the dashboard's case, the same
-`blockedTreeCTE` constant embedded into `store.Tree`), which runs this
-exact query. Four surfaces can't independently drift out of agreement about
-what's blocked, because there's only one query computing it, not four.
+The `depth < 50` guard bounds the recursion. A `parent-child` cycle should be
+impossible, because `dep` rejects self-edges and cannot create
+`parent-child` edges at all. The guard stays anyway, because a mistake here
+would mean an infinite loop in someone's shell.
 
-The `depth < 50` guard bounds the recursion. A cycle in `parent-child`
-should be structurally impossible — `dep` rejects self-edges and the CLI
-never lets `dep` create `parent-child` edges at all — but the guard stays
-anyway, because the cost of being wrong here is an infinite loop inside
-someone's shell, not a bad answer.
+## Scoring
 
-## Events: the audit trail
+```
+score = value + confidence - effort + 11
+```
 
-`events` is append-only: `id`, `item_id`, `kind`, `actor`, `session_id`,
-`at`, `payload`. Every mutation — `add`, `capture`, `dep`, `start`, `close`,
-`drop`, `update` — writes exactly one row. `kind` is the command name,
-`actor` comes from `--actor`, else `$KEEP_ACTOR`, else `$USER`, and
-`session_id` comes from `$KEEP_SESSION` when the caller sets it
-(Interlock, keep's sibling tool, already sets that variable for hook
-invocations, which is how the two line up without either side knowing about
-the other).
+Each input is from 0 to 10. The `+11` puts every scored item at 1 or above.
+An unscored item gets exactly 0. It sorts last but stays in `ready`, because
+unscored work is still work. The score is stored as a column and recomputed
+on every write that touches an input, so `ready` can sort on it directly. The
+store rejects inputs outside 0 to 10.
 
-Nothing in the store reads `events` for its own logic — no state is derived
-from it, no view depends on it. It's written purely because retrofitting an
-audit trail loses the history that made it worth having; by the time you
-notice you want it, the events you wanted are already gone. This is also
-why `items` never grows a new column for something event-shaped: keep's
-third stated principle is "a new concept gets a new table, never a new
-column on `items`," specifically because Beads' `issues` table reached
-roughly five dozen columns by absorbing an event bus and a scheduler
-directly onto the item row. keep's `events` table exists so that
-temptation never comes up.
+## Events
 
-## The deliberate refusals
+`events` is append-only, with columns `id`, `item_id`, `kind`, `actor`,
+`session_id`, `at` and `payload`. Every mutation writes exactly one row.
+`actor` is taken from `--actor`, then `$KEEP_ACTOR`, then the MCP client's
+name, then `$USER`. `session_id` is taken from `$KEEP_SESSION`.
 
-Several things keep visibly does *not* do, and each is a decision dated
-in the README rather than an oversight:
+None of the store's logic reads `events`. No state is derived from it. It
+exists because an audit trail added later can't include history that was
+never recorded. `keep log`, `keep stale` and the dashboard's activity page
+read from it.
 
-- **No model calls.** keep is a store. It never calls an LLM, computes an
-  embedding, or does semantic search. Refinement, triage, and scoring are
-  things an agent does *using* keep's commands — which is exactly what
-  keeps the binary small and keeps it usable from any agent or plugin,
-  since none of them need to share a model provider with keep itself.
-- **No sync.** No JSONL export, no CRDT, no merge resolution, no
-  multi-machine story at all. Sharing a store today means sharing a
-  repository (and therefore a filesystem). Building sync is "a decision to
-  be made deliberately and dated," per the README — not a gap waiting to be
-  filled by the next contributor who trips over it.
-- **No orchestration.** keep has no concept of agent state, awaits,
-  timeouts, or roles. `items.claimed_by_session` and `items.paths` exist as
-  columns nobody reads yet, reserved for a future join with Interlock, which
-  is the tool that answers "who is doing what, and where" — keep only ever
-  answers "what needs doing." Coordinating agents belongs there, not here.
-- **No external tracker bridges.** No Jira, Linear, GitHub Issues, GitLab,
-  Azure DevOps, or Notion sync. `items.external_ref` is a string nobody
-  reads, kept only so a bridge could be added later without a migration.
-- **No HTTP API beyond the loopback dashboard.** No federation, no remote
-  access, no auth model to get wrong.
-- **No migration framework**, beyond a bare `schema_version` integer, until
-  there's data worth not breaking. See `docs/design/phase-0.md`: no
-  `is_blocked` column either, because Beads needed one only after their
-  recursive view got slow at their data volume, and needed a second
-  migration to keep it correct — a fix keep isn't shaped to need yet, and
-  won't add ahead of a benchmark that says it should.
+A new concept gets a new table, never a new column on `items`. That rule keeps
+the item row small, and it is why events, dependencies and claims each live in
+their own place.
 
-## Odd-looking decisions, explained
+## Claims and sessions
 
-**Why `close` and `drop` are separate commands**, rather than one command
-with a status flag. Dropped work must never be countable as done — if
-abandoning an item and finishing it both routed through the same verb, a
-report built off `status = closed` would have to trust that nobody ever
-conflated the two, instead of that distinction being structurally
-impossible to blur. The store's underlying transition logic is shared
-(`store.closeOrDrop`), but the CLI intentionally keeps them as two
-separate commands with two separate help texts, not one command with a
-mode argument.
+`start` and `next` record the caller's session on the item and set its
+status to `in_progress`. A second session's `start` on the same item fails,
+and a repeat `start` from the same session does nothing. `next` selects the
+top of `ready` and claims it in one transaction, so concurrent agents each
+get a different item.
 
-**Why `update` can't change status.** `open → in_progress → closed/dropped`
-moves only through `start`/`close`/`drop`, never through `update --status`.
-`close` and `drop` both require `--reason`; if `update` could also flip
-status, a caller could close out work while silently skipping that
-required reason, and the event log would end up recording that something
-happened without recording why. `update` doesn't register a `--status`
-flag at all — a caller who tries it gets Go's own "flag provided but not
-defined" and exit 2, which is a clearer signal than a custom error
-pretending the flag almost existed.
+An item leaves `in_progress` in one of four ways:
 
-**Why the terminal has no color but the web dashboard does.** Terminal
-output gets piped and grepped, by scripts and by agents, and color codes
-are noise in that context, not signal — plus supporting it properly would
-mean TTY detection and `NO_COLOR` handling, a new mechanism introduced for
-one command that every other command would then be expected to adopt. More
-to the point, the terminal already has a *better* signal than color could
-be: `keep blocked` prints `← blocked by <id>`, naming the actual blocker
-in text, which color can't do. The web page uses color for exactly three
-states (workable/claimed/blocked) because it can't append that string to
-every row without the layout collapsing — and even there, color is never
-the only signal: a blocked row also carries the literal word "blocked" in
-text, both for colorblind readers and because, per the design doc, "the
-page says 'blocked,' not a metaphor for blocked." See
-`docs/design/phase-4.md`, record 3.
+- `close`: done.
+- `drop`: abandoned. Never counted as done.
+- `unclaim`: back to the queue, for when an agent stopped without finishing.
+- `reopen`: back to `open` from `closed` or `dropped`, for when the close was
+  a mistake.
 
-**Why a deleted store errors on its row instead of showing up as empty.**
-`keep repos` and `keep ready --all` open every registered store
-read-only (`OpenOptions{ReadOnly: true}`). That's not an optimization —
-it's what makes a missing store fail loudly instead of silently. A default
-read-write open of a missing path would succeed and quietly create a new,
-empty, 4096-byte SQLite database at that path; a deleted repository would
-then be indistinguishable from a genuinely empty one. Read-only mode
-creates nothing and fails instead, so a deleted or moved store shows up as
-a visible error on its own row — reported and skipped, never fatal to the
-rest of the board. See `docs/design/phase-5.md`, record 2.
+All four need a reason. `update` has no `--status` flag, so a status change
+always comes with an explanation in the log. `stale` reports claims with no
+recent events. keep never releases a claim on its own.
 
-**Why capture has no `--parent`, `--blocks`, or `--score`.** Placement and
-scoring are refinement's job, not capture's — those flags exist on `add`.
-Adding them to `capture` later is possible; removing them once agents
-depend on them is not, so the omission is deliberate rather than an
-oversight waiting to be filled in.
+## Why some things work the way they do
+
+**`close` and `drop` are separate commands.** Abandoned work must never be
+countable as finished. Two verbs make the difference impossible to blur in a
+report.
+
+**The terminal has no colour.** Agents and scripts pipe and grep terminal
+output. `keep blocked` prints `← blocked by <id>`, which names the blocker
+outright, something colour cannot do. The web board uses colour for three
+states (workable, claimed and blocked), and never colour alone. A blocked row
+also carries the word "blocked".
+
+**Cross-repository reads open stores read-only.** `keep repos` and
+`keep ready --all` open every registered store read-only. A read-write open of
+a missing path would quietly create an empty database, and a deleted
+repository would then look like an empty one. A read-only open fails instead,
+so a missing store shows up as an error on its own row, and the other stores
+still render.
+
+**`capture` has no `--parent`, `--blocks` or `--score`.** Placement and
+scoring are part of refining, and `add` has those flags.
+
+## Out of scope
+
+These are deliberate limits:
+
+- **No model calls.** No embeddings or semantic search. Agents do the
+  reasoning, which is why keep works with any agent.
+- **No multi-machine sync.** `export` and `import` are a backup and a move
+  into an empty store, not a merge.
+- **No external tracker bridges.** There is no Jira, Linear or GitHub Issues
+  sync. `items.external_ref` is a free-text string.
+- **No HTTP API** beyond the loopback dashboard.
+- **No agent orchestration.** keep says what needs doing. Deciding who works
+  where belongs to Interlock.
