@@ -14,7 +14,7 @@ import (
 // package's own import path (a literal this comment avoids spelling out, so
 // the check does not trip on its own description). That is what makes every
 // render function below fixturable from struct literals alone, which is
-// what makes DASH-06's golden test possible without
+// what makes the tree view's golden test possible without
 // a live database or a wall clock: rnc- ids are
 // sha256(title, createdAt, attempt)-derived, and createdAt is wall-clock
 // time, so a golden file built by round-tripping through a live
@@ -87,15 +87,15 @@ func renderTree(nodes []model.TreeNode) ([]byte, error) {
 // templates/layout.html's shared "head"/"foot" blocks itself -- see that
 // file's header comment for why there is no single shared "layout" template
 // dispatching by name) into a buffer and returns its bytes. No io.Writer
-// parameter: a returned []byte is what both the DASH-06 golden test and the
-// DASH-05 rendered-output scan want; handlers (plan 03) write it themselves.
+// parameter: a returned []byte is what both the golden test and the
+// rendered-output scan want; handlers write it themselves.
 // execute renders one view from data alone, with no server behind it.
 //
 // It wraps data in the same page envelope a request would, minus the parts
 // only a server can supply: no CSRF token, so no mutating control renders,
 // and Writable false, so the templates skip every action. That is what keeps
 // these functions fixturable from struct literals -- the property render.go
-// documents about itself and DASH-06's golden file depends on.
+// documents about itself and the golden file depends on.
 func execute(name string, data any) ([]byte, error) {
 	var buf bytes.Buffer
 	if err := tmpl.ExecuteTemplate(&buf, name, page{Data: data}); err != nil {

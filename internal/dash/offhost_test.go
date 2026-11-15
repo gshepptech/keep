@@ -161,12 +161,12 @@ func TestScanRenderedHTMLCatchesTrapsAndNothingElse(t *testing.T) {
 }
 
 // TestEmbeddedStylesheetHasNoExternalReference is the compensating static
-// check DASH-05's <style>-content scope decision requires: scanRenderedHTML
+// check that scanRenderedHTML's <style>-content scope requires: it
 // never reads a <style> element's text content (comment above scanRenderedHTML
 // explains why), which means the one place this stylesheet's own text is
 // still worth checking is here, once, statically -- comments stripped first,
-// exactly as research identified as the fix for the false positive a raw
-// substring check produces on a comment merely mentioning "@import".
+// to avoid the false positive a raw substring check produces on a comment
+// merely mentioning "@import".
 func TestEmbeddedStylesheetHasNoExternalReference(t *testing.T) {
 	css := stripCSSComments(styleCSS)
 	for _, forbidden := range []string{"@import", "http://", "https://", "//"} {
@@ -240,11 +240,11 @@ type offhostFixtureIDs struct {
 // hostile value planted through the real store.AddItem/CreateDep API --
 // never as model.Item/model.TreeNode struct literals.
 //
-// This is the opposite fixture strategy from 05-02's DASH-06 golden test,
-// and deliberately so, for a reason worth recording rather than letting a
-// future reader "clean up" into one consistent choice: DASH-06 needs
+// This is the opposite fixture strategy from the tree golden test, and
+// deliberately so, for a reason worth recording rather than letting a
+// future reader "clean up" into one consistent choice: the golden test needs
 // byte-stable output, so it fixtures with literal, stable ids and never
-// touches a live store or a clock. DASH-05 needs the opposite proof --
+// touches a live store or a clock. The off-host scan needs the opposite proof --
 // that data which genuinely travelled through AddItem and back out of a
 // real query (wall-clock-derived rnc- ids, the real column round-trip,
 // the real html/template execution against real model.Item/model.ItemDetail/
@@ -255,7 +255,7 @@ type offhostFixtureIDs struct {
 // compares byte-for-byte, so the wall-clock-derived ids are harmless.
 //
 // The fixture is also the three-level blocked subtree the tree route (and
-// DASH-06) already uses: epic (blocked, root) -> child -> grandchild, plus
+// the golden test) uses: epic (blocked, root) -> child -> grandchild, plus
 // a separate blocker and one ready item and one raw-backlog item so all
 // four views have hostile content to render.
 func newOffhostFixture(t *testing.T) (*Server, offhostFixtureIDs) {
@@ -270,9 +270,8 @@ func newOffhostFixture(t *testing.T) (*Server, offhostFixtureIDs) {
 	})
 	// grandchild carries every remaining hostile field (Body/Why/Acceptance/
 	// Repo) so a single /item/{id} route exercises Body, Why, Acceptance,
-	// and Repo all at once, per this task's own <behavior>. hostileJS lands
-	// in Body, not Title: item.html (05-02) deliberately renders no title
-	// row at all (05-03-SUMMARY.md's own precedent), so a hostile value
+	// and Repo all at once. hostileJS lands in Body, not Title: item.html
+	// deliberately renders no title row at all, so a hostile value
 	// planted only in Title would never appear in this view's output.
 	grandchild := mustAdd(t, st, store.AddItemInput{
 		Title: "Grandchild", Actor: actor, ParentID: child.ID,
@@ -303,7 +302,7 @@ func newOffhostFixture(t *testing.T) (*Server, offhostFixtureIDs) {
 	}
 }
 
-// TestNoExternalReferencesInRenderedViews is DASH-05's exit-gate proof: all
+// TestNoExternalReferencesInRenderedViews is the off-host proof: all
 // four rendered views, driven through the real Handler() via httptest (real
 // HTTP responses, not template source), scan clean -- and the hostile text
 // is confirmed PRESENT in each body first, so a view that silently dropped
@@ -357,11 +356,11 @@ func TestNoExternalReferencesInRenderedViews(t *testing.T) {
 	}
 
 	// The tree route's fixture is the three-level blocked subtree -- confirm
-	// the DASH-06 view under scan here is also the blocked one, so this
+	// the tree view under scan here is also the blocked one, so this
 	// test is not accidentally scanning an all-workable tree.
 	rec := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/tree/"+ids.epic, nil))
 	if !strings.Contains(rec.Body.String(), "blocked") {
-		t.Fatalf("/tree/%s: body does not contain the word \"blocked\" -- fixture is not exercising DASH-06's blocked-subtree shape", ids.epic)
+		t.Fatalf("/tree/%s: body does not contain the word \"blocked\" -- fixture is not exercising the blocked-subtree shape", ids.epic)
 	}
 }

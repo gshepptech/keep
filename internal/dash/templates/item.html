@@ -21,10 +21,10 @@
 </p>
 
 {{with .Held}}
-{{/* The queue hides a held item; this page used to offer Claim on it as
-     though it were free, and said nothing about why it had disappeared
-     from the list you arrived from. Same Exclude call the queue uses, so
-     the two cannot disagree about what is held. */}}
+{{/* The queue hides a held item, so this page must not offer Claim on it
+     as though it were free, and must say why it disappeared from the list
+     you arrived from. Same Exclude call the queue uses, so the two cannot
+     disagree about what is held. */}}
 <div class="banner banner-notice" role="status">
   {{template "icon-clock"}}
   <span class="grow">Held back — <span class="path">{{.Path}}</span> is open in

@@ -16,19 +16,12 @@ import (
 	"github.com/gshepptech/keep/internal/store"
 )
 
-// The board began read-only, deliberately: docs/design/phase-4.md's first
-// non-goal was "Editing from the page. Read-only in this phase; the store is
-// the CLI's job", and openStoreReadOnly made that true by construction
-// rather than by review.
+// The board is writable because a person watching a queue should not have
+// to leave the page to act on it. Every mutation also has a tested path
+// through the CLI and the MCP tools, so the board adds a surface, not new
+// behaviour.
 //
-// That decision is reversed here, on request, and the reversal is worth
-// recording rather than quietly performing. What made read-only defensible
-// was that every mutation already had a tested path through the CLI and the
-// MCP tools, so the page had nothing to add. What makes it wrong now is that
-// a person watching a queue has to leave the page to act on it, and the
-// leaving is where the work stops.
-//
-// Everything the original decision was protecting is kept:
+// What a read-only board would protect is kept:
 //
 //   - Mutations are POST only. A GET can never change the store, so no link,
 //     prefetch, or reload can either.
@@ -272,10 +265,9 @@ func (s *Server) doUnclaim(w http.ResponseWriter, r *http.Request) {
 }
 
 // doDrop takes the reason the confirm page collected and does NOT invent
-// one. `keep drop` refuses without --reason and exits 2; the board used to
-// route around that by supplying "dropped from the board" on the user's
-// behalf, which is the board holding a lower standard than the command line
-// for the same operation, on the record they both write.
+// one. `keep drop` refuses without --reason and exits 2; supplying a reason
+// on the user's behalf would hold the board to a lower standard than the
+// command line for the same operation, on the record they both write.
 func (s *Server) doDrop(w http.ResponseWriter, r *http.Request) {
 	s.mutate(w, r, "Dropped.", func(st *store.Store) (string, error) {
 		reason := strings.TrimSpace(r.PostFormValue("reason"))
@@ -291,12 +283,11 @@ func (s *Server) doDrop(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// reasonOr supplies a default reason. The store now REFUSES an empty one --
+// reasonOr supplies a default reason. The store REFUSES an empty one --
 // close, drop, unclaim and reopen all return ErrEmptyReason
 // (internal/store/validate.go) -- so this is the board supplying a true
 // statement, not the board routing around a rule. "closed from the board"
-// says where the close came from, which is more than the empty string the
-// MCP surface used to record before the store had an opinion.
+// says where the close came from.
 //
 // Close keeps the one-click path and drop does not, and the difference is
 // reversibility rather than inconsistency: drop abandons work and goes
@@ -449,8 +440,8 @@ func (s *Server) doAssign(w http.ResponseWriter, r *http.Request) {
 
 // doLaunch starts an agent on one item, through Interlock.
 //
-// keep does not start agents. That is stated in its own README as a
-// deliberate limit -- it holds the list and never calls a model -- and this
+// keep does not start agents. That is a deliberate limit -- it holds the
+// list and never calls a model -- and this
 // does not change it: the board shells out to `interlock run`, which is the
 // tool whose job is process lifecycle. If Interlock is not installed the
 // button is not rendered, so this path is reachable only where something

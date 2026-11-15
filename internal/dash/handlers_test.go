@@ -95,8 +95,7 @@ func TestHandlerBacklogRendersGroupedByType(t *testing.T) {
 	}
 }
 
-// item.html (shipped by plan 02) deliberately carries no title row --
-// 02-08-SUMMARY.md's precedent for `show`, which item.html follows exactly
+// item.html deliberately carries no title row, following `show` exactly
 // (id/stage/type/status/score/parent/repo/paths/why/acceptance/created/
 // updated, then deps/events, then the body). These tests therefore assert
 // against the rendered id and each fixture item's own unique body-text
@@ -117,10 +116,9 @@ func TestHandlerItemRendersOneItem(t *testing.T) {
 	}
 }
 
-// TestHandlerItemDotContainingIDRoutesToTheRightChild is 05-RESEARCH.md's
-// open question 2, settled live during planning: a dot-containing id is
-// captured whole by the {id} wildcard, routing to that child, not its
-// ancestor.
+// TestHandlerItemDotContainingIDRoutesToTheRightChild proves a
+// dot-containing id is captured whole by the {id} wildcard, routing to that
+// child, not its ancestor.
 func TestHandlerItemDotContainingIDRoutesToTheRightChild(t *testing.T) {
 	s, ids := newHandlerFixture(t)
 	rec := get(t, s.Handler(), "/item/"+ids.grandchild)

@@ -14,8 +14,8 @@ import (
 
 // stderrLog is this package's one logger: a store error's detail is written
 // HERE, never into a response body -- a store error message can echo
-// agent-supplied text, and the response body is exactly what plan 05's scan
-// inspects.
+// agent-supplied text, and the response body is exactly what the off-host
+// reference scan inspects.
 var stderrLog = slog.New(slog.NewTextHandler(os.Stderr, nil))
 
 // routes returns the server's five-route table: the four views plus the
@@ -27,8 +27,7 @@ var stderrLog = slog.New(slog.NewTextHandler(os.Stderr, nil))
 // Each handler below makes exactly ONE store call and holds no rows or
 // transaction across its render -- every store read method already
 // materialises fully into Go values before returning (itemColumns/
-// scanItems), so "call it, render the returned value" is the whole rule
-// (05-RESEARCH.md Pitfall 5).
+// scanItems), so "call it, render the returned value" is the whole rule.
 func (s *Server) routes() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", s.handleReady)
@@ -58,10 +57,9 @@ func (s *Server) routes() *http.ServeMux {
 }
 
 // handleReady renders the ready queue. The store call is UNLIMITED
-// (limit 0) -- plan 06's DASH-07 agreement test asserts the board and
-// `keep ready` come from the same call, and a hard-coded limit that
-// happens to match a fixture's size today is exactly the coincidental pass
-// GATE-03 exists to catch.
+// (limit 0) -- the agreement test asserts the board and `keep ready` come
+// from the same call, and a hard-coded limit that happens to match a
+// fixture's size today would pass it by coincidence.
 func (s *Server) handleReady(w http.ResponseWriter, r *http.Request) {
 	// boardDataFrom, not s.st.Ready directly: it goes through
 	// readyItemsFrom so the queue and the "held back" section apply the
@@ -102,8 +100,7 @@ func (s *Server) handleBacklog(w http.ResponseWriter, r *http.Request) {
 
 // handleItem renders one item's full detail, keyed on the path's {id}
 // wildcard -- a dot-containing id (every id below a root has dots) is
-// captured whole, verified live during 05 planning and covered by this
-// package's own handlers_test.go.
+// captured whole, covered by this package's own handlers_test.go.
 func (s *Server) handleItem(w http.ResponseWriter, r *http.Request) {
 	st, done, name, err := s.storeFor(r)
 	if err != nil {

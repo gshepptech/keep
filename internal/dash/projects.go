@@ -14,9 +14,9 @@ import (
 
 // A project is one repository with a keep store in it.
 //
-// "Repository" was the word everywhere until now, because the registry's own
-// field is Repo and that is what a directory with a .git in it is called.
-// The board says project instead: what a person is switching between here is
+// The registry's own field is Repo, because that is what a directory with a
+// .git in it is called. The board says project instead: what a person is
+// switching between here is
 // a body of work, and the git repository is where it happens to live. The
 // registry keeps its own vocabulary -- renaming a stored field to match a
 // page would be the tail wagging the dog.

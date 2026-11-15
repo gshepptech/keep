@@ -62,8 +62,8 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 //	open · matched in paths · internal/payments/refund.go · rnc-616bf0
 //	internal/payments/refund.go
 //
-// The template used to special-case the title alone. Substring containment
-// is the same rule stated once instead of once per field, and it also
+// Substring containment states the rule once instead of once per field,
+// and it also
 // catches the case a field list cannot: a short body whose entire text is
 // the title again.
 //

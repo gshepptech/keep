@@ -12,12 +12,12 @@ import (
 )
 
 // forbiddenTemplateTrustCalls are template.* constructors that fully defeat
-// html/template's contextual escaping (05-RESEARCH.md Pitfall 2). Wrapping
-// agent-supplied data in any of these tells the template engine to trust
-// the string literally -- exactly the thing DASH-05's rendered-output scan
-// depends on never happening. template.CSS is deliberately absent from this
-// set: it has its own, narrower check below (allowed at most once, and only
-// in the one file plan 02 documented).
+// html/template's contextual escaping. Wrapping agent-supplied data in any
+// of these tells the template engine to trust the string literally --
+// exactly the thing the rendered-output scan depends on never happening.
+// template.CSS is deliberately absent from this set: it has its own,
+// narrower check below (allowed at most once, and only in one documented
+// file).
 var forbiddenTemplateTrustCalls = map[string]bool{
 	"HTML":     true,
 	"HTMLAttr": true,
@@ -25,32 +25,30 @@ var forbiddenTemplateTrustCalls = map[string]bool{
 	"JS":       true,
 }
 
-// allowedCSSFile is the one file plan 02 documented as template.CSS's
-// exception: templates.go's own comment on styleInline explains why --
+// allowedCSSFile is the one file documented as template.CSS's exception:
+// templates.go's own comment on styleInline explains why --
 // styleCSS is a compile-time go:embed of a static stylesheet living in this
 // repository, not agent data, and cannot become agent data (no code in this
 // package ever writes to it), so it is reviewable once by a human rather
-// than scanned per render. If a future plan inlines the CSS differently,
+// than scanned per render. If the CSS is ever inlined differently,
 // this constant (and the "at most 1" assertion below) is what a reader
 // updates -- not a wider exception.
 const allowedCSSFile = "templates.go"
 
 // forbiddenDashImports mirrors cmd/keep/boundary_test.go's own list for
 // the two entries relevant here. TestNoSQLAboveStore already enforces this
-// module-wide (and, per this plan's own coverage assertion, is proven to
-// reach internal/dash); asserting it again HERE, locally, means a failure
+// module-wide (and its coverage assertion proves it reaches
+// internal/dash); asserting it again HERE, locally, means a failure
 // names this package directly rather than requiring a reader to trust that
 // the module-wide walk's reach has not silently shrunk.
 var forbiddenDashImports = []string{"database/sql", "modernc.org/sqlite", "modernc.org/sqlite/lib"}
 
 // TestDashHasNoStoreBehaviour is the AST proof that internal/dash carries no
-// behaviour and no trust types of its own (05-CONTEXT.md's carried-forward
-// decision: "internal/dash is a thin caller of internal/store and carries
-// no behaviour of its own"). It follows internal/mcp/structure_test.go's
-// own technique (TestNoConditionalInToolHandlers, MCP-05's precedent):
-// parse the package's non-test .go files with go/parser, walk with
-// ast.Inspect, and assert on AST shapes -- never on grep output, which
-// 04-03-SUMMARY.md already found flags a doc-comment mention of a forbidden
+// behaviour and no trust types of its own: internal/dash is a thin caller
+// of internal/store. It follows internal/mcp/structure_test.go's own
+// technique (TestNoConditionalInToolHandlers): parse the package's non-test
+// .go files with go/parser, walk with ast.Inspect, and assert on AST shapes
+// -- never on grep output, which flags a doc-comment mention of a forbidden
 // pattern exactly as readily as a real one.
 func TestDashHasNoStoreBehaviour(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)
@@ -111,7 +109,7 @@ func TestDashHasNoStoreBehaviour(t *testing.T) {
 				}
 				if forbiddenTemplateTrustCalls[sel.Sel.Name] {
 					pos := fset.Position(node.Pos())
-					t.Errorf("internal/dash/%s:%d calls template.%s(...) -- this fully defeats html/template's contextual escaping; DASH-05 depends on this never happening (05-RESEARCH.md Pitfall 2)", fe.name, pos.Line, sel.Sel.Name)
+					t.Errorf("internal/dash/%s:%d calls template.%s(...) -- this fully defeats html/template's contextual escaping; the off-host guarantee depends on this never happening", fe.name, pos.Line, sel.Sel.Name)
 				}
 				if sel.Sel.Name == "CSS" {
 					cssCount++
@@ -120,7 +118,7 @@ func TestDashHasNoStoreBehaviour(t *testing.T) {
 			case *ast.Ident:
 				if node.Name == "withTx" {
 					pos := fset.Position(node.Pos())
-					t.Errorf("internal/dash/%s:%d references withTx -- internal/dash must never hold a transaction; every existing store read method already opens and closes its own connection use per call (05-RESEARCH.md Pitfall 5)", fe.name, pos.Line)
+					t.Errorf("internal/dash/%s:%d references withTx -- internal/dash must never hold a transaction; every existing store read method already opens and closes its own connection use per call", fe.name, pos.Line)
 				}
 			}
 			return true

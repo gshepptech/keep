@@ -22,10 +22,9 @@ type confirmData struct {
 	Button  string
 	// AskReason puts a required reason field on the page. The CLI refuses to
 	// close or drop without one -- `--reason` is required and its absence is
-	// exit 2 -- and the board used to route around that by supplying
-	// "dropped from the board" on the user's behalf. That is the board
-	// quietly holding a lower standard than the command line for the same
-	// operation, on the record that both of them write.
+	// exit 2 -- and the board must not quietly hold a lower standard than the
+	// command line for the same operation, on the record that both of them
+	// write.
 	AskReason bool
 	Item      *model.Item
 	Session   string

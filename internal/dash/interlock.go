@@ -37,8 +37,8 @@ func (s *Server) readyItemsFrom(ctx context.Context, st *store.Store, dir string
 //
 // It runs the item through interlock.Exclude -- the same call the queue
 // uses -- rather than comparing paths itself. A second rule for "is this
-// held" could disagree with the board's, which is exactly the split
-// DASH-07 exists to prevent: the item page would offer Claim on work the
+// held" could disagree with the board's: the item page would offer Claim
+// on work the
 // queue had already hidden, and neither page could explain the other.
 func (s *Server) heldFor(ctx context.Context, item model.Item, dir string) *interlock.Collision {
 	if !interlock.Watches(dir) {

@@ -9,7 +9,7 @@ import (
 )
 
 // styleCSS is the whole embedded stylesheet, compiled into the binary --
-// the page fetches nothing (DASH-05's "no external asset" requirement).
+// the page fetches nothing (no external assets).
 //
 //go:embed style.css
 var styleCSS string
@@ -19,7 +19,7 @@ var styleCSS string
 // exception to. styleCSS is a compile-time go:embed of a static file living
 // in this repository: it is not agent data, cannot become agent data (no
 // code in this package ever writes to it), and is reviewable once by a
-// human rather than scanned per render. Plan 06's zero-occurrence grep for
+// human rather than scanned per render. structure_test.go's check for
 // template.HTML/HTMLAttr/URL/JS/CSS would otherwise have no way to
 // distinguish this line from a genuine violation; naming it here, at the
 // declaration, is what keeps the exception visible rather than rediscovered
@@ -82,9 +82,9 @@ var funcMap = template.FuncMap{
 // something that can never vary once the binary has started.
 var tmpl = template.Must(template.New("dash").Funcs(funcMap).ParseFS(templateFS, "templates/*.html"))
 
-// state maps an item to one of exactly three semantic states -- the three
-// docs/design/phase-4.md permits colour to carry (workable / claimed /
-// blocked). Order matters: blocked wins over claimed, because a
+// state maps an item to one of exactly three semantic states -- the only
+// three colour carries (workable / claimed / blocked). Order matters:
+// blocked wins over claimed, because a
 // claimed-but-blocked item is not workable and the page must say the more
 // important thing. This is a presentation mapping over values the store
 // already computed (Status, Blocked); it decides nothing about the data --
@@ -108,7 +108,7 @@ const maxDepthClass = 12
 
 // depthClass maps a tree row's depth to a class name, never an inline
 // style="padding-left:...". An inline style attribute is one of the
-// surfaces DASH-05's scan inspects; keeping it out of the rendered output
+// surfaces the off-host scan inspects; keeping it out of the rendered output
 // entirely is cheaper than proving each generated padding value safe.
 func depthClass(depth int) string {
 	if depth < 0 {

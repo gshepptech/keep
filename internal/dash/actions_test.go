@@ -219,10 +219,10 @@ func idFromBody(t *testing.T, body string) string {
 
 // TestRedirectPrefixCannotLeaveTheHost.
 //
-// The prefix used to come straight off the form and be concatenated into
-// the redirect. A posted "//evil.example" makes a protocol-relative URL,
-// which browsers follow off-host -- an open redirect, reachable by anyone
-// who can get a token-bearing form submitted. The prefix is now derived
+// If the prefix came straight off the form and were concatenated into
+// the redirect, a posted "//evil.example" would make a protocol-relative
+// URL, which browsers follow off-host -- an open redirect, reachable by
+// anyone who can get a token-bearing form submitted. The prefix is derived
 // from the project name, which is checked against the registry, so the only
 // value it can ever take is "/p/<a project that exists>".
 //
@@ -270,11 +270,10 @@ func TestRedirectPrefixCannotLeaveTheHost(t *testing.T) {
 
 // TestDropRefusesWithoutAReason.
 //
-// `keep drop` requires --reason and exits 2 without one. The board used to
-// route around that by supplying "dropped from the board" on the user's
-// behalf -- the board holding a lower standard than the command line for
-// the same operation, on the record they both write. The confirm page asks
-// for a reason; this is what makes that more than a suggestion.
+// `keep drop` requires --reason and exits 2 without one. The board must not
+// hold a lower standard than the command line for the same operation, on
+// the record they both write. The confirm page asks for a reason; this is
+// what makes that more than a suggestion.
 func TestDropRefusesWithoutAReason(t *testing.T) {
 	s, _ := writableFixture(t)
 	post(t, s, "/do/add", url.Values{"title": {"a thing to drop"}, "type": {"task"}})

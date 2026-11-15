@@ -296,11 +296,11 @@ func TestCreateRefusesAMissingDirectory(t *testing.T) {
 	}
 }
 
-// TestActionsWriteToTheProjectTheyCameFrom is the bug this file exists to
-// stop coming back. Every mutating action used to resolve the store from
-// startup rather than from the form, so filing an item while looking at one
-// project's board put it in another's -- silently, since the item lands
-// somewhere real, just not where the person was looking.
+// TestActionsWriteToTheProjectTheyCameFrom proves every mutating action
+// resolves the store from the form, not from startup. Otherwise filing an
+// item while looking at one project's board would put it in another's --
+// silently, since the item lands somewhere real, just not where the person
+// was looking.
 func TestActionsWriteToTheProjectTheyCameFrom(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
 	// Windows cannot execute. The behaviour under test is keep's, not the
@@ -387,12 +387,12 @@ func TestActionRedirectsStayInTheProject(t *testing.T) {
 
 // TestAgentControlsFollowTheProject.
 //
-// The launch control used to be gated on whether the interlock binary
-// answered from the *server's* directory, which is two wrong questions at
-// once: it asked about the wrong repository, and "is Interlock installed"
+// The launch control must not be gated on whether the interlock binary
+// answers from the *server's* directory, which is two wrong questions at
+// once: it asks about the wrong repository, and "is Interlock installed"
 // is not "is Interlock set up here". The binary answers status from any
 // directory, including one it has never been initialised in -- so the
-// button appeared on projects where pressing it would do nothing.
+// button would appear on projects where pressing it would do nothing.
 func TestAgentControlsFollowTheProject(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
 	// Windows cannot execute. The behaviour under test is keep's, not the

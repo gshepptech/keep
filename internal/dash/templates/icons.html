@@ -2,13 +2,13 @@
 
      Blocks rather than a Go helper returning template.HTML: this package's
      structure_test.go forbids every html/template trust type, because
-     DASH-05's guarantee that no rendered value resolves off-host depends on
+     the guarantee that no rendered value resolves off-host depends on
      contextual escaping never being switched off. An icon helper would have
      been the second exception to that rule, and a security gate that grows
      exceptions for convenience stops being one. Written as literal markup,
      the escaping is not involved at all.
 
-     Inline rather than fetched for the same DASH-05 reason: a sprite sheet
+     Inline rather than fetched for the same reason: a sprite sheet
      or an icon font would be an off-host reference.
 
      One visual weight throughout -- 16-unit box, 1.5 stroke, currentColor,

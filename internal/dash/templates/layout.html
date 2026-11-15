@@ -3,14 +3,14 @@
   content beneath it, held to a measure.
   header. Every view fills the region; none of them draws chrome.
 
-  DEVIATION FROM THE PLAN'S LITERAL {{define "layout"}} SHAPE, RECORDED FOR
-  THE NEXT READER: html/template parses every *.html file here into ONE
-  associated set, and two files defining the same block name silently keep
-  only the last parsed -- verified live. So each view defines its own
-  uniquely-named top-level template and calls these shared blocks directly.
+  Why there is no shared {{define "layout"}}: html/template parses every
+  *.html file here into ONE associated set, and two files defining the same
+  block name silently keep only the last parsed. So each view defines its
+  own uniquely-named top-level template and calls these shared blocks
+  directly.
 
-  Icons are inline SVG, drawn here rather than fetched: DASH-05 forbids any
-  off-host reference in rendered output, so an icon font or a sprite sheet
+  Icons are inline SVG, drawn here rather than fetched: rendered output may
+  hold no off-host reference, so an icon font or a sprite sheet
   is not available. They are 16px, 1.5px stroke, currentColor -- one visual
   weight across the whole nav.
 */}}
@@ -21,10 +21,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{.Title}} · keep</title>
 {{/* The mark, inline. A data: URI rather than a file so the board still
-     has an icon with no route serving one, and so DASH-05 holds: a
+     has an icon with no route serving one, and so the page fetches nothing: a
      favicon request is a fetch like any other, and a 404 on every page
      load is a real one. The http: in the SVG namespace is percent-encoded
-     because DASH-05's scanner rejects that substring in a resource
+     because the off-host scanner rejects that substring in a resource
      attribute, and it is right to: it cannot tell a namespace from a URL.
 
      The mark is a keep -- three merlons, two embrasures, filled rather

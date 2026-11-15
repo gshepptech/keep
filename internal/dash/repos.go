@@ -22,8 +22,8 @@ type allPage struct {
 	Items []registry.MergedItem
 
 	// Errors are the repositories that could not be read. They are page
-	// content, not a failure: REPO-04's requirement is a visible row-level
-	// error and the other repositories rendered anyway, so a store that has
+	// content, not a failure: an unreadable store is a visible row-level
+	// error and the other repositories render anyway, so a store that has
 	// been deleted or chmod-ed to nothing costs you one row, never the
 	// page.
 	Errors []repoError
@@ -48,7 +48,7 @@ type repoError struct {
 // It is the one handler that does not make exactly one store call, because
 // it makes none: it never opens this repository's store at all. The fan-out
 // opens each registered store read-only through internal/registry, which is
-// where REPO-04 and REPO-05's classification already lives -- duplicating
+// where the read-only open and failure classification already live -- duplicating
 // any of that here would be a second implementation of the rule that a
 // missing store must not be fabricated as an empty one.
 func (s *Server) handleAll(w http.ResponseWriter, r *http.Request) {

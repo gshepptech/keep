@@ -40,7 +40,7 @@ func mustAdd(t *testing.T, st *store.Store, in store.AddItemInput) model.Item {
 	return it
 }
 
-// TestNewServerRefusesNonLoopback is DASH-03's own wording: attempt a
+// TestNewServerRefusesNonLoopback: attempt a
 // non-loopback bind and require an error. Only the error's presence is
 // asserted -- never message text (server.go's own comment explains why: the
 // addresses that get past validation would fail at Listen with OS-dependent

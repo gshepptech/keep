@@ -44,12 +44,11 @@ func tokensIn(css string) map[string]string {
 
 // TestEveryTextTokenClearsContrastOnBothGrounds.
 //
-// This is measured rather than eyeballed because it has now been broken
-// twice by changes that looked purely cosmetic. The first was treating
-// "faint" as a look rather than a contrast budget. The second was darkening
-// the light-mode canvas to make the app surface appear to float: four
-// tokens that had cleared 4.5:1 against the old canvas no longer did, and
-// nothing on the page looked any different.
+// This is measured rather than eyeballed because contrast is easy to break
+// with changes that look purely cosmetic: treating "faint" as a look rather
+// than a contrast budget, or darkening the canvas so the app surface
+// appears to float, can push text tokens below 4.5:1 with nothing on the
+// page looking any different.
 //
 // Both grounds are checked because text sits on both: the surface carries
 // the content, and the canvas carries the sidebar.

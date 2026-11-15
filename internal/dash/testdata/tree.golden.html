@@ -10,7 +10,7 @@
    block by layout.html. Hand-written, no framework, no reset library, no
    at-rule import, and no CSS resource-fetching function of any kind, not
    even a data URI -- there are no images on this page, and this file is
-   scanned by DASH-05's exit-gate check, so it must never contain any of the
+   scanned by the off-host reference check, so it must never contain any of the
    four forbidden shapes itself. That constraint is the reason there is no
    web font here: every typeface below is one the machine already has.
 
@@ -48,10 +48,9 @@
   --line-soft: #edeae5;
 
   /* Every text token below clears 4.5:1 against both the panel and the
-     canvas -- measured, not assumed. The first version of --fg-faint sat at
-     2.93:1 and carried table headers, timestamps and every hint on the
-     page, which is a lot of real text to have made unreadable by treating
-     "faint" as a look rather than a contrast budget. */
+     canvas -- measured, not assumed (contrast_test.go). --fg-faint carries
+     table headers, timestamps and every hint on the page, so "faint" is a
+     contrast budget, not a look. */
   --fg: #16161a;
   --fg-muted: #66666f;
   --fg-faint: #68686e;
@@ -88,7 +87,7 @@
   /* Headings take the platform's DISPLAY cut, which is a genuinely
      different typeface from its text cut -- tighter apertures, less
      spacing, drawn to be set large. It is the one typographic distinction
-     available without fetching a file, which DASH-05 forbids, and it is
+     available without fetching a file, which the page never does, and it is
      why the page titles do not look like the body text scaled up.
 
      Inter is deliberately not at the front of either stack. It is the most
@@ -614,7 +613,7 @@ input, select, textarea {
 /* A native select renders as whatever the operating system feels like,
    which on a dark page is a light grey lozenge that belongs to no design.
    appearance:none takes it back; the caret is two CSS borders rotated,
-   because DASH-05 forbids fetching an image for it and an inline SVG
+   because the page fetches no images and an inline SVG
    background would have to be a data: URI in every rule that uses one. */
 select {
   appearance: none; -webkit-appearance: none;
@@ -908,16 +907,14 @@ tbody tr:hover td { background: color-mix(in srgb, var(--fg) 4%, transparent); }
 .btn { transition: background var(--tempo) var(--ease-out), border-color var(--tempo) var(--ease-out),
                    color var(--tempo) var(--ease-out), transform 60ms var(--ease-out); }
 
-/* Reveal-on-hover was tried here and taken back out. The references that do
-   it are hiding secondary actions; on this page the row controls are Start
-   agent and Claim, which are the entire point of the queue. Resting them at
-   55% made them read as disabled -- most obviously in a screenshot, where
-   there is no cursor to explain the dimness, but in use too: a control you
-   have to approach before you can tell whether it is live is a control that
-   costs a decision.
+/* No reveal-on-hover for row controls. Reveal-on-hover suits secondary
+   actions; on this page the row controls are Start agent and Claim, which
+   are the entire point of the queue. Dimmed at rest they read as disabled,
+   and a control you have to approach before you can tell whether it is
+   live is a control that costs a decision.
 
-   The row still responds. It just does it with the background, which says
-   "you are here" without saying "this was off until now". */
+   The row still responds to hover, with the background, which says
+   "you are here" without suggesting the controls were off. */
 
 /* The nav marks where you are on the way in, not after a jump. */
 .nav-item, .project-item { transition: background var(--tempo) var(--ease-out), color var(--tempo) var(--ease-out); }
@@ -982,7 +979,7 @@ input[type="checkbox"] {
 }
 input[type="checkbox"]:checked { background: var(--fg); border-color: var(--fg); }
 /* The tick is two borders rotated, for the same reason the select caret is:
-   DASH-05 forbids fetching an image for it. */
+   the page fetches no images. */
 input[type="checkbox"]:checked::after {
   content: ""; position: absolute; left: 4.5px; top: 1px;
   width: 4px; height: 8px; border: solid var(--bg);

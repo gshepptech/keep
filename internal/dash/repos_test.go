@@ -68,7 +68,7 @@ func crossRepoFixture(t *testing.T) (*Server, string) {
 	return s, home
 }
 
-// TestAllRanksAcrossRepositories is REPO-03 on the board: one queue over
+// TestAllRanksAcrossRepositories is `ready --all` on the board: one queue over
 // every registered store, ranked across all of them rather than grouped by
 // repository.
 func TestAllRanksAcrossRepositories(t *testing.T) {
@@ -113,8 +113,8 @@ func TestAllRanksAcrossRepositories(t *testing.T) {
 	}
 }
 
-// TestAllReportsUnreadableRepositoryAsARowNotAPage is REPO-04/REPO-05 on
-// the board. A store that has been deleted must cost you one row and not
+// TestAllReportsUnreadableRepositoryAsARowNotAPage: a store that has been
+// deleted must cost you one row and not
 // the page -- and must never be fabricated as an empty repository, which
 // would read as "nothing to do here" rather than "this is broken".
 func TestAllReportsUnreadableRepositoryAsARowNotAPage(t *testing.T) {
@@ -130,7 +130,7 @@ func TestAllReportsUnreadableRepositoryAsARowNotAPage(t *testing.T) {
 	s, home := crossRepoFixture(t)
 
 	// Delete beta's store out from under the registry, leaving the
-	// registration behind -- exactly the state REPO-05 describes.
+	// registration behind.
 	if err := os.Remove(filepath.Join(home, "beta", "db.sqlite")); err != nil {
 		t.Fatalf("remove beta store: %v", err)
 	}
@@ -157,7 +157,7 @@ func TestAllReportsUnreadableRepositoryAsARowNotAPage(t *testing.T) {
 		t.Errorf("/all does not still count both registered repositories:\n%s", body)
 	}
 
-	// REPO-05's own rule, restated at this boundary: reading a missing
+	// The registry's own rule, restated at this boundary: reading a missing
 	// store must not create one.
 	if _, err := os.Stat(filepath.Join(home, "beta", "db.sqlite")); !os.IsNotExist(err) {
 		t.Errorf("rendering /all re-created the deleted store (stat err = %v)", err)
@@ -215,7 +215,7 @@ func TestAllNavLinkIsOnEveryView(t *testing.T) {
 	}
 }
 
-// TestNoExternalReferencesInCrossRepoView extends DASH-05's exit-gate proof
+// TestNoExternalReferencesInCrossRepoView extends the off-host proof
 // to /all, which the four-view scan in offhost_test.go predates.
 //
 // This view renders two things none of the other four do, and both are
@@ -390,14 +390,14 @@ func stubInterlock(t *testing.T, statusJSON string) string {
 	return path
 }
 
-// TestQueueAndInterlockViewAgree is DASH-07's rule applied to the second
+// TestQueueAndInterlockViewAgree is the agreement rule applied to the second
 // join. The board's queue and /who both answer "is this held", and if they
 // answered it separately they would drift -- producing a board that omits an
 // item while the page meant to explain the omission does not mention it.
 // They share one Exclude call through readyItemsFrom; this is what proves it.
 //
-// The break that motivated this test: changing handleReady back to calling
-// s.st.Ready directly leaves every other test in this package passing.
+// Changing handleReady to call s.st.Ready directly leaves every other test
+// in this package passing; this one catches it.
 func TestQueueAndInterlockViewAgree(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
 	// Windows cannot execute. The behaviour under test is keep's, not the

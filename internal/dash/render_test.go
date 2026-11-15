@@ -29,7 +29,7 @@ var update = flag.Bool("update", false, "rewrite golden files")
 // machine, forever.
 const fixedTime = "2026-01-01T00:00:00.000000000Z"
 
-// treeFixture is the three-level blocked subtree DASH-06 requires: the root
+// treeFixture is a three-level blocked subtree: the root
 // epic is blocked directly by rnc-blocker; every descendant is blocked
 // because the epic is, naming the epic (not rnc-blocker) as the nearest
 // blocker, matching store.Tree's own nearest-blocked-ancestor semantics.
@@ -58,7 +58,7 @@ func treeFixture() []model.TreeNode {
 
 const treeGoldenPath = "testdata/tree.golden.html"
 
-// TestRenderTreeGolden is DASH-06's byte-for-byte proof: renderTree on the
+// TestRenderTreeGolden is the byte-for-byte proof: renderTree on the
 // fixture above must equal testdata/tree.golden.html exactly. See -update's
 // doc comment above for how to (re)generate the golden file.
 func TestRenderTreeGolden(t *testing.T) {

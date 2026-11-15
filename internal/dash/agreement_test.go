@@ -15,8 +15,8 @@ import (
 )
 
 // agreementFixtureReadyCount is the number of plain ready tickets
-// newAgreementFixture creates. This size is LOAD-BEARING, not a detail:
-// 05-RESEARCH.md Pattern 6 names the exact trap a smaller fixture hides -- a
+// newAgreementFixture creates. This size is LOAD-BEARING, not a detail: a
+// smaller fixture hides a trap -- a
 // queue handler hard-coding `Ready(ctx, 10)` would pass on any fixture of 10
 // or fewer items and only start failing later, at which point the failure
 // looks like a regression in unrelated work. 16 stays above both
@@ -62,19 +62,17 @@ func newAgreementFixture(t *testing.T) (*Server, *store.Store) {
 // idsFromQueueTable extracts every "/item/{id}" href's id, in document
 // order, but ONLY from inside the element carrying class="queue" -- the
 // board's own stable hook, so this test does not need to know whether the
-// queue is a table, a list, or whatever it becomes next. It was a <table>
-// until the queue rows became <li> objects; the hook survived the change,
-// which is what a hook is for. Scoping to the hook (rather than collecting every /item/
+// queue is a table, a list, or whatever it becomes next. Scoping to the
+// hook (rather than collecting every /item/
 // href on the page) is deliberate: collecting every such href would work
 // today too, since the nav uses only fixed literal paths, but that is an
 // accident of the current nav, not a guarantee -- a future "see also" link
 // elsewhere on the page must not silently join this comparison.
 //
 // This walks a parsed DOM (golang.org/x/net/html), never a regex over the
-// page's raw bytes -- 05-RESEARCH.md already rejected a raw-byte scan for
-// the DASH-05 work for the identical reason: it cannot distinguish "inside
-// the queue table" from "inside a future footer" without becoming a second,
-// worse HTML parser.
+// page's raw bytes: a raw-byte scan cannot distinguish "inside the queue
+// table" from "inside a future footer" without becoming a second, worse
+// HTML parser.
 func idsFromQueueTable(t *testing.T, page string) []string {
 	t.Helper()
 	doc, err := html.Parse(strings.NewReader(page))
@@ -133,7 +131,7 @@ func idsOf(items []model.Item) []string {
 	return ids
 }
 
-// TestQueueViewAgreesWithReady is DASH-07's web-side same-call proof: the
+// TestQueueViewAgreesWithReady is the web-side same-call proof: the
 // ids rendered inside the queue table's <a href="/item/{id}"> links, in
 // document order, must equal st.Ready(ctx, 0)'s ids exactly -- same length,
 // same order, same values. This is stronger than "the page shows the ready

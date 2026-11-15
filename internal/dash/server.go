@@ -12,12 +12,11 @@ import (
 )
 
 // validateLoopback resolves hostport and refuses anything that is not a
-// loopback address. This is DASH-03's whole mechanism, and it lives in the
-// constructor rather than the flag parser on purpose (05-CONTEXT.md
-// decision 4): the CLI exposes no --host flag at all, so there is no way to
-// ASK for a non-loopback bind -- but DASH-03 requires the refusal be
-// "asserted by attempting one and requiring an error", so the guard must
-// exist somewhere a Go test can call directly.
+// loopback address. This is the whole loopback-only mechanism, and it lives
+// in the constructor rather than the flag parser on purpose: the CLI exposes
+// no --host flag at all, so there is no way to ASK for a non-loopback bind
+// -- but the refusal must be asserted by attempting one and requiring an
+// error, so the guard must exist somewhere a Go test can call directly.
 //
 // It checks the RESOLVED address, never the input string. That is what
 // makes it correct for "localhost" regardless of how a given machine's
@@ -62,9 +61,9 @@ type Server struct {
 	// claim an item is handed it as its own retry, and either can release
 	// the other's hold.
 	//
-	// The board used to claim with no session at all, so a person clicking
-	// Claim and an agent that had not set $KEEP_SESSION were, to every rule
-	// that reads the id back, indistinguishable.
+	// Without its own session, a person clicking Claim and an agent that had
+	// not set $KEEP_SESSION would be, to every rule that reads the id back,
+	// indistinguishable.
 	//
 	// Per-process rather than stable: two boards are two people at two
 	// terminals, and the whole point of the id is telling them apart. A
@@ -73,8 +72,8 @@ type Server struct {
 	session string
 
 	// dbPath is what writable() reopens. The read path keeps its read-only
-	// handle -- docs/design/phase-4.md made that true by construction and it
-	// stays true for every GET; only a POST opens for writing, and only for
+	// handle -- true by construction for every GET; only a POST opens for
+	// writing, and only for
 	// the length of the action.
 	dbPath string
 
@@ -92,7 +91,7 @@ type Server struct {
 // NewServer validates hostport, binds it, and returns a Server whose URL is
 // already known -- the listener is opened HERE, not in Serve, because
 // `--web` binds port 0 and must print the OS-assigned port before it starts
-// serving (DASH-02). Validation runs before net.Listen, so a refused
+// serving. Validation runs before net.Listen, so a refused
 // address never opens a socket at all.
 // NewServer builds the board. dbPath and actor are what make it writable:
 // pass an empty dbPath and every mutating route reports that the board is
