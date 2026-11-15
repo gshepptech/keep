@@ -374,9 +374,9 @@ func TestConcurrentInitDifferentRepositoriesLeavesRegistryValid(t *testing.T) {
 	// actually is on this machine.
 	t.Logf("TestConcurrentInitDifferentRepositoriesLeavesRegistryValid: %d/%d registrations survived", len(envelope.Repos), n)
 
-	// Every one of the six must survive. Before the lock this was 1-of-6,
-	// reproducibly, so a regression here is not a flake to retry -- it is
-	// the read-modify-write window reopening.
+	// Every one of the six must survive. Without the lock only one does,
+	// reproducibly, so a failure here is not a flake to retry -- it is the
+	// read-modify-write window reopening.
 	if len(envelope.Repos) != n {
 		var got []string
 		for _, r := range envelope.Repos {

@@ -126,8 +126,6 @@ func TestReadyExcludesItemsWhosePathsInterlockHolds(t *testing.T) {
 // KEEP_INTERLOCK=off rather than merely leaving the stub off PATH: env()
 // already pins PATH, but a developer with Interlock installed somewhere
 // env() happens to include would silently turn this into a different test.
-// The dashboard's equivalent caught exactly that on the machine this was
-// written on.
 func TestReadyIsUnchangedWithoutInterlock(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
 	// Windows cannot execute. The behaviour under test is keep's, not the
