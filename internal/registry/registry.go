@@ -50,12 +50,12 @@ func PathIn(home string) string {
 // name of the directory containing .rounce/, or of the containing directory
 // when the store is not in a .rounce/ layout at all.
 //
-// 06-CONTEXT.md decision 2 phrases this as "the directory two levels above
-// db.sqlite", which is exactly right for the standard <repo>/.rounce/
-// db.sqlite layout and wrong for `keep init --db /tmp/scratch/x.sqlite`,
-// where two levels up is "/tmp". Checking for the .rounce/ component first
-// honours the decision's intent (the repository directory's base name) in
-// both layouts. The store file's own name is never used: it is always
+// "The directory two levels above db.sqlite" is exactly right for the
+// standard <repo>/.rounce/db.sqlite layout and wrong for
+// `keep init --db /tmp/scratch/x.sqlite`, where two levels up is "/tmp".
+// Checking for the .rounce/ component first gives the repository
+// directory's base name in both layouts. The store file's own name is never
+// used: it is always
 // "db.sqlite" and useless as a label.
 func NameFor(storePath string) string {
 	dir := filepath.Dir(storePath)
@@ -70,11 +70,10 @@ func NameFor(storePath string) string {
 // It returns BOTH an empty, usable envelope AND a non-nil error whenever the
 // file is present but unusable -- malformed JSON, an unreadable file, an
 // unrecognised version. That double return is deliberate, not sloppy:
-// 06-CONTEXT.md decision 2 makes a broken registry never fatal, so every
-// caller reports err on stderr and proceeds with the envelope it was also
-// handed. A caller that returned early on err would stop `keep ready` from
-// working in the repository the user is standing in, which is the exact
-// failure that decision forbids.
+// a broken registry is never fatal, so every caller reports err on stderr
+// and proceeds with the envelope it was also handed. A caller that returned
+// early on err would stop `keep ready` from working in the repository the
+// user is standing in.
 //
 // A MISSING file is not an error at all: (Envelope{Version: Version}, nil).
 // Nothing has been registered yet is a normal state, not a fault.
@@ -113,11 +112,10 @@ func Load(home string) (Envelope, error) {
 // read-modify-write sequence AROUND the rename. Two processes registering
 // two DIFFERENT new repos concurrently, each having read the registry before
 // the other's rename landed, will have one rename completely replace the
-// other's addition -- a lost update, not a corrupt file. 06-CONTEXT.md
-// decision 2 accepts that cost explicitly ("a half-written registry that
-// breaks every future `repos` call is a much worse failure than a lost
-// registration"). Plan 03's GATE-04 test asserts the guarantee this actually
-// makes, and deliberately not the stronger one.
+// other's addition -- a lost update, not a corrupt file. A half-written
+// registry that breaks every future `repos` call is a much worse failure
+// than a lost registration. Isolation comes from withLock (lock.go), not
+// from Save.
 func Save(home string, env Envelope) error {
 	env.Version = Version
 
@@ -160,8 +158,8 @@ func Save(home string, env Envelope) error {
 }
 
 // Register adds storePath to home's registry, or updates its last_seen if it
-// is already there. It is idempotent by requirement (06-CONTEXT.md decision
-// 3): re-registering never appends a second row, so `keep init` run twice
+// is already there. It is idempotent: re-registering never appends a
+// second row, so `keep init` run twice
 // in one repository leaves one entry, not two.
 //
 // storePath is stored exactly as given. Register does not absolutize it --
@@ -173,9 +171,8 @@ func Register(home, storePath, name, lastSeen string) error {
 	// The lock covers Load and Save TOGETHER. Save's temp-file-and-rename
 	// makes each write atomic, which is a different guarantee: without this
 	// lock two processes registering two different repositories each read
-	// before the other's rename landed, and one rename discarded the
-	// other's addition -- 1-of-6 survivors, 10 runs out of 10
-	// (06-03-SUMMARY.md). See internal/registry/lock.go for why failing to
+	// before the other's rename landed, and one rename would discard the
+	// other's addition. See internal/registry/lock.go for why failing to
 	// take the lock proceeds anyway rather than erroring.
 	return withLock(home, func() error {
 		return register(home, storePath, name, lastSeen)

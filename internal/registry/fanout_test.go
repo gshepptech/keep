@@ -32,8 +32,8 @@ func addItem(t *testing.T, st *store.Store, in store.AddItemInput) model.Item {
 
 // ---- classify ----
 
-// TestClassify covers all six behaviours required by task 1: the three
-// REPO-05 failure modes classify distinctly (and pairwise differently), and
+// TestClassify covers all six behaviours of classify: the three
+// unreadable-store failure modes classify distinctly (and pairwise differently), and
 // a clean stat leaves the deeper failure to store.Open.
 func TestClassify(t *testing.T) {
 	t.Run("missing file, parent directory exists", func(t *testing.T) {
@@ -136,12 +136,9 @@ func TestClassify(t *testing.T) {
 		// and missingParentPath are necessarily different literal paths (one
 		// has an extra non-existent directory component), so msg1 != msg2
 		// would hold trivially even if classify used one single generic
-		// "store at %s: %w" template for every failure mode -- verified
-		// empirically against GATE-03 break 2 below, where collapsing
-		// classify's three branches into that one generic template left a
-		// bare pairwise-inequality check passing. What must actually be
-		// tested is that the WORDING is categorised: the two fs.ErrNotExist
-		// cases (missing file, missing parent directory -- REPO-05's
+		// "store at %s: %w" template for every failure mode. What must
+		// actually be tested is that the WORDING is categorised: the two
+		// fs.ErrNotExist cases (missing file, missing parent directory --
 		// "deleted or moved", indistinguishable from each other by this
 		// classifier by design) share the same category phrase, and the
 		// fs.ErrPermission case ("not readable") uses a different one.
@@ -344,8 +341,8 @@ func TestFetchReadyIsolatesFailures(t *testing.T) {
 // regression lock, both halves in one test. A Repo points at a path inside
 // an EXISTING directory where no store file exists. After FetchReady: (1)
 // the result's Err is non-nil, AND (2) os.Stat(path) still returns
-// fs.ErrNotExist -- no stray database file was fabricated. This is the test
-// GATE-03 break 1 (both stages) targets.
+// fs.ErrNotExist -- no stray database file was fabricated. Dropping the
+// read-only open makes this test fail.
 func TestFetchReadyMissingStoreCreatesNoFile(t *testing.T) {
 	dir := t.TempDir() // exists
 	path := filepath.Join(dir, "db.sqlite")

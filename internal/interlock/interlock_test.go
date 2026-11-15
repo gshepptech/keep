@@ -103,8 +103,8 @@ func TestExcludeKeepsItemsWithNoPaths(t *testing.T) {
 }
 
 // TestExcludeWithNoLeasesChangesNothing: the no-Interlock path is the common
-// one -- most repositories do not use it -- and it must be exactly the
-// behaviour that shipped before this package existed.
+// one -- most repositories do not use it -- and it must leave the queue
+// exactly as the store returned it.
 func TestExcludeWithNoLeasesChangesNothing(t *testing.T) {
 	items := []model.Item{item("a", "x.go"), item("b", "y.go")}
 	kept, collisions := Exclude(items, Status{Version: SupportedVersion})

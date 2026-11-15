@@ -15,9 +15,8 @@ import (
 // collide with the promoted embedded field, and encoding/json resolves that
 // collision SILENTLY BY DEPTH: the shallower field wins and the embedded
 // item's own repo value is dropped from the output entirely -- no error, no
-// warning, no duplicate-key diagnostic. Verified live against encoding/json
-// during 06 research. merge_test.go's tag-collision test is the permanent
-// lock; do not rename this tag to "repo" for symmetry.
+// warning, no duplicate-key diagnostic. merge_test.go's tag-collision test
+// is the permanent lock; do not rename this tag to "repo" for symmetry.
 type MergedItem struct {
 	model.Item
 	Repository string `json:"repository"`

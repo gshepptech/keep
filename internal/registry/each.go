@@ -30,24 +30,20 @@ type Fanout[T any] struct {
 // FetchEach opens every registered store read-only, in sequence, and runs
 // query against each.
 //
-// This is the one place a cross-repository read happens. Before it there was
-// one such place -- FetchReady -- and `--all` therefore existed on exactly
-// one command, while `keep repos` sat on 1,800 lines of registry machinery
-// serving that single flag. Every command that grew an `--all` after it
-// would otherwise have written its own open-classify-collect-close loop, and
-// the fifth one would have got the read-only open wrong: without mode=ro a
-// deleted store is silently recreated as an empty one, which reads as a
-// repository with no work rather than as a repository that is gone.
+// This is the one place a cross-repository read happens. Without it, every
+// command with an `--all` flag would write its own
+// open-classify-collect-close loop, and sooner or later one would get the
+// read-only open wrong: without mode=ro a deleted store is silently
+// recreated as an empty one, which reads as a repository with no work
+// rather than as a repository that is gone.
 //
-// Sequential by decision, carried over from FetchReady (06-CONTEXT.md
-// decision 4, quoting phase-5.md): "Opening ~20 SQLite files per request is
-// fine at this scale. If it stops being fine, the fix is a cache with an
-// mtime check, not a combined database."
+// Sequential by decision: opening ~20 SQLite files per request is fine at
+// this scale. If it stops being fine, the fix is a cache with an mtime
+// check, not a combined database.
 //
 // query is a store method, never a reimplementation of one. That is what
 // makes a cross-repository view structurally unable to disagree with the
-// single-store command it aggregates -- Anti-Pattern 1 in
-// .planning/research/ARCHITECTURE.md.
+// single-store command it aggregates.
 func FetchEach[T any](ctx context.Context, repos []Repo, query func(context.Context, *store.Store) ([]T, error)) []Fanout[T] {
 	out := make([]Fanout[T], 0, len(repos))
 	for _, r := range repos {

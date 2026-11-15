@@ -37,14 +37,13 @@ const (
 //
 // Save already writes a temp file and renames it, which POSIX guarantees is
 // atomic -- a reader sees the old file or the new one, never a torn one.
-// That was enough for the guarantee Phase 6 made, and not enough for the
-// one it did not: atomicity of the write says nothing about isolation of
-// the read-modify-write sequence around it. Two processes registering two
+// But atomicity of the write says nothing about isolation of the
+// read-modify-write sequence around it. Two processes registering two
 // different repositories, each having read before the other's rename
-// landed, produce one rename that discards the other's addition. Measured
-// in 06-03-SUMMARY.md at 1-of-6 survivors, 10 runs out of 10.
+// landed, produce one rename that discards the other's addition; with six
+// concurrent registrations, typically only one survives.
 //
-// The fix has to cover Load and Save together, which no property of a
+// The guard has to cover Load and Save together, which no property of a
 // single write can provide.
 //
 // # Why O_EXCL rather than flock
@@ -65,9 +64,8 @@ const (
 // future `keep init` fail. Refusing to register because a lock could not
 // be taken would break exactly that promise, and would trade a rare lost
 // update for a routine hard failure. So a lock that cannot be acquired
-// within lockTimeout proceeds anyway, unlocked, which is precisely the
-// behaviour that shipped in v1.0 -- no worse than before, and only for the
-// runs that could not get in.
+// within lockTimeout proceeds anyway, unlocked -- accepting a possible lost
+// update, and only for the runs that could not get in.
 func withLock(home string, fn func() error) error {
 	path := filepath.Join(filepath.Dir(PathIn(home)), lockName)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

@@ -322,7 +322,7 @@ func TestForgetUnregisteredPathReturnsFalseNotError(t *testing.T) {
 // for it. That is not a style preference -- it is the single mechanism that
 // makes every test in this package hermetic. The stdlib home-directory
 // lookup this test forbids (see the AST check below) respects $HOME on
-// Darwin and Linux (verified live during 06 research), so a package that
+// Darwin and Linux, so a package that
 // called it would still be testable by setting $HOME, but only as long as
 // every test remembered to. Making home a parameter removes the possibility
 // of forgetting: there is no code path here that could reach the

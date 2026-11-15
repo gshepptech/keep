@@ -44,8 +44,7 @@ func TestMergeOrdersByScoreDescending(t *testing.T) {
 // dropped the repository-name key and fell through to id would produce the
 // opposite order. This disagreement between id order and repository order
 // is deliberate and load-bearing: do not "tidy" these ids to agree with
-// their repository names, or this test would silently stop proving anything
-// (GATE-03 break 2 in 06-05-PLAN.md exists to catch exactly that).
+// their repository names, or this test would silently stop proving anything.
 func TestMergeTiebreaksByRepositoryNameThenID(t *testing.T) {
 	results := []RepoResult{
 		{Repo: "beta", Items: []model.Item{item("aaa-beta", 20)}},

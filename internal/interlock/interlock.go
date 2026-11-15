@@ -19,7 +19,7 @@
 // Interlock missing, Interlock failing, Interlock slow, Interlock speaking
 // a version this does not understand: all of them mean the same thing here,
 // which is that keep has nothing to add to its own answer. `ready` then
-// reports exactly what it reported before this package existed.
+// reports exactly what it would without Interlock installed.
 //
 // The alternative -- surfacing an error -- would make `keep ready` fail in
 // every repository that does not use Interlock, which is most of them. That
@@ -168,10 +168,8 @@ func binary() (string, bool) {
 // SplitPaths reads an item's paths field.
 //
 // The format is comma-separated, repo-relative, whitespace trimmed. It is
-// defined HERE, at the first thing that ever reads the column: v1 shipped
-// items.paths deliberately unread ("keep carries two unread columns for
-// the eventual join"), so nothing until now had an opinion. Comma-separated
-// because the CLI already takes `--paths` as one string, and splitting on
+// defined HERE, at the only thing that reads the column. Comma-separated
+// because the CLI takes `--paths` as one string, and splitting on
 // commas is the reading a person writing that flag would expect.
 func SplitPaths(paths *string) []string {
 	if paths == nil {
@@ -192,8 +190,7 @@ func SplitPaths(paths *string) []string {
 // queue view -- for the same reason internal/store's blockedTreeCTE is one
 // constant with five: two implementations of "is this held" would drift, and
 // the drift would be invisible until the board and the CLI disagreed about
-// what is workable. DASH-07's agreement test exists because that already
-// almost happened once.
+// what is workable. The dashboard's agreement test guards exactly that.
 //
 // An item with no paths is never excluded. Declaring no paths means keep
 // does not know what the work touches, and guessing that it collides would

@@ -16,14 +16,12 @@ import (
 // Its shape makes "the whole fan-out failed" unrepresentable: FetchReady and
 // FetchCounts return []RepoResult and NO error, so a caller structurally
 // cannot propagate one repository's failure as a crash or a blank render.
-// That is REPO-05's requirement expressed as a type rather than as a rule
-// somebody has to remember (.planning/research/ARCHITECTURE.md: "Structure
-// the fan-out so the function signature makes 'the whole thing failed'
-// unrepresentable").
+// That is "one broken repository is a row, not a failure" expressed as a
+// type rather than as a rule somebody has to remember.
 //
 // Deliberately untagged. Err cannot be marshalled by encoding/json, and the
 // two consumers want different envelopes; each maps this into its own wire
-// type. See internal/registry/merge.go (plan 05) for why a repository-name
+// type. See internal/registry/merge.go for why a repository-name
 // field's json tag needs care.
 type RepoResult struct {
 	Repo string // the registry's name field -- NOT items.repo
@@ -40,14 +38,13 @@ type RepoResult struct {
 
 // classify pre-classifies path with a stdlib stat/open check BEFORE
 // store.Open is attempted, and returns a differently-worded error for each
-// of REPO-05's three named failure modes.
+// of three failure modes: deleted or moved, missing parent directory, and
+// not readable.
 //
-// This exists because the SQL driver CANNOT distinguish them. Verified live
-// during 06 research against the pinned driver/libc versions this module is
-// pinned to: a missing file, a missing parent directory, and a chmod-000
-// file all return the identical driver error value, carrying failure code 14
-// (SQLITE_CANTOPEN) -- a scratch switch over the three cases produced
-// literal duplicate-case compiler errors. The stdlib's own fs.ErrNotExist /
+// This exists because the SQL driver CANNOT distinguish them. With the
+// pinned driver/libc versions, a missing file, a missing parent directory,
+// and a chmod-000 file all return the identical driver error value,
+// carrying failure code 14 (SQLITE_CANTOPEN). The stdlib's own fs.ErrNotExist /
 // fs.ErrPermission sentinels distinguish the same three paths cleanly.
 //
 // Do not try to make the SQLite error carry the distinction, and do not
@@ -60,22 +57,15 @@ type RepoResult struct {
 // the actual failure mechanism, and its error is still surfaced on the row.
 // classify governs the wording, not the outcome.
 //
-// Deviation from this plan's literal "Body: os.Stat(path)" instruction,
-// recorded here rather than silently followed: a bare os.Stat cannot
-// distinguish the chmod-000 case on this (POSIX) platform, because stat(2)
-// only requires search/execute permission on the path's containing
-// directories, never read permission on the target file itself -- verified
-// live on this machine (os.Stat on a chmod-000 file returns nil, err). This
-// matches the 06-RESEARCH.md finding's own quoted proof, which measured
-// os.Open (not os.Stat) distinguishing all three cases:
+// Why os.Open and not os.Stat: a bare os.Stat cannot distinguish the
+// chmod-000 case on POSIX platforms, because stat(2) only requires
+// search/execute permission on the path's containing directories, never
+// read permission on the target file itself (os.Stat on a chmod-000 file
+// returns a nil error). os.Open distinguishes all three cases:
 // "os.Open(missing) -> IsNotExist=true, IsPermission=false" /
 // "os.Open(chmod 000) -> IsNotExist=false, IsPermission=true". classify
 // therefore opens (read-only) and immediately closes rather than merely
-// stat-ing, so the fs.ErrPermission branch below is actually reachable. This
-// changes nothing about the "os.Stat is the same problem OSExists already
-// solved one level up" framing -- os.Open with an fs.ErrNotExist/
-// fs.ErrPermission classification is the same idiom, just the specific stdlib
-// call that can see a permission failure at all.
+// stat-ing, so the fs.ErrPermission branch below is actually reachable.
 func classify(path string) error {
 	f, err := os.Open(path)
 	switch {
@@ -92,20 +82,19 @@ func classify(path string) error {
 }
 
 // withStore is the ONLY place internal/registry opens a store. Every open
-// here is read-only (REPO-04), and routing both fan-outs through one helper
+// here is read-only, and routing both fan-outs through one helper
 // is what stops a third fan-out added later from quietly omitting it.
 //
-// mode=ro is a correctness requirement, not an optimisation. Verified live
-// during 06 research: a DEFAULT read-write open of a missing path SUCCEEDS
-// and creates a 4096-byte database file; mode=ro creates nothing and fails.
+// mode=ro is a correctness requirement, not an optimisation: a DEFAULT
+// read-write open of a missing path SUCCEEDS and creates a 4096-byte
+// database file; mode=ro creates nothing and fails.
 // Without ReadOnly, a deleted repository would be reported as an EMPTY
 // repository -- and a stray database file would appear where the deleted one
 // was, which is the more alarming half. fanout_test.go asserts both halves.
 //
 // The store is closed before withStore returns, so no connection is held
-// across the fan-out loop (.planning/research/PITFALLS.md names this for
-// this exact phase). Every store read method materialises its rows fully
-// into Go values before returning, so this is safe.
+// across the fan-out loop. Every store read method materialises its rows
+// fully into Go values before returning, so this is safe.
 func withStore(path string, fn func(*store.Store) error) error {
 	if err := classify(path); err != nil {
 		return err
@@ -121,29 +110,24 @@ func withStore(path string, fn func(*store.Store) error) error {
 // FetchReady opens every registered store read-only, in sequence, and
 // collects each one's ready queue.
 //
-// Sequential by decision (06-CONTEXT.md decision 4, quoting phase-5.md):
-// "Opening ~20 SQLite files per request is fine at this scale. If it stops
-// being fine, the fix is a cache with an mtime check, not a combined
-// database." Concurrency here would buy little and would reintroduce exactly
-// the one-connection-per-process reasoning Phase 1 settled.
+// Sequential by decision: opening ~20 SQLite files per request is fine at
+// this scale. If it stops being fine, the fix is a cache with an mtime
+// check, not a combined database. Concurrency here would buy little and
+// would complicate the one-connection-per-process model the store relies on.
 //
 // Each store is queried with s.Ready(ctx, 0) -- UNLIMITED, deliberately.
 // Limiting per store before the merge would let each store's own tiebreak
 // (created_at, which is not comparable across stores) decide which rows even
 // reach the cross-store ranking. The caller limits the MERGED result. This
-// is the same discipline board.go already applies with its one unlimited
+// is the same discipline board.go applies with its one unlimited
 // Ready call feeding both the count and the rows.
 //
 // The ready query itself is store.Ready, never a reimplementation: a second
-// "what is workable" query in Go is Anti-Pattern 1 in
-// .planning/research/ARCHITECTURE.md, and calling the shipped one is what
-// makes `ready --all`'s per-repo view structurally unable to disagree with
-// that repository's own single-store `keep ready`.
-// It is now a thin call on FetchEach (each.go), which is the generic form
-// of the loop this function used to own. The behaviour is unchanged and the
-// signature is unchanged; what changed is that `backlog --all`,
-// `search --all` and `log --all` share the loop rather than each writing
-// their own, and getting the read-only open wrong in a new way.
+// "what is workable" query in Go would drift, and calling the shipped one is
+// what makes `ready --all`'s per-repo view structurally unable to disagree
+// with that repository's own single-store `keep ready`.
+// It is a thin call on FetchEach (each.go), the generic form of the loop
+// that `backlog --all`, `search --all` and `log --all` share.
 func FetchReady(ctx context.Context, repos []Repo) []RepoResult {
 	fanned := FetchEach(ctx, repos, func(ctx context.Context, st *store.Store) ([]model.Item, error) {
 		return st.Ready(ctx, 0)
@@ -159,11 +143,10 @@ func FetchReady(ctx context.Context, repos []Repo) []RepoResult {
 // `keep repos` renders: total items, ready items, and last activity.
 //
 // The counts come from full item fetches plus len(), not from a COUNT(*)
-// method (06-RESEARCH.md Open Question 1). That matches cmd/keep/board.go's
-// established precedent exactly -- it already calls Ready/ListItems/Blocked/
-// Backlog purely to take len() -- and README principle 6 ("correct before
-// fast") says a COUNT(*)-shaped method is a measured optimisation, not an
-// upfront design decision. LastActivity is store.LastActivity, i.e.
+// method. That matches cmd/keep/board.go exactly -- it calls
+// Ready/ListItems/Blocked/Backlog purely to take len() -- and keep's rule is
+// correct before fast: a COUNT(*)-shaped method is a measured optimisation,
+// not an upfront design decision. LastActivity is store.LastActivity, i.e.
 // MAX(events.at), because CreateDep touches no items row and
 // MAX(items.updated_at) would therefore under-report.
 func FetchCounts(ctx context.Context, repos []Repo) []RepoResult {
