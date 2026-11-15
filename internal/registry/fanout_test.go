@@ -285,8 +285,8 @@ func TestFetchReadyOrderAndContent(t *testing.T) {
 // file deleted, the first and third results still carry their items with a
 // nil Err, the middle result carries a non-nil Err and no items, and the
 // LENGTH and ORDER are unchanged -- a fan-out that returned early or skipped
-// the bad row is exactly the silent-partial-result failure this phase is
-// shaped against.
+// the bad row would return a silent partial result, the failure this
+// design avoids.
 func TestFetchReadyIsolatesFailures(t *testing.T) {
 	repos := make([]Repo, 3)
 	for i, name := range []string{"alpha", "beta", "gamma"} {

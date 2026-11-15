@@ -88,8 +88,8 @@ func runReposList(args []string, stdout, stderr io.Writer) int {
 	}
 	rows := registry.FetchCounts(context.Background(), env.Repos)
 
-	// Sorted by name then path -- a total order, so sort.Slice's instability
-	// is irrelevant (03-05 hit that trap once already).
+	// Sorted by name then path, a total order, so sort.Slice's instability
+	// does not matter.
 	sort.Slice(rows, func(i, j int) bool {
 		if rows[i].Repo != rows[j].Repo {
 			return rows[i].Repo < rows[j].Repo

@@ -113,7 +113,7 @@ func runReady(args []string, stdout, stderr io.Writer) int {
 //
 // Errors are a first-class field, not an omission: an agent consuming this
 // needs to know it saw a PARTIAL view. A silent partial result is the
-// failure mode this phase is shaped against, so both arrays are always
+// failure this design avoids, so both arrays are always
 // present and always non-nil -- an empty errors array is a positive
 // statement that every registered store was read.
 type readyAllJSON struct {

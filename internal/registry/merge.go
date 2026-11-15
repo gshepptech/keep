@@ -33,11 +33,11 @@ type MergedItem struct {
 // that is meaningless and, worse, unstable across machines. Repository name
 // then id is a total order over the merged set, which is what makes the
 // output identical on every run -- and, being total, makes sort.Slice's
-// documented instability irrelevant here (a trap 03-05 hit once already).
+// documented instability irrelevant here.
 //
 // Errored results contribute nothing: they have no items to contribute. The
-// caller surfaces them separately -- a silent partial result is the failure
-// mode this whole phase is shaped against.
+// caller surfaces them separately, because a silent partial result is the
+// failure this design avoids.
 func Merge(results []RepoResult) []MergedItem {
 	out := make([]MergedItem, 0)
 	for _, r := range results {

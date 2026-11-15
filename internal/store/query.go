@@ -59,8 +59,8 @@ func (s *Store) GetItem(ctx context.Context, id string) (model.ItemDetail, error
 
 	// Ordered by id, not by at. id is INTEGER PRIMARY KEY AUTOINCREMENT and
 	// is monotonic within a store; at is a TEXT column that can tie when two
-	// events land in the same transaction (nothing in this phase writes two
-	// events in one transaction, but a later phase might), and a tied sort
+	// events land in the same transaction (no caller writes two events in
+	// one transaction today, but one could), and a tied sort
 	// on at would make the history's order between those two rows
 	// non-deterministic -- id has no such tie, ever.
 	events, err := queryEvents(ctx, s.db, id)
