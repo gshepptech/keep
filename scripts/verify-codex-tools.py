@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Verify keep's ten MCP tools load inside Codex and answer, without a turn.
+"""Verify keep's MCP tools load inside Codex and answer, without a turn.
 
-rnc-967360 asked for the Codex MCP registration to be checked against a live
-binary. The obvious way -- run `codex exec` and watch it call a tool -- needs
-authentication and spends a model turn, and the first attempt at it 401'd
-before any turn ran, so the tools were never exercised.
+This checks the Codex MCP registration against a live binary. The obvious
+way -- run `codex exec` and watch it call a tool -- needs authentication and
+spends a model turn, and fails before any tool is exercised if the session
+is not authenticated.
 
 codex app-server sidesteps that entirely: mcpServerStatus/list reports what
 Codex thinks of each configured server, and mcpServer/tool/call invokes a
@@ -17,8 +17,8 @@ import shutil
 import subprocess
 import sys
 
-# BREAK CHECK (GATE-03): this script's own assertions were confirmed to fail
-# before being believed. Renaming one expected tool made "all ten tools are
+# BREAK CHECK: this script's own assertions were confirmed to fail
+# before being believed. Renaming one expected tool made "all tools are
 # loaded, by name" fail with the mismatched list; pointing the tool call at a
 # server name Codex does not have made it fail with a protocol error rather
 # than passing vacuously.
@@ -98,13 +98,16 @@ def main() -> int:
         if keep is None:
             return 1
 
-        # Ten tools, by name -- a count alone would pass if the server
-        # advertised ten of something else after a refactor.
-        want = sorted(["add", "backlog", "capture", "close", "dep",
-                       "drop", "list", "ready", "show", "start"])
+        # Every tool, by name -- a count alone would pass if the server
+        # advertised the right number of something else after a refactor.
+        # Mirrors internal/mcp.ToolNames.
+        want = sorted(["capture", "add", "ready", "backlog", "show", "list",
+                       "search", "log", "stale", "dep", "start", "close",
+                       "drop", "update", "blocked", "ready_all", "why_not",
+                       "next", "unclaim", "reopen"])
         got = sorted(t if isinstance(t, str) else t.get("name")
                      for t in (keep.get("tools") or []))
-        check("all ten tools are loaded, by name", got == want, f"{got}")
+        check("all tools are loaded, by name", got == want, f"{got}")
 
         thread = s.call("thread/start", {"cwd": REPO})
         tid = thread.get("threadId") or thread.get("thread", {}).get("id")

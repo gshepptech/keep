@@ -3,7 +3,7 @@
 # What the tests actually cover, including the parts that run in a subprocess.
 #
 # `go test ./... -cover` reports cmd/keep at a few percent. That number is not
-# a gap, it is a blind spot: GATE-05 puts most of this package's behaviour in a
+# a gap, it is a blind spot: most of this package's behaviour is tested in a
 # real built binary driven through os/exec, and the in-process coverage
 # instrument cannot see into another process. A figure that reads as "barely
 # tested" where the truth is "tested somewhere the meter cannot reach" is worse

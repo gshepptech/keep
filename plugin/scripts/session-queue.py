@@ -3,9 +3,8 @@
 
 This is the whole reason the plugin exists. A `CLAUDE.md` line asking an agent
 to check the queue is an instruction it can ignore; a hook fires whether or not
-the model cooperates, which is why keep's CLI was kept complete in the first
-place (docs/design/phase-3.md: "hooks can call a binary; hooks cannot call an
-MCP tool").
+the model cooperates, which is why keep's CLI is kept complete: hooks can
+call a binary; hooks cannot call an MCP tool.
 
 Silence is a feature. This runs at the start of every session in every
 repository, most of which do not use keep, so it must produce nothing at all

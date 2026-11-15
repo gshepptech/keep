@@ -2,18 +2,15 @@
 # docs-scene.sh -- build the scene the README and guide are photographed
 # against, and serve it.
 #
-# The six images under docs/images have now been retaken by hand three
-# times, and each time the hard part was not the screenshot but rebuilding
-# the situation: two repositories, a ranked queue with a real spread of
-# scores, closed work behind it so the activity page has something to show,
-# and two agents genuinely holding files so the collision rows are real
-# rather than mocked up. This script is that situation, so the next reshoot
-# costs a command instead of an afternoon.
+# The hard part of a screenshot is not the screenshot but rebuilding the
+# situation: two repositories, a ranked queue with a real spread of scores,
+# closed work behind it so the activity page has something to show, and two
+# agents genuinely holding files so the collision rows are real rather than
+# mocked up. This script is that situation, so a reshoot costs a command.
 #
 # It is hermetic. HOME is exported into its own temporary tree before the
 # first `keep` call, which is what keeps the registry it writes out of the
-# developer's real ~/.rounce/repos.json -- the same rule every demo-phase
-# script in this directory follows, and for the same reason.
+# developer's real ~/.rounce/repos.json.
 #
 # Usage:
 #   scripts/docs-scene.sh            # build, serve, print the URLs, wait
@@ -40,8 +37,7 @@ BOARD_PID=""
 cleanup() {
   # Guarded on being non-empty rather than defaulted with ${BOARD_PID:-0}:
   # an unset PID defaulting to "0" signals process 0, which hits the whole
-  # calling process group including the invoking shell. That exact bug was
-  # found and fixed once already in demo-phase-3.sh.
+  # calling process group including the invoking shell.
   if [[ -n "$BOARD_PID" ]]; then
     kill "$BOARD_PID" 2>/dev/null || true
     wait "$BOARD_PID" 2>/dev/null || true
