@@ -447,7 +447,7 @@ keep        41  187  2026-08-12T01:47:51Z  ~/Projects/keep/.rounce/db.sqlite
 old-thing   error: store not found at ~/Projects/old-thing/.rounce/db.sqlite (deleted or moved): open ~/Projects/old-thing/.rounce/db.sqlite: no such file or directory
 ```
 
-That's not an accident of error handling. It's load-bearing. Every store
+This is deliberate. Every store
 `repos`/`ready --all` reads is opened **read-only**. A normal read-write
 open against a missing path would silently succeed and create a fresh,
 empty, 4096-byte SQLite file right there, which means a deleted repository
