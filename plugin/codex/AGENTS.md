@@ -1,84 +1,56 @@
-# keep — snippet for Codex
+# keep with Codex, without the plugin
 
-**Codex gets the hook now. This snippet is the fallback, not the plan.**
-
-An earlier version of this file said Codex hooks cannot fire. That was wrong.
-`plugin/` ships a Codex plugin carrying a `SessionStart` hook, and three
-commands install it:
-
-```bash
-codex plugin marketplace add <path to the keep repo>
-codex plugin add keep@keep
-keep codex trust
-```
-
-See [`../README.md`](../README.md) for what that does and why the trust step
-exists. What follows is still worth having: section 1 registers the tools (the
-plugin does not do that for you), and section 2 is the instruction to paste when
-you would rather not install a plugin at all.
+The Codex plugin is the recommended setup. See [../README.md](../README.md).
+This page is for people who would rather register the MCP server by hand and
+add an instruction to the repository's `AGENTS.md`.
 
 ## 1. Register the tools
 
-`~/.codex/config.toml`:
-
-```toml
-[mcp_servers.rounce]
-command = "keep"
-args = ["mcp"]
-env = { KEEP_ACTOR = "codex" }
+```bash
+codex mcp add keep -- keep mcp
 ```
 
-> **Verified 2026-08-13** against `codex-cli 0.147.0-alpha.6.5`. Running
-> `codex mcp add keep --env KEEP_ACTOR=codex -- keep mcp` in an isolated
-> `CODEX_HOME` produces exactly this, with `env` as a `[mcp_servers.rounce.env]`
-> sub-table — equivalent TOML to the inline form above.
->
-> Still unverified: that the fourteen tools load and answer inside a real turn. The
-> test session failed authentication before any turn ran, so the server was
-> never exercised by a model (`rnc-967360`).
+This writes the following to `~/.codex/config.toml`:
 
-`KEEP_ACTOR` is stamped on every event so the log records who did what.
-**It is now optional.** keep reads the client's own name out of the MCP
-handshake, so Codex records as Codex and Claude Code records as Claude Code with
-nothing set on either side. Setting it explicitly still wins, which is how you
-record a session as a named human or a CI identity rather than as the tool
-driving it.
+```toml
+[mcp_servers.keep]
+command = "keep"
+args = ["mcp"]
+```
 
-It used to matter, and getting it wrong was invisible: this file documented
-`KEEP_ACTOR=codex` while `plugin/.mcp.json` shipped `"env": {}`, so one store
-recorded Codex's work under "codex" and Claude Code's under a username, and the
-only place that surfaced was a mixed event log read afterwards.
+`KEEP_ACTOR` is optional. If it is unset, keep records events under the
+client name from the MCP handshake, so Codex's work is attributed to Codex.
+Set it (`--env KEEP_ACTOR=...`) to record a named person or a CI identity
+instead. `KEEP_SESSION` is also optional. Both are read once, when the server
+starts.
 
-`KEEP_SESSION` is optional and read once at server start, never per call.
-
-## 2. Paste this into the repository's `AGENTS.md`
+## 2. Add this to the repository's `AGENTS.md`
 
 ```markdown
 ## Work tracking
 
 This repository uses keep, a local work store. The tools are available to you.
 
-Before starting work, call `ready`. It returns the ranked list of what is
-workable and already excludes anything blocked — do not re-sort or re-filter it.
+Before starting work, call `next` (or `ready` to look first). It returns the
+ranked list of what is workable and already excludes anything blocked; do not
+re-sort or re-filter it.
 
 When you notice something worth doing that is not what you were asked to do,
-file it with `add` (or `capture` if it is still rough) rather than mentioning it
-and moving on. Score with value/confidence/effort, each 0-10, and put a
-`file:line` citation in `--why` where you can.
+`search` for it, then file it with `add` (or `capture` if it is still rough)
+rather than mentioning it and moving on. Score with value/confidence/effort,
+each 0-10, and put a `file:line` citation in `why` where you can.
 
-When you pick something up call `start`; when it lands call `close` with a
-reason. `drop` is for abandoned work and is deliberately distinct from `close`,
-so do not use one for the other.
+When work lands, call `close` with a reason. `drop` is for abandoned work and
+is deliberately distinct from `close`, so do not use one for the other. If you
+stop without finishing, `unclaim` returns the item to the queue.
 
-Items in `backlog` are `raw` and deliberately not workable yet. Promote one only
+Items in `backlog` are raw and deliberately not workable yet. Promote one only
 when you have refined it into something with a title that stands alone.
 ```
 
-## 3. Sharing a repository with Claude Code
+## Sharing a repository with Claude Code
 
-Both read the same `.rounce/db.sqlite`. Neither needs to know the other exists,
-and the events they write are byte-identical for the same operation — Phase 4
-proves that by comparing actual database rows rather than output.
-
-If you are running both agents in one checkout at the same time, keep will not
-stop them editing the same file. That is Interlock's job, not this one.
+Both agents read and write the same `.rounce/db.sqlite`, and neither needs to
+know about the other. If they run in the same checkout at the same time, use
+[Interlock](https://github.com/gshepptech/interlock) to keep them out of each
+other's files. See [../../docs/interlock.md](../../docs/interlock.md).
