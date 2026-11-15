@@ -11,11 +11,11 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// The commands added alongside the migration ladder -- next, why-not,
-// export, import, migrate, and --all on four more verbs -- are tested here
-// through a real built binary rather than only through internal/store.
+// next, why-not, export, import, migrate, and --all on the cross-repository
+// verbs are tested here through a real built binary rather than only through
+// internal/store.
 //
-// That is not belt-and-braces. cmd/keep's job is exit codes, which stream
+// cmd/keep's job is exit codes, which stream
 // output lands on, and flag interaction, and none of those exist at the
 // store layer: `why-not` returning the right answer with the wrong exit code
 // passes every store test in the repository. This package's tests run a
