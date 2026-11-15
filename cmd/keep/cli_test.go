@@ -24,8 +24,8 @@ import (
 // comparing its own unresolved path against keep's resolved one fails on
 // the difference between two names for the same directory.
 //
-// It passed on the developer's Mac only because TMPDIR there already
-// pointed at a resolved path. CI found it on the first run.
+// On a machine whose TMPDIR is already a resolved path the difference never
+// shows, which is how such a test can pass locally and fail elsewhere.
 func tempDir(t *testing.T) string {
 	t.Helper()
 	dir, err := filepath.EvalSymlinks(t.TempDir())
@@ -74,10 +74,9 @@ func buildKeep(t *testing.T, version string) string {
 		return path
 	}
 
-	// .exe on Windows, or exec refuses to start what `go build` just wrote.
-	// Found by CI's first run: every cross-process test failed there with
-	// "executable file not found in %PATH%" while passing on the developer's
-	// Mac, which is the whole reason the matrix exists.
+	// .exe on Windows, or exec refuses to start what `go build` just wrote,
+	// failing every cross-process test with "executable file not found in
+	// %PATH%".
 	name := "keep"
 	if version != "" {
 		name += "-" + strings.NewReplacer("/", "_", "\\", "_", ":", "_").Replace(version)

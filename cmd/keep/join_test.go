@@ -27,9 +27,9 @@ import (
 // If Interlock is not on this machine the test skips with a stated reason,
 // because keep must build and pass alone -- a Go import between the two would
 // have made the independence a slogan instead of a fact. Set
-// KEEP_REQUIRE_INTERLOCK=1 to turn that skip into a failure, which is what CI
-// should do once Interlock is available to it: a skip nobody notices is the
-// same blind spot in a new place.
+// KEEP_REQUIRE_INTERLOCK=1 to turn that skip into a failure wherever
+// Interlock is expected to be present: a skip nobody notices is the same
+// blind spot in a new place.
 func TestInterlockJoinAgainstARealBinary(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("the join is exercised through a POSIX shell hook payload; Windows support is a separate, deliberately deferred question")
@@ -238,9 +238,9 @@ func TestInterlockJoinAgainstARealBinary(t *testing.T) {
 // does not hold a Go module is a misconfiguration and fails loudly -- falling
 // back from it would turn "you pointed this at the wrong place" into "the
 // join proof quietly did not run", which is the exact failure this test
-// exists to end. An absent Interlock is a skip, because keep must build and
-// pass alone. And KEEP_REQUIRE_INTERLOCK turns that skip into a failure, so CI
-// can demand the real thing once it has it.
+// exists to catch. An absent Interlock is a skip, because keep must build and
+// pass alone. KEEP_REQUIRE_INTERLOCK turns that skip into a failure, for an
+// environment that should always have the real thing.
 func interlockSource(t *testing.T) string {
 	t.Helper()
 

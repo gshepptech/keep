@@ -35,9 +35,8 @@ const expectedLibcVersion = "v1.74.4"
 //
 // `go list -m` reads the same resolved module graph (go.mod + go.sum) that
 // produces the binary in the first place. It requires the go
-// toolchain to be on PATH at test time, which is true in this project's CI
-// and local dev environment (there is no other way to build or test a Go
-// module without it).
+// toolchain to be on PATH at test time, which holds anywhere this module
+// can be built or tested at all.
 func TestLibcVersionPinned(t *testing.T) {
 	out, err := exec.Command("go", "list", "-m", "-f", "{{.Version}}", "modernc.org/libc").Output()
 	if err != nil {
