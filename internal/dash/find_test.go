@@ -142,8 +142,8 @@ func TestTheRenderedSearchPageDoesNotRepeatThePath(t *testing.T) {
 
 // TestBeingWorkedOnOffersAllThreeExits.
 //
-// Close and Drop both record something about the work — done, or not worth
-// doing — and an agent that simply stopped had neither happen to it. With
+// Close and Drop both record something about the work (done, or not worth
+// doing), and an agent that simply stopped had neither happen to it. With
 // only those two, whoever was looking at this board could only rescue the
 // item by picking one and writing something false into the event trail the
 // rest of the design works to keep honest. Unclaim is the third exit.

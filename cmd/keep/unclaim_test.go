@@ -115,20 +115,17 @@ func TestStaleOffersUnclaimRatherThanDrop(t *testing.T) {
 		t.Errorf("stale does not offer unclaim:\n%s", stderr)
 	}
 	if strings.Contains(stderr, "hand it back with `keep drop") {
-		t.Error("stale still calls drop 'handing it back' — that is the false record unclaim replaced")
+		t.Error("stale still calls drop 'handing it back', which records the work as abandoned")
 	}
 }
 
-// TestVersionIsCitable.
+// TestVersionIsCitable checks that a binary built without -ldflags, as the
+// documented `go install ./cmd/keep` does, still reports something a bug
+// report can cite instead of "dev".
 //
-// `version` was a var set only by -ldflags, and the documented install is a
-// plain `go install ./cmd/keep`, which sets none. So every binary anyone
-// actually ran answered "dev" — including at the v1.0 tag that already exists
-// in the repository. A bug report saying "keep dev" identifies nothing.
-//
-// Both paths are asserted because the fix has to leave the explicit one
-// winning: a release build that passes -ldflags must not be overridden by
-// something inferred from the build info.
+// Both paths are asserted because the explicit one must keep winning: a
+// release build that passes -ldflags must not be overridden by something
+// inferred from the build info.
 func TestVersionIsCitable(t *testing.T) {
 	t.Run("an explicit -ldflags version wins", func(t *testing.T) {
 		bin := buildKeep(t, "v9.9.9")
@@ -141,10 +138,9 @@ func TestVersionIsCitable(t *testing.T) {
 		}
 	})
 
-	// Every consumer, not just `keep version`. Changing the var's zero value
-	// from "dev" to "" silently made the MCP handshake report an empty
-	// version, and the existing MCP tests missed it because they build with
-	// -ldflags set — the broken path is the one nothing was testing.
+	// Every consumer, not just `keep version`. The other MCP tests build
+	// with -ldflags set, so they cannot see an empty version in the
+	// handshake; this case builds without it.
 	t.Run("the MCP handshake reports it too", func(t *testing.T) {
 		bin := buildKeep(t, "")
 		repo := tempDir(t)
@@ -157,7 +153,7 @@ func TestVersionIsCitable(t *testing.T) {
 			t.Error("the MCP server reports an empty version; a client cannot tell what it is talking to")
 		}
 		if reported == "dev" {
-			t.Error(`the MCP server reports "dev" — resolveVersion is not reaching the handshake`)
+			t.Error(`the MCP server reports "dev"; resolveVersion is not reaching the handshake`)
 		}
 	})
 
@@ -173,7 +169,7 @@ func TestVersionIsCitable(t *testing.T) {
 			t.Fatal("version printed nothing")
 		}
 		if got == "dev" {
-			t.Error(`a plain build reports "dev", which no bug report can cite — build info carries a revision and it is not being read`)
+			t.Error(`a plain build reports "dev", which no bug report can cite; build info carries a revision and it is not being read`)
 		}
 	})
 }
@@ -182,8 +178,8 @@ func TestVersionIsCitable(t *testing.T) {
 // `keep mcp` process and returns the version it reports in serverInfo.
 //
 // It drives the binary rather than calling into internal/mcp because the
-// regression it guards lives in the wiring: the store package was fine, the
-// server package was fine, and cmd/keep handed the server an empty string.
+// failure it guards lives in the wiring between cmd/keep and the server,
+// which neither package's own tests exercise.
 func mcpServerVersion(t *testing.T, bin, dir string, environ []string) string {
 	t.Helper()
 

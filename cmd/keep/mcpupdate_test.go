@@ -11,11 +11,9 @@ import (
 )
 
 // TestMCPUpdateLetsAnAgentCorrectItsOwnWork drives a real `keep mcp`
-// subprocess. Before `update` was a tool, an agent could file an item and
-// never fix one: a wrong title or score had to go back through `add`, which
-// produces a second item with a second id and leaves the first one standing.
-// docs/agents.md said outright that the omission was an artifact of the
-// original locked list rather than a decision.
+// subprocess. Without `update`, an agent could file an item but never fix
+// one: a wrong title or score had to go back through `add`, which produces a
+// second item with a second id and leaves the first one standing.
 func TestMCPUpdateLetsAnAgentCorrectItsOwnWork(t *testing.T) {
 	bin := buildKeep(t, "")
 	dir := tempDir(t)

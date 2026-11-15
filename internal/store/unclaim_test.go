@@ -18,7 +18,7 @@ import (
 //
 // close and drop are kept distinguishable so abandoned work is never
 // counted as done. That guarantee only means something if there is a third
-// exit for the case where neither is true — otherwise the rescue path is to
+// exit for the case where neither is true; otherwise the rescue path is to
 // pick one and lie, in the audit trail the whole design exists to keep
 // honest.
 func TestUnclaimIsTheThirdExitFromInProgress(t *testing.T) {
@@ -68,7 +68,7 @@ func TestUnclaimIsTheThirdExitFromInProgress(t *testing.T) {
 			}
 		}
 		if !found {
-			t.Error("the released item is not back in ready — the rescue did not rescue anything")
+			t.Error("the released item is not back in ready; the rescue did not rescue anything")
 		}
 	})
 
@@ -100,7 +100,7 @@ func TestUnclaimIsTheThirdExitFromInProgress(t *testing.T) {
 		}
 		last := detail.Events[len(detail.Events)-1]
 		if last.Kind != "unclaim" {
-			t.Fatalf("last event kind = %q, want %q — close and drop must stay distinguishable from this", last.Kind, "unclaim")
+			t.Fatalf("last event kind = %q, want %q; close and drop must stay distinguishable from this", last.Kind, "unclaim")
 		}
 		if last.Actor != "dev" {
 			t.Errorf("actor = %q, want the rescuer", last.Actor)
@@ -116,7 +116,7 @@ func TestUnclaimIsTheThirdExitFromInProgress(t *testing.T) {
 	})
 
 	// Releasing something nobody holds is a mistake worth reporting, not a
-	// silent no-op — the caller believes a claim exists.
+	// silent no-op: the caller believes a claim exists.
 	t.Run("only a claimed item can be released", func(t *testing.T) {
 		for _, c := range []struct {
 			name string
@@ -166,7 +166,7 @@ func TestUnclaimIsTheThirdExitFromInProgress(t *testing.T) {
 			t.Fatal(err)
 		}
 		if got.Assignee == nil || *got.Assignee != "priya" {
-			t.Errorf("assignee = %v, want priya — releasing a claim is not unassigning the work", got.Assignee)
+			t.Errorf("assignee = %v, want priya; releasing a claim is not unassigning the work", got.Assignee)
 		}
 	})
 }

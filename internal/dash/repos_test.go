@@ -351,9 +351,8 @@ func TestInterlockPageSaysSoWhenInterlockIsAbsent(t *testing.T) {
 	}
 }
 
-// TestBoardIsOnePage is the shape the redesign committed to: the queue and
-// the agents holding it up are on ONE page. There is no separate view to
-// switch to, which is the whole reason the old /who is gone.
+// TestBoardIsOnePage checks that the queue and the agents holding it up are
+// on one page, with no separate view to switch to.
 func TestBoardIsOnePage(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
 	// Windows cannot execute. The behaviour under test is keep's, not the

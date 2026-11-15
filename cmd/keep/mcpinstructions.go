@@ -118,13 +118,10 @@ func mcpInstructions(ctx context.Context, s *store.Store) string {
 //
 // # Why the client's name is a better default than an env var
 //
-// It was a per-manifest default before, and the two manifests disagreed
-// without anything noticing: plugin/.mcp.json shipped "env": {} while the
-// documented Codex registration set KEEP_ACTOR=codex, so one store
-// recorded Claude Code's work under a username and Codex's under "codex".
-// Reading a mixed event log is the only place that surfaces, and by then it
-// is history. A default that must be restated per agent will drift per
-// agent; the handshake already carries who is calling.
+// A per-manifest default drifts: if one plugin manifest sets KEEP_ACTOR and
+// another does not, the same store records one agent's work under a
+// username and the other's under its name, and only a mixed event log
+// shows it. The handshake already carries who is calling.
 //
 // # Why explicit still wins
 //

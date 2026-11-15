@@ -40,12 +40,10 @@ type Options struct {
 	// correct. Reading the session that is actually making the call has no
 	// ordering to get wrong and needs no atomic.
 	//
-	// It exists because the two plugin manifests disagreed and nothing
-	// caught it: plugin/.mcp.json shipped "env": {} while the Codex
-	// registration set KEEP_ACTOR=codex, so the same store recorded
-	// Claude Code's work under $USER and Codex's under "codex". A default
-	// that has to be spelled out per agent is a default that will drift
-	// per agent. The handshake already says who is calling.
+	// A default that has to be spelled out in each agent's manifest will
+	// drift between them, so one store ends up recording one agent under
+	// $USER and another under its own name. The handshake already says who
+	// is calling.
 	//
 	// The parameter is the raw *mcp.InitializeParams, nil and all, because
 	// deciding what to do with a nil ClientInfo needs conditionals and this

@@ -213,12 +213,9 @@ func serveWeb(st *store.Store, port int, dbFlag string, stdout, stderr io.Writer
 	case <-ctx.Done():
 		sctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		// return 0 here is the whole point: a clean shutdown is not an
-		// error. keep mcp shipped exiting 1 on an ordinary client
-		// disconnect once already (codeServerClosing, cmd/keep/mcp.go) --
-		// this is the second application of the identical fix, applied to
-		// a different mechanism (http.Server.Shutdown rather than a
-		// JSON-RPC close code) for the identical shape of mistake.
+		// A clean shutdown is not an error, so this returns 0. keep mcp
+		// treats an ordinary client disconnect the same way
+		// (codeServerClosing, cmd/keep/mcp.go).
 		if err := srv.Shutdown(sctx); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			fmt.Fprintf(stderr, "keep board: shutdown: %v\n", err)
 			return 1

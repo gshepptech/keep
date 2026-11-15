@@ -5,7 +5,7 @@ import "errors"
 // Classification rule: SQLite-level failures are classified
 // with errors.As(err, &sqliteErr) against *sqlite.Error, then comparing
 // sqliteErr.Code() against the exported constants in modernc.org/sqlite/lib
-// (e.g. sqlite3.SQLITE_BUSY, sqlite3.SQLITE_CONSTRAINT_UNIQUE) — never by
+// (e.g. sqlite3.SQLITE_BUSY, sqlite3.SQLITE_CONSTRAINT_UNIQUE), never by
 // matching substrings of err.Error(). Driver message text is not a stable
 // contract and can change across driver versions without notice; the error
 // code is. New classifications must follow this rule rather than reaching
