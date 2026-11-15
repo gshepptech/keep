@@ -71,7 +71,7 @@ type Server struct {
 	// board serves it.
 	session string
 
-	// dbPath is what writable() reopens. The read path keeps its read-only
+	// dbPath is what writableAt reopens. The read path keeps its read-only
 	// handle -- true by construction for every GET; only a POST opens for
 	// writing, and only for
 	// the length of the action.
@@ -219,11 +219,6 @@ func (s *Server) pathOf(name string) (string, bool) {
 		}
 	}
 	return "", false
-}
-
-// writable opens a writing handle for one action.
-func (s *Server) writable() (*store.Store, error) {
-	return s.writableAt(s.dbPath)
 }
 
 // writableAt opens a writing handle for one action against one project.

@@ -103,10 +103,10 @@ func startRawMCP(t *testing.T, bin, dir string, environ []string) *rawMCPConn {
 	}
 
 	// rawOut accumulates every byte read from stdoutPipe, independently of
-	// whatever this file's own read loop (awaitID/readLine) does with it --
+	// whatever this file's own read loop (awaitID) does with it --
 	// this is the load-bearing property: the byte-level assertion in
 	// TestMCPStdoutIsProtocolBytesOnly reads rawOut directly, never a value
-	// that passed through readLine/awaitID's own parsing first.
+	// that passed through awaitID's own parsing first.
 	var raw bytes.Buffer
 	tee := io.TeeReader(stdoutPipe, &raw)
 
@@ -157,18 +157,6 @@ func (c *rawMCPConn) send(t *testing.T, msg any) {
 	if _, err := c.stdin.Write(append(b, '\n')); err != nil {
 		t.Fatalf("write to keep mcp stdin: %v", err)
 	}
-}
-
-// readLine reads one newline-terminated message from the child's stdout,
-// trimmed of its trailing newline. Every read here also lands in rawOut via
-// the TeeReader startRawMCP installed.
-func (c *rawMCPConn) readLine(t *testing.T) string {
-	t.Helper()
-	line, err := c.stdout.ReadString('\n')
-	if err != nil {
-		t.Fatalf("readLine: read from keep mcp stdout: %v", err)
-	}
-	return strings.TrimRight(line, "\r\n")
 }
 
 // awaitID reads lines from stdout until every id in ids has been seen,
@@ -382,7 +370,7 @@ func TestMCPPipelinedCallsDoNotRace(t *testing.T) {
 	// of assuming arrival order.
 
 	// Write all four requests to stdin with NO read between them. This
-	// loop is the whole point of the test: inserting a readLine/awaitID
+	// loop is the whole point of the test: inserting an awaitID
 	// call between these four sends would silently turn this into four
 	// SEQUENTIAL calls and prove nothing about concurrent dispatch, and the
 	// test would still pass.
@@ -478,7 +466,7 @@ func TestMCPPipelinedCallsDoNotRace(t *testing.T) {
 // `keep mcp` process writes to stdout is a complete JSON-RPC 2.0 message
 // on its own line, and every diagnostic lands on stderr instead --
 // asserted at the byte level, over conn.rawOut (the tee'd copy of every
-// byte actually read from stdout), never through readLine's already-parsed
+// byte actually read from stdout), never through awaitID's already-parsed
 // return value and never through the SDK client. The point is to see what
 // the process actually wrote, before anything tolerant had a chance to
 // normalise it.
