@@ -56,8 +56,8 @@ func initializeInstructions(t *testing.T, bin, dir string, environ []string) *st
 	return got.Instructions
 }
 
-// TestMCPInstructionsCarryTheQueue is the whole point of the field: an MCP
-// client learns what is workable from the handshake alone, with no hook, no
+// TestMCPInstructionsCarryTheQueue checks that the handshake instructions
+// carry the ready queue: an MCP client learns what is workable from the handshake alone, with no hook, no
 // plugin, and no per-agent instruction file -- which is what makes this
 // channel reach Codex and every other MCP client on equal terms with Claude
 // Code.
@@ -80,7 +80,7 @@ func TestMCPInstructionsCarryTheQueue(t *testing.T) {
 
 	// The highest-scoring ticket's id must be present. Asserting the id
 	// rather than the title is deliberate: an agent that acts on this text
-	// must call `start <id>`, so the id is the load-bearing part.
+	// must call `start <id>`, so the id is the part it needs.
 	if !strings.Contains(ins, top) {
 		t.Errorf("instructions do not name the top ticket %s:\n%s", top, ins)
 	}

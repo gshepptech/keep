@@ -53,8 +53,8 @@ func TestLastActivityAfterOneAddItem(t *testing.T) {
 	}
 }
 
-// TestLastActivityAfterCreateDepStrictlyExceedsItemsUpdatedAt is the
-// load-bearing case: after AddItem on two items followed by CreateDep,
+// TestLastActivityAfterCreateDepStrictlyExceedsItemsUpdatedAt checks that
+// after AddItem on two items followed by CreateDep,
 // LastActivity is STRICTLY GREATER than the maximum items.updated_at across
 // both items -- proving MAX(events.at) and MAX(items.updated_at) genuinely
 // differ on this fixture, since CreateDep (deps.go) writes exactly one

@@ -69,7 +69,7 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 //
 // It runs here rather than in store.Search because it is a fact about what
 // this page draws, not about the search. The CLI prints no paths column, so
-// the same snippet is load-bearing there.
+// it still needs the same snippet.
 func withoutRedundantSnippets(results []store.SearchResult) []store.SearchResult {
 	for i, r := range results {
 		if r.Snippet == "" {

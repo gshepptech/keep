@@ -56,8 +56,8 @@ func addOverMCPAndReadActor(t *testing.T, bin, dir string, environ []string, cli
 	return detail.Events[0].Actor
 }
 
-// TestMCPActorComesFromTheClientName is the whole point: the two plugin
-// manifests disagreed about KEEP_ACTOR and nothing caught it, because the
+// TestMCPActorComesFromTheClientName checks that the actor recorded for an
+// MCP call is the client's handshake name. The two plugin manifests disagreed about KEEP_ACTOR and nothing caught it, because the
 // only place it surfaces is a mixed event log read after the fact. The
 // handshake already says who is calling, so neither manifest has to.
 //

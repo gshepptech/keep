@@ -40,8 +40,8 @@ func mustShow(t *testing.T, bin, repo string, e []string, id string) showDetail 
 
 // countEventsOfKind counts a show --json ItemDetail's events by kind.
 // Counting through the real CLI's own JSON output -- not by reading the
-// database directly -- is the whole point of TestStartClaimsAndIsIdempotent
-// below: asserting "exit 0 twice" alone would also pass for an
+// database directly -- is what TestStartClaimsAndIsIdempotent below relies
+// on: asserting "exit 0 twice" alone would also pass for an
 // implementation that appends a second claim event, which is exactly the
 // failure the idempotent retry exists to prevent (proven at the store
 // layer too; this proves it again at the CLI boundary).

@@ -103,8 +103,8 @@ func startRawMCP(t *testing.T, bin, dir string, environ []string) *rawMCPConn {
 	}
 
 	// rawOut accumulates every byte read from stdoutPipe, independently of
-	// whatever this file's own read loop (awaitID) does with it --
-	// this is the load-bearing property: the byte-level assertion in
+	// whatever this file's own read loop (awaitID) does with it. The
+	// byte-level assertion in
 	// TestMCPStdoutIsProtocolBytesOnly reads rawOut directly, never a value
 	// that passed through awaitID's own parsing first.
 	var raw bytes.Buffer
@@ -161,11 +161,9 @@ func (c *rawMCPConn) send(t *testing.T, msg any) {
 
 // awaitID reads lines from stdout until every id in ids has been seen,
 // filing each decoded response by its own id -- never assuming the next
-// line answers the most recently sent request. This is the load-bearing
-// helper: responses arrive out of order (six pipelined requests can be
-// answered 1, 2, 4, 5, 3, 6), so
-// matching by id rather than arrival order is not a defensive nicety, it is
-// the only correct way to read a pipelined session.
+// line answers the most recently sent request. Responses arrive out of
+// order (six pipelined requests can be answered 1, 2, 4, 5, 3, 6), so
+// matching by id is the only correct way to read a pipelined session.
 //
 // Each read attempt runs in its own goroutine with a single in-flight read
 // at a time (the next attempt is only started after the previous one has
@@ -369,8 +367,8 @@ func TestMCPPipelinedCallsDoNotRace(t *testing.T) {
 	// -- which is also why awaitID (above) files responses by id instead
 	// of assuming arrival order.
 
-	// Write all four requests to stdin with NO read between them. This
-	// loop is the whole point of the test: inserting an awaitID
+	// Write all four requests to stdin with NO read between them.
+	// Inserting an awaitID
 	// call between these four sends would silently turn this into four
 	// SEQUENTIAL calls and prove nothing about concurrent dispatch, and the
 	// test would still pass.

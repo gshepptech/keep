@@ -64,7 +64,7 @@ func scanItems(rows *sql.Rows) ([]model.Item, error) {
 // commit -- do not let the two drift into two independently-maintained tree
 // walks.
 //
-// blocked_directly's SELECT DISTINCT is load-bearing: without it, an item
+// blocked_directly's SELECT DISTINCT matters: without it, an item
 // blocked by two different `blocks` edges to the same target would appear
 // twice. blocked_tree is intentionally NOT deduplicated across multiple
 // independent blocking ancestors, so that the query stays a faithful

@@ -43,8 +43,8 @@ func post(t *testing.T, s *Server, path string, form url.Values) *httptest.Respo
 	return rec
 }
 
-// TestBoardFilesAnItem is the whole point of making the board writable: a
-// person watching a queue can add to it without leaving the page.
+// TestBoardFilesAnItem checks that a person watching a queue can add to it
+// from the board without leaving the page.
 func TestBoardFilesAnItem(t *testing.T) {
 	s, _ := writableFixture(t)
 

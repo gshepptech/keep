@@ -43,7 +43,7 @@ func TestMergeOrdersByScoreDescending(t *testing.T) {
 // fixture gives beta's item the lexically SMALLER id, so a comparator that
 // dropped the repository-name key and fell through to id would produce the
 // opposite order. This disagreement between id order and repository order
-// is deliberate and load-bearing: do not "tidy" these ids to agree with
+// is deliberate: do not "tidy" these ids to agree with
 // their repository names, or this test would silently stop proving anything.
 func TestMergeTiebreaksByRepositoryNameThenID(t *testing.T) {
 	results := []RepoResult{

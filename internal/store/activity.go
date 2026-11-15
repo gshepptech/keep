@@ -9,8 +9,7 @@ import (
 // LastActivity returns the timestamp of the most recent events row in this
 // store, and whether there is one at all.
 //
-// It reads MAX(at) FROM events, NOT items' own last-write column, and that
-// choice is load-bearing rather than incidental. CreateDep (deps.go) writes
+// It reads MAX(at) FROM events, NOT items' own last-write column. CreateDep (deps.go) writes
 // exactly one events row and zero UPDATE statements against items --
 // confirmed by reading the method, and locked by activity_test.go's
 // dep-only fixture. A repository whose most recent work was `keep dep <a>

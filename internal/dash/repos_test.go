@@ -449,7 +449,7 @@ func TestQueueAndInterlockViewAgree(t *testing.T) {
 	}
 
 	// The page that exists to explain the omission must name the item the
-	// queue omitted -- that agreement is the whole point.
+	// queue omitted.
 	if !strings.Contains(who, held.ID) {
 		t.Errorf("the held-back section does not name %s, which the queue omitted:\n%s", held.ID, who)
 	}

@@ -304,7 +304,7 @@ td[class*="depth-"] { font-family: var(--mono); }
    popover was. width: 100% of a full-row switcher is what finally gives
    .switcher-dir a width to run its own text-overflow: ellipsis against. */
 @media (max-width: 560px) {
-  /* min-width: 0 is the load-bearing declaration, not the flex basis. A
+  /* min-width: 0 is the declaration that does the work here. A
      flex item's automatic minimum size is its min-content width, and this
      one's min-content is a 573px nowrap repository path -- so `flex: 1 0
      100%` sized it to 591px inside a 364px bar and the whole switcher hung

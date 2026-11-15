@@ -9,9 +9,9 @@ import (
 // MergedItem is one row of a cross-store merge: an item, plus the name of
 // the registered repository it came from.
 //
-// The json tag is "repository", NOT "repo", and that is load-bearing rather
-// than a style choice. model.Item already carries `Repo *string
-// json:"repo"` (the items.repo column). A field tagged "repo" here would
+// The json tag is "repository", NOT "repo", for a functional reason.
+// model.Item already carries `Repo *string json:"repo"` (the items.repo
+// column). A field tagged "repo" here would
 // collide with the promoted embedded field, and encoding/json resolves that
 // collision SILENTLY BY DEPTH: the shallower field wins and the embedded
 // item's own repo value is dropped from the output entirely -- no error, no

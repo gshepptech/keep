@@ -139,8 +139,7 @@ type startEventPayload struct {
 // (the claim itself) must never be split across two transactions, or a
 // concurrent StartItem could observe stale state.
 //
-// Check order inside the transaction is load-bearing, in this exact
-// sequence:
+// Check order inside the transaction matters, in this exact sequence:
 //  1. Missing item -> ErrNotFound.
 //  2. stage != ticket -> ErrInvalidTransition ("raw items are not
 //     workable; promote it first").
@@ -159,8 +158,8 @@ type startEventPayload struct {
 // that "simplifies" this by reordering the checks (e.g. to check blocking
 // unconditionally before claim status) would silently break every agent's
 // retry loop the moment a race window opens between claiming and a
-// concurrent block -- this comment is the load-bearing part, not the code
-// shape.
+// concurrent block. This comment, not the code shape, is what keeps the
+// order intact.
 func (s *Store) StartItem(ctx context.Context, in StartItemInput) (model.Item, error) {
 	if in.Actor == "" {
 		return model.Item{}, fmt.Errorf("StartItem: Actor is required")
@@ -184,8 +183,8 @@ func (s *Store) StartItem(ctx context.Context, in StartItemInput) (model.Item, e
 // terminal item, another session's claim and a blocked item in the same way,
 // and a change to the table is a change to one function.
 //
-// It takes a *sql.Tx rather than opening one, because NextItem's whole point
-// is that choosing the item and claiming it happen in ONE transaction.
+// It takes a *sql.Tx rather than opening one, because NextItem must
+// choose the item and claim it in ONE transaction.
 func claimItemTx(ctx context.Context, tx *sql.Tx, in StartItemInput) (model.Item, error) {
 	if in.SessionID == "" {
 		return model.Item{}, fmt.Errorf("StartItem: item %q: %w -- set $KEEP_SESSION, or claim through a surface that derives one", in.ID, ErrNoSession)

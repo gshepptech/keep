@@ -39,8 +39,8 @@ type FeedFilter struct {
 // support it and nothing can drift: an activity view derived from anything
 // else would be a second, weaker record of the same facts.
 //
-// Ordering is `at DESC, id DESC`. The id tiebreak is load-bearing for the
-// same reason it is in ListItems: several events written inside one
+// Ordering is `at DESC, id DESC`. The id tiebreak is needed for the same
+// reason it is in ListItems: several events written inside one
 // transaction share a timestamp, and without it SQLite's order among them is
 // unspecified -- a feed that reshuffles its own rows between two runs reads
 // as a bug in the log rather than in the query.

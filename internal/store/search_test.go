@@ -6,8 +6,8 @@ import (
 	"testing"
 )
 
-// TestSearchFindsAnItemByAnyOfItsText. The whole point: you remember a word,
-// not an id.
+// TestSearchFindsAnItemByAnyOfItsText checks that a word from any of an
+// item's text fields finds it, because people remember a word, not an id.
 func TestSearchFindsAnItemByAnyOfItsText(t *testing.T) {
 	st, ctx := openTestStore(t), context.Background()
 	// The title match scores LOWEST on purpose. Rank by field is the only

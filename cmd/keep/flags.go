@@ -194,8 +194,7 @@ func exitFor(stderr io.Writer, err error) int {
 //
 // If a value-taking flag has no following token to serve as its value,
 // permutation stops there and the remainder (including that flag) is left
-// in original order as trailing "positionals" -- this is load-bearing, not
-// defensive padding. The naive alternative (unconditionally inserting a
+// in original order as trailing "positionals". The naive alternative (unconditionally inserting a
 // synthetic "--" ahead of positionals regardless of whether every
 // value-taking flag actually got a value) fails silently:
 // `keep add "title" --body` (--body missing its value)

@@ -39,7 +39,7 @@ func fakeInterlock(t *testing.T, exitCode int) string {
 	bin := filepath.Join(dir, "interlock")
 
 	// One line per argument, so an argument containing spaces cannot be
-	// mistaken for two. pwd is recorded because doLaunch's whole point is
+	// mistaken for two. pwd is recorded because doLaunch must make sure
 	// that the agent starts in the project's directory, not the board's.
 	script := "#!/bin/sh\n" +
 		"echo \"pwd=$(pwd)\" >> " + log + "\n" +

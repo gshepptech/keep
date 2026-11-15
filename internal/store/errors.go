@@ -66,8 +66,7 @@ var (
 	// a piece of work, and a record that says it happened without saying why
 	// is the thing the `--reason` requirement exists to prevent.
 	//
-	// It is enforced HERE rather than in each caller, and that placement is
-	// the whole point: a rule enforced in one surface (the CLI) and not the
+	// It is enforced HERE rather than in each caller, because a rule enforced in one surface (the CLI) and not the
 	// others (MCP, the dashboard) ends up as three surfaces with three
 	// answers to one rule. Surfaces are thin wrappers and carry no behaviour
 	// of their own.

@@ -32,8 +32,7 @@ func validateLoopback(hostport string) (*net.TCPAddr, error) {
 		// unspecified address -- all interfaces. IsLoopback() on a nil IP
 		// returns false, so the refusal below would happen anyway, but
 		// silently and with a misleading message; naming it explicitly here
-		// is what makes the failure legible. This branch is load-bearing,
-		// not defensive padding.
+		// is what makes the failure legible.
 		return nil, fmt.Errorf("refusing to bind %q: empty host is not loopback", hostport)
 	}
 	if !addr.IP.IsLoopback() {
@@ -66,7 +65,7 @@ type Server struct {
 	// indistinguishable.
 	//
 	// Per-process rather than stable: two boards are two people at two
-	// terminals, and the whole point of the id is telling them apart. A
+	// terminals, and the id exists to tell them apart. A
 	// person's own repeat click is idempotent anyway, because the same
 	// board serves it.
 	session string

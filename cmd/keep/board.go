@@ -105,9 +105,8 @@ func runBoard(args []string, stdout, stderr io.Writer) int {
 	ctx := context.Background()
 
 	// ONE unlimited store.Ready call feeds both the count and the printed
-	// rows -- --limit slices the already-fetched slice in Go. This is
-	// deliberate and load-bearing, not laziness: the count must be exact
-	// regardless of --limit, and the rows must be a prefix of the same
+	// rows -- --limit slices the already-fetched slice in Go, so the count
+	// stays exact whatever --limit is and the rows are a prefix of the same
 	// list. Calling Ready twice with different limits, or calling it once
 	// with *limitFlag for both, would each be a way for the count to
 	// silently disagree with the queue -- do not "optimise" this into two

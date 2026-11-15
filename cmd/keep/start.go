@@ -18,8 +18,8 @@ import (
 //
 // Exit codes follow StartItem's six-row state table exactly, and
 // store.StartItem's own doc comment (internal/store/
-// transitions.go) enumerates the checks in the load-bearing order the store
-// performs them: same-session repeat exits 0 (idempotent no-op -- the store
+// transitions.go) enumerates the checks in the order the store performs
+// them: same-session repeat exits 0 (idempotent no-op -- the store
 // writes NO second event); every other refusal (different session, raw
 // stage, blocked, closed/dropped) exits 1, NOT 2 -- these are operational
 // failures, not usage errors. exitFor

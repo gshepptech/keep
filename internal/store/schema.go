@@ -144,7 +144,7 @@ var schemaDDL = expandSchemaSQL(schemaDDLBase + ftsDDL + metaDDL)
 //
 // Today it is character-identical to schemaDDL, because the ladder has no
 // rungs yet. That is the one and only moment at which the duplication looks
-// pointless. The first rung is what makes it load-bearing, and the first rung
+// pointless. The first rung is what makes it necessary, and the first rung
 // is exactly when nobody wants to be reconstructing what v1 looked like from
 // git history.
 // ftsDDL is the full-text index and its three synchronisation triggers,

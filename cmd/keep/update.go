@@ -63,8 +63,8 @@ func runUpdate(args []string, stdout, stderr io.Writer) int {
 
 	// fs.Visit distinguishes "supplied" (even --title "" -- clear the
 	// title) from "left at its zero value" -- reading *titleFlag directly
-	// could never tell the two apart, which is the whole point of
-	// UpdateItemInput's pointer fields (internal/store/transitions.go).
+	// could never tell the two apart, which is why UpdateItemInput has
+	// pointer fields (internal/store/transitions.go).
 	visited := map[string]bool{}
 	fs.Visit(func(f *flag.Flag) { visited[f.Name] = true })
 

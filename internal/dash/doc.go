@@ -1,6 +1,5 @@
 // Package dash renders keep's four read-only dashboard views (queue,
-// backlog, item, tree) as HTML via html/template. It exists under two rules,
-// each load-bearing enough to write down here rather than leave implicit:
+// backlog, item, tree) as HTML via html/template. It follows two rules:
 //
 //  1. internal/dash carries no behaviour of its own. It calls internal/store
 //     and renders. Ordering, grouping, filtering, and blocked-ness are the

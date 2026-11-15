@@ -15,8 +15,8 @@ import (
 )
 
 // agreementFixtureReadyCount is the number of plain ready tickets
-// newAgreementFixture creates. This size is LOAD-BEARING, not a detail: a
-// smaller fixture hides a trap -- a
+// newAgreementFixture creates. The size matters because a smaller fixture
+// hides a trap -- a
 // queue handler hard-coding `Ready(ctx, 10)` would pass on any fixture of 10
 // or fewer items and only start failing later, at which point the failure
 // looks like a regression in unrelated work. 16 stays above both

@@ -171,8 +171,8 @@ func TestMCPUpdateCannotChangeStatus(t *testing.T) {
 // The schema now advertises minimum and maximum, but the SDK does not
 // validate arguments against InputSchema (internal/mcp/input.go records that
 // a published enum was ignored on a real call), so the schema steers and the
-// store refuses. This test drives the real subprocess to prove which one is
-// actually load-bearing.
+// store refuses. This test drives the real subprocess to prove that the
+// store's refusal is what stops an out-of-range score.
 func TestMCPRefusesAnOutOfRangeScore(t *testing.T) {
 	bin := buildKeep(t, "")
 	dir := tempDir(t)
