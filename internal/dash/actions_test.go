@@ -306,8 +306,8 @@ func TestConfirmPageNamesWhatItWillDestroyAndActsOnNothing(t *testing.T) {
 	body := rec.Body.String()
 
 	// The TITLE is the property here: an id is what you clicked, a title is
-	// what you meant. An earlier version of this test asserted only the id,
-	// so removing the title from the page passed against the break.
+	// what you meant. Asserting only the id would let a page that drops the
+	// title pass.
 	for _, want := range []string{"Drop this item?", "the item being confirmed", id, "Cancel", "name=\"reason\""} {
 		if !strings.Contains(body, want) {
 			t.Errorf("confirm page does not contain %q", want)

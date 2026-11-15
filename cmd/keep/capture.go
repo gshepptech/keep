@@ -19,7 +19,7 @@ import (
 // `add --stage raw` in three ways:
 //  1. `--body -` reads stdin (via the shared resolveBody, cmd/keep/
 //     flags.go), so an agent can pipe a document straight in --
-//     `keep capture "Q3 roadmap" --type roadmap --body - < ROADMAP.md`
+//     `keep capture "Q3 roadmap" --type roadmap --body - < q3-plan.md`
 //     is the canonical invocation.
 //  2. Its stage is pinned to model.StageRaw and cannot be set to "ticket" --
 //     capture means capture; something that could produce a ticket is

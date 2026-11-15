@@ -12,9 +12,8 @@ func TestSearchFindsAnItemByAnyOfItsText(t *testing.T) {
 	st, ctx := openTestStore(t), context.Background()
 	// The title match scores LOWEST on purpose. Rank by field is the only
 	// thing that can put it first; without it, score order wins and the
-	// body match leads. An earlier version of this test scored them all
-	// equally, so removing the ranking entirely still passed -- the test
-	// asserted an order that the default sort produced anyway.
+	// body match leads. Equal scores would let the default sort produce
+	// the expected order even with the ranking removed.
 	nine, five := 9, 1
 	mustAdd(t, st, AddItemInput{Title: "Expire refresh tokens", Value: &five, Actor: "a"})
 	mustAdd(t, st, AddItemInput{Title: "Tidy the flag help", Why: "the token parser is duplicated", Value: &nine, Actor: "a"})

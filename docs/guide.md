@@ -190,7 +190,7 @@ there until something promotes it.
 Pipe a real document in:
 
 ```console
-$ keep capture "Q3 roadmap" --type roadmap --body - < ROADMAP.md
+$ keep capture "Q3 roadmap" --type roadmap --body - < q3-plan.md
 rnc-8f2c91
 ```
 
@@ -199,7 +199,7 @@ returns exactly what went in, which matters because an agent refining it
 needs the actual document, not a reformatting of it:
 
 ```console
-$ keep show rnc-8f2c91 --body | diff - ROADMAP.md
+$ keep show rnc-8f2c91 --body | diff - q3-plan.md
                                        # silent — no output means identical
 ```
 
