@@ -11,8 +11,8 @@ works alone. This is what happens when you install both.
 Open Claude Code in one terminal and Codex in another. Both ask for work. Both
 get the same top-ranked ticket. Both start editing the same file.
 
-keep alone cannot prevent that — it does not watch processes. Interlock alone
-cannot prevent it either — it stops the second write, but only after both agents
+keep alone cannot prevent that because it does not watch processes. Interlock alone
+cannot prevent it either: it stops the second write, but only after both agents
 have already spent a while on the same task.
 
 Together, the second agent never gets offered the work in the first place.
@@ -64,7 +64,7 @@ keep add --score 9/9/1 \
   "Expire refresh tokens after 30 days"
 ```
 
-**Comma-separated, repo-relative.** An item with no paths is never held back —
+**Comma-separated, repo-relative.** An item with no paths is never held back:
 keep does not know what that work touches, and guessing that it collides would
 hide workable tickets. Interlock's own hook still blocks the write if two agents
 land on the same file anyway.
@@ -114,7 +114,7 @@ interlock dashboard       # the same moment from the territory's side
 
 Five panels, top to bottom: the counts, **Workable now**, **Ask an agent**,
 **Held back**, and **Agents**. The last two only appear when Interlock is
-installed and wired — with it off, the board is the queue and nothing else, and
+installed and wired. With it off, the board is the queue and nothing else, and
 says so in the sidebar.
 
 **Held back** is the join made visible:
@@ -127,10 +127,10 @@ this panel come from one store call, so the board can never drop an item it
 fails to explain.
 
 **Release** hands a file back early. It is the one destructive control on the
-page, and it does what Interlock's own `lease release` does — nothing keep
+page, and it does what Interlock's own `lease release` does; nothing keep
 invented.
 
-### Interlock — the panel
+### The Interlock panel
 
 ![Interlock's panel](images/interlock-panel.png)
 
@@ -151,12 +151,12 @@ interlock run <agent> --item <id> --no-follow -- "<the item's title and reason>"
 
 Interlock owns the process from there: it supervises the run, its hooks fire,
 and the agent claims files as it writes them. keep does not spawn agents
-itself and does not want to — a second supervisor is a second thing to be
+itself and does not want to. A second supervisor is a second thing to be
 wrong.
 
 **Ask an agent**, below the queue, is the same path without an item, for work
 you would not have written a ticket for. Both report what actually happened: a
-run that fails on startup — no credentials, no such runner — is reported as a
+run that fails on startup (no credentials, no such runner) is reported as a
 failure with Interlock's own reason, not as a successful launch.
 
 To watch a run, or stop one:
@@ -173,7 +173,7 @@ interlock runs stop <run-id>
 
 `keep init` registers a repository, so the board's sidebar lists every project
 you have initialised and each keeps its own store, queue and board. **Manage
-projects** adds one you have cloned since, or forgets one — forgetting removes
+projects** adds one you have cloned since, or forgets one. Forgetting removes
 it from the list and never touches the store.
 
 Interlock is per-repository too, and the board says which project it is looking
@@ -189,7 +189,7 @@ the morning question of what to work on before you have decided where.
 ## What this does not do
 
 - **It does not assign work by itself.** keep holds the list and Interlock
-  holds the territory. Nothing starts unless you ask — pressing **Start agent**
+  holds the territory. Nothing starts unless you ask: pressing **Start agent**
   is you asking, and so is `interlock run`. Neither program decides on its own
   that an item should be worked on.
 - **It does not make the queue safe to race on.** A lease appears when an agent
