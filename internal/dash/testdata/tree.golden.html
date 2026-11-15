@@ -136,9 +136,8 @@
      decelerates into place, something leaving accelerates away, and only a
      thing that does both gets the symmetric curve.
 
-     No overshoot anywhere. A bouncing button is a decade-old tell, and an
-     overshoot belongs to physical interactions -- a dragged thing settling
-     -- not to a colour change. */
+     No overshoot anywhere: overshoot belongs to physical interactions, such
+     as a dragged thing settling, not to a colour change. */
   --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
   --ease-in: cubic-bezier(0.55, 0.06, 0.68, 0.19);
   --ease-in-out: cubic-bezier(0.65, 0.05, 0.36, 1);
@@ -171,10 +170,9 @@
     /* Dark, not near-white. The light theme's danger red is dark enough to
        carry white text at 6.15:1; this one is a LIGHTER red, chosen to be
        visible on a near-black canvas, and near-white on it measures 3.14:1
-       -- under the 4.5 that 14px text needs. The token was copied verbatim
-       from the light block, which is the whole failure: an on-colour is a
-       function of the colour it sits on, and the two reds are on opposite
-       sides of the point where that answer flips. */
+       -- under the 4.5 that 14px text needs. An on-colour is a function of
+       the colour it sits on, and the two reds are on opposite sides of the
+       point where that answer flips. */
     --on-danger: #1a0403;
 
     --accent: #e8eaed;
@@ -210,24 +208,11 @@ td[class*="depth-"] { font-family: var(--mono); }
 .ico { flex: none; vertical-align: -3px; }
 
 /* ---------------------------------------------------------------------
-   Shell. A fixed sidebar and a scrolling content region, because this is
-   an application a person keeps open, not a page they read once. The
-   sidebar is where you are; the region is what you are doing.
-   --------------------------------------------------------------------- */
-
-/* ---------------------------------------------------------------------
-   The shell. One bar, then a column.
-
-   This was a 208px rail beside a surface running to the window edge, which
-   is the admin-dashboard skeleton -- and no amount of work on the pieces
-   inside it changes what the skeleton says. It was costing legibility too:
-   past about 1100px of line, a queue row's title sits on the left and its
-   controls a thousand pixels away on the right, and the eye has to cross
-   the whole screen to join them.
-
-   A measure fixes both. 1080px is wide enough for a row that carries a
-   score, a title, a path and four controls without crowding, and narrow
-   enough that those four controls are still near the title they belong to.
+   The shell. One bar, then a column capped at a readable width, so a
+   queue row's title and its controls stay close together. 1080px is wide
+   enough for a row that carries a score, a title, a path and four controls
+   without crowding, and narrow enough that those controls are still near
+   the title they belong to.
    --------------------------------------------------------------------- */
 .app { min-height: 100vh; }
 
@@ -297,20 +282,15 @@ td[class*="depth-"] { font-family: var(--mono); }
 /* The switcher takes a whole row of the (wrapping) bar, and its menu drops
    into normal flow beneath it at full width.
 
-   Both halves are needed. Static alone was not enough: the menu's widest
-   child is a repository path set in nowrap mono, so its min-content width
-   is the whole path, and a static box with no ceiling grew the <details>
-   itself right off the page -- 242px past the edge, which is worse than the
-   popover was. width: 100% of a full-row switcher is what finally gives
-   .switcher-dir a width to run its own text-overflow: ellipsis against. */
+   Both halves are needed. The menu's widest child is a repository path set
+   in nowrap mono, so its min-content width is the whole path, and a static
+   box with no ceiling would grow the <details> past the edge of the page.
+   width: 100% of a full-row switcher gives .switcher-dir a width to run its
+   own text-overflow: ellipsis against. */
 @media (max-width: 560px) {
-  /* min-width: 0 is the declaration that does the work here. A
-     flex item's automatic minimum size is its min-content width, and this
-     one's min-content is a 573px nowrap repository path -- so `flex: 1 0
-     100%` sized it to 591px inside a 364px bar and the whole switcher hung
-     off the page. Only min-width: 0 lets a flex item be narrower than the
-     longest thing inside it, which is the entire point of the ellipsis the
-     path is already asking for. */
+  /* A flex item's automatic minimum size is its min-content width, which
+     here is a long nowrap repository path. min-width: 0 lets the item
+     shrink below that path so the ellipsis can apply. */
   .switcher { position: static; flex: 1 1 100%; min-width: 0; }
   .switcher summary { width: 100%; min-width: 0; justify-content: space-between; }
   .switcher-menu {
@@ -422,10 +402,8 @@ input:disabled, select:disabled, textarea:disabled {
    canvas reads as a document, and this is an instrument panel.
    --------------------------------------------------------------------- */
 
-/* The tally: every count on one line, under the page's own lede. It
-   replaced a row of five cards, which cost 130px at the top of the board
-   and pushed the queue below the fold -- five boxes announcing that nothing
-   is blocked, above the four things you could actually be doing. */
+/* The tally: every count on one line, under the page's own lede, so the
+   queue starts near the top of the board. */
 .tally {
   display: flex; flex-wrap: wrap; gap: 4px 16px;
   margin: 0 0 20px; font-size: var(--text-sm); color: var(--fg-faint);
@@ -440,9 +418,6 @@ input:disabled, select:disabled, textarea:disabled {
 .count-workable b { color: var(--workable); }
 .count-claimed b { color: var(--claimed); }
 .count-blocked b { color: var(--blocked); }
-
-/* The stat-card rules that lived here are gone with the cards. The counts
-   are one line under the lede now -- see .tally above. */
 
 .stat-workable b { color: var(--workable); }
 
@@ -865,10 +840,8 @@ tbody tr:hover td { background: color-mix(in srgb, var(--fg) 4%, transparent); }
 }
 .firstrun-lede { margin: 0 0 36px; color: var(--fg-muted); font-size: var(--text-base); line-height: 1.6; }
 
-/* One primary way in, then the rest as prose. This was three numbered items
-   of equal weight -- the hero-plus-three-cards rhythm, and a lie about the
-   content besides: numbers promise a sequence, and these are alternatives.
-   The asymmetry is the point; the first one is what most people should do. */
+/* One primary way in, then alternatives as prose; numbering would imply a
+   sequence. The first one is what most people should do. */
 .firstrun-primary { margin-bottom: 32px; }
 .firstrun-primary b { display: block; font-size: var(--text-lg); font-weight: 600; margin-bottom: 8px; letter-spacing: -0.01em; }
 .firstrun-primary p { margin: 0 0 16px; color: var(--fg-muted); font-size: var(--text-base); line-height: 1.6; }
@@ -891,11 +864,7 @@ tbody tr:hover td { background: color-mix(in srgb, var(--fg) 4%, transparent); }
 .firstrun-aside p { margin: 0 0 12px; color: var(--fg-muted); font-size: var(--text-sm); max-width: 54ch; }
 
 /* ---------------------------------------------------------------------
-   Motion. --tempo was declared early and then applied to almost nothing,
-   so the page changed state by teleporting: a row highlighted instantly, a
-   banner appeared fully formed, a pressed button gave nothing back.
-
-   Everything below is a state change the person caused, arriving over one
+   Motion. Everything below is a state change the person caused, arriving over one
    or two frames instead of none. Nothing loops, nothing animates on its own
    schedule, and nothing moves that a person did not just act on -- an
    interface that fidgets while you read it is worse than a still one.
@@ -1021,10 +990,9 @@ label.inline { display: inline-flex; align-items: center; gap: 8px; cursor: poin
 .btn-danger.btn-solid:hover { background: var(--blocked); border-color: var(--blocked); opacity: 0.9; }
 
 /* ---------------------------------------------------------------------
-   The remaining states. :hover and :focus-visible were everywhere; :active
-   was on one selector and there was no error or success styling at all, so
-   a control could fail validation and look exactly like a control that had
-   not been touched.
+   The remaining states: :active, and error and success styling, so a
+   control that failed validation does not look like one that was never
+   touched.
 
    No loading state: there is no JavaScript here, so a submitted form is a
    page navigation and the browser's own progress indicator is the loading
@@ -1099,10 +1067,7 @@ h1, h2, h3, .panel-head h2, .qbody .title, .firstrun h2 { line-height: 1.25; }
 .prompt-side .btn, .prompt-side select { min-height: 40px; }
 
 /* Controls that sit in the same row share a height, exactly -- not a
-   minimum, which still lets a select grow past a button beside it. The row
-   controls are .qacts now (the queue rows became list items); the rule
-   targeted the old .acts, so the select kept the generic form padding and
-   sat 6px taller than its own buttons. */
+   minimum, which still lets a select grow past a button beside it. */
 .qacts .btn, .qacts select, .acts .btn, .acts select {
   height: 32px; min-height: 32px; padding-top: 0; padding-bottom: 0;
 }
@@ -1121,10 +1086,8 @@ h1, h2, h3, .panel-head h2, .qbody .title, .firstrun h2 { line-height: 1.25; }
 
 /* ---------------------------------------------------------------------
    The browser's own surfaces. Selection, caret and scrollbar are drawn by
-   the platform unless a page says otherwise, and a designed panel with an
-   OS scrollbar bolted to its edge is a page that stopped at the parts it
-   could see. These are the cheapest signal that something was built rather
-   than assembled.
+   the platform unless a page says otherwise; these draw them from the same
+   tokens as the rest of the page.
    --------------------------------------------------------------------- */
 ::selection {
   background: color-mix(in srgb, var(--claimed) 28%, transparent);
@@ -1152,25 +1115,11 @@ input, textarea { caret-color: var(--fg); }
 .switcher-item { min-height: 44px; }
 .bar { gap: 16px; }
 
-/* Equalising the row controls to 32px silently overrode the coarse-pointer
-   rule that had grown them: an explicit height beats the padding that rule
-   was adding. They grow together now, so the row keeps its alignment at
-   both sizes rather than trading one property for the other. */
-/* Matched to the breakpoint at the top of this file, not narrower. That rule
-   says "below the tablet breakpoint every control gets the 44px minimum",
-   and it sets min-height on .btn and on bare select -- but the row controls
-   above are .qacts .btn and .qacts select, which are more specific and set
-   min-height: 32px, so they quietly opted out of the promise the other rule
-   makes. A 375px window with a mouse got 32px controls. This is the second
-   time these particular controls have defeated their own touch-target fix;
-   the first was a coarse-pointer rule overridden by a later height. */
-/* Every control that pins its own exact height, restored to the 44px floor
-   together. They are listed in one rule because they are one mistake made
-   three times: a row of controls needs a shared exact height to line up,
-   an exact height beats a min-height set by a less specific selector, and
-   so each of these rows silently opted out of the touch-target promise made
-   at the top of this file. Anything added here with `height:` on it belongs
-   in this list too. */
+/* Every control that pins its own exact height, raised to the 44px touch
+   floor together so each row keeps its alignment. An exact height beats the
+   min-height the breakpoint rule at the top of this file sets on .btn and
+   select, so these rows need their own rule; the breakpoint matches that
+   one. Anything added above with `height:` on it belongs in this list too. */
 @media (pointer: coarse), (max-width: 720px) {
   .qacts .btn, .qacts select, .acts .btn, .acts select,
   .prompt-side .btn, .prompt-side select { height: 44px; min-height: 44px; }
