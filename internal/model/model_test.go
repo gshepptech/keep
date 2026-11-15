@@ -117,8 +117,8 @@ func keysOf(m map[string]json.RawMessage) []string {
 	return keys
 }
 
-// TestOrderedVocabulariesMatchTheirMaps is the guard that matters (task 1's
-// own <behavior>): a fifth value added to a Valid* map but not its matching
+// TestOrderedVocabulariesMatchTheirMaps is the guard that matters: a new
+// value added to a Valid* map but not its matching
 // *Ordered slice would otherwise silently vanish from every enum and every
 // ordering built on it. For each of the four pairs, this asserts set
 // equality in both directions plus equal length, AND the literal expected

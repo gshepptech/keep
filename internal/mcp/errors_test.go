@@ -79,8 +79,8 @@ func TestResultFor(t *testing.T) {
 	})
 
 	// isErrorSentinels is the single source of truth for the sentinels
-	// resultFor classifies as isError:true tool results -- decision 4's "the
-	// legitimate outcome of a well-formed call" arm. If a tenth store
+	// resultFor classifies as isError:true tool results -- "the legitimate
+	// outcome of a well-formed call". If a new store
 	// sentinel is ever added and not added here, it is invisible to this
 	// test by construction (Go has no reflection-based way to enumerate a
 	// package's exported error vars) -- the same hand-maintained-table

@@ -55,7 +55,7 @@ type BacklogInput struct {
 // schemaSet collects the generated schemas and every generation error,
 // so BuildSchemas needs exactly ONE error check rather than ten. errors.Join
 // returns nil when every element is nil, so no conditional is needed here
-// either -- which is what keeps MCP-05's structural test able to say the
+// either -- which is what keeps the structural test able to say the
 // error switch in errors.go is the only branch in this package.
 type schemaSet struct {
 	m    map[string]*jsonschema.Schema
@@ -84,7 +84,7 @@ func (s *schemaSet) err() error {
 // be a bug in this file, and a nil-map write panicking loudly beats a
 // silently-dropped enum.
 //
-// Advertisement, NOT enforcement: verified live (04-RESEARCH.md) that
+// Advertisement, NOT enforcement:
 // mcp.Server.AddTool (the low-level path this package uses -- see errors.go
 // for why) does not validate arguments against InputSchema at all. A
 // published enum and additionalProperties:false were both ignored on a real
@@ -165,18 +165,17 @@ var ToolNames = []string{
 // list, never a range over a Valid* map, whose iteration order differs per
 // process and would make a tools/list assertion flaky).
 //
-// Ordered as 04-CONTEXT.md decision 2 names the ten: capture, add, ready,
-// backlog, show, list, dep, start, close, drop.
+// Ordered as ToolNames lists them.
 //
 // capture and add both reuse store.AddItemInput unmodified -- the same
 // struct, two independent jsonschema.For calls, each producing its own
-// *jsonschema.Schema (confirmed live: two calls for the same type return
-// distinct pointers, so decorating one cannot leak into the other). Their
+// *jsonschema.Schema (two calls for the same type return distinct
+// pointers, so decorating one cannot leak into the other). Their
 // wire shape is identical by construction: title required, session_id and
 // stage both absent. The one behavioural difference between the two tools
 // (capture always writes stage=raw, add defaults to stage=ticket) lives in
-// the handler that pre-seeds AddItemInput.Stage before unmarshalling
-// (plan 03), never in the schema.
+// the handler that pre-seeds AddItemInput.Stage before unmarshalling,
+// never in the schema.
 func BuildSchemas() (map[string]*jsonschema.Schema, error) {
 	set := &schemaSet{m: make(map[string]*jsonschema.Schema)}
 

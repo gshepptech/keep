@@ -94,7 +94,7 @@ type ItemDetail struct {
 }
 
 // BlockedItem is a ready-eligible-shape item annotated with the id of the
-// nearest item blocking it (READY-04) -- either the item itself, if it is
+// nearest item blocking it -- either the item itself, if it is
 // directly blocked, or the nearest blocked ancestor in its parent-child tree.
 type BlockedItem struct {
 	Item
@@ -107,8 +107,8 @@ type BlockedItem struct {
 // it is an Item plus one annotation, returned by a store method and rendered
 // by a caller. Keeping it in internal/model is what lets internal/dash's
 // render functions be pure (model in, HTML out) with no internal/store
-// import at all, which is what makes DASH-06's golden test possible without
-// a live database.
+// import at all, which is what makes the tree view's golden test possible
+// without a live database.
 type TreeNode struct {
 	Item
 	Depth     int    `json:"depth"`
@@ -161,13 +161,12 @@ var ValidTypes = map[string]bool{
 
 // ScoreMin and ScoreMax bound each of an item's three scoring inputs.
 //
-// The range was documented in internal/rank's comment and enforced only by
-// cmd/keep's flag parser, which meant the store and therefore MCP accepted
-// anything: effort=100 scored -89, below an unscored item's 0, breaking
-// RANK-02's guarantee that a scored item always outranks an unscored one,
-// and value=1000 pinned an item to the top of the queue for good. The
-// numbers live here so the store's check and the MCP schema's advertised
-// bounds cannot drift apart.
+// The store enforces the range, not just cmd/keep's flag parser, because
+// MCP reaches the store directly: effort=100 would score -89, below an
+// unscored item's 0, breaking the guarantee that a scored item always
+// outranks an unscored one, and value=1000 would pin an item to the top of
+// the queue for good. The numbers live here so the store's check and the
+// MCP schema's advertised bounds cannot drift apart.
 const (
 	ScoreMin = 0
 	ScoreMax = 10

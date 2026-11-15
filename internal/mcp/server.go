@@ -16,14 +16,14 @@ import (
 // internal/mcp reads no environment variable and opens no store:
 // cmd/keep/mcp.go resolves actor and session through the SAME
 // resolveActor/resolveSession helpers every CLI verb uses, then passes them
-// in. That is what makes MCP-03's identical-events-rows claim a property of
-// shared code rather than of two implementations agreeing.
+// in. That is what makes "the CLI and MCP write identical events rows" a
+// property of shared code rather than of two implementations agreeing.
 type Options struct {
 	// Actor is the server's default actor -- resolved once at startup
 	// (KEEP_ACTOR, else $USER, via cmd/keep/flags.go's resolveActor). A
-	// caller may override it per call on any mutating tool (04-CONTEXT.md
-	// decision 3: "actor is an optional argument on every mutating tool,
-	// defaulting to the server's own actor"). The pre-seed pattern in every
+	// caller may override it per call on any mutating tool: actor is an
+	// optional argument on every mutating tool, defaulting to the server's
+	// own actor. The pre-seed pattern in every
 	// handler below is what lets that override happen with zero
 	// conditionals.
 	Actor string
@@ -55,11 +55,9 @@ type Options struct {
 	ActorFor func(*mcp.InitializeParams) string
 
 	// Session is fixed for the process lifetime -- one MCP server process
-	// serves one agent session (04-CONTEXT.md decision 3). It is never a
-	// per-call argument: every mutating *Input struct's SessionID field is
-	// json:"-" (plan 02), unreachable over the wire under any spelling,
-	// verified live (04-RESEARCH.md) even under an exact-Go-field-name
-	// injection attempt.
+	// serves one agent session. It is never a per-call argument: every
+	// mutating *Input struct's SessionID field is json:"-", unreachable over
+	// the wire under any spelling, even an exact Go field name.
 	Session string
 
 	// Version is reported in the initialize handshake.
@@ -72,26 +70,25 @@ type Options struct {
 	// # Which clients actually show it to the model
 	//
 	// Sending it is one thing; a client putting it in the model's prompt is
-	// another, and they do not agree. Measured 2026-08-13:
+	// another, and they do not agree. As observed with current clients:
 	//
 	//   - Claude Code renders it under an "MCP Server Instructions" block.
 	//     A headless session with no tool calls quoted the first sentence
 	//     back verbatim.
-	//   - Codex 0.147.0-alpha.6.5 does NOT. `codex debug prompt-input`
+	//   - Codex does NOT. `codex debug prompt-input`
 	//     renders the model-visible prompt, and this text is absent from
 	//     it -- every occurrence of "keep" in those 26KB is a filesystem
 	//     path. Codex still calls `ready` unprompted, but from the tool's
 	//     name and description, not from this.
 	//
 	// So this field is the whole delivery mechanism on Claude Code and no
-	// delivery at all on Codex. Do not treat it as cross-client parity; it
-	// was proposed as exactly that and the measurement said otherwise.
-	// Codex parity needs the plugin-carried SessionStart hook (rnc-069e8a).
+	// delivery at all on Codex. Do not treat it as cross-client parity;
+	// Codex parity comes from the plugin-carried SessionStart hook.
 	//
 	// Built by the caller, never here. Rendering a queue needs loops and
 	// branches, and internal/mcp's structure_test.go permits neither
-	// outside NewServer's schema check and resultFor -- that is MCP-05's
-	// "no logic outside store" enforced mechanically, and it holds for
+	// outside NewServer's schema check and resultFor -- that is "no logic
+	// outside the store" enforced mechanically, and it holds for
 	// this field too. cmd/keep/mcpinstructions.go composes the text the
 	// same way it resolves Actor and Session.
 	//
@@ -121,7 +118,7 @@ type Options struct {
 	// exactly one call and carries no branch of its own.
 	ReadyAll func(ctx context.Context) (any, error)
 
-	// Logger MUST NOT write to stdout (MCP-07) -- stdout carries protocol
+	// Logger MUST NOT write to stdout -- stdout carries protocol
 	// bytes only, and anything else on it is fatal to an MCP stdio session.
 	// A nil Logger is safe here: the SDK's own default is
 	// slog.New(slog.DiscardHandler), which writes nowhere.
@@ -136,8 +133,8 @@ type Options struct {
 //
 // It is the SDK's ergonomic generic API. It is what the SDK's own
 // documentation shows first. It is what "reuse the store's *Input structs as
-// typed tool inputs" naturally suggests. And it cannot satisfy MCP-04.
-// Verified live, twice (04-RESEARCH.md): it routes both a JSON type
+// typed tool inputs" naturally suggests. And it cannot turn a malformed
+// argument into a protocol error: it routes both a JSON type
 // mismatch and an entirely legitimate call that omitted an optional field
 // into an isError:true tool result -- reached through a code path
 // (toolForErr's generated handler) that never calls the handler at all,
@@ -145,10 +142,10 @@ type Options struct {
 // validation or unmarshal failure. That nil Go error is why the dispatcher
 // would emit a normal successful response with no top-level "error" key.
 //
-// MCP-04 requires a genuine JSON-RPC protocol error. Only the low-level
-// mcp.Server.AddTool(*Tool, ToolHandler), paired with a manual
-// json.Unmarshal and a plain (or *jsonrpc.Error) Go error return on
-// failure, produces one -- verified live to emit exactly
+// A malformed argument must produce a genuine JSON-RPC protocol error.
+// Only the low-level mcp.Server.AddTool(*Tool, ToolHandler), paired with a
+// manual json.Unmarshal and a plain (or *jsonrpc.Error) Go error return on
+// failure, produces one -- it emits exactly
 // {"jsonrpc":"2.0","id":N,"error":{"code":-32602,"message":"..."}}. Used
 // uniformly for every tool; mixing the two styles would make error
 // behaviour differ per tool for no benefit.
@@ -164,11 +161,10 @@ func NewServer(st *store.Store, opts Options) (*mcp.Server, error) {
 	)
 
 	// Registration order is the order tools/list returns and the order
-	// plan 04's MCP-01 test asserts. It opens with 04-CONTEXT.md decision
-	// 2's original list -- capture, add, ready, backlog, show, list, dep,
-	// start, close, drop -- and later tools are appended rather than
-	// interleaved, so a client diffing two versions sees additions rather
-	// than a reshuffle.
+	// the tools/list test asserts. It opens with the core ten -- capture,
+	// add, ready, backlog, show, list, dep, start, close, drop -- and later
+	// tools are appended rather than interleaved, so a client diffing two
+	// versions sees additions rather than a reshuffle.
 
 	s.AddTool(&mcp.Tool{
 		Name:        "capture",
@@ -341,7 +337,7 @@ func NewServer(st *store.Store, opts Options) (*mcp.Server, error) {
 	// readyAll is opts.ReadyAll with the nil case already decided, so the
 	// handler below is the same one-unmarshal-one-call shape as every other
 	// handler in this file. Deciding it here rather than in the handler is
-	// what keeps MCP-05's "no conditional in a handler" true -- NewServer is
+	// what keeps "no conditional in a handler" true -- NewServer is
 	// one of the two places this package is allowed a branch.
 	readyAll := opts.ReadyAll
 	if readyAll == nil {
@@ -425,15 +421,9 @@ func NewServer(st *store.Store, opts Options) (*mcp.Server, error) {
 	return s, nil
 }
 
-// Accepted surface differences from the CLI, recorded here per plan 07's
-// instruction (it carries them into docs/design/phase-3.md).
-//
-// This note used to say "the CLI has thirteen verbs; the locked ten omit
-// init, blocked and update". Both numbers were stale and three of the
-// omissions have since been closed, which is the ordinary fate of a
-// hand-maintained count -- so the differences are now stated as reasons
-// rather than as arithmetic, and cmd/keep/mcp_parity_test.go compares the
-// two surfaces mechanically.
+// Accepted surface differences from the CLI. They are stated as reasons
+// rather than as a count of verbs, which would go stale;
+// cmd/keep/mcp_parity_test.go compares the two surfaces mechanically.
 //
 //  1. `init` has no tool, and must not: an MCP client cannot usefully create
 //     the store it was already pointed at.
@@ -446,25 +436,10 @@ func NewServer(st *store.Store, opts Options) (*mcp.Server, error) {
 //     registry, binding a port, granting hook trust -- and none of them is
 //     something an agent should reach for while doing the work.
 //  4. `add` cannot set `stage`. The CLI's `add --stage raw` has no MCP
-//     equivalent; `capture` is the verb for a raw item (input.go, plan 02).
-//  5. An invalid `type`/`stage` on `add`/`capture` produces a raw SQLite
-//     constraint message, because AddItem does not pre-validate against the
-//     closed vocabulary in Go (only cmd/keep/add.go does, at the CLI
-//     boundary). The published enum steers a model away from it; when one
-//     arrives anyway it falls to resultFor's default arm and becomes a
-//     protocol error carrying driver text (04-RESEARCH.md Open Question 5).
-//     Moving that validation into AddItem would improve both surfaces.
+//     equivalent; `capture` is the verb for a raw item (input.go).
 //
-// Empty results marshal to `[]`, not `null`. That used to be false and was
-// recorded here as accepted: store.Ready/Backlog/ListItems returned a nil
-// slice when empty, cmd/keep substituted an empty one before encoding, and
-// internal/mcp did not -- so the same empty queue read as `[]` from the CLI
-// and as the text `null` from this server, in the same second.
-//
-// It was fixed where it belonged rather than here. Normalising in this
-// package would have meant a conditional in a handler, which MCP-05 forbids
-// for good reason; more to the point it was the SECOND surface to carry the
-// same fix, and README principle 2 says no surface carries behaviour of its
-// own. internal/store now returns an empty, non-nil slice from every list
-// query, so the CLI, this server, the dashboard and anything written next
-// all get it without knowing it was ever a question.
+// Empty results marshal to `[]`, not `null`, on both surfaces. That is
+// guaranteed by internal/store, which returns an empty, non-nil slice from
+// every list query, rather than here: normalising in this package would
+// mean a conditional in a handler, and surfaces carry no behaviour of their
+// own.

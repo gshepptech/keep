@@ -10,7 +10,7 @@ import (
 )
 
 // wantRequired is the exact `required` set BuildSchemas must produce for
-// each of the fourteen tools, per the plan's own <behavior> block. ready/backlog/
+// each tool. ready/backlog/
 // list have no required fields -- []string{} rather than nil so the
 // comparison below is order-independent and nil-tolerant either way.
 var wantRequired = map[string][]string{
@@ -75,9 +75,9 @@ func TestSchemaTypeIsObject(t *testing.T) {
 	}
 }
 
-// TestSchemaPropertiesAreSnakeCase catches the PascalCase regression
-// (Pitfall 2 in 04-RESEARCH.md) in one assertion across all ten schemas: no
-// property name may contain an uppercase letter.
+// TestSchemaPropertiesAreSnakeCase catches a PascalCase regression (a
+// missing json tag) in one assertion across every schema: no property name
+// may contain an uppercase letter.
 func TestSchemaPropertiesAreSnakeCase(t *testing.T) {
 	schemas, err := BuildSchemas()
 	if err != nil {
@@ -93,8 +93,8 @@ func TestSchemaPropertiesAreSnakeCase(t *testing.T) {
 }
 
 // TestSchemaSessionIDNeverAppears proves session_id is absent from every one
-// of the ten schemas, under any spelling -- decision 3: session is a
-// server-lifetime property, never a per-call argument.
+// of the schemas, under any spelling: session is a server-lifetime
+// property, never a per-call argument.
 func TestSchemaSessionIDNeverAppears(t *testing.T) {
 	schemas, err := BuildSchemas()
 	if err != nil {
@@ -129,9 +129,9 @@ func TestSchemaStageAbsentOnAddAndCapture(t *testing.T) {
 	}
 }
 
-// TestSchemaRequiredFields proves each tool's required set is exactly what
-// the plan specifies -- in particular, that parent_id is NOT required on
-// add, the live-reproduced Pitfall-2 defect this whole plan exists to fix.
+// TestSchemaRequiredFields proves each tool's required set is exactly as
+// intended -- in particular, that parent_id is NOT required on add, which
+// is what jsonschema.For produces for a field without omitempty.
 func TestSchemaRequiredFields(t *testing.T) {
 	schemas, err := BuildSchemas()
 	if err != nil {
@@ -150,9 +150,9 @@ func TestSchemaRequiredFields(t *testing.T) {
 	}
 }
 
-// TestSchemaAddParentIDNotRequired is the plan's own named case, kept
-// separate from the table-driven check above so a regression here fails
-// with a message naming the exact defect (Pitfall 2), not just a set diff.
+// TestSchemaAddParentIDNotRequired is kept separate from the table-driven
+// check above so a regression here fails with a message naming the exact
+// defect, not just a set diff.
 func TestSchemaAddParentIDNotRequired(t *testing.T) {
 	schemas, err := BuildSchemas()
 	if err != nil {
@@ -161,7 +161,7 @@ func TestSchemaAddParentIDNotRequired(t *testing.T) {
 	sc := schemas["add"]
 	for _, r := range sc.Required {
 		if r == "parent_id" {
-			t.Fatalf("schema %q: parent_id is required -- a legitimate root-item add omitting it would be rejected (Pitfall 2)", "add")
+			t.Fatalf("schema %q: parent_id is required -- a legitimate root-item add omitting it would be rejected", "add")
 		}
 	}
 }
@@ -224,8 +224,8 @@ func TestSchemaEnums(t *testing.T) {
 	}
 }
 
-// TestDepEnumExcludesParentChild is the plan's own named case for the dep
-// type enum, kept separate so a regression fails naming the exact reason:
+// TestDepEnumExcludesParentChild covers the dep type enum, kept separate so
+// a regression fails naming the exact reason:
 // store.CreateDep refuses parent-child outright (ErrParentChildViaDep), so
 // advertising it as a legal dep type would be worse than not advertising it.
 func TestDepEnumExcludesParentChild(t *testing.T) {
