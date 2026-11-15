@@ -100,9 +100,7 @@
     "Helvetica Neue", Arial, sans-serif;
 
   /* One spacing scale, in 4px steps. Every padding, gap and margin below
-     comes from it. Values that were 7, 9, 11, 13 and 17px are snapped to
-     the nearest step -- the eye cannot see the 1px it loses, and the page
-     gains alignment it never had. */
+     comes from it, so edges line up across components. */
   --space-2xs: 4px;
   --space-xs: 8px;
   --space-sm: 12px;
@@ -114,10 +112,8 @@
   --radius: 9px;
   --radius-lg: 16px;
 
-  /* One modular scale. The previous version had eleven sizes including
-     half-pixel values chosen by eye (10.5, 11.5, 12.5), which is how a
-     hierarchy stops being one: at those deltas a reader cannot tell two
-     levels apart, so the distinctions cost bytes and buy nothing. */
+  /* One modular scale with few steps. Sizes a pixel or less apart read as
+     the same level, so they add no hierarchy. */
   --text-xs: 12px;
   --text-sm: 14px;
   --text-base: 15px;
@@ -226,10 +222,8 @@ td[class*="depth-"] { font-family: var(--mono); }
    tracking and the mark sized to the lowercase x-height, so the two read as
    one object rather than an icon with a label beside it.
 
-   The mark takes --fg, not --fg-muted. It did take muted, back when it was
-   three hairline strokes and needed to sit quietly; a filled silhouette at
-   the same value reads as a smudge instead. Full weight, matching the word
-   it stands next to. */
+   The mark takes --fg, not --fg-muted: a filled silhouette in a muted value
+   reads as a smudge. Full weight, matching the word it stands next to. */
 .brand {
   display: inline-flex; align-items: center; gap: 8px;
   text-decoration: none; color: var(--fg);
@@ -320,10 +314,8 @@ td[class*="depth-"] { font-family: var(--mono); }
 /* The nav wraps. It has flex: 1 and min-width: 0 so it yields space to the
    wordmark and the switcher beside it -- but yielding space to a row of
    nowrap pills does not shrink them, it pushes them out of the box, and
-   `html { overflow-x: clip }` two hundred lines up then deletes them. At
-   375px that cost Parked, Search and Activity: three of the five places you
-   can go, not merely hard to reach but gone, with no scrollbar to find them
-   with. Wrapping costs a second line at a width where the bar was already
+   `html { overflow-x: clip }` then hides them with no scrollbar to reach
+   them. Wrapping costs a second line at a width where the bar is already
    two lines tall. */
 .bar-nav { display: flex; align-items: center; gap: 4px; flex: 1; min-width: 0; flex-wrap: wrap; }
 .tab {
@@ -437,8 +429,8 @@ input:disabled, select:disabled, textarea:disabled {
 .panel-body { padding: 20px 0 0; }
 
 /* The queue leads. Everything else on this page explains it, so everything
-   else is subordinate: same content, less voice. Without this every panel
-   shouted equally and the page had no answer to "where do I look first". */
+   else is subordinate: same content, less voice, so the page answers
+   "where do I look first". */
 .panel-lead .panel-head h2 { font-size: var(--text-xl); font-weight: 600; letter-spacing: -0.02em; }
 .panel-lead .panel-head { padding: 0 0 16px; }
 .panel-lead .title { font-size: var(--text-base); }
@@ -627,10 +619,9 @@ textarea { resize: vertical; line-height: 1.55; }
 textarea { field-sizing: content; min-height: 4.5em; max-height: 24em; }
 
 /* The body is the one field that is usually empty and occasionally holds a
-   whole captured roadmap. field-sizing collapsed the empty case to a single
-   line, and a one-line box does not read as the place a document goes --
-   `rows` was carrying that invitation, and growing-to-content threw it away
-   along with the clipping it was there to fix. A floor keeps both. */
+   whole captured document. field-sizing alone collapses the empty case to a
+   single line, which does not read as the place a document goes. A floor
+   keeps the invitation and the growth. */
 textarea[name="body"] { min-height: 9em; }
 
 table.fields th {
@@ -820,8 +811,7 @@ tbody tr:hover td { background: color-mix(in srgb, var(--fg) 4%, transparent); }
   .qacts form { flex-wrap: wrap; }
 }
 
-/* A row that is flagged keeps its amber edge; the edge now sits on a list
-   item rather than a table row, so it needs the radius clipped back. */
+/* A flagged row carries an amber edge, and a stopped row a red one. */
 .qrow.flagged { box-shadow: inset 2px 0 0 var(--claimed); padding-left: 14px; }
 .qrow.stopped { box-shadow: inset 2px 0 0 var(--blocked); padding-left: 14px; }
 /* The agents list has no score, so its avatar takes that slot's alignment. */
@@ -937,8 +927,8 @@ tbody tr:hover td { background: color-mix(in srgb, var(--fg) 4%, transparent); }
   color: var(--fg-faint); line-height: 1.5;
 }
 
-/* A native checkbox is the same problem the native select was: on a dark
-   page the OS draws a light square that belongs to no design here. */
+/* A native checkbox, like a native select, is drawn by the OS: on a dark
+   page that is a light square that belongs to no design here. */
 input[type="checkbox"] {
   appearance: none; -webkit-appearance: none;
   width: 16px; height: 16px; flex: none; padding: 0;
@@ -1032,9 +1022,8 @@ input:user-valid, textarea:user-valid {
    a fix: the attribute and the highlight must mean the same thing. */
 .nav-item[aria-current="page"], .project-item[aria-current="page"] { font-weight: 500; }
 
-/* H11: the row controls were a 26px target. These are Start agent, Claim
-   and Close -- the primary actions of the page, not incidental chrome --
-   and 26px is well under the 44px a finger needs. Padding grows them on
+/* The row controls are Start agent, Claim and Close -- the primary actions
+   of the page -- and a finger needs about 44px. Padding grows them on
    coarse pointers only, so the dense desktop row is unchanged. */
 @media (pointer: coarse) {
   .btn-sm { padding: 12px 16px; }
@@ -1047,14 +1036,13 @@ input:user-valid, textarea:user-valid {
 }
 .backlink:hover { color: var(--fg); }
 
-/* Headings inherited the body's 1.5 leading, which is right for a paragraph
-   and loose for a 26px title -- leading and size move in opposite
-   directions. */
+/* The body's 1.5 leading is right for a paragraph and loose for a 26px
+   title -- leading and size move in opposite directions. */
 h1, h2, h3, .panel-head h2, .qbody .title, .firstrun h2 { line-height: 1.25; }
 .topbar h1 { line-height: 1.1; }
 
-/* The bar's own controls were 32-36px. Grown on coarse pointers only, so
-   the dense desktop bar is untouched -- same rule the row buttons follow. */
+/* The bar's own controls grow on coarse pointers only, so the dense desktop
+   bar is untouched -- same rule the row buttons follow. */
 @media (pointer: coarse) {
   .tab { padding: 12px 16px; }
   .switcher summary { padding: 10px 16px; }
