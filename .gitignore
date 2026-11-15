@@ -2,34 +2,20 @@
 /keep
 /dist/
 
-# the store itself
+# keep stores
 .rounce/
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
 
+# machine-local agent tooling state
+.interlock/
+.codex/hooks.json
+.playwright-mcp/
+
 # macOS
 .DS_Store
 
-# Playwright MCP scratch output -- screenshots and snapshots taken while
-# checking the board render. Never part of the project.
-.playwright-mcp/
-.interlock/
-
-# interlock writes .codex/hooks.json with an ABSOLUTE path to the interlock
-# binary on the machine that ran `interlock init`. It is machine-local
-# generated config, not project source: committing it hands every clone a
-# hook pointing at a home directory that does not exist for them. Run
-# `interlock init` instead -- it regenerates this file correctly.
-.codex/hooks.json
-
-# redpen scan state. fingerprints.json is a per-run baseline for its
-# sameness detection -- useful locally, churns on every scan, and means
-# nothing to anyone else.
-.redpen/
-
-# redpen writes its state here now (project root, since 8f95248).
-
-# Python bytecode from plugin/scripts.
+# Python bytecode from plugin/scripts
 __pycache__/
 *.pyc
