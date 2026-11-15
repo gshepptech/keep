@@ -8,9 +8,8 @@
 {{define "item"}}{{template "head" (titled . "Item" .Data.Title "")}}
 {{$p := .}}{{with .Data}}
 
-{{/* Arriving here is almost always a click from a list. Without this the
-     only route back is the rail, which is a different mental move from
-     "return to where I was". */}}
+{{/* Arriving here is almost always a click from a list, so the page offers
+     a direct "return to where I was" rather than only the bar. */}}
 <a class="backlink" href="{{$p.Prefix}}/">← Back to the board</a>
 
 <p class="lede">

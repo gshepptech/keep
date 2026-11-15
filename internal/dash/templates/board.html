@@ -21,10 +21,8 @@
     with no memory of the last one.
   </p>
 
-  {{/* One primary way in, then the rest as prose. This was three numbered
-       items of equal weight, which is both the hero-plus-three-cards rhythm
-       and a lie about the content: numbers promise a sequence, and these are
-       alternatives you pick between. */}}
+  {{/* One primary way in, then alternatives as prose; numbering would imply
+       a sequence. */}}
   <div class="firstrun-primary">
     <b>File the first thing you notice</b>
     <p>A title that stands on its own is enough. Scores and file paths can come
@@ -91,10 +89,8 @@
 </div>
 {{end}}
 
-{{/* The counts, on one line. They were five cards across the top, which is
-     the shape every generated dashboard reaches for and which put the queue
-     -- the entire point of the page -- below the fold. A count is a
-     footnote to the table under it, so it is sized like one. */}}
+{{/* The counts, on one line, so the queue stays near the top. A count is a
+     footnote to the list under it, so it is sized like one. */}}
 <p class="tally">
   {{template "count" (stat "workable" $d.Counts.Ready "" "" "workable")}}
   {{template "count" (stat "in progress" $d.Counts.InProgress "" "" "claimed")}}
@@ -110,11 +106,9 @@
   </div>
   {{if $d.Ready}}
   {{/* Rows, not a table. A queue row is one object -- a score, a thing to
-       do, where it lives, and what you can do about it -- and a table asked
-       four columns to agree on a shape none of them wanted: the score
-       cramped, the path truncated, the actions squeezed. Dropping the
-       header row costs nothing either; "Score" over a column of numerals
-       was labelling the obvious. */}}
+       do, where it lives, and what you can do about it -- and table columns
+       would force those four into one shared shape. A column header over
+       the scores would only label the obvious. */}}
   <ol class="queue">
   {{range $d.Ready}}<li class="qrow">
     <span class="qscore">{{.Score}}</span>
@@ -193,9 +187,8 @@
       </span>
     </span>
     {{/* Three exits, not two. Close says the work was done and Drop says it
-         was not worth doing; before "Put back" existed, an agent that simply
-         stopped could only leave this panel by recording one of those two
-         things, neither of which had happened. */}}
+         was not worth doing; Put back lets an agent that simply stopped leave
+         this panel without recording either. */}}
     {{if $p.Writable}}<span class="qacts">
       {{template "action" (act $p "close" .ID "Close" "/" false)}}
       <a class="btn btn-sm" href="{{$p.Prefix}}/confirm?verb=unclaim&amp;id={{.ID}}&amp;return={{$p.Prefix}}/">Put back</a>
