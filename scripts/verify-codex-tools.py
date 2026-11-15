@@ -17,12 +17,6 @@ import shutil
 import subprocess
 import sys
 
-# BREAK CHECK: this script's own assertions were confirmed to fail
-# before being believed. Renaming one expected tool made "all tools are
-# loaded, by name" fail with the mismatched list; pointing the tool call at a
-# server name Codex does not have made it fail with a protocol error rather
-# than passing vacuously.
-#
 # Codex is not on $PATH once it has moved into the desktop app; $KEEP_CODEX
 # overrides, matching cmd/keep/codex.go's own findCodex order.
 CODEX = os.environ.get("KEEP_CODEX") or shutil.which("codex") \
