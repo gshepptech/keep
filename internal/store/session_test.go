@@ -9,15 +9,15 @@ import (
 	"github.com/gshepptech/keep/internal/model"
 )
 
-// TestAnonymousClaimsAreRefused. Before this, a claim with no session id was
-// legitimate throughout the package, and the consequence was not that the
-// claim was merely unattributed -- it was that every anonymous worker became
-// the SAME worker, because "" equals "".
+// TestAnonymousClaimsAreRefused. If a claim with no session id were
+// allowed, the consequence would not be that the claim was merely
+// unattributed -- every anonymous worker would become the SAME worker,
+// because "" equals "".
 //
-// Reproduced before the fix, and this test is that reproduction inverted:
-// two StartItem calls with different actors and no session both succeeded,
-// and the second actor then released the first's claim through the
-// own-claim-only path that exists to stop exactly that.
+// The failure this guards against: two StartItem calls with different
+// actors and no session both succeed, and the second actor then releases
+// the first's claim through the own-claim-only path that exists to stop
+// exactly that.
 func TestAnonymousClaimsAreRefused(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
@@ -72,8 +72,8 @@ func TestASecondWorkerIsNeverHandedTheFirstsClaim(t *testing.T) {
 		t.Errorf("the conflict does not name the holder: %v", err)
 	}
 
-	// And agent-a's own retry is still the idempotent no-op it has always
-	// been -- the fix must not have turned a retry into a conflict.
+	// And agent-a's own retry is still an idempotent no-op -- the session
+	// check must not turn a retry into a conflict.
 	before := countEvents(t, s)
 	if _, err := s.StartItem(ctx, StartItemInput{ID: item.ID, Actor: "agent-a", SessionID: "sess-a"}); err != nil {
 		t.Fatalf("agent-a retrying its own claim = %v, want nil", err)

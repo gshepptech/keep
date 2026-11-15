@@ -12,7 +12,7 @@ import (
 	sqlite3 "modernc.org/sqlite/lib"
 )
 
-// TestPragmasApplyToEverySecondConnection proves STORE-06: every pragma in
+// TestPragmasApplyToEverySecondConnection proves every pragma in
 // the DSN is connection-scoped and applies to every physical connection the
 // pool opens, not just the first. It reaches the production DSN builder
 // (dsn) rather than hand-building a DSN string.
@@ -26,12 +26,12 @@ func TestPragmasApplyToEverySecondConnection(t *testing.T) {
 	}
 	defer db.Close()
 
-	// Test-only override: production Open() never raises its cap above 1
-	// (STORE-09). Raising it here to 2 is the only way to force the pool to
+	// Test-only override: production Open() never raises its cap above 1.
+	// Raising it here to 2 is the only way to force the pool to
 	// open a genuinely distinct second physical connection, which is the
-	// only way to exercise the property STORE-06 asks for. This does not
-	// contradict STORE-09 — that property is asserted separately, on the
-	// production Open() path, by TestOpenCapsMaxOpenConns below.
+	// only way to exercise per-connection pragmas. The production cap is
+	// asserted separately, on the production Open() path, by
+	// TestOpenCapsMaxOpenConns below.
 	db.SetMaxOpenConns(2)
 
 	// Holding conn1 open while requesting conn2 is what forces the pool to
@@ -84,16 +84,16 @@ func assertPragmas(t *testing.T, ctx context.Context, conn *sql.Conn, name strin
 	}
 }
 
-// TestTxlockImmediateHonored proves STORE-07/STORE-08: a bare BEGIN on a
+// TestTxlockImmediateHonored proves _txlock=immediate is honored: a bare
+// BEGIN on a
 // keep connection (connA, production DSN via dsn()) already holds the
 // write lock before any statement runs, so a second connection (connB, DSN
 // built by replacing busy_timeout(3000) with busy_timeout(0) so it retries
-// zero times) fails immediately rather than after busy_timeout. Adapted from
-// 01-RESEARCH.md "STORE-08: the actual, run, deterministic _txlock=immediate
-// proof": dsnA now comes from the production dsn() function instead of a
-// literal, and dsnB is derived from it by a single string replacement. No
-// time.Sleep, no time.Since, no "should be fast" comment: the result is
-// pass/fail on the first line, with no clock involved (Pitfall 2).
+// zero times) fails immediately rather than after busy_timeout. dsnA comes
+// from the production dsn() function, and dsnB is derived from it by a
+// single string replacement. No time.Sleep, no time.Since, no "should be
+// fast" comment: the result is pass/fail on the first line, with no clock
+// involved.
 func TestTxlockImmediateHonored(t *testing.T) {
 	ctx := context.Background()
 	path := filepath.Join(t.TempDir(), "probe.sqlite")
@@ -164,7 +164,8 @@ func TestTxlockImmediateHonored(t *testing.T) {
 	}
 }
 
-// TestOpenCapsMaxOpenConns proves STORE-09 on the production path: a *Store
+// TestOpenCapsMaxOpenConns proves the one-connection cap on the production
+// path: a *Store
 // built by the real Open (not a *sql.DB the test built itself) reports
 // MaxOpenConnections == 1. Kept as its own three-line test rather than an
 // assertion bolted onto TestPragmasApplyToEverySecondConnection, since that
@@ -172,7 +173,7 @@ func TestTxlockImmediateHonored(t *testing.T) {
 // never be the thing that proves production stays at 1.
 func TestOpenCapsMaxOpenConns(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "caps.sqlite")
-	// Open now enforces the schema_version guard (plan 02), so this must
+	// Open enforces the schema_version guard, so this must
 	// go through Init first rather than Open on a never-initialized path.
 	if s, err := Init(path); err != nil {
 		t.Fatal(err)
@@ -200,7 +201,7 @@ func TestWithTxCommitsAndRollsBack(t *testing.T) {
 	ctx := context.Background()
 	path := filepath.Join(t.TempDir(), "tx.sqlite")
 
-	// Open now enforces the schema_version guard (plan 02), so this must
+	// Open enforces the schema_version guard, so this must
 	// go through Init first rather than Open on a never-initialized path.
 	s, err := Init(path)
 	if err != nil {
@@ -237,13 +238,11 @@ func TestWithTxCommitsAndRollsBack(t *testing.T) {
 }
 
 // TestReadOnlyOpenServesReadsAndRefusesWrites proves the dashboard's whole
-// mechanism (05-CONTEXT.md decision 4): OpenOptions{ReadOnly: true} coexists
+// mechanism: OpenOptions{ReadOnly: true} coexists
 // with this DSN's _txlock=immediate, serves every read method the dashboard
-// needs, and refuses a write. This is the first test in the codebase that
-// uses ReadOnly: true -- OpenOptions has carried the field unused since
-// Phase 1.
+// needs, and refuses a write.
 //
-// Confirmed live against this repository during 05 planning:
+// Observed output of the same sequence against a real store:
 //
 //	RO open err=<nil>
 //	RO Ready err=<nil> n=1
@@ -257,7 +256,7 @@ func TestWithTxCommitsAndRollsBack(t *testing.T) {
 // len(ListItems(...)) -- never strings.Contains(err.Error(), "readonly").
 // Driver message text is not a contract (errors.go's standing
 // classification rule). The extended code (8, SQLITE_READONLY) is recorded
-// above for the SUMMARY's benefit only, not asserted on here.
+// above for reference only, not asserted on here.
 func TestReadOnlyOpenServesReadsAndRefusesWrites(t *testing.T) {
 	ctx := context.Background()
 	path := filepath.Join(t.TempDir(), "readonly.sqlite")

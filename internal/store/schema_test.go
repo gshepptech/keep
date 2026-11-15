@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-// TestInitCreatesSchema proves STORE-01: a fresh Init produces items, deps,
+// TestInitCreatesSchema proves a fresh Init produces items, deps,
 // events, meta, the ready view, the full-text index and its triggers, and
 // meta.schema_version is this binary's. Object
 // presence is asserted directly against sqlite_master (name + type), not
@@ -78,13 +78,12 @@ func TestInitCreatesSchema(t *testing.T) {
 	}
 }
 
-// TestInitIsIdempotentAndPreservesData proves STORE-02, reproducing the
-// exact exit-gate scenario from 01-RESEARCH.md "Idempotent init": init,
-// write a canary items row directly (raw SQL is in-bounds in the store
+// TestInitIsIdempotentAndPreservesData proves a second init is harmless:
+// init, write a canary items row directly (raw SQL is in-bounds in the store
 // package's own tests), init again, and confirm the row survives, still
 // appears in ready, and meta still holds exactly one schema_version row.
-// Existence checks alone do not satisfy STORE-02 -- the row-survival
-// assertion is the requirement.
+// Existence checks alone are not enough -- the row-survival assertion is
+// the point.
 func TestInitIsIdempotentAndPreservesData(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "db.sqlite")
 
@@ -147,8 +146,7 @@ func TestInitIsIdempotentAndPreservesData(t *testing.T) {
 }
 
 // TestOpenRejectsSchemaDrift proves Open refuses a store whose stored
-// schema_version has drifted from what this binary expects (01-RESEARCH.md
-// Pitfall 4).
+// schema_version has drifted from what this binary expects.
 func TestOpenRejectsSchemaDrift(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "db.sqlite")
 

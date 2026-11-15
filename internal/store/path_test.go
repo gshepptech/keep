@@ -26,8 +26,8 @@ func existsFromDirs(dirs []string) ExistsFunc {
 // per-repo-beats-home case. Each row's name identifies the *rule* being
 // exercised so a failure names the requirement, not a line number. The
 // precedence rows (rows that supply more than one candidate input at once)
-// matter more than the single-input rows: STORE-04 is an ordering
-// requirement, and a test that only ever supplies one input at a time
+// matter more than the single-input rows: resolution is an ordering
+// rule, and a test that only ever supplies one input at a time
 // cannot detect a swapped precedence.
 func TestResolvePath(t *testing.T) {
 	tests := []struct {

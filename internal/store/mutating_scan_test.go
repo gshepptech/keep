@@ -23,16 +23,16 @@ import (
 // checker. A fully type-checked call graph (go/types + x/tools/go/packages)
 // would correctly resolve calls through interfaces, which this package does
 // not have any of -- that precision would be unjustified weight for an
-// 8-file package with a single concrete receiver type. See 03-RESEARCH.md
-// "Alternatives Considered". Do not "upgrade" this later without a concrete
+// 8-file package with a single concrete receiver type. Do not "upgrade"
+// this later without a concrete
 // case name-based matching gets wrong.
 //
 // Why test files are excluded: _test.go files legitimately contain SQL
 // fixtures of their own (this file's own fixtureItem in events_test.go,
 // testhelp_test.go's execSQL) that call INSERT/UPDATE/DELETE directly for
 // test setup. Including them would make every test helper that happens to
-// write SQL look like a "mutating store method", which is not what EVENT-01
-// is enforcing.
+// write SQL look like a "mutating store method", which is not what the
+// one-event-per-mutation rule is about.
 //
 // Why transitive matters: a per-method (own-body-only) scan finds only 2 of
 // this package's 6 mutating methods -- StartItem and UpdateItem, whose
@@ -42,9 +42,9 @@ import (
 // which delegate their SQL to shared helpers (insertItem, insertEdge,
 // insertParentChildEdge, writeEvent, closeOrDrop). A scan reporting 2 is
 // worse than one reporting 0: it is non-empty, passes any "did we find
-// anything" smoke check, and reads as though EVENT-01 were structurally
-// enforced while actually covering a third of what it claims to
-// (03-RESEARCH.md Pitfall 2). This is why callers of this function must
+// anything" smoke check, and reads as though the audit-trail rule were
+// structurally enforced while actually covering a third of what it claims
+// to. This is why callers of this function must
 // additionally guard on "fewer than six", not "zero" or "non-empty" --
 // see TestMutatingScanClassifiesKnownMethods below.
 func mutatingStoreMethods(t *testing.T) map[string]bool {
@@ -204,13 +204,12 @@ func containsMutatingSQL(literal string) bool {
 	return false
 }
 
-// wantMutating and wantReadOnly are today's known classification, verified
-// during 03-RESEARCH.md against this exact package (Pattern 3) and re-
+// wantMutating and wantReadOnly are today's known classification,
 // confirmed here on every run. Listed both directions deliberately: an
-// over-broad scan that returned every method would satisfy EVENT-01's
+// over-broad scan that returned every method would satisfy the one-event
 // set-equality guard (events_test.go) only by demanding rows for read-only
 // methods too, and that would be noticed here as unexpected noise rather
-// than silently passing task 2's guard.
+// than silently passing that guard.
 var (
 	wantMutating = map[string]bool{
 		"AddItem":     true,
@@ -249,12 +248,12 @@ func TestMutatingScanClassifiesKnownMethods(t *testing.T) {
 
 	// The fewer-than-six guard, as its own explicit failure: a scan
 	// reporting FEWER than six mutating methods against the unmodified
-	// package is the signature of the non-transitive bug (03-RESEARCH.md
-	// Pitfall 2), which reports 2 -- not 0. A "found nothing" / "found
+	// package is the signature of the non-transitive bug, which reports
+	// 2 -- not 0. A "found nothing" / "found
 	// something" check would NOT catch a scan stuck at 2, so the guard here
 	// is explicitly a count threshold, not an emptiness check.
 	if len(got) < len(wantMutating) {
-		t.Fatalf("mutatingStoreMethods found only %d mutating methods (%v), want at least %d -- this is the non-transitive-scan bug (03-RESEARCH.md Pitfall 2): a shallow per-method scan finds StartItem and UpdateItem (literal sits in their own withTx closure) but misses AddItem, CreateDep, CloseItem, and DropItem (SQL delegated to a helper) -- it reports 2, not 0, so this is a code change, not an unmodified-package fluke", len(got), setKeys(got), len(wantMutating))
+		t.Fatalf("mutatingStoreMethods found only %d mutating methods (%v), want at least %d -- this is the non-transitive-scan bug: a shallow per-method scan finds StartItem and UpdateItem (literal sits in their own withTx closure) but misses AddItem, CreateDep, CloseItem, and DropItem (SQL delegated to a helper) -- it reports 2, not 0, so this is a code change, not an unmodified-package fluke", len(got), setKeys(got), len(wantMutating))
 	}
 
 	for name := range wantMutating {

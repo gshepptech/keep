@@ -22,21 +22,18 @@ import (
 // schemaDDL is the entire schema -- four tables, five indexes, one unique
 // index, and the ready view -- applied as a single statement string inside
 // one transaction by initWithDDL. Every statement form uses its
-// IF NOT EXISTS/OR IGNORE idiom (01-RESEARCH.md "Idempotent init: verified
-// end-to-end") so that a second Init on an already-initialized store is a
-// true no-op rather than an error.
+// IF NOT EXISTS/OR IGNORE idiom so that a second Init on an
+// already-initialized store is a true no-op rather than an error.
 //
-// items carries an ordinal INTEGER column that root ROADMAP.md's own
-// "Data model" table omits (01-RESEARCH.md Pitfall 3). It is required for
-// two things: UNIQUE(parent_id, ordinal) below cannot be expressed without
-// it, and GSD Phase 2's MAX(ordinal)+1 child-ordinal allocation has no
-// column to query without it. SQLite treats NULLs as distinct within a
-// unique index, so multiple root items (parent_id AND ordinal both NULL)
-// never collide on this constraint -- that is what makes it safe to add the
-// constraint now, before any code exists that allocates ordinals.
+// items carries an ordinal INTEGER column. It is required for two things:
+// UNIQUE(parent_id, ordinal) below cannot be expressed without it, and
+// AddItem's MAX(ordinal)+1 child-ordinal allocation has no column to query
+// without it. SQLite treats NULLs as distinct within a unique index, so
+// multiple root items (parent_id AND ordinal both NULL) never collide on
+// this constraint.
 //
 // No is_blocked column. It gets added when a benchmark says so, not in
-// anticipation (README principle 6, phase-0.md).
+// anticipation.
 const schemaDDLBase = `
 
 CREATE TABLE IF NOT EXISTS items (
@@ -298,7 +295,7 @@ INSERT OR IGNORE INTO meta (key, value) VALUES ('schema_version', '1');
 // through dsn() plus SetMaxOpenConns(1). It is the one place either public
 // entry point touches *sql.DB directly, so they cannot drift apart.
 //
-// STORE-09: one keep process, one connection. Go's database/sql pool
+// One keep process, one connection. Go's database/sql pool
 // defaults assume a network database with many concurrent backends; SQLite
 // is embedded and single-writer, so the pool must never be allowed to open
 // a second physical connection in production.
@@ -342,14 +339,12 @@ func initWithDDL(path string, ddl string, wantVersion int) (*Store, error) {
 	// The very first writer to a brand-new database file must briefly hold
 	// an exclusive lock while SQLite bootstraps WAL mode for that file
 	// (creating the -wal/-shm sidecars and running wal-index recovery --
-	// see sqlite.org/wal.html, "Concurrency"). If two of this plan's four
-	// concurrent processes race to be that first writer, the loser's BEGIN
+	// see sqlite.org/wal.html, "Concurrency"). If two concurrent `keep init`
+	// processes race to be that first writer, the loser's BEGIN
 	// IMMEDIATE can come back SQLITE_BUSY almost instantly, without waiting
-	// out busy_timeout=3000 -- this was confirmed directly on this machine:
-	// running TestConcurrentInitSameDirectory (cmd/keep) 30 times surfaced
-	// exactly this failure roughly 1 run in 8, always at this BeginTx, always
-	// well under 3000ms elapsed. It is a real, narrow SQLite WAL-bootstrap
-	// race, not a flaw in this test.
+	// out busy_timeout=3000. TestConcurrentInitSameDirectory (cmd/keep)
+	// reproduces this intermittently, always at this BeginTx, always well
+	// under 3000ms elapsed. It is a real, narrow SQLite WAL-bootstrap race.
 	//
 	// The whole DDL block is idempotent (IF NOT EXISTS / OR IGNORE
 	// throughout), so retrying it from scratch is always safe -- a retry
@@ -357,8 +352,8 @@ func initWithDDL(path string, ddl string, wantVersion int) (*Store, error) {
 	// near-immediate retries (a few milliseconds of backoff each) covers
 	// this bootstrap window without masking any other class of failure:
 	// only errors classified as SQLITE_BUSY are retried; every other error
-	// (including the "table already exists" failure this package's own
-	// GATE-03 break produces) returns immediately on the first attempt.
+	// (including a "table already exists" failure from non-idempotent DDL)
+	// returns immediately on the first attempt.
 	var txErr error
 	for attempt := 0; attempt < initDDLMaxAttempts; attempt++ {
 		txErr = s.withTx(ctx, func(tx *sql.Tx) error {
@@ -402,13 +397,13 @@ func isSQLiteBusy(err error) bool {
 // deps, events, meta, and the ready view, all in one transaction, plus the
 // meta.schema_version row. Init does not create path's parent directory --
 // internal/store takes a path and does not invent filesystem layout; that is
-// the CLI's job (plan 04).
+// the CLI's job.
 func Init(path string) (*Store, error) {
 	return initWithDDL(path, schemaDDL, schemaVersion)
 }
 
 // checkSchemaVersion is the Open-time guard that idempotent DDL cannot
-// provide (01-RESEARCH.md Pitfall 4): CREATE TABLE IF NOT EXISTS is a name
+// provide: CREATE TABLE IF NOT EXISTS is a name
 // check, not a shape check, and will silently accept a pre-existing table
 // with entirely different columns. This is the mechanism that actually
 // detects that kind of drift.
@@ -418,13 +413,11 @@ func Init(path string) (*Store, error) {
 // sql.Open fabricates an empty database file on a path that was never
 // initialized, and without this, that would look identical to success.
 //
-// The mismatch is no longer one outcome but two, because they need two
-// different things from the person reading the error:
+// A mismatch has two outcomes, because they need two different things from
+// the person reading the error:
 //
 //   - OLDER than this binary: the store predates a schema change and there
 //     is a ladder that fixes it. ErrNeedsMigration, naming `keep migrate`.
-//     This used to be a flat refusal, which meant the first schema change
-//     keep ever made would have bricked every store in existence.
 //   - NEWER than this binary: the store was written by a keep that knows
 //     something this one does not. ErrSchemaVersion, and nothing this binary
 //     can do about it -- migrating downwards would mean discarding data it

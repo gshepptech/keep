@@ -34,7 +34,7 @@ import (
 const MaxDepth = 50
 
 // maxDepthSQL is MaxDepth as it appears inside the recursive CTEs, so the
-// number lives in exactly one place instead of the four it used to.
+// number lives in exactly one place.
 var maxDepthSQL = strconv.Itoa(MaxDepth)
 
 // ancestorDepthSQL counts how many parent-child hops separate the bound id

@@ -11,13 +11,14 @@ import (
 
 // TestReopenIsTheWayOutOfTerminal.
 //
-// close and drop were the only statuses with no exit. A mis-typed id could
-// not be undone: the work had to be filed again under a new id, which loses
-// the event history and every dependency edge pointing at the original, and
-// leaves the first record still claiming the work is done.
+// Without reopen, close and drop would be statuses with no exit. A
+// mis-typed id could not be undone: the work would have to be filed again
+// under a new id, losing the event history and every dependency edge
+// pointing at the original, and leaving the first record still claiming
+// the work is done.
 //
-// EVENT-01 makes the events table the complete record of every mutation, so
-// the fix is not to edit the close — nothing edits history here — but to
+// The events table is the complete record of every mutation, so the way
+// out is not to edit the close — nothing edits history here — but to
 // append a `reopen` that says the close was wrong. These tests pin what that
 // append has to record for the log to stay honest.
 func TestReopenIsTheWayOutOfTerminal(t *testing.T) {
@@ -138,7 +139,7 @@ func TestReopenIsTheWayOutOfTerminal(t *testing.T) {
 		}
 	})
 
-	// ITEM-08 keeps close and drop distinguishable. If the reopen event does
+	// close and drop are kept distinguishable. If the reopen event does
 	// not say which one it undid, the log cannot tell "we said this was done
 	// and it was not" from "we said this was not worth doing and it was".
 	t.Run("the event names the status it came back from", func(t *testing.T) {

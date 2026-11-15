@@ -2,31 +2,28 @@ package store
 
 import "errors"
 
-// Classification rule (01-RESEARCH.md "Extracting SQLITE_BUSY / constraint
-// violations without string-matching"): SQLite-level failures are classified
+// Classification rule: SQLite-level failures are classified
 // with errors.As(err, &sqliteErr) against *sqlite.Error, then comparing
 // sqliteErr.Code() against the exported constants in modernc.org/sqlite/lib
 // (e.g. sqlite3.SQLITE_BUSY, sqlite3.SQLITE_CONSTRAINT_UNIQUE) — never by
 // matching substrings of err.Error(). Driver message text is not a stable
 // contract and can change across driver versions without notice; the error
-// code is. Phase 2 is the phase that will actually need ErrConflict and must
-// follow this rule rather than reaching for strings.Contains.
+// code is. New classifications must follow this rule rather than reaching
+// for strings.Contains.
 var (
 	// ErrNotFound is returned when a requested item, dep, or other row does
-	// not exist. First produced by GSD Phase 2 (item/dep lookups).
+	// not exist.
 	ErrNotFound = errors.New("not found")
 
 	// ErrCycle is returned when a dependency edge would introduce a cycle.
-	// First produced by GSD Phase 2 (dep creation).
 	ErrCycle = errors.New("dependency cycle")
 
 	// ErrInvalidTransition is returned when a requested status/stage change
-	// is not a legal transition. First produced by GSD Phase 2 (item mutation).
+	// is not a legal transition.
 	ErrInvalidTransition = errors.New("invalid state transition")
 
 	// ErrConflict is returned for constraint violations and lock contention
-	// that the caller should treat as a conflicting concurrent write. First
-	// produced by GSD Phase 2 (concurrent mutation).
+	// that the caller should treat as a conflicting concurrent write.
 	ErrConflict = errors.New("conflict")
 
 	// ErrTooDeep is returned when a parent-child edge would put an item
@@ -54,15 +51,14 @@ var (
 	//     `unclaim` is safe to expose over MCP, passes for anybody.
 	//   - `stale` reports a claim it cannot attribute to anyone.
 	//
-	// Reproduced before this was added: two StartItem calls with different
-	// actors and no session both succeeded, and the second actor then
-	// released the first's claim through the own-claim-only path.
+	// Without this check, two StartItem calls with different actors and no
+	// session both succeed, and the second actor can then release the
+	// first's claim through the own-claim-only path.
 	//
 	// This is refused in the store rather than in the callers because all
 	// three rules live here. cmd/keep and internal/dash each derive a
 	// non-empty id appropriate to what they are -- see resolveClaimSession
-	// and the board's own session -- so nothing legitimate has to stop
-	// working to close it.
+	// and the board's own session -- so nothing legitimate is refused.
 	ErrNoSession = errors.New("a claim needs a session id")
 
 	// ErrEmptyReason is returned by close, drop, unclaim and reopen when no
@@ -71,12 +67,10 @@ var (
 	// is the thing the `--reason` requirement exists to prevent.
 	//
 	// It is enforced HERE rather than in each caller, and that placement is
-	// the whole point: it used to live in cmd/keep alone, so the CLI refused
-	// an empty reason, the MCP `close` tool accepted one and recorded
-	// nothing, and the dashboard decided for itself twice -- `doDrop` learned
-	// to refuse and `doClose` still supplies its own. Three surfaces, three
-	// answers to one rule, which is exactly what README principle 2 says a
-	// surface may not carry.
+	// the whole point: a rule enforced in one surface (the CLI) and not the
+	// others (MCP, the dashboard) ends up as three surfaces with three
+	// answers to one rule. Surfaces are thin wrappers and carry no behaviour
+	// of their own.
 	ErrEmptyReason = errors.New("a reason is required")
 
 	// ErrInvalidType and ErrInvalidStage are returned when a value outside
@@ -97,7 +91,7 @@ var (
 	// ErrStoreNotEmpty is returned by Import when the target store already
 	// holds items. Importing into a populated store would mean resolving
 	// collisions between two histories, which is a sync product -- see
-	// Import's doc comment and the README's refusal list.
+	// Import's doc comment.
 	ErrStoreNotEmpty = errors.New("store is not empty")
 
 	// ErrBadExport is returned by Import when the input is not a keep
@@ -112,7 +106,6 @@ var (
 	ErrNeedsMigration = errors.New("store needs migration")
 
 	// ErrSchemaVersion is returned by Open when the store's on-disk
-	// schema_version does not match the value this binary expects. First
-	// produced by this phase (plan 02's Open-time guard).
+	// schema_version does not match the value this binary expects.
 	ErrSchemaVersion = errors.New("schema version mismatch")
 )

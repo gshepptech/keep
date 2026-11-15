@@ -9,7 +9,7 @@ import (
 // TestFeedAnswersWhatHappened.
 //
 // The question a person actually asks is "what did the agents do?", and
-// before this the only answer available was to open items one at a time.
+// the feed answers it without opening items one at a time.
 func TestFeedAnswersWhatHappened(t *testing.T) {
 	st, ctx := openTestStore(t), context.Background()
 	a := mustAdd(t, st, AddItemInput{Title: "Expire refresh tokens", Actor: "claude"})

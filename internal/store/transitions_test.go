@@ -12,8 +12,8 @@ import (
 // containsID (deps_test.go) reports whether ids contains id -- reused here
 // for TestCloseAndDropAreDistinguishable's ready-membership assertions.
 
-// TestStartItemStateTable has one subtest per row of the locked six-row
-// state table (02-CONTEXT.md decision 3), each with its own fixture -- a
+// TestStartItemStateTable has one subtest per row of StartItem's six-row
+// state table, each with its own fixture -- a
 // shared fixture mutated across subtests would make a failure in one row
 // cascade into later rows and hide which one actually broke. Every subtest
 // asserts the returned error (or nil), the resulting status, and the
@@ -193,7 +193,7 @@ func TestStartItemSameSessionKeepsOriginalClaimTime(t *testing.T) {
 
 // TestCloseAndDropAreDistinguishable proves close and drop both remove an
 // item from ready and remain distinguishable by both items.status and
-// events.kind (ITEM-08) -- a shared kind would defeat the reason close and
+// events.kind -- a shared kind would defeat the reason close and
 // drop are separate verbs.
 func TestCloseAndDropAreDistinguishable(t *testing.T) {
 	ctx := context.Background()
@@ -269,7 +269,7 @@ func TestCloseAlreadyClosedIsInvalidTransition(t *testing.T) {
 }
 
 // TestUpdateRecomputesScore proves score is recomputed exactly when a
-// scoring input changes (RANK-01) and left alone otherwise.
+// scoring input changes and left alone otherwise.
 func TestUpdateRecomputesScore(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
@@ -311,7 +311,7 @@ func TestUpdateRecomputesScore(t *testing.T) {
 }
 
 // TestUpdateRejectsEmptyChangeSet proves UpdateItem with no fields set is a
-// caller error, not a silent no-op (02-CONTEXT.md decision 4) -- and that it
+// caller error, not a silent no-op -- and that it
 // writes nothing and leaves the row unchanged.
 func TestUpdateRejectsEmptyChangeSet(t *testing.T) {
 	ctx := context.Background()

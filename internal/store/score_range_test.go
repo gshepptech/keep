@@ -11,15 +11,16 @@ import (
 
 func intp(i int) *int { return &i }
 
-// TestScoredWorkAlwaysOutranksUnscored pins RANK-02 as a property rather than
+// TestScoredWorkAlwaysOutranksUnscored pins "scored work always outranks
+// unscored work" as a property rather than
 // as a range check, because the range check is only the mechanism.
 //
 // internal/rank documents the inputs as 0-10 and its scoreShift of 11 is
 // chosen so the worst legal score (0 + 0 - 10 + 11) is 1, one above an
-// unscored item's 0. That guarantee held only while something enforced the
-// range, and until now the only thing that did was cmd/keep's flag parser --
-// so the store, and therefore every MCP agent, could file effort=100 for a
-// score of -89 and bury the item below unscored work permanently.
+// unscored item's 0. That guarantee holds only while something enforces the
+// range, and it has to be the store: if only cmd/keep's flag parser checked
+// it, an MCP agent could file effort=100 for a score of -89 and bury the
+// item below unscored work permanently.
 func TestScoredWorkAlwaysOutranksUnscored(t *testing.T) {
 	ctx := context.Background()
 

@@ -13,8 +13,7 @@ import (
 
 // countDeps returns the total number of rows in deps, for tests that assert
 // "no row was written" by diffing a before/after count -- mirrors
-// testhelp_test.go's countEvents, but deps has no plan-01-owned home yet, so
-// it lives here rather than in the shared helper file.
+// testhelp_test.go's countEvents.
 func countDeps(t *testing.T, s *Store) int {
 	t.Helper()
 	var n int
@@ -49,7 +48,7 @@ func containsID(ids []string, id string) bool {
 	return false
 }
 
-// TestCreateDepVocabulary proves DEP-01: blocks/related/derived-from each
+// TestCreateDepVocabulary proves blocks/related/derived-from each
 // succeed and produce exactly one deps row of that type; anything outside
 // the closed vocabulary fails before any row is written.
 func TestCreateDepVocabulary(t *testing.T) {
@@ -83,11 +82,11 @@ func TestCreateDepVocabulary(t *testing.T) {
 	}
 }
 
-// TestCreateDepRejectsSelfEdge proves DEP-02's self-edge half: every one of
+// TestCreateDepRejectsSelfEdge proves every one of
 // the four types rejects a -> a. parent-child is special-cased to accept
 // either ErrSelfEdge or ErrParentChildViaDep, since CreateDep's validation
 // order checks the parent-child refusal before the self-edge check and both
-// are correct rejections -- the plan requires only that no row was written.
+// are correct rejections -- what matters is that no row was written.
 func TestCreateDepRejectsSelfEdge(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
@@ -111,10 +110,9 @@ func TestCreateDepRejectsSelfEdge(t *testing.T) {
 	}
 }
 
-// TestCreateDepRefusesParentChild proves the settled answer to
-// 02-RESEARCH.md Open Question 1: dep <a> parent-child <b> returns
+// TestCreateDepRefusesParentChild proves dep <a> parent-child <b> returns
 // ErrParentChildViaDep, writes no row and no event, and the error message
-// names `add --parent` -- plan 07's `dep` CLI asserts against this wording.
+// names `add --parent` -- the `dep` CLI tests assert against this wording.
 func TestCreateDepRefusesParentChild(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
@@ -175,7 +173,8 @@ func TestCreateDepRejectsCycle(t *testing.T) {
 	})
 }
 
-// TestCreateDepWritesOneEvent proves EVENT-01 for CreateDep specifically:
+// TestCreateDepWritesOneEvent proves the one-event-per-mutation rule for
+// CreateDep specifically:
 // exactly one event per successful call, zero per rejected call.
 func TestCreateDepWritesOneEvent(t *testing.T) {
 	ctx := context.Background()
@@ -205,18 +204,16 @@ func TestCreateDepWritesOneEvent(t *testing.T) {
 	})
 }
 
-// TestParentChildDepthBoundRefusesChainPastMaxDepth asserts the bound is now
+// TestParentChildDepthBoundRefusesChainPastMaxDepth asserts the bound is
 // enforced where the depth is CREATED, not where it is read.
 //
-// It used to assert the opposite. The old test built a real 55-level chain,
-// asked whether the chain's root was an ancestor of its own deepest
-// descendant -- it genuinely is, 55 hops up -- and asserted the guard said
-// no, because parentChildCycleCheckSQL's ancestor walk stops at MaxDepth and
-// so never visits hop 55. That was a documented blind spot, and it was a real
-// one: the same bound gates the shipped ready view, where stopping short does
-// not error, it just quietly stops propagating a block partway down a tree.
+// Every recursive walk in this package stops at MaxDepth. A chain deeper
+// than that would be a blind spot: parentChildCycleCheckSQL's ancestor walk
+// would never visit the hops past the bound, and the ready view, which uses
+// the same bound, would not error -- it would quietly stop propagating a
+// block partway down a tree.
 //
-// checkParentChildDepth (depth.go) closes it by making the input unbuildable.
+// checkParentChildDepth (depth.go) prevents it by making the input unbuildable.
 // A chain of exactly MaxDepth hops is allowed; the hop that would create an
 // item at MaxDepth+1 is refused with ErrTooDeep and writes nothing. Every
 // recursive query in this package can therefore reach every item in any store
@@ -308,7 +305,7 @@ func TestParentChildDepthBoundCountsTheChildsOwnSubtree(t *testing.T) {
 
 // TestBlocksEdgeDirection is the direction assertion stated as an observable
 // outcome: CreateDep(a blocks b) means "a is blocked until b closes"
-// (02-RESEARCH.md, ready view's blocked_directly CTE), so it must remove a
+// (the ready view's blocked_directly CTE), so it must remove a
 // from ready and leave b in it -- not the reverse.
 func TestBlocksEdgeDirection(t *testing.T) {
 	ctx := context.Background()

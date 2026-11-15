@@ -8,7 +8,7 @@ import (
 	"github.com/gshepptech/keep/internal/model"
 )
 
-// TestTree covers all seven behaviours 05-01-PLAN.md's Task 1 names. Every
+// TestTree covers the seven behaviours Tree promises. Every
 // fixture is built through the real AddItem/CreateDep/CloseItem/DropItem via
 // testhelp_test.go's helpers -- never raw SQL for the tree structure, since
 // AddItem's dual parent-child write is precisely the mechanism under test.
@@ -130,7 +130,7 @@ func TestTree(t *testing.T) {
 	t.Run("ClosedAndDroppedIncluded", func(t *testing.T) {
 		// A closed child and a dropped child are both PRESENT in the
 		// result -- the renderer dims them, the query does not decide they
-		// do not exist (05-CONTEXT.md decision 1).
+		// do not exist.
 		s := openTestStore(t)
 		ctx := context.Background()
 

@@ -1,14 +1,13 @@
 package store
 
 // Benchmarks for Search, kept in the tree because they are the evidence for
-// a decision README principle 6 requires evidence for: "Materialize a
-// computed column only after measuring that the query is too slow, not in
-// anticipation."
+// the FTS5 index: keep only adds an index or a materialized column after
+// measuring that the query is too slow, not in anticipation.
 //
-// Search was five LIKE '%x%' scans for most of this project's life, on the
-// stated reasoning that the corpus is small and a scan is under a
-// millisecond. These benchmarks are what ended that reasoning, and they are
-// what the next person should re-run before changing the shape again.
+// Plain LIKE '%x%' scans look sufficient when the corpus is small and a scan
+// is under a millisecond. These benchmarks show where that stops holding,
+// and they are what the next person should re-run before changing the
+// shape again.
 //
 // Run: go test ./internal/store/ -run XXX -bench BenchmarkSearch -benchtime 5x
 //

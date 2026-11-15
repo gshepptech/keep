@@ -25,19 +25,19 @@ var nowFunc = model.Now
 
 // maxIDAttempts bounds both the root-id collision retry (SQLITE_CONSTRAINT_
 // PRIMARYKEY, 1555) and the child-ordinal collision retry (SQLITE_CONSTRAINT_
-// UNIQUE, 2067). 02-RESEARCH.md measured zero collisions of either kind
-// across 320 real concurrent inserts under this DSN's BEGIN IMMEDIATE, so in
+// UNIQUE, 2067). Under this DSN's BEGIN IMMEDIATE, concurrent inserts do not
+// collide in practice, so in
 // practice each loop body runs exactly once; the bound exists so a genuine,
 // permanent conflict returns ErrConflict instead of looping forever.
 const maxIDAttempts = 8
 
-// AddItemInput is the argument to AddItem. Actor is required -- EVENT-01 is
-// unfalsifiable if actor can be silently empty, so AddItem rejects "" before
-// doing any work. Type defaults to "task" and Stage to "ticket" when left
-// unset: this phase creates tickets directly; Phase 3's `capture` is what
-// creates stage=raw items.
+// AddItemInput is the argument to AddItem. Actor is required -- the audit
+// trail means nothing if actor can be silently empty, so AddItem rejects ""
+// before doing any work. Type defaults to "task" and Stage to "ticket" when
+// left unset: `add` creates tickets directly; `capture` is what creates
+// stage=raw items.
 //
-// json tags (04-02): this struct doubles as the `add`/`capture` MCP tools'
+// json tags: this struct doubles as the `add`/`capture` MCP tools'
 // wire type directly (internal/mcp), which is why every field carries a
 // snake_case tag. This changes nothing for Go callers -- every construction
 // site in this module and cmd/keep uses named fields, which struct tags do
@@ -70,10 +70,7 @@ type AddItemInput struct {
 	Repo        string   `json:"repo,omitempty"`
 	Paths       string   `json:"paths,omitempty"`
 	// Assignee is stored via the same "" -> SQL NULL convention insertItem
-	// already uses for Repo/Paths (02-07: plan 07's `add --assignee` flag
-	// needs somewhere to land; the assignee column has existed since Phase
-	// 1's schema, and UpdateItemInput already supports setting it -- AddItem
-	// lacking it was a gap, not a deliberate omission).
+	// already uses for Repo/Paths; it backs `add --assignee`.
 	Assignee string `json:"assignee,omitempty"`
 }
 
@@ -81,10 +78,9 @@ type AddItemInput struct {
 // createdAt, and a retry attempt number, truncated to 3 bytes (6 hex chars,
 // 24 bits = rnc-<6 hex>). This is not a security boundary -- sha256 is used
 // only because its output is already a well-distributed byte stream needing
-// no further mixing before truncation (02-RESEARCH.md "Standard Stack"). The
-// retry loop this feeds is not defensive padding: birthday-bound collision
-// probability crosses ~1% around 580 existing root items and ~50% around
-// 4,820 (02-RESEARCH.md Pitfall 5).
+// no further mixing before truncation. The retry loop this feeds is not
+// defensive padding: birthday-bound collision probability crosses ~1% around
+// 580 existing root items and ~50% around 4,820.
 func generateRootID(title, createdAt string, attempt int) string {
 	h := sha256.Sum256([]byte(fmt.Sprintf("%s\x00%s\x00%d", title, createdAt, attempt)))
 	return fmt.Sprintf("rnc-%x", h[:3])
@@ -92,12 +88,12 @@ func generateRootID(title, createdAt string, attempt int) string {
 
 // isConstraintPrimaryKey and isConstraintUnique classify two DISTINCT SQLite
 // extended result codes that both look like "a uniqueness violation" in
-// prose but require different recoveries (02-RESEARCH.md Pattern 1): an
+// prose but require different recoveries: an
 // items.id collision (1555, SQLITE_CONSTRAINT_PRIMARYKEY) means regenerate
 // the hash and retry; an idx_items_parent_ordinal collision (2067,
 // SQLITE_CONSTRAINT_UNIQUE) means re-read MAX(ordinal) and retry.
 // Deliberately two separate functions, not one "isConstraint" that matches
-// both -- collapsing them into one was this plan's documented GATE-03 break.
+// both: collapsing them would retry the wrong recovery for one of the two.
 func isConstraintPrimaryKey(err error) bool {
 	var e *sqlite.Error
 	return errors.As(err, &e) && e.Code() == sqlite3.SQLITE_CONSTRAINT_PRIMARYKEY
@@ -124,23 +120,21 @@ func itemExists(ctx context.Context, tx *sql.Tx, id string) (bool, error) {
 	return true, nil
 }
 
-// parentChildCycleCheckSQL is the recursive-CTE cycle guard, verified
-// against a real 4-node tree (02-RESEARCH.md Pattern 4, positive and
-// negative case both confirmed) -- used verbatim, not re-derived. :b (first
+// parentChildCycleCheckSQL is the recursive-CTE cycle guard, tested against
+// a real 4-node tree in both the positive and negative case. :b (first
 // placeholder) is the prospective PARENT, :a (second placeholder) the
 // prospective CHILD: it asks "is the prospective child already an ancestor
 // of the prospective parent?" -- if so, the candidate edge would close the
 // loop. The argument order is the whole test; swapping it silently allows
-// every cycle it exists to catch (this is this plan's GATE-03 break 1). The
+// every cycle it exists to catch.
 // The depth bound matches the ready view's own guard and stays for the same
 // reason: the cost of being wrong is an infinite loop inside a user's shell.
-// It is written once, in MaxDepth (depth.go), and substituted here -- it used
-// to be a hand-typed 50 in this file and three others, which is four places
-// for one number to drift.
+// It is written once, in MaxDepth (depth.go), and substituted here so the
+// number cannot drift between the queries that use it.
 //
-// The bound is now a backstop rather than the thing keeping this query
+// The bound is a backstop rather than the thing keeping this query
 // honest: checkParentChildDepth refuses to create a chain that could reach
-// it, so the ancestor walk below can no longer stop short of a real cycle.
+// it, so the ancestor walk below cannot stop short of a real cycle.
 var parentChildCycleCheckSQL = expandDepthSQL(`
 WITH RECURSIVE ancestors(id, depth) AS (
   SELECT depends_on_id, 1 FROM deps WHERE item_id = ? AND type = 'parent-child'
@@ -154,11 +148,11 @@ SELECT 1 FROM ancestors WHERE id = ? LIMIT 1`)
 
 // insertParentChildEdge writes the deps row that makes a parent-child
 // relationship visible to the ready view. THE SHIPPED ready VIEW READS ONLY
-// deps (WHERE type = 'parent-child'); IT NEVER CONSULTS items.parent_id
-// (02-RESEARCH.md Pattern 3). AddItem sets items.parent_id/ordinal for id
-// derivation and ordinal allocation ONLY -- omitting this row leaves
-// items.parent_id looking correct while READY-02's blocking propagation
-// silently does nothing for this child, with no error anywhere.
+// deps (WHERE type = 'parent-child'); IT NEVER CONSULTS items.parent_id.
+// AddItem sets items.parent_id/ordinal for id derivation and ordinal
+// allocation ONLY -- omitting this row leaves items.parent_id looking
+// correct while blocking propagation down the tree silently does nothing
+// for this child, with no error anywhere.
 //
 // Before writing, it runs parentChildCycleCheckSQL and returns ErrCycle,
 // writing nothing, if childID is already an ancestor of parentID. This guard
@@ -196,7 +190,7 @@ func insertParentChildEdge(ctx context.Context, tx *sql.Tx, childID, parentID, a
 // which is deliberately the only writer of that type). Direction is fixed
 // by the shipped ready view, not by English: a row (item_id=A,
 // depends_on_id=B, type='blocks') means "A is blocked until B closes"
-// (02-RESEARCH.md, ready view's blocked_directly CTE). So add --blocks <id>
+// (the ready view's blocked_directly CTE). So add --blocks <id>
 // means the NEW item is blocked until <id> closes, and inserts
 // (item_id=new, depends_on_id=<id>, type='blocks').
 func insertEdge(ctx context.Context, tx *sql.Tx, itemID, dependsOnID, depType, actor, createdAt string) error {
@@ -280,11 +274,10 @@ func (s *Store) AddItem(ctx context.Context, in AddItemInput) (model.Item, error
 		return model.Item{}, fmt.Errorf("AddItem: %w", err)
 	}
 	// Closed vocabularies, checked in Go before the schema's CHECK
-	// constraints get a chance to refuse them in SQLite's words. Both
-	// surfaces reach this; only cmd/keep used to check, which is why the
-	// MCP `add` tool returned "constraint failed: CHECK constraint failed:
-	// type IN ('roadmap', 'epic', 'task', 'bug', 'note') (275)" to a model
-	// and expected it to work out what to send instead.
+	// constraints get a chance to refuse them in SQLite's words. Every
+	// surface reaches this, so an MCP client gets a message naming the
+	// legal values rather than "constraint failed: CHECK constraint failed:
+	// type IN (...) (275)".
 	if err := checkType(in.Type); err != nil {
 		return model.Item{}, fmt.Errorf("AddItem: %w", err)
 	}
@@ -306,8 +299,7 @@ func (s *Store) AddItem(ctx context.Context, in AddItemInput) (model.Item, error
 		now := nowFunc()
 
 		// Missing referents become ErrNotFound before any insert is
-		// attempted, rather than relying on the foreign key to fire
-		// (02-RESEARCH.md "Missing referents").
+		// attempted, rather than relying on the foreign key to fire.
 		if in.ParentID != "" {
 			ok, err := itemExists(ctx, tx, in.ParentID)
 			if err != nil {
@@ -343,8 +335,8 @@ func (s *Store) AddItem(ctx context.Context, in AddItemInput) (model.Item, error
 
 		if in.ParentID == "" {
 			// Root id allocation and insert, retrying on a PRIMARYKEY
-			// collision against already-committed data (02-RESEARCH.md
-			// Pattern 1). BEGIN IMMEDIATE means a collision here can only
+			// collision against already-committed data. BEGIN IMMEDIATE
+			// means a collision here can only
 			// be against committed data, never a concurrent in-flight id.
 			for attempt := 0; ; attempt++ {
 				if attempt >= maxIDAttempts {
@@ -363,12 +355,11 @@ func (s *Store) AddItem(ctx context.Context, in AddItemInput) (model.Item, error
 		} else {
 			// Child id and ordinal allocation. The read (MAX(ordinal)) and
 			// the insert happen in this same transaction -- never split
-			// across two withTx calls (02-RESEARCH.md Pitfall 2). Retrying
-			// on SQLITE_CONSTRAINT_UNIQUE (2067) exists so a future
-			// refactor that splits the read from the write fails loudly
-			// instead of allocating a duplicate ordinal; 02-RESEARCH.md
-			// measured zero hits of this branch across 320 real concurrent
-			// inserts, because BEGIN IMMEDIATE blocks a second writer
+			// across two withTx calls. Retrying on SQLITE_CONSTRAINT_UNIQUE
+			// (2067) exists so a future refactor that splits the read from
+			// the write fails loudly instead of allocating a duplicate
+			// ordinal; concurrent inserts do not reach this branch today,
+			// because BEGIN IMMEDIATE blocks a second writer
 			// inside its own BeginTx until the first commits. Do not
 			// delete this branch as dead code.
 			for attempt := 0; ; attempt++ {
@@ -398,9 +389,8 @@ func (s *Store) AddItem(ctx context.Context, in AddItemInput) (model.Item, error
 			// THE DUAL PARENT-CHILD WRITE. items.parent_id/ordinal (above)
 			// are structural only -- the ready view never reads them. This
 			// deps row is the only thing ready/blocked actually consult
-			// for tree-shaped blocking propagation (02-RESEARCH.md Pattern
-			// 3). Omitting it is the single highest-consequence miss in
-			// this phase: it silently disables READY-02 with no error.
+			// for tree-shaped blocking propagation. Omitting it silently
+			// disables blocking propagation for this child with no error.
 			if err := insertParentChildEdge(ctx, tx, id, in.ParentID, in.Actor, now); err != nil {
 				return err
 			}

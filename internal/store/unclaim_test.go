@@ -11,12 +11,12 @@ import (
 
 // TestUnclaimIsTheThirdExitFromInProgress.
 //
-// Before this verb, `start` could move an item to in_progress and only
-// `close` or `drop` could move it out. An agent that died mid-item left the
-// row stuck out of `ready`, and both exits recorded something untrue: close
-// says the work was done, drop says it was not worth doing.
+// `start` moves an item to in_progress. Without unclaim, only `close` or
+// `drop` could move it out, and an agent that died mid-item would leave the
+// row stuck out of `ready` with two exits that both record something
+// untrue: close says the work was done, drop says it was not worth doing.
 //
-// ITEM-08 keeps close and drop distinguishable so abandoned work is never
+// close and drop are kept distinguishable so abandoned work is never
 // counted as done. That guarantee only means something if there is a third
 // exit for the case where neither is true — otherwise the rescue path is to
 // pick one and lie, in the audit trail the whole design exists to keep

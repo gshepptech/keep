@@ -9,7 +9,7 @@ import (
 
 var rootIDShape = regexp.MustCompile(`^rnc-[0-9a-f]{6}$`)
 
-// TestAddItemIDShapes proves ITEM-02: a root gets rnc-<6 hex>, three
+// TestAddItemIDShapes proves a root gets rnc-<6 hex>, three
 // children of it get .1/.2/.3 in order, and a child of .1 gets .1.1 -- the
 // whole parent chain is readable from the id alone.
 func TestAddItemIDShapes(t *testing.T) {
@@ -44,10 +44,10 @@ func TestAddItemIDShapes(t *testing.T) {
 	}
 }
 
-// TestBlockedParentRemovesChildFromReady is the plan's centre of gravity.
-// It builds a three-level tree via real AddItem calls (epic -> child ->
-// grandchild), inserts a `blocks` edge on the EPIC with raw fixture SQL
-// (CreateDep does not exist until plan 03), and asserts the child and
+// TestBlockedParentRemovesChildFromReady builds a three-level tree via real
+// AddItem calls (epic -> child -> grandchild), inserts a `blocks` edge on
+// the EPIC with raw fixture SQL (independent of CreateDep), and asserts the
+// child and
 // grandchild both disappear from `ready` -- proving AddItem wrote the
 // parent-child deps rows, not just items.parent_id.
 func TestBlockedParentRemovesChildFromReady(t *testing.T) {
@@ -105,7 +105,7 @@ func TestBlockedParentRemovesChildFromReady(t *testing.T) {
 	}
 }
 
-// TestAddItemWritesOneEvent proves EVENT-01 for AddItem: an add writes
+// TestAddItemWritesOneEvent proves an add writes
 // exactly one events row carrying the supplied actor and session id.
 func TestAddItemWritesOneEvent(t *testing.T) {
 	s := openTestStore(t)

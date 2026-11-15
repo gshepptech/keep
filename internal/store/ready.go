@@ -13,27 +13,23 @@ import (
 // model.Item selects, in model.Item's own field order. It exists because the
 // ready view is defined as `SELECT i.* FROM items i ...` and that `i.*` is
 // NOT frozen at CREATE VIEW time -- it re-resolves against items' current
-// shape on every query (confirmed: 23 columns became 24 immediately after a
-// live ALTER TABLE, see 02-RESEARCH.md Pattern 6). A fixed-arity rows.Scan
-// against `*` would break at query time on the first future migration, far
-// from the change that caused it. Every later plan's item query in this
-// package reuses this constant rather than re-listing the 23 columns.
+// shape on every query (a live ALTER TABLE changes its width immediately).
+// A fixed-arity rows.Scan against `*` would break at query time on the
+// first future migration, far from the change that caused it. Every item
+// query in this package reuses this constant rather than re-listing the
+// columns.
 const itemColumns = `id, parent_id, ordinal, stage, type, title, body, acceptance, status, value, confidence, effort, score, why, repo, paths, claimed_by_session, claimed_at, assignee, external_ref, created_at, updated_at, closed_at`
 
 // scanItems scans rows produced by a query that selects itemColumns, in that
-// exact order, into a []model.Item. This is the one place the 23
-// rows.Scan destinations are written -- Ready and every later plan's item
-// query in this package call this instead of each writing its own Scan call.
+// exact order, into a []model.Item. This is the one place the
+// rows.Scan destinations are written -- Ready and every other item query
+// in this package call this instead of each writing its own Scan call.
 // An empty result is []model.Item{}, never nil. This is the store's
 // contract, not a courtesy to one surface: a nil slice marshals to JSON
-// `null` and an empty one to `[]`, and until this line cmd/keep normalised
-// that for itself while internal/mcp did not -- so `keep ready --json`
-// printed `[]` on an empty queue and the `ready` MCP tool returned the text
-// `null` for the same store, in the same second. That divergence was
-// recorded in internal/mcp/server.go as accepted. It was surface behaviour,
-// which README principle 2 says no surface is allowed to carry; fixing it
-// here fixes it for the CLI, the MCP server, the dashboard, and whatever
-// reads the store next.
+// `null` and an empty one to `[]`, and if each surface normalised that for
+// itself, `keep ready --json` and the `ready` MCP tool could disagree about
+// the same empty store. Fixing it here fixes it for the CLI, the MCP
+// server, the dashboard, and whatever reads the store next.
 func scanItems(rows *sql.Rows) ([]model.Item, error) {
 	out := []model.Item{}
 	for rows.Next() {
@@ -61,10 +57,9 @@ func scanItems(rows *sql.Rows) ([]model.Item, error) {
 // extended with blocker_id and nearest_blocked_id so it can REPORT the
 // blocker instead of only filtering on it. Blocked() and IsBlocked() both
 // embed this constant; neither carries its own copy of the SQL text. That is
-// what makes `blocked` and `ready` structurally incapable of disagreeing --
-// see 02-RESEARCH.md Pattern 5, which derived this exact query, executed it
-// against a real 5-item/3-level fixture, and cross-checked it against `ready`
-// on the same fixture, confirming the two partition the open tickets exactly.
+// what makes `blocked` and `ready` structurally incapable of disagreeing;
+// TestBlockedNamesTheBlocker cross-checks the two on a 5-item/3-level
+// fixture and confirms they partition the open tickets exactly.
 // If the view's CTE ever changes, this constant changes with it, in the same
 // commit -- do not let the two drift into two independently-maintained tree
 // walks.
@@ -72,12 +67,11 @@ func scanItems(rows *sql.Rows) ([]model.Item, error) {
 // blocked_directly's SELECT DISTINCT is load-bearing: without it, an item
 // blocked by two different `blocks` edges to the same target would appear
 // twice. blocked_tree is intentionally NOT deduplicated across multiple
-// independent blocking ancestors -- 02-RESEARCH.md's fixture never exercised
-// that shape, and the query is used verbatim, not re-derived, per this
-// plan's constraint. Callers that need a set (the partition test, IsBlocked's
-// LIMIT 1) tolerate or collapse duplicates themselves; Blocked() returns
-// whatever distinct-by-construction rows blocked_tree produces for the
-// simple/common case this phase's fixtures exercise.
+// independent blocking ancestors, so that the query stays a faithful
+// mirror of the view's. Callers that need a set (the partition test,
+// IsBlocked's LIMIT 1) tolerate or collapse duplicates themselves; Blocked()
+// returns whatever distinct-by-construction rows blocked_tree produces for
+// the simple/common case.
 var blockedTreeCTE = expandDepthSQL(`
 WITH RECURSIVE
   blocked_directly AS (
@@ -106,12 +100,10 @@ WITH RECURSIVE
 //
 // This query has NO WHERE clause and re-filters nothing the view already
 // filters. stage='ticket', status='open', and the blocked-tree exclusion all
-// live inside the view (READY-01/READY-02/READY-03) on purpose -- the view
-// is the single place those predicates are allowed to exist. Adding any of
-// them again here "for clarity" would be a second place they could drift
-// from the view (docs/design/phase-1.md's "Specific Ideas" names this exact
-// trap; 02-CONTEXT.md's carried-forward decisions repeat it). Ready's job is
-// to select named columns from the view and add LIMIT. Nothing else.
+// live inside the view on purpose -- the view is the single place those
+// predicates are allowed to exist. Adding any of them again here "for
+// clarity" would be a second place they could drift from the view. Ready's
+// job is to select named columns from the view and add LIMIT. Nothing else.
 func (s *Store) Ready(ctx context.Context, limit int) ([]model.Item, error) {
 	query := `SELECT ` + itemColumns + ` FROM ready`
 	var args []any
@@ -130,22 +122,20 @@ func (s *Store) Ready(ctx context.Context, limit int) ([]model.Item, error) {
 }
 
 // Blocked returns every open ticket ready omits, each annotated with the id
-// of the nearest item blocking it (READY-04). It embeds blockedTreeCTE
+// of the nearest item blocking it. It embeds blockedTreeCTE
 // rather than a second copy of the tree-walk SQL, and applies the exact same
 // base predicate the ready view applies (stage='ticket' AND status='open')
 // -- not as a defensive re-filter of something else already filters, but
 // because Blocked does not read from the view at all: it is the view's
 // structural inverse, and this predicate is what "open ticket" means for
 // both queries. Ordered i.score DESC, i.created_at ASC to match ready's own
-// ordering, since the exit gate reads both lists side by side.
+// ordering, since people read both lists side by side.
 //
-// Settled here (02-RESEARCH.md Open Question 2): Blocked names ONE blocker
-// per item -- the nearest, which the recursion's own traversal produces via
-// nearest_blocked_id/blocker_id. READY-04 requires only that a blocker be
-// named. Showing all blockers is a backward-compatible later addition (a
-// JSON array instead of a scalar) -- do not "improve" this into a
-// multi-row-per-item result; that breaks the one-line-per-item output shape
-// CONTEXT.md decision 2 specifies.
+// Blocked names ONE blocker per item -- the nearest, which the recursion's
+// own traversal produces via nearest_blocked_id/blocker_id. Showing all
+// blockers is a backward-compatible later addition (a JSON array instead
+// of a scalar) -- do not "improve" this into a multi-row-per-item result;
+// that breaks the one-line-per-item output shape of `keep blocked`.
 func (s *Store) Blocked(ctx context.Context) ([]model.BlockedItem, error) {
 	query := blockedTreeCTE + `
 SELECT ` + itemColumns + `,
@@ -187,9 +177,9 @@ ORDER BY i.score DESC, i.created_at ASC`
 // blocked_tree, returning the nearest blocking item's id when it does. It
 // applies no stage/status predicate of its own -- unlike Blocked, it answers
 // a narrower question ("is this specific item currently blocked?") for any
-// item, ticket or not, which is what plan 06's StartItem needs for its
-// refusal check (02-CONTEXT.md decision 3: the ErrInvalidTransition message
-// must name the blocker). It embeds the same blockedTreeCTE constant Blocked
+// item, ticket or not, which is what StartItem needs for its refusal check
+// (the ErrInvalidTransition message must name the blocker). It embeds the
+// same blockedTreeCTE constant Blocked
 // does, so the two can never disagree about which items are blocked.
 func (s *Store) IsBlocked(ctx context.Context, id string) (string, bool, error) {
 	query := blockedTreeCTE + `

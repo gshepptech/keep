@@ -12,8 +12,8 @@ import (
 )
 
 // ErrNoFieldsToUpdate is returned by UpdateItem when the caller sets no
-// fields at all. 02-CONTEXT.md decision 4 requires a no-flag update to be a
-// caller error, not a silent no-op -- the CLI (plan 09) maps this to a usage
+// fields at all. A no-flag update is a caller error, not a silent no-op --
+// the CLI maps this to a usage
 // error (exit 2), the same treatment `add` with no title would get.
 var ErrNoFieldsToUpdate = errors.New("update: no fields supplied")
 
@@ -51,17 +51,16 @@ func derefIntPtr(p *int) any {
 }
 
 // isBlockedTx is the tx-scoped twin of IsBlocked (ready.go). StartItem must
-// call it instead of IsBlocked -- confirmed empirically (this plan's own
-// probe, not by reasoning about it) that under this Store's
+// call it instead of IsBlocked: under this Store's
 // SetMaxOpenConns(1) (schema.go), calling s.IsBlocked (which queries via
 // s.db) from inside an already-open s.withTx transaction on the SAME *Store
 // deadlocks: the pool has exactly one connection, already checked out by the
 // open transaction, so the second query blocks forever waiting for a
-// connection the pool is not allowed to create. In the probe, the call only
-// ever returned because the outer context's deadline expired, which forces
-// database/sql to auto-rollback the transaction and free the connection --
-// at which point the pending query succeeded, but the enclosing withTx then
-// failed with "sql: transaction has already been committed or rolled back".
+// connection the pool is not allowed to create. With a deadline, the call
+// only returns once the deadline expires, which forces database/sql to
+// auto-rollback the transaction and free the connection -- the pending
+// query then succeeds, but the enclosing withTx fails with "sql:
+// transaction has already been committed or rolled back".
 // With no deadline on the caller's context (the normal case for a CLI
 // invocation), this is a permanent hang, not a slow query.
 //
@@ -92,8 +91,8 @@ LIMIT 1`
 // getItemForUpdateTx reads id's full row via itemColumns/scanItems inside an
 // already-open transaction, returning ErrNotFound on no rows. StartItem,
 // closeOrDrop, and UpdateItem all read-then-write the same row inside one
-// withTx (02-RESEARCH.md Pitfall 2: never split the read from the write
-// across two transactions), so they share this one query shape rather than
+// withTx (never split the read from the write across two transactions),
+// so they share this one query shape rather than
 // each writing its own SELECT.
 func getItemForUpdateTx(ctx context.Context, tx *sql.Tx, id string) (model.Item, error) {
 	rows, err := tx.QueryContext(ctx, `SELECT `+itemColumns+` FROM items WHERE id = ?`, id)
@@ -112,12 +111,12 @@ func getItemForUpdateTx(ctx context.Context, tx *sql.Tx, id string) (model.Item,
 }
 
 // StartItemInput is the argument to StartItem. Actor is required, same rule
-// as every other mutation in this package (EVENT-01 is unfalsifiable if
+// as every other mutation in this package (the audit trail means nothing if
 // actor can be silently empty). SessionID is the caller's KEEP_SESSION,
 // which may legitimately be empty -- there is no requirement that an agent
 // set one.
 //
-// json tags (04-02): this struct doubles as the `start` MCP tool's wire type
+// json tags: this struct doubles as the `start` MCP tool's wire type
 // directly (internal/mcp). SessionID is `json:"-"` -- session is a
 // server-lifetime property (resolved once from KEEP_SESSION at server
 // start), never a per-call argument, matching every other mutating *Input
@@ -135,17 +134,16 @@ type startEventPayload struct {
 	SessionID string `json:"session_id,omitempty"`
 }
 
-// StartItem implements the locked six-row state table (02-CONTEXT.md
-// decision 3) exactly. All six rows execute inside one withTx -- the read
-// (current status/stage/claim) and the write (the claim itself) must never
-// be split across two transactions, or a concurrent StartItem could observe
-// stale state (02-RESEARCH.md Pitfall 2).
+// StartItem implements a six-row state table exactly. All six rows execute
+// inside one withTx -- the read (current status/stage/claim) and the write
+// (the claim itself) must never be split across two transactions, or a
+// concurrent StartItem could observe stale state.
 //
 // Check order inside the transaction is load-bearing, in this exact
 // sequence:
 //  1. Missing item -> ErrNotFound.
 //  2. stage != ticket -> ErrInvalidTransition ("raw items are not
-//     workable; promote it first" -- README principle 4).
+//     workable; promote it first").
 //  3. status is closed or dropped -> ErrInvalidTransition.
 //  4. status is in_progress: same claiming session -> idempotent no-op,
 //     NO update, NO event, nil error; different session -> ErrConflict
@@ -199,7 +197,7 @@ func claimItemTx(ctx context.Context, tx *sql.Tx, in StartItemInput) (model.Item
 	}
 
 	if item.Stage != model.StageTicket {
-		return model.Item{}, fmt.Errorf("StartItem: item %q: raw items are not workable; promote it first (README principle 4): %w", in.ID, ErrInvalidTransition)
+		return model.Item{}, fmt.Errorf("StartItem: item %q: raw items are not workable; promote it first: %w", in.ID, ErrInvalidTransition)
 	}
 	if item.Status == model.StatusClosed || item.Status == model.StatusDropped {
 		return model.Item{}, fmt.Errorf("StartItem: item %q: status %q cannot be started: %w", in.ID, item.Status, ErrInvalidTransition)
@@ -221,9 +219,8 @@ func claimItemTx(ctx context.Context, tx *sql.Tx, in StartItemInput) (model.Item
 		if holder == in.SessionID {
 			// Idempotent no-op: this is the same session retrying its own
 			// claim. NO update, NO event -- the deliberate exception to
-			// "every mutation writes one event" (02-CONTEXT.md decision 3:
-			// a retried event would put a claim in the audit trail that
-			// never happened).
+			// "every mutation writes one event": a retried event would put
+			// a claim in the audit trail that never happened.
 			return item, nil
 		}
 		claimedAt := ""
@@ -316,13 +313,14 @@ type unclaimEventPayload struct {
 //
 // # Why this verb has to exist
 //
-// `start` moves open -> in_progress, and before this only `close` and `drop`
-// could move it out again. An agent that dies mid-item -- the ordinary
-// failure for the thing this store is built around -- left the item stuck in
-// progress, out of `ready`, with two exits that both record something false:
-// `close` says it was done, `drop` says it was abandoned as not worth doing.
+// `start` moves open -> in_progress, and without this only `close` and
+// `drop` could move it out again. An agent that dies mid-item -- the
+// ordinary failure for the thing this store is built around -- would leave
+// the item stuck in progress, out of `ready`, with two exits that both
+// record something false: `close` says it was done, `drop` says it was
+// abandoned as not worth doing.
 //
-// ITEM-08 keeps `close` and `drop` distinguishable so abandoned work is never
+// `close` and `drop` are kept distinguishable so abandoned work is never
 // counted as done. That guarantee is worth nothing if the only way to rescue
 // a dead agent's item is to pick one of them and lie. This is the third exit,
 // and it asserts only what actually happened: the claim ended.
@@ -335,15 +333,15 @@ type unclaimEventPayload struct {
 // definition of the case this serves, not coming back to release it itself.
 // The event records who did the releasing, so a rescue is never anonymous.
 //
-// That openness is also why `stale` still only reports (internal/store/
-// stale.go), and it used to be why there was no `unclaim` MCP tool at all:
-// a verb that can take work away from a LIVE agent belongs with the person
-// who can look at the terminal, not in the hands of another agent that has
-// just been told the queue is empty.
+// That openness is also why `stale` only reports (internal/store/stale.go)
+// and why the unrestricted form is not an MCP tool: a verb that can take
+// work away from a LIVE agent belongs with the person who can look at the
+// terminal, not in the hands of another agent that has just been told the
+// queue is empty.
 //
 // That argument holds for someone else's claim and does not hold for your
 // own. An agent that claimed an item and then found it could not do the work
-// had, until RequireOwnClaim, exactly the two exits UnclaimItem was written
+// would otherwise have exactly the two exits UnclaimItem was written
 // to avoid forcing on anyone: close, which says it was done, and drop, which
 // says it was not worth doing. It had no way to say only that it was putting
 // the item back. So the wire surface is the narrow half of this verb --
@@ -354,12 +352,8 @@ type unclaimEventPayload struct {
 // alone: "who has this right now" and "who should do this" are different
 // questions, and only the first one ended.
 func (s *Store) UnclaimItem(ctx context.Context, in UnclaimItemInput) (model.Item, error) {
-	// Reason is validated here now, along with close, drop and reopen. The
-	// note that used to sit at this spot called the placement "a real gap --
-	// the board had to re-implement it and got it wrong once -- but moving
-	// all three is a change to close and drop, not to this", and that was
-	// the correct diagnosis and the wrong conclusion: all four moved, see
-	// validate.go.
+	// Reason is validated in the store, as it is for close, drop and
+	// reopen; see validate.go.
 	if in.Actor == "" {
 		return model.Item{}, fmt.Errorf("UnclaimItem: Actor is required")
 	}
@@ -463,8 +457,8 @@ func (s *Store) DropItem(ctx context.Context, in DropItemInput) (model.Item, err
 	return s.closeOrDrop(ctx, in.ID, model.StatusDropped, "drop", in.Reason, in.Actor, in.SessionID)
 }
 
-// closeOrDrop is CloseItem's and DropItem's shared implementation. ITEM-08
-// exists so abandoned work is never counted as done -- that only holds if
+// closeOrDrop is CloseItem's and DropItem's shared implementation. Abandoned
+// work must never be counted as done -- that only holds if
 // `close` and `drop` stay distinguishable in both items.status and
 // events.kind, which is exactly the two parameters (status, kind) the two
 // exported wrappers vary. Two independent near-duplicate implementations is
@@ -519,17 +513,14 @@ func (s *Store) closeOrDrop(ctx context.Context, id, status, kind, reason, actor
 
 // ReopenItemInput is the argument to ReopenItem.
 //
-// json tags: this struct doubles as the `reopen` MCP tool's wire type. It
-// used to carry none, on the grounds that the agent-facing surface stays
-// narrow and a mis-close is a thing a person notices and corrects. The
-// person is not the one who makes this mistake. An agent that closes the
-// wrong id notices within the same turn, and before this it had no way to
-// undo it -- it had to file the work again, losing the id, the history and
-// every dependency edge pointing at the original, which is exactly the loss
-// ReopenItem was added to prevent.
+// json tags: this struct doubles as the `reopen` MCP tool's wire type.
+// Agents are the ones who close the wrong id, and they notice within the
+// same turn; without the tool they would have to file the work again,
+// losing the id, the history and every dependency edge pointing at the
+// original.
 //
 // Reopen is also the safest verb to expose: it destroys nothing, the
-// original close stays in the events table (EVENT-01 forbids editing it),
+// original close stays in the events table (events are never edited),
 // and the item returns to open rather than to anybody's claim.
 type ReopenItemInput struct {
 	ID        string `json:"id"`
@@ -541,7 +532,7 @@ type ReopenItemInput struct {
 // reopenEventPayload names the status the item came back FROM. Without it
 // the log cannot distinguish a close that was wrong from a drop that was
 // wrong, and those are different mistakes: one said the work was done, the
-// other said it was not worth doing (ITEM-08).
+// other said it was not worth doing.
 type reopenEventPayload struct {
 	From   string `json:"from"`
 	Reason string `json:"reason"`
@@ -549,12 +540,13 @@ type reopenEventPayload struct {
 
 // ReopenItem returns a closed or dropped item to the queue.
 //
-// close and drop were the only terminal statuses with no way out, which made
-// a mis-typed id unrecoverable: the work had to be filed again, losing the
-// id, the event history, and every dependency edge pointing at the original.
-// That is the same hole UnclaimItem closed for in_progress, and it is closed
-// the same way -- not by editing the close, which EVENT-01 forbids, but by
-// appending a `reopen` event that says the close was wrong and when.
+// Without it, close and drop would be terminal statuses with no way out,
+// making a mis-typed id unrecoverable: the work would have to be filed
+// again, losing the id, the event history, and every dependency edge
+// pointing at the original. UnclaimItem solves the same problem for
+// in_progress, and this solves it the same way -- not by editing the close,
+// since events are never edited, but by appending a `reopen` event that
+// says the close was wrong and when.
 //
 // It returns the item to open, never to in_progress. A claim is a live
 // assertion that some session is working on it, and reopening cannot make
@@ -624,24 +616,23 @@ func (s *Store) ReopenItem(ctx context.Context, in ReopenItemInput) (model.Item,
 //
 // There is deliberately no Status field: open -> in_progress ->
 // closed/dropped moves only through StartItem/CloseItem/DropItem, so the
-// event log always records WHY a status changed (02-CONTEXT.md decision 4).
+// event log always records WHY a status changed.
 // There is deliberately no ParentID field either: nothing reparents an
 // item, which is what lets AddItem's --parent handling (insertParentChildEdge,
-// items.go) stay the single writer of parent-child structure (02-RESEARCH.md
-// Open Question 1).
+// items.go) stay the single writer of parent-child structure.
 //
 // Value/Confidence/Effort are double pointers: the outer pointer is
 // "touched or not" (nil = leave this scoring input alone); the inner
 // pointer is the value itself, which may legitimately be nil (clear this
-// input back to unscored) -- RANK-02 requires "unscored" (column NULL) and
-// "scored 0" to remain distinguishable, and a single *int cannot express
-// both "leave it" and "clear it" at once. This encoding is what plan 09's
+// input back to unscored) -- "unscored" (column NULL) and "scored 0" must
+// remain distinguishable, and a single *int cannot express
+// both "leave it" and "clear it" at once. This encoding is what the
 // `update` CLI is written against; if it ever changes, that CLI's `--score`
 // handling must change with it.
 // The json tags are what puts this type on the wire: `update` is an MCP
 // tool, and internal/mcp reuses this struct unmodified so its handler stays
-// the same branchless three lines as every other tool's (MCP-05 permits no
-// conditional in a handler, which rules out a conversion function).
+// the same branchless three lines as every other tool's (a handler may hold
+// no conditional, which rules out a conversion function).
 //
 // One thing the wire cannot express: clearing a score back to unscored.
 // encoding/json gives a **int field nil for both an absent key and an
@@ -670,21 +661,21 @@ type UpdateItemInput struct {
 
 // updateEventPayload is the JSON body of the one `update` event UpdateItem
 // writes. It names the CHANGED FIELDS, not their values -- the values are
-// already in the items row the event refers to (02-CONTEXT.md decision 4).
+// already in the items row the event refers to.
 type updateEventPayload struct {
 	Fields []string `json:"fields"`
 }
 
 // UpdateItem applies only the fields the caller set, leaves every other
 // column untouched, always bumps updated_at, and writes one `update` event
-// naming the changed fields. Score is recomputed (RANK-01) in the same
+// naming the changed fields. Score is recomputed in the same
 // transaction whenever any of value/confidence/effort was supplied -- using
 // rank.Score on the item's POST-UPDATE triple, not on the raw deltas the
 // caller passed, since a caller may set only one of the three and expect
 // the other two to keep contributing to the recomputed score.
 //
 // Supplying no fields at all is a caller error (ErrNoFieldsToUpdate), not a
-// silent no-op (02-CONTEXT.md decision 4) -- checked, and returned, before
+// silent no-op -- checked, and returned, before
 // any write is attempted.
 func (s *Store) UpdateItem(ctx context.Context, in UpdateItemInput) (model.Item, error) {
 	if in.Actor == "" {

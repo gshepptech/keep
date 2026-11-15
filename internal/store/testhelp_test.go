@@ -49,7 +49,7 @@ func countItems(t *testing.T, s *Store) int {
 }
 
 // eventsFor returns every events row for itemID, oldest first, with an
-// explicit column list (never SELECT *, per 02-RESEARCH.md Pattern 6).
+// explicit column list (never SELECT *; see itemColumns in ready.go).
 func eventsFor(t *testing.T, s *Store, id string) []model.Event {
 	t.Helper()
 	rows, err := s.db.QueryContext(context.Background(),
@@ -74,7 +74,7 @@ func eventsFor(t *testing.T, s *Store, id string) []model.Event {
 }
 
 // readyIDs selects only id from the ready view, in view order -- never
-// SELECT * (02-RESEARCH.md Pattern 6), since the view's own i.* is not
+// SELECT *, since the view's own i.* is not
 // frozen at CREATE VIEW time.
 func readyIDs(t *testing.T, s *Store) []string {
 	t.Helper()
@@ -100,8 +100,7 @@ func readyIDs(t *testing.T, s *Store) []string {
 
 // mustAdd calls s.AddItem and fails the test immediately on error, for
 // tests that only need a valid fixture item and do not care about AddItem's
-// own error path. Added once items.go's AddItem exists (this plan's task 2)
-// rather than in task 1, since it necessarily depends on AddItemInput.
+// own error path.
 func mustAdd(t *testing.T, s *Store, in AddItemInput) model.Item {
 	t.Helper()
 	item, err := s.AddItem(context.Background(), in)
@@ -113,9 +112,9 @@ func mustAdd(t *testing.T, s *Store, in AddItemInput) model.Item {
 
 // execSQL runs a raw fixture statement directly against the store's
 // database, bypassing any store method. This lets a test build fixtures
-// (e.g. a raw `blocks` deps row) that a later plan's not-yet-written store
-// method would otherwise be needed for, keeping each test's assertion
-// independent of unrelated, not-yet-built functionality.
+// (e.g. a raw `blocks` deps row) without going through another store
+// method, keeping each test's assertion independent of unrelated
+// functionality.
 func execSQL(t *testing.T, s *Store, query string, args ...any) {
 	t.Helper()
 	if _, err := s.db.ExecContext(context.Background(), query, args...); err != nil {

@@ -12,26 +12,25 @@ import (
 // ErrParentChildViaDep, ErrSelfEdge, and ErrInvalidDepType are CreateDep's
 // three validation sentinels. Each is checked in Go, before any SQL runs,
 // and each is wrapped with fmt.Errorf's %w so a caller can errors.Is against
-// it (02-RESEARCH.md's classify-by-code rule applies to SQLite failures;
+// it. The classify-by-code rule in errors.go applies to SQLite failures;
 // these are pure input-validation failures that never reach the driver at
 // all, so they get their own sentinels rather than a SQL CHECK's extended
-// code).
+// code.
 var (
 	// ErrParentChildViaDep is returned when CreateDep is asked to write a
-	// parent-child edge directly. Settled here (02-RESEARCH.md Open Question
-	// 1, recommendation (a), adopted by 02-CONTEXT.md/this plan):
-	// `add --parent` is the single writer of parent-child structure --
+	// parent-child edge directly. `add --parent` is the single writer of
+	// parent-child structure --
 	// insertParentChildEdge in items.go is its only call site -- so
 	// items.parent_id and the deps tree can never disagree. `dep` must name
 	// the correct command rather than fail obscurely on a CHECK violation.
 	ErrParentChildViaDep = errors.New("parent-child structure is created by `keep add --parent <id>`; `dep` does not reparent items")
 
 	// ErrSelfEdge is returned when ItemID == DependsOnID, for every dep type
-	// including parent-child (DEP-02, self-edge half).
+	// including parent-child.
 	ErrSelfEdge = errors.New("dep: an item cannot depend on itself")
 
 	// ErrInvalidDepType is returned when Type is outside the closed
-	// vocabulary blocks/parent-child/related/derived-from (DEP-01). Checked
+	// vocabulary blocks/parent-child/related/derived-from. Checked
 	// against model.ValidDepTypes before any SQL runs -- the schema's own
 	// CHECK constraint would also refuse an invalid type, but only with
 	// extended code 275 and a driver message that does not name the
@@ -40,10 +39,10 @@ var (
 )
 
 // DepInput is the argument to CreateDep. Actor is required, same rule as
-// AddItemInput (items.go) -- EVENT-01 is unfalsifiable if actor can be
+// AddItemInput (items.go): the audit trail means nothing if actor can be
 // silently empty.
 //
-// json tags (04-02): this struct doubles as the `dep` MCP tool's wire type
+// json tags: this struct doubles as the `dep` MCP tool's wire type
 // directly (internal/mcp). SessionID is `json:"-"` for the same reason as
 // AddItemInput's: session is a server-lifetime property, never a per-call
 // argument. Tags are additive and behaviourally inert for Go callers, all of

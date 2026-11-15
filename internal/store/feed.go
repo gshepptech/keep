@@ -34,7 +34,7 @@ type FeedFilter struct {
 
 // Feed returns events newest first, each carrying its item's title.
 //
-// This reads the events table, which EVENT-01 already guarantees is the
+// This reads the events table, which is already guaranteed to be the
 // complete append-only log of every mutation. Nothing new is recorded to
 // support it and nothing can drift: an activity view derived from anything
 // else would be a second, weaker record of the same facts.

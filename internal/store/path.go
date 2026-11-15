@@ -53,15 +53,15 @@ func OSExists(path string) bool {
 // startDir up to and including the root contains a store.
 //
 // FindUpward is exported separately from ResolvePath (rather than folded
-// into it) because init's nested-store warning (a later plan) reuses this
+// into it) because init's nested-store warning reuses this
 // exact walk, started one directory above a store it just wrote, instead of
 // duplicating the walk-up logic.
 //
 // The walk goes all the way to the filesystem root. There is no .git
-// ceiling. docs/design/phase-0.md says "nearest .rounce/db.sqlite, walking
-// up from the working directory" and names no boundary; comparable tools
-// (git, direnv) stop at a marker directory or an explicit ceiling env var,
-// but inventing one here would be scope creep no requirement asks for. This
+// ceiling. The rule is "nearest .rounce/db.sqlite, walking up from the
+// working directory", with no boundary; comparable tools (git, direnv) stop
+// at a marker directory or an explicit ceiling env var, but keep has no
+// need for one. This
 // is a deliberate decision, not an oversight -- a future reader tempted to
 // add a .git ceiling should read this comment first.
 //

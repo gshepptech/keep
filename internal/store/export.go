@@ -78,11 +78,10 @@ type kindOnly struct {
 //
 // It is NOT sync. There is no merge, no conflict resolution, no
 // three-way anything, and Import refuses a store that already has items in
-// it rather than guessing what to do about a collision. The README's refusal
-// list rules out sharing a store between machines and it still does; this
-// rules in the three things people actually needed and could not have:
-// backing a store up, moving one between machines, and reading what is in
-// one without this binary.
+// it rather than guessing what to do about a collision. Sharing a live store
+// between machines stays out of scope; this covers the three things people
+// actually need: backing a store up, moving one between machines, and
+// reading what is in one without this binary.
 //
 // Ordering is deterministic -- items by id, deps by their primary key,
 // events by their autoincrement id -- so two exports of an unchanged store
@@ -321,7 +320,7 @@ func (s *Store) Import(ctx context.Context, r io.Reader) (ImportSummary, error) 
 }
 
 // maxExportLine bounds one JSONL line. A captured roadmap lives in
-// items.body verbatim and the README's own example is 11,874 bytes, so the
+// items.body verbatim and can easily run to tens of kilobytes, so the
 // bound has to be generous; 16MB is far past any document a person pastes
 // and far short of exhausting memory on a line that is actually corrupt.
 const maxExportLine = 16 << 20

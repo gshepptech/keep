@@ -13,9 +13,9 @@ import (
 // Tree carries no second copy of the blocking recursion -- Tree is
 // blockedTreeCTE's fifth consumer, after Ready's view, Blocked, IsBlocked
 // and isBlockedTx. That shared constant is the whole reason the tree view
-// and `keep ready` cannot disagree about which items are blocked
-// (DASH-07); a second, independently written recursion here would be the
-// one way to make that claim false.
+// and `keep ready` cannot disagree about which items are blocked; a second,
+// independently written recursion here would be the one way to make that
+// claim false.
 //
 // THE DIRECTION TRAP. parent-child rows are (item_id = child,
 // depends_on_id = parent). Walking DOWN therefore joins the recursive step
@@ -23,15 +23,15 @@ import (
 // parentChildCycleCheckSQL in items.go, which joins on `d.item_id = anc.id`
 // because it walks UP. items.go is the only descending/ascending CTE
 // precedent in this package, so copying its join direction here is the
-// natural mistake. It does not error. Verified live against this repository
-// during 05 planning: the wrong-direction query on a real three-item tree
-// returned exactly ONE row (the root), silently -- a tree view rendering a
+// natural mistake. It does not error: the wrong-direction query on a real
+// three-item tree returns exactly ONE row (the root), silently -- a tree
+// view rendering a
 // single node looks like an empty roadmap, not a defect. tree_test.go
 // asserts descendant COUNT for exactly this reason.
 //
 // path is a materialised depth-first sort key: the parent's path plus the
 // child's zero-padded ordinal. ORDER BY path (a plain TEXT sort) reproduces
-// exact tree reading order, so no caller sorts anything. the depth bound mirrors
+// exact tree reading order, so no caller sorts anything. The depth bound mirrors
 // the ready view's own, and both come from MaxDepth (depth.go): `dep` refuses to create a parent-child cycle
 // at write time, but the cost of being wrong is an unbounded loop inside a
 // browser request.
@@ -39,10 +39,9 @@ import (
 // blocked_nearest is not optional and is not decoration. blocked_tree
 // (blockedTreeCTE, above) is deliberately NOT deduplicated across multiple
 // independent blocking ancestors -- its own doc comment says so. A plain
-// `LEFT JOIN blocked_tree` therefore MULTIPLIES tree rows: verified live
-// against this repository during 05 planning, a three-item tree where the
-// epic and its child were each blocked by a different open item produced 5
-// rows for a 3-item tree via a naive join, and exactly 3 (one per item, each
+// `LEFT JOIN blocked_tree` therefore MULTIPLIES tree rows: a three-item
+// tree where the epic and its child are each blocked by a different open
+// item produces 5 rows via a naive join, and exactly 3 (one per item, each
 // naming the nearer ancestor) via the ROW_NUMBER()-per-item dedup below.
 // Window functions are confirmed working on this project's pinned
 // modernc.org/sqlite v1.56.0. Do NOT substitute `GROUP BY item_id` +
@@ -76,17 +75,16 @@ var treeCTE = expandDepthSQL(`,
 // two are written together in one transaction (items.go's dual write) and
 // the shipped ready view reads only deps for structure -- a tree built from
 // parent_id would agree with every parent_id assertion while disagreeing
-// with `ready` about the same hierarchy, which DASH-07 makes a requirement
-// violation.
+// with `ready` about the same hierarchy.
 //
 // Closed and dropped descendants are INCLUDED. A tree that hides closed
 // children misrepresents the shape of the work; the renderer may dim them,
-// the query does not decide they do not exist (05-CONTEXT.md decision 1).
+// the query does not decide they do not exist.
 //
 // An unknown rootID returns ErrNotFound wrapped with the id, matching
 // GetItem's precedent rather than returning an empty slice and a nil error
-// -- confirmed live during planning that the query itself simply produces
-// zero rows for an unknown root, so the check must be explicit here. The
+// -- the query itself simply produces zero rows for an unknown root, so the
+// check must be explicit here. The
 // alternative would make a typo'd id render an empty page and exit 0.
 func (s *Store) Tree(ctx context.Context, rootID string) ([]model.TreeNode, error) {
 	query := blockedTreeCTE + treeCTE + `

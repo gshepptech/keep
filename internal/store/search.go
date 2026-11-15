@@ -77,12 +77,11 @@ func SearchFieldRank(matchedIn string) int {
 //
 // # FTS5, and why it is a prefilter rather than the search
 //
-// This used to be five LIKE '%x%' scans and nothing else, on the reasoning
-// that a corpus of a few thousand rows scans in under a millisecond and
-// FTS5's virtual table, triggers and migration were three new ways for a
-// work store to disagree with itself. That reasoning ended with a
-// measurement, which is what README principle 6 asks for. Searching a store
-// of items with 120-word bodies, before the index:
+// Plain LIKE '%x%' scans are tempting: a corpus of a few thousand rows
+// scans in under a millisecond, and FTS5's virtual table, triggers and
+// migration are three new ways for a work store to disagree with itself.
+// The measurement says otherwise. Searching a store of items with 120-word
+// bodies with scans alone:
 //
 //	 1,000 items     14 ms
 //	10,000 items    178 ms
@@ -96,8 +95,8 @@ func SearchFieldRank(matchedIn string) int {
 // The cost, stated rather than buried: a term matching nearly every item
 // makes the index return nearly every row, so the lookup narrows nothing
 // and is paid for on top of the scan -- that case is about 55% slower than
-// it was. search_bench_test.go carries the full table and the reasoning for
-// accepting it.
+// scanning alone. search_bench_test.go carries the full table and the
+// reasoning for accepting it.
 //
 // So there is now an items_fts index (internal/store/schema.go, migrations
 // rung 2), and it is used as a CANDIDATE FILTER in front of the LIKE

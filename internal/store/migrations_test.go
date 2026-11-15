@@ -15,8 +15,8 @@ import (
 // schemaObjects reads back every object SQLite actually created -- tables,
 // indexes, views, triggers -- with the exact SQL text it stored for each.
 // Comparing this between two stores is a shape comparison, not a name
-// comparison, which is the whole distinction 01-RESEARCH.md Pitfall 4 turns
-// on: CREATE TABLE IF NOT EXISTS matches on name and would happily leave two
+// comparison, and that distinction matters: CREATE TABLE IF NOT EXISTS
+// matches on name and would happily leave two
 // stores with the same table names and different columns.
 //
 // Autoindexes are excluded: SQLite names them sqlite_autoindex_<table>_<n>
@@ -120,10 +120,9 @@ func TestMigrationLadderIsContiguous(t *testing.T) {
 	}
 }
 
-// TestOpenOlderStoreAsksForMigration is the behaviour change this whole file
-// exists for. An older store used to be refused with the same flat error as
-// a corrupted one, which meant the first schema change keep ever shipped
-// would have bricked every store already in use.
+// TestOpenOlderStoreAsksForMigration proves an older store is told to
+// migrate, not refused with the same flat error as a corrupted one -- a
+// flat refusal would brick every existing store on the first schema change.
 func TestOpenOlderStoreAsksForMigration(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "old.sqlite")
 	s, err := Init(path)

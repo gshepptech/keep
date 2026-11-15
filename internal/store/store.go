@@ -11,21 +11,18 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// readWriteDSNFmt is the one DSN format string in the codebase. Copied
-// character-for-character from 01-RESEARCH.md "Verified DSN and driver
-// registration". It is built only from this code-level constant and a
+// readWriteDSNFmt is the one DSN format string in the codebase. It is
+// built only from this code-level constant and a
 // filesystem path — never from user or agent input — because the driver
 // does not validate _pragma values; an attacker- or agent-controlled path
 // segment could not inject a pragma, but a hand-built DSN elsewhere in the
-// codebase could still drift from this one, which is the anti-pattern
-// 01-RESEARCH.md calls out explicitly.
+// codebase could still drift from this one.
 const readWriteDSNFmt = "file:%s?_pragma=busy_timeout(3000)&_pragma=journal_mode(WAL)&_pragma=foreign_keys(1)&_txlock=immediate"
 
-// OpenOptions controls how Open connects to a store. Phase 1 only ever
-// passes the zero value. GSD Phase 6 (REPO-04) is the first caller that will
-// set ReadOnly. The DSN's immediate transaction locking (see
-// readWriteDSNFmt below) is deliberately retained for read-only opens:
-// 01-RESEARCH.md verified that a bare BEGIN under mode=ro does not error —
+// OpenOptions controls how Open connects to a store. ReadOnly is used by
+// the dashboard and by cross-repository reads. The DSN's immediate
+// transaction locking (see readWriteDSNFmt below) is deliberately retained
+// for read-only opens: a bare BEGIN under mode=ro does not error —
 // it is the write statement inside the transaction that correctly fails with
 // SQLITE_READONLY. That means dsn() needs no read/write special-casing
 // beyond appending mode=ro.
@@ -35,7 +32,7 @@ type OpenOptions struct {
 
 // dsn builds the single DSN string used by every connection this package
 // opens, production or test. A second, hand-built DSN anywhere else in the
-// codebase is the anti-pattern 01-RESEARCH.md warns against: it would be a
+// codebase would be a
 // second source of truth for the pragma set that could silently drift from
 // this one.
 func dsn(path string, opts OpenOptions) string {
@@ -47,7 +44,7 @@ func dsn(path string, opts OpenOptions) string {
 }
 
 // Store is the SQLite persistence layer. It exposes no *sql.DB, no
-// *sql.Rows, and no query string above the package boundary (STORE-10); db
+// *sql.Rows, and no query string above the package boundary; db
 // stays unexported with no accessor.
 type Store struct {
 	db *sql.DB
@@ -57,7 +54,7 @@ type Store struct {
 // after confirming its on-disk schema_version matches this binary's
 // schemaVersion constant (schema.go). This check exists alongside Init's
 // idempotent DDL, not instead of it: CREATE TABLE IF NOT EXISTS is a name
-// check, not a shape check (01-RESEARCH.md Pitfall 4) -- it will silently
+// check, not a shape check -- it will silently
 // accept a pre-existing table with entirely different columns. The DDL
 // gives Init its idempotency; only this check gives drift detection.
 // Someone will eventually try to delete one of the two as redundant, and

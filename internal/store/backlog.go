@@ -15,19 +15,15 @@ import (
 // backlog's living in cmd/keep was the anomaly. Two surfaces render this
 // list -- `keep backlog` and the MCP `backlog` tool -- and the only way
 // they cannot disagree is if they walk ONE order by construction rather
-// than two implementations agreeing. Phase 3 wave 5 shipped and fixed
-// exactly that disagreement once already, between backlog's rendered and
-// --json output; it escaped notice until two types interleaved in time.
+// than two implementations agreeing. Two orderings drifting apart is easy
+// to miss: it only shows once items of two types interleave in time.
 //
 // typeFilter follows this package's existing optional-string-filter
 // convention (ListFilter's fields): "" means no filter, never a bound ”.
 //
 // The trailing `id ASC` is not decoration. Two items added inside one
 // transaction share a created_at (this package's one-nowFunc-per-
-// transaction rule), and SQLite's row order for a tie is unspecified --
-// cmd/keep/backlog.go's now-removed CLI-side grouping helper carried an
-// ID-ascending tiebreak for this exact reason and it must not be lost on
-// the way down here.
+// transaction rule), and SQLite's row order for a tie is unspecified.
 func (s *Store) Backlog(ctx context.Context, typeFilter string) ([]model.Item, error) {
 	query := `SELECT ` + itemColumns + ` FROM items
 WHERE stage = 'raw' AND status NOT IN ('closed', 'dropped')`

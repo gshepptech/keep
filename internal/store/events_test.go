@@ -9,9 +9,8 @@ import (
 )
 
 // fixtureItem inserts a minimal, valid items row directly (bypassing
-// AddItem, which does not exist until this plan's task 2) so writeEvent's
-// own tests can satisfy the events.item_id foreign key without depending on
-// functionality this task does not own.
+// AddItem) so writeEvent's own tests can satisfy the events.item_id foreign
+// key without depending on AddItem.
 func fixtureItem(t *testing.T, s *Store, id string) {
 	t.Helper()
 	execSQL(t, s, `INSERT INTO items (id, stage, type, title, status, score, created_at, updated_at)
@@ -76,20 +75,19 @@ func TestWriteEventEmptySessionIsNull(t *testing.T) {
 
 // TestEveryMutationWritesExactlyOneEvent's cases table is guarded by SET
 // EQUALITY against mutatingStoreMethods(t) (mutating_scan_test.go), not by a
-// hand-maintained count -- 02-VERIFICATION.md found a genuine seventh
-// mutating method that skipped the event write, touched this file not at
-// all, and the whole suite still passed under the count-based guard this
-// replaced. A method the scan finds that this table does not enumerate now
+// hand-maintained count. A count-based guard lets a new mutating method
+// that skips the event write pass unnoticed as long as nobody touches this
+// file. A method the scan finds that this table does not enumerate
 // fails by name; a stale row naming a method the scan no longer finds
 // (renamed or deleted) fails the other way, also by name. Add a row here --
 // and nothing else -- whenever a new mutating store method is added; the
 // scan is what notices if you forget.
 //
-// TestEveryMutationWritesExactlyOneEvent is EVENT-01's enforcement: a
+// TestEveryMutationWritesExactlyOneEvent enforces the audit-trail rule: a
 // table enumerating every mutating method in this package, each asserting
 // a before/after event-count delta of exactly 1. A second subtest asserts
-// the one deliberate exception (02-CONTEXT.md decision 3): a same-session
-// StartItem retry writes ZERO events.
+// the one deliberate exception: a same-session StartItem retry is a no-op
+// and writes ZERO events.
 func TestEveryMutationWritesExactlyOneEvent(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
@@ -172,7 +170,7 @@ func TestEveryMutationWritesExactlyOneEvent(t *testing.T) {
 	// Set-equality against the scan, not a count: a wrong-number failure
 	// ("enumerated 6, want 7") sends a reader to the wrong file, while a
 	// named-method failure sends them straight to the fix.
-	// exemptFromOneEvent names the mutating methods EVENT-01's "exactly one
+	// exemptFromOneEvent names the mutating methods the "exactly one
 	// event" rule does not apply to, with the reason, so an exemption is a
 	// decision someone wrote down rather than a method quietly missing from
 	// the table below.
@@ -197,7 +195,7 @@ func TestEveryMutationWritesExactlyOneEvent(t *testing.T) {
 			continue
 		}
 		if !enumerated[name] {
-			t.Fatalf("%s mutates the store but is not enumerated in EVENT-01's table -- add a row asserting it writes exactly one event", name)
+			t.Fatalf("%s mutates the store but is not enumerated in the one-event table -- add a row asserting it writes exactly one event", name)
 		}
 	}
 	for name := range enumerated {

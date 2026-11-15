@@ -9,18 +9,14 @@ import (
 	"github.com/gshepptech/keep/internal/model"
 )
 
-// TestEveryTerminalVerbRequiresAReason is the test whose absence let three
-// surfaces disagree.
-//
-// `--reason` was enforced in cmd/keep and nowhere else, so the rule held
-// only for whoever went through the CLI. Measured before this change:
-// store.CloseItem with an empty reason returned nil and recorded a close
-// with no why at all, which is what the MCP `close` tool did every time an
+// TestEveryTerminalVerbRequiresAReason proves the store, not a surface,
+// refuses a blank reason. If `--reason` were enforced only in cmd/keep, the
+// MCP `close` tool would record a close with no why at all every time an
 // agent omitted the argument.
 //
 // All four verbs are checked in one table rather than four tests, because
-// the failure mode was never "one of them is wrong" -- it was "they were
-// each decided separately".
+// the failure mode to guard against is not "one of them is wrong" -- it is
+// "they were each decided separately".
 func TestEveryTerminalVerbRequiresAReason(t *testing.T) {
 	ctx := context.Background()
 
@@ -119,10 +115,10 @@ func TestEveryTerminalVerbRequiresAReason(t *testing.T) {
 // already refused these; what they could not do is say which value was
 // wrong, in words a caller can act on.
 //
-// Before this, the MCP `add` tool answered an invalid type with
-// "constraint failed: CHECK constraint failed: type IN ('roadmap', 'epic',
-// 'task', 'bug', 'note') (275)" -- SQLite's text, forwarded verbatim as a
-// generic protocol error, indistinguishable to a model from a broken store.
+// Without the Go-side check, the MCP `add` tool would answer an invalid
+// type with "constraint failed: CHECK constraint failed: type IN (...)
+// (275)" -- SQLite's text, forwarded verbatim as a generic protocol error,
+// indistinguishable to a model from a broken store.
 func TestClosedVocabulariesAreRefusedByName(t *testing.T) {
 	ctx := context.Background()
 

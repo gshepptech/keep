@@ -68,7 +68,7 @@ type NextResult struct {
 // and the other gets an empty queue.
 //
 // It claims exactly the row `ready` puts first. It does not re-rank, filter
-// or skip -- the ordering lives in the view (README principle 2), and a
+// or skip -- the ordering lives in the view, and a
 // "pick the best one for me" heuristic here would be the store reasoning
 // about the work, which is the one thing it does not do.
 func (s *Store) NextItem(ctx context.Context, in NextInput) (NextResult, error) {
@@ -168,7 +168,7 @@ type Workability struct {
 // WhyNot answers the question an empty `ready` always provokes: this item is
 // not in the queue -- why not?
 //
-// Before this, the only way to find out was to read `show`, compare stage and
+// Without it, the only way to find out is to read `show`, compare stage and
 // status against the view's predicate by eye, and then check `blocked`
 // separately for the propagated case, which a person can do and an agent
 // reliably cannot. Every reason `ready` can omit an item for is enumerated
@@ -178,8 +178,8 @@ type Workability struct {
 //
 // The reasons, in the order the view applies them:
 //
-//  1. stage is raw. Parked, captured or unrefined; README principle 4 says
-//     raw is not workable, and promotion is what changes that.
+//  1. stage is raw. Parked, captured or unrefined; raw is not workable,
+//     and promotion is what changes that.
 //  2. status is not open. In progress means someone holds it; closed and
 //     dropped mean it is finished with.
 //  3. blocked, directly or through a blocked ancestor. Names the nearest

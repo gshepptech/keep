@@ -80,7 +80,7 @@ func TestBacklogInProgressRawIsPresent(t *testing.T) {
 // sequence exactly equal to model.TypesOrdered. The expected order is read
 // from model.TypesOrdered itself, never re-typed here -- re-typing it would
 // make this test and backlog.go's CASE two independent statements of the
-// same order, defeating task 1's whole point.
+// same order, defeating the point of having one.
 func TestBacklogGroupOrder(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
@@ -139,9 +139,7 @@ func TestBacklogNewestFirstWithinGroup(t *testing.T) {
 
 // TestBacklogCreatedAtTieBrokenByIDAscending pins nowFunc so two items share
 // an identical created_at, then proves the tie is broken by id ASC,
-// deterministically on every run -- the exact reason cmd/keep/backlog.go's
-// now-removed CLI-side grouping helper carried an ID-ascending tiebreak,
-// now expressed in SQL.
+// deterministically on every run.
 func TestBacklogCreatedAtTieBrokenByIDAscending(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)

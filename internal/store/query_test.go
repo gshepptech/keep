@@ -154,8 +154,8 @@ func TestGetItemNotFound(t *testing.T) {
 }
 
 // TestGetItemBodyVerbatim proves a multi-line body with trailing whitespace
-// and a UTF-8 character round-trips byte-identically. Phase 3's CAP-02 will
-// depend on this holding; proving it now costs nothing.
+// and a UTF-8 character round-trips byte-identically. `capture` and
+// `show --body` depend on this holding.
 func TestGetItemBodyVerbatim(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)

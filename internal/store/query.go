@@ -10,10 +10,9 @@ import (
 
 // GetItem returns id's full detail: the item itself, its dependency edges in
 // both directions, and its complete event history oldest first. This is the
-// read surface `show` (ITEM-04) is built on.
+// read surface `show` is built on.
 //
-// Direction, fixed in plan 02 and unchanged here (02-05-PLAN.md
-// <interfaces>): deps(item_id = A, depends_on_id = B) reads "A depends on
+// Direction: deps(item_id = A, depends_on_id = B) reads "A depends on
 // B". So for item X:
 //   - DependsOn = rows WHERE item_id = X -- what X is waiting on, what X is
 //     a child of, what X was derived from.
@@ -123,9 +122,9 @@ func queryEvents(ctx context.Context, db *sql.DB, itemID string) ([]model.Event,
 
 // ListFilter's zero value means "no filter" -- an empty field is omitted
 // from the WHERE clause entirely rather than bound as ”. Filters compose as
-// AND (02-CONTEXT.md "Claude's Discretion": yes, the obvious reading).
+// AND.
 //
-// json tags (04-02): this struct doubles as the `list` MCP tool's wire type
+// json tags: this struct doubles as the `list` MCP tool's wire type
 // directly (internal/mcp). Every field is optional -- a bare `list` with no
 // arguments is legal and matches every existing caller's zero-value use.
 // Tags are additive and behaviourally inert for Go callers, all of which
@@ -138,33 +137,32 @@ type ListFilter struct {
 	Repo     string `json:"repo,omitempty"`
 
 	// ExcludeClosed adds `status NOT IN ('closed', 'dropped')` to the WHERE
-	// clause when true -- CAP-03's caller (backlog, cmd/keep/backlog.go)
-	// is the first ListItems caller that needs an exclusion rather than an
-	// equality filter: "every raw item still parked" means "not explicitly
+	// clause when true. It exists for callers that need an exclusion rather
+	// than an equality filter: "every raw item still parked" means "not explicitly
 	// discarded", which Status (a single `col = ?`) cannot express. The zero
 	// value (false) changes nothing for every existing caller.
 	//
 	// This is the exact literal already shipped in schema.go's `ready` view
 	// (`blocked_directly`'s `b.status NOT IN ('closed', 'dropped')`) --
 	// copied verbatim, not re-derived, so the two predicates cannot drift
-	// apart unnoticed (03-RESEARCH.md Pitfall 5).
+	// apart unnoticed.
 	ExcludeClosed bool `json:"exclude_closed,omitempty"`
 
 	Limit int `json:"limit,omitempty"`
 }
 
-// ListItems queries items directly -- never the ready view -- so list (ITEM-
-// 05) can show raw items and closed/dropped items alike, which ready/blocked
+// ListItems queries items directly -- never the ready view -- so `list`
+// can show raw items and closed/dropped items alike, which ready/blocked
 // deliberately cannot. Each of Stage/Status/Type/ParentID/Repo, when
 // non-empty, is bound as one `col = ?` condition; all present conditions
 // join with AND. Filter values are never validated against the closed
-// vocabularies here -- that belongs at the CLI boundary (plan 08); an
+// vocabularies here -- that belongs at the CLI boundary; an
 // unrecognized value here is simply a filter that matches nothing, which is
 // the honest answer to the question asked.
 //
 // Results are ordered score DESC, created_at ASC, id ASC. The trailing id
 // ASC matters: two children added inside one transaction share a created_at
-// (plan 02's single-nowFunc()-per-transaction rule), and without a final
+// (the single-nowFunc()-per-transaction rule), and without a final
 // tiebreak SQLite's row order for equal (score, created_at) pairs is
 // unspecified -- that would make list's output differ between runs.
 func (s *Store) ListItems(ctx context.Context, f ListFilter) ([]model.Item, error) {

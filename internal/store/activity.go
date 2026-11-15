@@ -15,8 +15,8 @@ import (
 // confirmed by reading the method, and locked by activity_test.go's
 // dep-only fixture. A repository whose most recent work was `keep dep <a>
 // blocks <b>` would therefore show a stale last-activity if this query read
-// items' own last-write column instead. The events table is already
-// EVENT-01's complete, append-only log of every mutation in the system;
+// items' own last-write column instead. The events table is already the
+// complete, append-only log of every mutation in the system;
 // deriving "last activity" from anything else re-derives a strict subset of
 // what events already guarantees.
 //

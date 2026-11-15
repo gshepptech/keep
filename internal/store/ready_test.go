@@ -73,9 +73,10 @@ func TestReadyOrdering(t *testing.T) {
 	}
 }
 
-// TestReadyUnscoredSortsLastNotExcluded asserts BOTH halves of RANK-02:
-// the unscored ticket is present (never excluded) AND its score is 0 AND it
-// sorts last. Asserting only "score is 0" would miss RANK-02's actual point
+// TestReadyUnscoredSortsLastNotExcluded asserts BOTH halves of the
+// unscored-item rule: the unscored ticket is present (never excluded) AND
+// its score is 0 AND it sorts last. Asserting only "score is 0" would miss
+// the actual point
 // entirely -- a store that silently dropped unscored tickets from ready
 // would still "pass" a presence-blind assertion.
 func TestReadyUnscoredSortsLastNotExcluded(t *testing.T) {
@@ -96,7 +97,7 @@ func TestReadyUnscoredSortsLastNotExcluded(t *testing.T) {
 
 	ids := idsOf(items)
 	if !containsID(ids, unscored.ID) {
-		t.Fatalf("Ready: unscored item %s is not present at all -- RANK-02 requires it be included, never excluded (got %v)", unscored.ID, ids)
+		t.Fatalf("Ready: unscored item %s is not present at all -- unscored work must be included, never excluded (got %v)", unscored.ID, ids)
 	}
 
 	var got *model.Item
@@ -113,7 +114,8 @@ func TestReadyUnscoredSortsLastNotExcluded(t *testing.T) {
 	}
 }
 
-// TestReadyExcludesRaw proves READY-03 from the caller's side: an item added
+// TestReadyExcludesRaw proves raw items are never workable, from the
+// caller's side: an item added
 // with Stage: "raw" never appears in Ready. This exercises the view's own
 // WHERE i.stage = 'ticket' predicate -- Ready itself adds no stage filter
 // (see ready.go's doc comment).
@@ -193,12 +195,13 @@ func openTicketIDs(t *testing.T, s *Store) []string {
 }
 
 // TestBlockingPropagatesThreeLevels builds epic -> child -> grandchild via
-// AddItem --parent (mustAdd's ParentID), then proves READY-02 at real depth
+// AddItem --parent (mustAdd's ParentID), then proves blocking propagation
+// at real depth
 // from BOTH sides of the ready/blocked pair: blocking the epic removes all
 // three from ready AND surfaces all three in Blocked, each naming epic as
 // the nearest blocked ancestor (child and grandchild) or blocker directly
-// (epic itself) -- matching 02-RESEARCH.md Pattern 5's naming rule. Closing
-// the blocker (via a raw UPDATE -- CloseItem does not exist until plan 06)
+// (epic itself). Closing the blocker (via a raw UPDATE, independent of
+// CloseItem)
 // returns all three to ready and empties them out of Blocked. Asserting
 // through Blocked() here, not just readyIDs, is deliberate: readyIDs queries
 // the shipped `ready` view directly and is therefore blind to a bug confined
@@ -277,8 +280,8 @@ func TestBlockingPropagatesThreeLevels(t *testing.T) {
 	}
 }
 
-// TestBlockedNamesTheBlocker reproduces 02-RESEARCH.md Pattern 5's fixture
-// exactly (blocker; epic blocked by blocker; child1 under epic; grandchild
+// TestBlockedNamesTheBlocker builds a fixed fixture
+// (blocker; epic blocked by blocker; child1 under epic; grandchild
 // under child1; lonebug also blocked by blocker but NOT in the tree) and
 // asserts against the query's actual executed output verbatim, rather than
 // recomputing what it "should" be. lonebug is what proves a directly-blocked
