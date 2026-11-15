@@ -6,7 +6,9 @@ import (
 	"github.com/gshepptech/keep/internal/interlock"
 )
 
-// TestHoldCountIsWhatTheReleaseButtonAsks.
+// TestHoldCountIsWhatTheReleaseButtonAsks checks that holdCount counts only
+// the leases a session holds, so a fresh session with none is not offered a
+// release.
 //
 // Found on a real board: an agent that had only just started -- a session
 // registered, no file touched -- was offered "Release holds". Interlock

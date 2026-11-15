@@ -26,7 +26,8 @@ var licenceIdentifier = map[string]string{
 	"GNU General Public License": "GPL-3.0",
 }
 
-// TestEveryDeclaredLicenceAgreesWithTheLicenceFile.
+// TestEveryDeclaredLicenceAgreesWithTheLicenceFile checks that every manifest
+// with a licence field names the licence that LICENSE grants.
 //
 // Nothing in the build cares whether the plugin manifests' licence fields
 // agree with LICENSE, which is exactly why a mismatch would survive: a

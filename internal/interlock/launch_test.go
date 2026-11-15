@@ -173,7 +173,8 @@ func launcher(t *testing.T, state string) string {
 	return bin
 }
 
-// TestLaunchReportsARunThatDiedImmediately.
+// TestLaunchReportsARunThatDiedImmediately checks that a launched run which
+// exits straight away is reported as a failure.
 //
 // --no-follow returns as soon as the supervisor is up, so a zero exit means
 // "launched", not "working". A run that fails on configuration -- not

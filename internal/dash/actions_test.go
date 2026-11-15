@@ -217,7 +217,8 @@ func idFromBody(t *testing.T, body string) string {
 	return rest[:strings.IndexAny(rest, `"`)]
 }
 
-// TestRedirectPrefixCannotLeaveTheHost.
+// TestRedirectPrefixCannotLeaveTheHost checks that the redirect after a board
+// action always stays on this host.
 //
 // If the prefix came straight off the form and were concatenated into
 // the redirect, a posted "//evil.example" would make a protocol-relative
@@ -268,7 +269,8 @@ func TestRedirectPrefixCannotLeaveTheHost(t *testing.T) {
 	})
 }
 
-// TestDropRefusesWithoutAReason.
+// TestDropRefusesWithoutAReason checks that the board refuses a drop that
+// carries no reason.
 //
 // `keep drop` requires --reason and exits 2 without one. The board must not
 // hold a lower standard than the command line for the same operation, on
@@ -290,7 +292,8 @@ func TestDropRefusesWithoutAReason(t *testing.T) {
 	}
 }
 
-// TestConfirmPageNamesWhatItWillDestroyAndActsOnNothing.
+// TestConfirmPageNamesWhatItWillDestroyAndActsOnNothing checks that the
+// confirm page names its item and that loading it changes nothing.
 //
 // A confirmation that does not show its subject is one you answer from
 // memory of what you clicked. And it is a GET: viewing it must change

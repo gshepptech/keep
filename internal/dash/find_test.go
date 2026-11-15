@@ -13,7 +13,8 @@ import (
 
 func ptr(s string) *string { return &s }
 
-// TestASnippetThatRepeatsTheRowIsNotShown.
+// TestASnippetThatRepeatsTheRowIsNotShown checks that a search snippet is
+// hidden when it only repeats what the row already shows.
 //
 // The snippet answers "why is this in my results?" and is only worth the
 // line it takes when the answer is somewhere the row cannot already show.
@@ -140,7 +141,8 @@ func TestTheRenderedSearchPageDoesNotRepeatThePath(t *testing.T) {
 	}
 }
 
-// TestBeingWorkedOnOffersAllThreeExits.
+// TestBeingWorkedOnOffersAllThreeExits checks that an in-progress item offers
+// close, drop and unclaim.
 //
 // Close and Drop both record something about the work (done, or not worth
 // doing), and an agent that simply stopped had neither happen to it. With

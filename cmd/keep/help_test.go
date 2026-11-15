@@ -5,7 +5,8 @@ import (
 	"testing"
 )
 
-// TestAskingForHelpDoesNotFileAnItem.
+// TestAskingForHelpDoesNotFileAnItem checks that --help prints usage instead
+// of filing an item.
 //
 // `keep add --help` must print usage, not file an item titled "--help"
 // into the real store. The hazard is permuteArgs: -h and --help are

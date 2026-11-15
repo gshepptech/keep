@@ -6,7 +6,8 @@ import (
 	"time"
 )
 
-// TestFeedAnswersWhatHappened.
+// TestFeedAnswersWhatHappened checks that the feed lists every event newest
+// first, each with its item's title and reason.
 //
 // The question a person actually asks is "what did the agents do?", and
 // the feed answers it without opening items one at a time.

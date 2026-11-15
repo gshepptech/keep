@@ -9,7 +9,8 @@ import (
 	"github.com/gshepptech/keep/internal/model"
 )
 
-// TestUnclaimIsTheThirdExitFromInProgress.
+// TestUnclaimIsTheThirdExitFromInProgress checks that unclaim returns an in-
+// progress item to the ready queue.
 //
 // `start` moves an item to in_progress. Without unclaim, only `close` or
 // `drop` could move it out, and an agent that died mid-item would leave the

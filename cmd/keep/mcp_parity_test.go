@@ -157,7 +157,9 @@ func TestCLIAndMCPWriteIdenticalEventRows(t *testing.T) {
 	assertEventsMatchExceptIDAndAt(t, "close", detailA.Events[len(detailA.Events)-1], detailB.Events[len(detailB.Events)-1])
 }
 
-// TestMCPMalformedArgumentsAreProtocolErrorsAndChangeNothing.
+// TestMCPMalformedArgumentsAreProtocolErrorsAndChangeNothing checks that a
+// tool call with malformed arguments fails as a protocol error and leaves the
+// store unchanged.
 // Three separate claims, and the third is the one that rots:
 //
 //  1. a protocol error, specifically -- NOT an isError tool result. This is

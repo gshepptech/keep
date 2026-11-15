@@ -385,7 +385,8 @@ func TestActionRedirectsStayInTheProject(t *testing.T) {
 	}
 }
 
-// TestAgentControlsFollowTheProject.
+// TestAgentControlsFollowTheProject checks that the launch control appears
+// only on a project where coordination is set up.
 //
 // The launch control must not be gated on whether the interlock binary
 // answers from the *server's* directory, which is two wrong questions at
@@ -454,7 +455,8 @@ func doctorStub(t *testing.T, wired string) string {
 // strconvQuote is shell-quoting for one path.
 func strconvQuote(s string) string { return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'" }
 
-// TestTurningOnCoordinationConfirmsItWorked.
+// TestTurningOnCoordinationConfirmsItWorked checks that turning on
+// coordination reports success only after doctor confirms it took.
 //
 // The first version reported success on init's exit code alone. It had run
 // against a check that tested for something init does not create, so the

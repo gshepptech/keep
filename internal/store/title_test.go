@@ -6,7 +6,8 @@ import (
 	"testing"
 )
 
-// TestAnItemCannotBeLeftWithNothingToCallItBy.
+// TestAnItemCannotBeLeftWithNothingToCallItBy checks that both add and update
+// refuse a blank title.
 //
 // An item with no title is not a partially-filled record; it is a hole in
 // the queue. `ready`, `list`, `search`, the board's rows and every MCP tool

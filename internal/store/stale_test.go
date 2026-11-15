@@ -15,7 +15,8 @@ func atClock(t *testing.T, at string, fn func()) {
 	fn()
 }
 
-// TestStaleClaimsFindsWorkThatWentQuiet.
+// TestStaleClaimsFindsWorkThatWentQuiet checks that StaleClaims returns in-
+// progress items with no recent activity.
 //
 // The gap this closes: an agent claims an item, the session dies, and the
 // item sits in_progress for ever. Nothing ever asked about it, so nobody
@@ -59,7 +60,8 @@ func TestStaleClaimsFindsWorkThatWentQuiet(t *testing.T) {
 	})
 }
 
-// TestStaleClaimsMeasuresSilenceNotAge.
+// TestStaleClaimsMeasuresSilenceNotAge checks that staleness is measured from
+// the last event, not from the claim time.
 //
 // An agent can work one item for a day. What makes a claim stale is that
 // NOTHING IS HAPPENING, not that it started a long time ago -- measuring

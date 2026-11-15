@@ -42,7 +42,9 @@ func tokensIn(css string) map[string]string {
 	return out
 }
 
-// TestEveryTextTokenClearsContrastOnBothGrounds.
+// TestEveryTextTokenClearsContrastOnBothGrounds checks that every text colour
+// token meets 4.5:1 contrast on both background tokens, in the light and the
+// dark scheme.
 //
 // This is measured rather than eyeballed because contrast is easy to break
 // with changes that look purely cosmetic: treating "faint" as a look rather

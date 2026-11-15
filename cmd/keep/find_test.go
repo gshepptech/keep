@@ -5,7 +5,9 @@ import (
 	"testing"
 )
 
-// TestSearchFindsAndSeparatesItsStreams.
+// TestSearchFindsAndSeparatesItsStreams checks that the search command prints
+// only matching items on stdout and reports a miss on stderr with stdout left
+// empty.
 //
 // A cross-process run, because the thing being checked is what a
 // person and a script each see, and that only exists once the binary has
@@ -105,7 +107,8 @@ func TestLogRejectsATimeItCannotRead(t *testing.T) {
 	}
 }
 
-// TestStaleReportsButNeverReleases.
+// TestStaleReportsButNeverReleases checks that the stale command lists quiet
+// claims and leaves every one of them claimed.
 //
 // The design point worth locking: keep never unclaims anything on its
 // own. An automatic release cannot tell a dead session from a slow one, and

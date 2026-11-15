@@ -9,7 +9,8 @@ import (
 	"github.com/gshepptech/keep/internal/model"
 )
 
-// TestReopenIsTheWayOutOfTerminal.
+// TestReopenIsTheWayOutOfTerminal checks that reopen moves a closed or
+// dropped item back into the queue.
 //
 // Without reopen, close and drop would be statuses with no exit. A
 // mis-typed id could not be undone: the work would have to be filed again

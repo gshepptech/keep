@@ -177,7 +177,8 @@ func TestHandlerRootRefusesPOST(t *testing.T) {
 	}
 }
 
-// TestAMissingIdGetsAPageNotBareText.
+// TestAMissingIdGetsAPageNotBareText checks that a request for an unknown id
+// renders a full 404 page with navigation.
 //
 // http.Error writes an unstyled sentence with no nav and no way back. A
 // board whose URLs carry ids is a board people edit URLs on, so this is

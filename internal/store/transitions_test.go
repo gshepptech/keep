@@ -339,7 +339,8 @@ func TestUpdateRejectsEmptyChangeSet(t *testing.T) {
 	}
 }
 
-// TestStartRecordsWhoClaimedIt.
+// TestStartRecordsWhoClaimedIt checks that start records the claiming actor
+// on the item.
 //
 // Found by looking at a real board: an item claimed from the page showed
 // "nobody -- claimed from the board" in the column headed "Claimed by". The

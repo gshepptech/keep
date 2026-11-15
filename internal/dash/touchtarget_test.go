@@ -78,7 +78,8 @@ func blockAt(css string, start int) string {
 	return ""
 }
 
-// TestNoControlPinsItselfBelowTheTouchMinimum.
+// TestNoControlPinsItselfBelowTheTouchMinimum checks that no stylesheet rule
+// fixes a control's size below the touch-target minimum.
 //
 // A structural test over the stylesheet rather than a layout test, because
 // there is no layout engine in a Go test -- and it is the right shape

@@ -47,7 +47,8 @@ func TestSearchIsCaseInsensitive(t *testing.T) {
 	}
 }
 
-// TestSearchTreatsWildcardsAsLiteralText.
+// TestSearchTreatsWildcardsAsLiteralText checks that % and _ in a query match
+// only themselves.
 //
 // LIKE gives % and _ meaning. A person searching for "100%" means those
 // four characters; unescaped, the % matches everything and the search
@@ -117,7 +118,8 @@ func TestSearchRefusesAnEmptyQuery(t *testing.T) {
 	}
 }
 
-// TestSearchSaysWhereTheMatchCameFrom.
+// TestSearchSaysWhereTheMatchCameFrom checks that each search result names
+// the field it matched in.
 //
 // A result whose title does not contain the word you searched for reads as
 // a mistake until it can tell you it matched the reason, or a path, or the
@@ -148,7 +150,8 @@ func TestSearchSaysWhereTheMatchCameFrom(t *testing.T) {
 	}
 }
 
-// TestSearchShowsTheTextAroundAMatch.
+// TestSearchShowsTheTextAroundAMatch checks that a search result carries the
+// text around the match.
 //
 // Found by running search against a real store: one captured document whose
 // body was an entire roadmap matched almost every query, and "matched in
