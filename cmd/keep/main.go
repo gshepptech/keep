@@ -2,8 +2,7 @@
 //
 // `keep init` creates a versioned SQLite store in the current repository
 // (or at ~/.rounce/db.sqlite with --global, or an arbitrary path with --db).
-// See ROADMAP.md for the phase plan and docs/design/phase-0.md for the store
-// this is built on.
+// See the README for the full picture.
 package main
 
 import (
@@ -198,7 +197,7 @@ commands:
               a failure part-way leaves the store exactly as it was
   version   print the version
 
-See ROADMAP.md.
+Docs: https://github.com/gshepptech/keep
 `
 
 func main() {
