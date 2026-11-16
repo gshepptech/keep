@@ -20,14 +20,13 @@ func setOrUnset(t *testing.T, name, value string, set bool) {
 	}
 }
 
-// TestEnvPrefersKeepAndFallsBackToRounce pins the compatibility contract the
-// rename created: KEEP_ wins, ROUNCE_ is honoured when KEEP_ is absent, and
-// KEEP_ set to the empty string counts as absent rather than as an override.
+// TestEnvPrefersKeepAndFallsBackToRounce checks the environment precedence:
+// KEEP_ wins, ROUNCE_ is honoured when KEEP_ is absent, and KEEP_ set to
+// the empty string counts as absent rather than as an override.
 //
-// The last case is the one worth a test. The others are obvious; that one is
-// a deliberate choice with a failure mode. Without it, `KEEP_ACTOR= keep add
-// ...` on a machine whose profile still exports ROUNCE_ACTOR would quietly
-// use the old value, and there would be no way to clear the variable at all.
+// Empty is treated as absent, as elsewhere in the package, so
+// `KEEP_ACTOR= keep add ...` on a machine whose profile still exports
+// ROUNCE_ACTOR uses the ROUNCE_ value.
 func TestEnvPrefersKeepAndFallsBackToRounce(t *testing.T) {
 	for _, c := range []struct {
 		name     string

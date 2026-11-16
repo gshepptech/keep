@@ -128,8 +128,8 @@ func TestTxlockImmediateHonored(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Step 2: connB, with busy_timeout=0, must fail *now* if the lock is
-	// really held -- there is no window in which this could pass by luck.
+	// Step 2: connB, with busy_timeout=0, must fail immediately if the lock
+	// is really held, so there is no window in which this could pass by luck.
 	txB, err := dbB.BeginTx(ctx, nil)
 	if err == nil {
 		_, err = txB.Exec("INSERT INTO t (v) VALUES ('from-b')")
@@ -237,10 +237,10 @@ func TestWithTxCommitsAndRollsBack(t *testing.T) {
 	assertCanaryCount(t, ctx, s, 2, 0)
 }
 
-// TestReadOnlyOpenServesReadsAndRefusesWrites proves the dashboard's whole
-// mechanism: OpenOptions{ReadOnly: true} coexists
-// with this DSN's _txlock=immediate, serves every read method the dashboard
-// needs, and refuses a write.
+// TestReadOnlyOpenServesReadsAndRefusesWrites proves what the dashboard
+// relies on: OpenOptions{ReadOnly: true} coexists with this DSN's
+// _txlock=immediate, serves every read method the dashboard needs, and
+// refuses a write.
 //
 // Observed output of the same sequence against a real store:
 //
@@ -253,7 +253,7 @@ func TestWithTxCommitsAndRollsBack(t *testing.T) {
 //	RO AddItem err=attempt to write a readonly database (8)
 //
 // The write's failure is asserted by err != nil plus an unchanged
-// len(ListItems(...)) -- never strings.Contains(err.Error(), "readonly").
+// len(ListItems(...)), never strings.Contains(err.Error(), "readonly").
 // Driver message text is not a contract (errors.go's standing
 // classification rule). The extended code (8, SQLITE_READONLY) is recorded
 // above for reference only, not asserted on here.

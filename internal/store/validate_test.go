@@ -15,8 +15,7 @@ import (
 // agent omitted the argument.
 //
 // All four verbs are checked in one table rather than four tests, because
-// the failure mode to guard against is not "one of them is wrong" -- it is
-// "they were each decided separately".
+// the rule is one decision applied to all four, not four separate ones.
 func TestEveryTerminalVerbRequiresAReason(t *testing.T) {
 	ctx := context.Background()
 
@@ -111,14 +110,15 @@ func TestEveryTerminalVerbRequiresAReason(t *testing.T) {
 	}
 }
 
-// TestClosedVocabulariesAreRefusedByName. The schema's CHECK constraints
-// already refused these; what they could not do is say which value was
-// wrong, in words a caller can act on.
+// TestClosedVocabulariesAreRefusedByName checks that an invalid type or stage
+// is refused with an error naming the value and the allowed set. The schema's
+// CHECK constraints would refuse these too, but cannot say which value was
+// wrong in words a caller can act on.
 //
 // Without the Go-side check, the MCP `add` tool would answer an invalid
 // type with "constraint failed: CHECK constraint failed: type IN (...)
-// (275)" -- SQLite's text, forwarded verbatim as a generic protocol error,
-// indistinguishable to a model from a broken store.
+// (275)", SQLite's text forwarded as a generic protocol error, which a
+// model cannot tell apart from a broken store.
 func TestClosedVocabulariesAreRefusedByName(t *testing.T) {
 	ctx := context.Background()
 
@@ -156,8 +156,8 @@ func TestClosedVocabulariesAreRefusedByName(t *testing.T) {
 		}
 	})
 
-	// An empty value is not invalid -- it means "the caller did not set
-	// this" and the insert applies its own default. Refusing it here would
+	// An empty value is not invalid. It means "the caller did not set this"
+	// and the insert applies its own default. Refusing it here would
 	// break every call that omits the field, which is most of them.
 	t.Run("unset is not invalid", func(t *testing.T) {
 		s := openTestStore(t)

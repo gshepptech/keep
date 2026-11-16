@@ -14,7 +14,7 @@ import (
 //
 // json tags: this struct doubles as the `next` MCP tool's wire type.
 // SessionID is `json:"-"` for the same reason every other mutating input in
-// this package has it -- session is a server-lifetime property, never a
+// this package has it: session is a server-lifetime property, never a
 // per-call argument.
 type NextInput struct {
 	Actor     string `json:"actor,omitempty"`
@@ -58,8 +58,8 @@ type NextResult struct {
 // NextItem takes the top of the ready queue and claims it, in one
 // transaction.
 //
-// The two-call sequence it replaces -- `ready`, then `start` on the top row
-// -- has a window between the read and the write in which another agent can
+// The two-call sequence of `ready`, then `start` on the top row, has a
+// window between the read and the write in which another agent can
 // claim the same item. The loser gets ErrConflict and has to re-read and
 // retry, which is a retry loop every single agent integration has to write
 // correctly and independently. Doing both inside one BEGIN IMMEDIATE closes
@@ -68,9 +68,9 @@ type NextResult struct {
 // and the other gets an empty queue.
 //
 // It claims exactly the row `ready` puts first. It does not re-rank, filter
-// or skip -- the ordering lives in the view, and a
-// "pick the best one for me" heuristic here would be the store reasoning
-// about the work, which is the one thing it does not do.
+// or skip: the ordering lives in the view, and a "pick the best one for me"
+// heuristic here would be the store reasoning about the work, which it
+// never does.
 func (s *Store) NextItem(ctx context.Context, in NextInput) (NextResult, error) {
 	if in.Actor == "" {
 		return NextResult{}, fmt.Errorf("NextItem: Actor is required")
@@ -160,20 +160,20 @@ type Workability struct {
 	Reason string `json:"reason,omitempty"`
 
 	// BlockedBy names the nearest item in the way, when that is the reason.
-	// Empty otherwise -- including when the item is not workable for some
+	// Empty otherwise, including when the item is not workable for some
 	// other reason, so a caller cannot mistake "not blocked" for "workable".
 	BlockedBy string `json:"blocked_by,omitempty"`
 }
 
-// WhyNot answers the question an empty `ready` always provokes: this item is
-// not in the queue -- why not?
+// WhyNot answers the question an empty `ready` always provokes: why is this
+// item not in the queue?
 //
 // Without it, the only way to find out is to read `show`, compare stage and
 // status against the view's predicate by eye, and then check `blocked`
 // separately for the propagated case, which a person can do and an agent
 // reliably cannot. Every reason `ready` can omit an item for is enumerated
 // here, in the view's own order, so the answer cannot disagree with the view
-// about anything except by this function being wrong -- and it reads its
+// about anything except by this function being wrong, and it reads its
 // blocking answer from IsBlocked, which embeds the same CTE the view does.
 //
 // The reasons, in the order the view applies them:

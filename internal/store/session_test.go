@@ -9,15 +9,12 @@ import (
 	"github.com/gshepptech/keep/internal/model"
 )
 
-// TestAnonymousClaimsAreRefused. If a claim with no session id were
-// allowed, the consequence would not be that the claim was merely
-// unattributed -- every anonymous worker would become the SAME worker,
-// because "" equals "".
-//
-// The failure this guards against: two StartItem calls with different
-// actors and no session both succeed, and the second actor then releases
-// the first's claim through the own-claim-only path that exists to stop
-// exactly that.
+// TestAnonymousClaimsAreRefused checks that claiming without a session id
+// fails with ErrNoSession. An anonymous claim would not merely be
+// unattributed: every anonymous worker would become the same worker,
+// because "" equals "". Two StartItem calls with different actors and no
+// session would both succeed, and the second actor could then release the
+// first's claim through the own-claim-only path.
 func TestAnonymousClaimsAreRefused(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
@@ -41,7 +38,7 @@ func TestAnonymousClaimsAreRefused(t *testing.T) {
 	}
 
 	// next is the same claim by another route, and refuses before it reads
-	// the queue -- a session that cannot hold a claim must not consume the
+	// the queue, so a session that cannot hold a claim does not consume the
 	// top of somebody's queue and fail afterwards.
 	if _, err := s.NextItem(ctx, NextInput{Actor: "agent-a", SessionID: ""}); !errors.Is(err, ErrNoSession) {
 		t.Fatalf("NextItem with no session = %v, want ErrNoSession", err)
@@ -71,7 +68,7 @@ func TestASecondWorkerIsNeverHandedTheFirstsClaim(t *testing.T) {
 		t.Errorf("the conflict does not name the holder: %v", err)
 	}
 
-	// And agent-a's own retry is still an idempotent no-op -- the session
+	// And agent-a's own retry is still an idempotent no-op: the session
 	// check must not turn a retry into a conflict.
 	before := countEvents(t, s)
 	if _, err := s.StartItem(ctx, StartItemInput{ID: item.ID, Actor: "agent-a", SessionID: "sess-a"}); err != nil {
@@ -82,21 +79,21 @@ func TestASecondWorkerIsNeverHandedTheFirstsClaim(t *testing.T) {
 	}
 }
 
-// TestOwnClaimGuardTreatsAnonymousAsNobody. RequireOwnClaim is the whole
-// reason `unclaim` is safe to expose over MCP. Comparing two empty sessions
-// inverted it: any anonymous caller could release any anonymous claim.
+// TestOwnClaimGuardTreatsAnonymousAsNobody checks that RequireOwnClaim never
+// matches an anonymous claim. RequireOwnClaim is what makes `unclaim` safe
+// to expose over MCP, and comparing two empty sessions would let any
+// anonymous caller release any anonymous claim.
 //
-// Anonymous claims cannot be CREATED any more, but they exist in stores
-// written before that was true, so the guard has to handle them rather than
-// assume them away.
+// The store refuses to create anonymous claims, but stores written by older
+// binaries can hold them, so the guard handles them.
 func TestOwnClaimGuardTreatsAnonymousAsNobody(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
 	item := mustAdd(t, s, AddItemInput{Title: "held anonymously", Actor: "agent-a"})
 
 	// A claim as an older binary would have left it: in progress, with a
-	// NULL session. Written directly, because the store now refuses to
-	// create one this way -- which is the point.
+	// NULL session. It is written directly, because the store refuses to
+	// create one.
 	if _, err := s.db.ExecContext(ctx,
 		`UPDATE items SET status = ?, claimed_by_session = NULL, claimed_at = ? WHERE id = ?`,
 		model.StatusInProgress, model.Now(), item.ID); err != nil {
@@ -116,7 +113,7 @@ func TestOwnClaimGuardTreatsAnonymousAsNobody(t *testing.T) {
 	}
 
 	// A person at a terminal still can, which is what unrestricted unclaim
-	// is for -- a legacy anonymous claim must not be unreleasable.
+	// is for, so a legacy anonymous claim can always be released.
 	if _, err := s.UnclaimItem(ctx, UnclaimItemInput{
 		ID: item.ID, Reason: "the agent is long gone", Actor: "a person", SessionID: "cli:someone@here",
 	}); err != nil {
@@ -124,12 +121,11 @@ func TestOwnClaimGuardTreatsAnonymousAsNobody(t *testing.T) {
 	}
 }
 
-// TestALegacyAnonymousClaimIsNotHandedToTheNextCaller covers the other half
-// of the same legacy data: StartItem's idempotent arm compared holder to
-// SessionID, and a NULL holder reads back as "". A caller whose own session
-// was also empty would have been handed the item as its own retry -- and
-// after this change no caller has an empty session, so the arm is reached
-// with a real id against an empty holder, which must not match.
+// TestALegacyAnonymousClaimIsNotHandedToTheNextCaller checks that a claim
+// with a NULL session is not treated as the caller's own retry.
+// StartItem's idempotent arm compares holder to SessionID, a NULL holder
+// reads back as "", and every caller has a non-empty session, so the arm
+// sees a real id against an empty holder, which must not match.
 func TestALegacyAnonymousClaimIsNotHandedToTheNextCaller(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)

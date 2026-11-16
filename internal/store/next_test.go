@@ -10,10 +10,9 @@ import (
 	"github.com/gshepptech/keep/internal/model"
 )
 
-// TestNextItemClaimsTheTopOfTheQueue: `next` must claim exactly the row
-// `ready` puts first, not "a workable item". If it ever picked differently
-// the queue's ranking would stop meaning anything for the one caller that
-// consumes it most.
+// TestNextItemClaimsTheTopOfTheQueue checks that `next` claims exactly the
+// row `ready` puts first, not just any workable item. Otherwise the queue's
+// ranking would mean nothing to the caller that consumes it most.
 func TestNextItemClaimsTheTopOfTheQueue(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
@@ -57,7 +56,8 @@ func TestNextItemClaimsTheTopOfTheQueue(t *testing.T) {
 	}
 }
 
-// TestNextItemOnAnEmptyQueueIsAnAnswerNotAnError. An agent that receives an
+// TestNextItemOnAnEmptyQueueIsAnAnswerNotAnError checks that NextItem on an
+// empty queue returns no item and no error. An agent that receives an
 // error for "there is nothing to do" has to tell it apart from a real
 // failure before it can decide whether to retry, and every integration would
 // have to get that right independently.
@@ -77,10 +77,11 @@ func TestNextItemOnAnEmptyQueueIsAnAnswerNotAnError(t *testing.T) {
 	}
 }
 
-// TestNextItemSaysHowMuchIsBlockedWhenTheQueueIsEmpty is the difference
-// between "there is no work" and "there is work and something is in its
-// way". They call for opposite responses -- stop, or go unblock something --
-// and an empty list alone cannot tell them apart.
+// TestNextItemSaysHowMuchIsBlockedWhenTheQueueIsEmpty checks that an empty
+// result reports how many items are blocked. That separates "there is no
+// work" from "there is work and something is in its way", which call for
+// opposite responses (stop, or go unblock something), and an empty list
+// alone cannot tell them apart.
 func TestNextItemSaysHowMuchIsBlockedWhenTheQueueIsEmpty(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
@@ -110,13 +111,14 @@ func TestNextItemSaysHowMuchIsBlockedWhenTheQueueIsEmpty(t *testing.T) {
 	}
 }
 
-// TestConcurrentNextItemNeverHandsOutTheSameItemTwice is the whole reason
-// this verb exists. The `ready` then `start` sequence it replaces has a
-// window between the read and the write; two agents that read the same top
-// row both try to claim it, and one gets ErrConflict and has to retry.
+// TestConcurrentNextItemNeverHandsOutTheSameItemTwice checks that
+// concurrent NextItem calls each claim a different item. A `ready` then
+// `start` sequence has a window between the read and the write; two agents
+// that read the same top row both try to claim it, and one gets
+// ErrConflict and has to retry.
 //
-// Ten goroutines, ten items: every one must come back with a DIFFERENT item
-// and no error. A single duplicate here means the window is still open.
+// Ten goroutines, ten items: every one must come back with a different item
+// and no error. A single duplicate here means the window is open.
 func TestConcurrentNextItemNeverHandsOutTheSameItemTwice(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
@@ -165,9 +167,9 @@ func TestConcurrentNextItemNeverHandsOutTheSameItemTwice(t *testing.T) {
 	}
 }
 
-// TestWhyNotAgreesWithReadyForEveryItem is the property that makes WhyNot
-// worth trusting: for every item in the store, WhyNot's `ready` flag must
-// match whether the item is actually in the ready view. A WhyNot that
+// TestWhyNotAgreesWithReadyForEveryItem checks that, for every item in the
+// store, WhyNot's `ready` flag matches whether the item is actually in the
+// ready view. A WhyNot that
 // reasoned about the predicate independently could drift from the view, and
 // an explanation that disagrees with the thing it explains is worse than no
 // explanation.
@@ -257,9 +259,9 @@ func TestWhyNotAgreesWithReadyForEveryItem(t *testing.T) {
 	}
 }
 
-// TestWhyNotOnAnUnknownIDIsNotFound: a typo must say so rather than
-// answering "not ready" about an item that does not exist, which reads as a
-// real finding.
+// TestWhyNotOnAnUnknownIDIsNotFound checks that WhyNot on an unknown id
+// returns ErrNotFound rather than answering "not ready" about an item that
+// does not exist, which would read as a real finding.
 func TestWhyNotOnAnUnknownIDIsNotFound(t *testing.T) {
 	s := openTestStore(t)
 	if _, err := s.WhyNot(context.Background(), "rnc-nosuch"); !errors.Is(err, ErrNotFound) {

@@ -11,9 +11,9 @@ import (
 
 func intp(i int) *int { return &i }
 
-// TestScoredWorkAlwaysOutranksUnscored pins "scored work always outranks
-// unscored work" as a property rather than
-// as a range check, because the range check is only the mechanism.
+// TestScoredWorkAlwaysOutranksUnscored checks that scored work always
+// outranks unscored work, stated as a property rather than as a range
+// check, because the range check is only the mechanism.
 //
 // internal/rank documents the inputs as 0-10 and its scoreShift of 11 is
 // chosen so the worst legal score (0 + 0 - 10 + 11) is 1, one above an
@@ -62,10 +62,10 @@ func TestScoredWorkAlwaysOutranksUnscored(t *testing.T) {
 			v, c, e        *int
 			wantNamedInMsg string
 		}{
-			// The wanted text pairs the input's NAME with its VALUE.
+			// The wanted text pairs the input's name with its value.
 			// Checking for the bare word would pass on the sentinel's own
-			// message, which already lists all three -- an assertion that
-			// looks like it pins "say which one" and pins nothing.
+			// message, which already lists all three, so it would not prove
+			// the error says which one.
 			{"effort above the range", nil, nil, intp(100), "effort is 100"},
 			{"value above the range", intp(1000), nil, nil, "value is 1000"},
 			{"confidence below the range", nil, intp(-1), nil, "confidence is -1"},
@@ -117,7 +117,7 @@ func TestScoredWorkAlwaysOutranksUnscored(t *testing.T) {
 		}
 
 		// Clearing a score back to unscored is not a number and must stay
-		// legal -- the outer pointer is set, the inner is nil.
+		// legal: the outer pointer is set, the inner is nil.
 		var clear *int
 		if _, err := s.UpdateItem(ctx, UpdateItemInput{ID: item.ID, Actor: "t", Value: &clear}); err != nil {
 			t.Errorf("clearing a score: %v, want it accepted", err)

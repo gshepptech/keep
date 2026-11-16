@@ -34,8 +34,8 @@ var (
 	ErrTooDeep = errors.New("tree too deep")
 
 	// ErrNoSession is returned when a CLAIM is attempted without a session
-	// id. Every other verb may leave one empty -- the session on an `add` or
-	// a `close` event is attribution, and a missing one costs nothing but
+	// id. Every other verb may leave one empty, because the session on an
+	// `add` or a `close` event is attribution and a missing one costs only
 	// detail.
 	//
 	// A claim is different: it is an assertion that one specific worker
@@ -43,12 +43,12 @@ var (
 	// what happens next. With an empty session all three collapse, because
 	// "" equals "", and every anonymous worker becomes the same worker:
 	//
-	//   - StartItem's idempotent-retry arm treats a SECOND worker's claim on
-	//     a held item as the first one retrying. Silent success, no event,
-	//     no ErrConflict -- two workers each believing they own it, which is
-	//     the exact collision `start` exists to prevent.
-	//   - UnclaimItem's RequireOwnClaim guard, which is the whole reason
-	//     `unclaim` is safe to expose over MCP, passes for anybody.
+	//   - StartItem's idempotent-retry arm treats a second worker's claim on
+	//     a held item as the first one retrying: silent success, no event,
+	//     no ErrConflict, and two workers each believing they own it, which
+	//     is the collision `start` exists to prevent.
+	//   - UnclaimItem's RequireOwnClaim guard, which is what makes `unclaim`
+	//     safe to expose over MCP, passes for anybody.
 	//   - `stale` reports a claim it cannot attribute to anyone.
 	//
 	// Without this check, two StartItem calls with different actors and no
@@ -57,8 +57,8 @@ var (
 	//
 	// This is refused in the store rather than in the callers because all
 	// three rules live here. cmd/keep and internal/dash each derive a
-	// non-empty id appropriate to what they are -- see resolveClaimSession
-	// and the board's own session -- so nothing legitimate is refused.
+	// non-empty id appropriate to what they are (see resolveClaimSession and
+	// the board's own session), so nothing legitimate is refused.
 	ErrNoSession = errors.New("a claim needs a session id")
 
 	// ErrEmptyReason is returned by close, drop, unclaim and reopen when no
@@ -66,10 +66,10 @@ var (
 	// a piece of work, and a record that says it happened without saying why
 	// is the thing the `--reason` requirement exists to prevent.
 	//
-	// It is enforced HERE rather than in each caller, because a rule enforced in one surface (the CLI) and not the
-	// others (MCP, the dashboard) ends up as three surfaces with three
-	// answers to one rule. Surfaces are thin wrappers and carry no behaviour
-	// of their own.
+	// It is enforced here rather than in each caller, because a rule
+	// enforced in one surface (the CLI) and not the others (MCP, the
+	// dashboard) ends up as three surfaces with three answers to one rule.
+	// Surfaces are thin wrappers and carry no behaviour of their own.
 	ErrEmptyReason = errors.New("a reason is required")
 
 	// ErrInvalidType and ErrInvalidStage are returned when a value outside
@@ -89,8 +89,8 @@ var (
 
 	// ErrStoreNotEmpty is returned by Import when the target store already
 	// holds items. Importing into a populated store would mean resolving
-	// collisions between two histories, which is a sync product -- see
-	// Import's doc comment.
+	// collisions between two histories, which is a sync product (see
+	// Import's doc comment).
 	ErrStoreNotEmpty = errors.New("store is not empty")
 
 	// ErrBadExport is returned by Import when the input is not a keep

@@ -11,19 +11,20 @@ import (
 
 // itemColumns is the explicit, ordered column list every query returning a
 // model.Item selects, in model.Item's own field order. It exists because the
-// ready view is defined as `SELECT i.* FROM items i ...` and that `i.*` is
-// NOT frozen at CREATE VIEW time -- it re-resolves against items' current
-// shape on every query (a live ALTER TABLE changes its width immediately).
-// A fixed-arity rows.Scan against `*` would break at query time on the
-// first future migration, far from the change that caused it. Every item
+// ready view is defined as `SELECT i.* FROM items i ...` and that `i.*` is not
+// frozen at CREATE VIEW time: it re-resolves against items' current shape on
+// every query (a live ALTER TABLE changes its width immediately). A
+// fixed-arity rows.Scan against `*` would break at query time on the next
+// migration that adds a column, far from the change that caused it. Every item
 // query in this package reuses this constant rather than re-listing the
 // columns.
 const itemColumns = `id, parent_id, ordinal, stage, type, title, body, acceptance, status, value, confidence, effort, score, why, repo, paths, claimed_by_session, claimed_at, assignee, external_ref, created_at, updated_at, closed_at`
 
 // scanItems scans rows produced by a query that selects itemColumns, in that
-// exact order, into a []model.Item. This is the one place the
-// rows.Scan destinations are written -- Ready and every other item query
-// in this package call this instead of each writing its own Scan call.
+// exact order, into a []model.Item. This is the one place the rows.Scan
+// destinations are written; Ready and every other item query in this
+// package call this instead of each writing its own Scan call.
+//
 // An empty result is []model.Item{}, never nil. This is the store's
 // contract, not a courtesy to one surface: a nil slice marshals to JSON
 // `null` and an empty one to `[]`, and if each surface normalised that for
@@ -52,21 +53,19 @@ func scanItems(rows *sql.Rows) ([]model.Item, error) {
 }
 
 // blockedTreeCTE is the single definition of keep's blocking recursion
-// that lives in Go. It is a deliberate mirror of the shipped ready view's
-// own blocked_directly/blocked_tree CTE (internal/store/schema.go),
-// extended with blocker_id and nearest_blocked_id so it can REPORT the
-// blocker instead of only filtering on it. Blocked() and IsBlocked() both
-// embed this constant; neither carries its own copy of the SQL text. That is
-// what makes `blocked` and `ready` structurally incapable of disagreeing;
-// TestBlockedNamesTheBlocker cross-checks the two on a 5-item/3-level
-// fixture and confirms they partition the open tickets exactly.
-// If the view's CTE ever changes, this constant changes with it, in the same
-// commit -- do not let the two drift into two independently-maintained tree
-// walks.
+// that lives in Go. It mirrors the ready view's own
+// blocked_directly/blocked_tree CTE (internal/store/schema.go), extended
+// with blocker_id and nearest_blocked_id so it can report the blocker
+// instead of only filtering on it. Blocked() and IsBlocked() both embed this
+// constant; neither carries its own copy of the SQL text, so `blocked` and
+// `ready` cannot disagree. TestBlockedNamesTheBlocker cross-checks the two
+// on a 5-item/3-level fixture and confirms they partition the open tickets
+// exactly. A change to the view's CTE needs the same change here, in the
+// same commit, so the two never become independently maintained tree walks.
 //
 // blocked_directly's SELECT DISTINCT matters: without it, an item
 // blocked by two different `blocks` edges to the same target would appear
-// twice. blocked_tree is intentionally NOT deduplicated across multiple
+// twice. blocked_tree is intentionally not deduplicated across multiple
 // independent blocking ancestors, so that the query stays a faithful
 // mirror of the view's. Callers that need a set (the partition test,
 // IsBlocked's LIMIT 1) tolerate or collapse duplicates themselves; Blocked()
@@ -94,16 +93,15 @@ WITH RECURSIVE
   )
 `)
 
-// Ready returns the open, unblocked tickets the shipped ready view already
+// Ready returns the open, unblocked tickets the ready view already
 // computes, in the view's own order (score DESC, created_at ASC), honouring
 // limit when it is > 0 (limit <= 0 means no limit).
 //
-// This query has NO WHERE clause and re-filters nothing the view already
+// This query has no WHERE clause and re-filters nothing the view already
 // filters. stage='ticket', status='open', and the blocked-tree exclusion all
-// live inside the view on purpose -- the view is the single place those
-// predicates are allowed to exist. Adding any of them again here "for
-// clarity" would be a second place they could drift from the view. Ready's
-// job is to select named columns from the view and add LIMIT. Nothing else.
+// live inside the view, which is the single place those predicates exist.
+// Repeating any of them here would be a second place they could drift from
+// the view. Ready selects named columns from the view and adds LIMIT.
 func (s *Store) Ready(ctx context.Context, limit int) ([]model.Item, error) {
 	query := `SELECT ` + itemColumns + ` FROM ready`
 	var args []any
@@ -124,18 +122,18 @@ func (s *Store) Ready(ctx context.Context, limit int) ([]model.Item, error) {
 // Blocked returns every open ticket ready omits, each annotated with the id
 // of the nearest item blocking it. It embeds blockedTreeCTE
 // rather than a second copy of the tree-walk SQL, and applies the exact same
-// base predicate the ready view applies (stage='ticket' AND status='open')
-// -- not as a defensive re-filter of something else already filters, but
-// because Blocked does not read from the view at all: it is the view's
+// base predicate the ready view applies (stage='ticket' AND status='open').
+// That is not a defensive re-filter: Blocked does not read from the view at
+// all. It is the view's
 // structural inverse, and this predicate is what "open ticket" means for
 // both queries. Ordered i.score DESC, i.created_at ASC to match ready's own
 // ordering, since people read both lists side by side.
 //
-// Blocked names ONE blocker per item -- the nearest, which the recursion's
+// Blocked names one blocker per item, the nearest, which the recursion's
 // own traversal produces via nearest_blocked_id/blocker_id. Showing all
-// blockers is a backward-compatible later addition (a JSON array instead
-// of a scalar) -- do not "improve" this into a multi-row-per-item result;
-// that breaks the one-line-per-item output shape of `keep blocked`.
+// blockers could be added compatibly as a JSON array instead of a scalar.
+// A multi-row-per-item result would break the one-line-per-item output
+// shape of `keep blocked`.
 func (s *Store) Blocked(ctx context.Context) ([]model.BlockedItem, error) {
 	query := blockedTreeCTE + `
 SELECT ` + itemColumns + `,
@@ -175,12 +173,12 @@ ORDER BY i.score DESC, i.created_at ASC`
 
 // IsBlocked reports whether id appears anywhere in blockedTreeCTE's
 // blocked_tree, returning the nearest blocking item's id when it does. It
-// applies no stage/status predicate of its own -- unlike Blocked, it answers
+// applies no stage/status predicate of its own. Unlike Blocked, it answers
 // a narrower question ("is this specific item currently blocked?") for any
 // item, ticket or not, which is what StartItem needs for its refusal check
 // (the ErrInvalidTransition message must name the blocker). It embeds the
-// same blockedTreeCTE constant Blocked
-// does, so the two can never disagree about which items are blocked.
+// same blockedTreeCTE constant Blocked does, so the two can never disagree
+// about which items are blocked.
 func (s *Store) IsBlocked(ctx context.Context, id string) (string, bool, error) {
 	query := blockedTreeCTE + `
 SELECT CASE WHEN bt.depth = 0 THEN bt.blocker_id ELSE bt.nearest_blocked_id END AS blocked_by

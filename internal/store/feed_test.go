@@ -44,8 +44,9 @@ func TestFeedAnswersWhatHappened(t *testing.T) {
 	}
 }
 
-// TestFeedNarrowsByActorAndKind. "What did claude do" and "what got closed"
-// are the two follow-up questions.
+// TestFeedNarrowsByActorAndKind checks that the actor and kind filters each
+// narrow the feed to matching events, which answer "what did claude do" and
+// "what got closed".
 func TestFeedNarrowsByActorAndKind(t *testing.T) {
 	st, ctx := openTestStore(t), context.Background()
 	mustAdd(t, st, AddItemInput{Title: "by claude", Actor: "claude"})
@@ -68,7 +69,8 @@ func TestFeedNarrowsByActorAndKind(t *testing.T) {
 	}
 }
 
-// TestFeedSinceCutsOffHistory. The daily question is "since yesterday".
+// TestFeedSinceCutsOffHistory checks that Since drops events older than the
+// cutoff, which answers the daily "since yesterday" question.
 func TestFeedSinceCutsOffHistory(t *testing.T) {
 	st, ctx := openTestStore(t), context.Background()
 	mustAdd(t, st, AddItemInput{Title: "old news", Actor: "a"})

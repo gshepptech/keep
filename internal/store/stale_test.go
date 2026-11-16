@@ -34,8 +34,8 @@ func TestStaleClaimsFindsWorkThatWentQuiet(t *testing.T) {
 		}
 	})
 
-	// Six hours later the second item is claimed -- so it has a recent
-	// event -- and we ask what has gone quiet.
+	// Six hours later the second item is claimed, so it has a recent event,
+	// and the test asks what has gone quiet.
 	atClock(t, "2026-01-01T06:00:00.000000000Z", func() {
 		if _, err := s.StartItem(ctx, StartItemInput{ID: busy, Actor: "claude", SessionID: "sess-busy"}); err != nil {
 			t.Fatalf("StartItem: %v", err)
@@ -64,10 +64,9 @@ func TestStaleClaimsFindsWorkThatWentQuiet(t *testing.T) {
 // the last event, not from the claim time.
 //
 // An agent can work one item for a day. What makes a claim stale is that
-// NOTHING IS HAPPENING, not that it started a long time ago -- measuring
-// from claimed_at would flag every long piece of work while it was being
-// actively worked on, which is the fastest way to teach someone to ignore
-// a warning.
+// nothing is happening, not that it started a long time ago. Measuring from
+// claimed_at would flag every long piece of work while it was being
+// actively worked on, which teaches people to ignore the warning.
 func TestStaleClaimsMeasuresSilenceNotAge(t *testing.T) {
 	s, ctx := openTestStore(t), context.Background()
 
@@ -98,8 +97,9 @@ func TestStaleClaimsMeasuresSilenceNotAge(t *testing.T) {
 	})
 }
 
-// TestStaleClaimsIgnoresWorkNobodyClaimed. An open item is not a stale
-// claim; it is just work waiting, which the queue already shows.
+// TestStaleClaimsIgnoresWorkNobodyClaimed checks that open, unclaimed items
+// are not reported. An open item is not a stale claim; it is work waiting,
+// which the queue already shows.
 func TestStaleClaimsIgnoresWorkNobodyClaimed(t *testing.T) {
 	s, ctx := openTestStore(t), context.Background()
 	atClock(t, "2026-01-01T00:00:00.000000000Z", func() {

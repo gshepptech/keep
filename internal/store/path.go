@@ -20,17 +20,17 @@ func StorePathIn(dir string) string {
 }
 
 // ExistsFunc reports whether the file at path exists. It is injected into
-// FindUpward and ResolvePath so both can be tested hermetically -- with a
-// synthetic map of "these paths exist" -- rather than by creating real
+// FindUpward and ResolvePath so both can be tested hermetically, with a
+// synthetic map of "these paths exist", rather than by creating real
 // directory trees or calling os.Chdir (process-global, a known source of
 // flaky parallel tests).
 type ExistsFunc func(path string) bool
 
 // OSExists is the production ExistsFunc, backed by os.Stat. It distinguishes
 // "does not exist" from every other stat failure via
-// errors.Is(err, fs.ErrNotExist) -- neither a bare os.Stat(...) == nil check
-// nor the historical os.IsNotExist(err) on an unexamined nil check are used
-// here, because both would treat a permission error (the file is there, but
+// errors.Is(err, fs.ErrNotExist). Neither a bare os.Stat(...) == nil check
+// nor os.IsNotExist(err) on an unexamined nil check is used here, because
+// both would treat a permission error (the file is there, but
 // this process cannot see it) as "absent", which is the wrong answer for a
 // resolver deciding where to open a store.
 func OSExists(path string) bool {
@@ -42,7 +42,7 @@ func OSExists(path string) bool {
 		return false
 	}
 	// Any other error (permission denied, I/O error, ...) means we cannot
-	// conclude the path is absent -- treat it as present rather than
+	// conclude the path is absent, so treat it as present rather than
 	// silently treating an inaccessible file as "no store here".
 	return true
 }
@@ -61,13 +61,12 @@ func OSExists(path string) bool {
 // ceiling. The rule is "nearest .rounce/db.sqlite, walking up from the
 // working directory", with no boundary; comparable tools (git, direnv) stop
 // at a marker directory or an explicit ceiling env var, but keep has no
-// need for one. This
-// is a deliberate decision, not an oversight -- a future reader tempted to
-// add a .git ceiling should read this comment first.
+// need for one, and a .git ceiling would hide a store kept above the
+// repository root.
 //
 // Termination is structural, not counter-based: filepath.Dir(dir) == dir is
-// a fixed point reached only at the root, and that fixed point -- not a
-// depth limit -- is what stops the loop.
+// a fixed point reached only at the root, and that fixed point, not a depth
+// limit, stops the loop.
 func FindUpward(startDir string, exists ExistsFunc) (string, bool) {
 	dir := startDir
 	for {
@@ -90,17 +89,17 @@ func FindUpward(startDir string, exists ExistsFunc) (string, bool) {
 //  3. FindUpward(cwd, exists), if it hits.
 //  4. StorePathIn(home).
 //
-// ResolvePath returns whatever its inputs imply -- it does not run the
-// result through filepath.Abs. Resolve (below) is the process-facing
-// wrapper responsible for absolutizing; the CLI's init (a later plan) prints
-// an absolute path.
+// ResolvePath returns whatever its inputs imply; it does not run the result
+// through filepath.Abs. Resolve (below) is the process-facing wrapper
+// responsible for absolutizing, which is why the CLI's init prints an
+// absolute path.
 func ResolvePath(flagDB, envDB, cwd, home string, exists ExistsFunc) (string, error) {
 	// Rule 1: --db beats everything else, including KEEP_DB and any
-	// nearby or home store -- returned without an existence check. An
-	// explicit --db names where the user wants the store, whether or not
-	// it is there yet: init creates it, and every other command fails on
-	// open. Silently falling through to rule 3 because the named file is
-	// missing would be the worst possible behaviour.
+	// nearby or home store, and is returned without an existence check.
+	// An explicit --db names where the user wants the store, whether or
+	// not it is there yet: init creates it, and every other command
+	// fails on open. Silently falling through to rule 3 because the
+	// named file is missing would write to a store nobody asked for.
 	if flagDB != "" {
 		return flagDB, nil
 	}
@@ -112,14 +111,14 @@ func ResolvePath(flagDB, envDB, cwd, home string, exists ExistsFunc) (string, er
 	}
 
 	// Rule 3: the nearest .rounce/db.sqlite walking up from cwd. The
-	// per-repo store wins over the home store -- work done inside a
+	// per-repo store wins over the home store, so work done inside a
 	// repository lands in that repository, the less surprising outcome.
 	if path, ok := FindUpward(cwd, exists); ok {
 		return path, nil
 	}
 
 	// Rule 4: the home store. This is the only rule that can fail to
-	// produce a path -- when rules 1-3 all miss and home is empty (e.g.
+	// produce a path: when rules 1-3 all miss and home is empty (e.g.
 	// os.UserHomeDir() errored), there is nothing left to return.
 	if home == "" {
 		return "", fmt.Errorf("cannot resolve store path: no --db, no KEEP_DB, no store found walking up from %s, and no home directory available", cwd)

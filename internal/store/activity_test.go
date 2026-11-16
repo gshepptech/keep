@@ -6,8 +6,8 @@ import (
 )
 
 // TestLastActivityEmptyStore proves an empty store (no items, no events)
-// returns ("", false, nil) -- a nil error and false, never an error and
-// never a zero-valued timestamp string.
+// returns ("", false, nil): a nil error and false, never an error and never
+// a zero-valued timestamp string.
 func TestLastActivityEmptyStore(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
@@ -54,11 +54,11 @@ func TestLastActivityAfterOneAddItem(t *testing.T) {
 }
 
 // TestLastActivityAfterCreateDepStrictlyExceedsItemsUpdatedAt checks that
-// after AddItem on two items followed by CreateDep,
-// LastActivity is STRICTLY GREATER than the maximum items.updated_at across
-// both items -- proving MAX(events.at) and MAX(items.updated_at) genuinely
-// differ on this fixture, since CreateDep (deps.go) writes exactly one
-// events row and zero UPDATE statements against items.
+// after AddItem on two items followed by CreateDep, LastActivity is
+// strictly greater than the maximum items.updated_at across both items.
+// MAX(events.at) and MAX(items.updated_at) differ on this fixture because
+// CreateDep (deps.go) writes exactly one events row and no UPDATE against
+// items.
 func TestLastActivityAfterCreateDepStrictlyExceedsItemsUpdatedAt(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)

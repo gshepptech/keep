@@ -172,13 +172,13 @@ func TestUnclaimIsTheThirdExitFromInProgress(t *testing.T) {
 	})
 }
 
-// TestUnclaimRequireOwnClaimRefusesAnotherSessionsClaim covers the half of
-// this verb that exists so it can be exposed over MCP at all. Unrestricted,
-// unclaim can take work away from a live agent, which is why it stayed a
-// CLI-only capability for a person who can see that the holding agent is
-// gone. RequireOwnClaim is what makes an agent releasing ITS OWN claim a
-// different, safe operation -- and it must be unreachable over the wire, or
-// it is not a restriction at all.
+// TestUnclaimRequireOwnClaimRefusesAnotherSessionsClaim checks that with
+// RequireOwnClaim set, unclaim refuses a claim held by a different session.
+// Unrestricted, unclaim can take work away from a live agent, which is why
+// that form stays a CLI capability for a person who can see the holding
+// agent is gone. RequireOwnClaim makes an agent releasing its own claim a
+// different, safe operation, and it must be unreachable over the wire to
+// mean anything.
 func TestUnclaimRequireOwnClaimRefusesAnotherSessionsClaim(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)

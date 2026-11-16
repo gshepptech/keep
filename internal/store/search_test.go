@@ -33,7 +33,8 @@ func TestSearchFindsAnItemByAnyOfItsText(t *testing.T) {
 	}
 }
 
-// TestSearchIsCaseInsensitive. Nobody remembers the capitalisation.
+// TestSearchIsCaseInsensitive checks that a query matches regardless of
+// case, because nobody remembers the capitalisation.
 func TestSearchIsCaseInsensitive(t *testing.T) {
 	st, ctx := openTestStore(t), context.Background()
 	mustAdd(t, st, AddItemInput{Title: "Expire Refresh TOKENS", Actor: "a"})
@@ -77,8 +78,9 @@ func TestSearchTreatsWildcardsAsLiteralText(t *testing.T) {
 	}
 }
 
-// TestSearchLeavesClosedWorkOutUnlessAsked. The common search is for live
-// work; a store's whole history buries it.
+// TestSearchLeavesClosedWorkOutUnlessAsked checks that closed and dropped
+// items are excluded unless the filter includes them. The common search is
+// for live work, and a store's full history would bury it.
 func TestSearchLeavesClosedWorkOutUnlessAsked(t *testing.T) {
 	st, ctx := openTestStore(t), context.Background()
 	live := mustAdd(t, st, AddItemInput{Title: "token work, live", Actor: "a"})
@@ -104,7 +106,8 @@ func TestSearchLeavesClosedWorkOutUnlessAsked(t *testing.T) {
 	}
 }
 
-// TestSearchRefusesAnEmptyQuery. An empty search is a request for the whole
+// TestSearchRefusesAnEmptyQuery checks that an empty query is an error. An
+// empty search is a request for the whole
 // store, which `list` already answers; answering it here would make an
 // accidental empty box look like a working search.
 func TestSearchRefusesAnEmptyQuery(t *testing.T) {
@@ -184,8 +187,8 @@ func TestSearchShowsTheTextAroundAMatch(t *testing.T) {
 	}
 }
 
-// TestSearchDoesNotEllipsiseWhatItShowedWhole. A short field is returned
-// whole; decorating it with ellipses would claim text was hidden when none
+// TestSearchDoesNotEllipsiseWhatItShowedWhole checks that a short field's
+// snippet carries no ellipses, which would claim text was hidden when none
 // was.
 func TestSearchDoesNotEllipsiseWhatItShowedWhole(t *testing.T) {
 	st, ctx := openTestStore(t), context.Background()

@@ -11,12 +11,10 @@ import (
 
 // TestInitCreatesSchema proves a fresh Init produces items, deps,
 // events, meta, the ready view, the full-text index and its triggers, and
-// meta.schema_version is this binary's. Object
-// presence is asserted directly against sqlite_master (name + type), not
-// inferred by trying an operation -- and the ready view is separately
-// queried, because a view with a broken body succeeds at CREATE time and
-// only fails when selected from, so sqlite_master presence alone would not
-// be proof.
+// meta.schema_version is this binary's. Object presence is asserted
+// directly against sqlite_master (name + type), not inferred by trying an
+// operation, and the ready view is separately queried, because a view with
+// a broken body succeeds at CREATE time and only fails when selected from.
 func TestInitCreatesSchema(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "db.sqlite")
 
@@ -37,7 +35,7 @@ func TestInitCreatesSchema(t *testing.T) {
 		// The full-text index and the three triggers that keep it in step
 		// with items. A store missing any of them still opens and still
 		// answers every query except `search`, which quietly returns
-		// nothing for items it should find -- so their presence is asserted
+		// nothing for items it should find. So their presence is asserted
 		// here rather than left to the search tests, which pass on a
 		// LIKE-only fallback too.
 		"items_fts":              "table",
@@ -82,8 +80,8 @@ func TestInitCreatesSchema(t *testing.T) {
 // init, write a canary items row directly (raw SQL is in-bounds in the store
 // package's own tests), init again, and confirm the row survives, still
 // appears in ready, and meta still holds exactly one schema_version row.
-// Existence checks alone are not enough -- the row-survival assertion is
-// the point.
+// Existence checks alone would miss a second init that wiped the data,
+// which the row-survival assertion catches.
 func TestInitIsIdempotentAndPreservesData(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "db.sqlite")
 
@@ -173,9 +171,9 @@ func TestOpenRejectsSchemaDrift(t *testing.T) {
 }
 
 // TestOpenRejectsUninitializedPath proves Open on a path that was never
-// initialized fails rather than presenting an empty store as valid -- a
+// initialized fails rather than presenting an empty store as valid. A
 // default read-write sql.Open fabricates an empty database file, and this
-// is what stops that from looking like success.
+// keeps that from looking like success.
 func TestOpenRejectsUninitializedPath(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "never-initialized.sqlite")
 
@@ -191,8 +189,8 @@ func TestOpenRejectsUninitializedPath(t *testing.T) {
 // TestInitDDLIsAtomic drives withTx's rollback against real DDL, proving the
 // "applied in one transaction" claim rather than asserting it in a comment.
 // The second statement is syntactically valid and fails only at execution
-// time -- a syntax error could be rejected before the first statement ever
-// ran, which would make this pass vacuously.
+// time, because a syntax error could be rejected before the first statement
+// ever ran, which would make this pass vacuously.
 func TestInitDDLIsAtomic(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "db.sqlite")
 

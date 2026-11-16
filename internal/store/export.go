@@ -21,7 +21,7 @@ const ExportFormat = 1
 // Record kinds, one per table. `meta` is deliberately absent: the header
 // already carries schema_version, and re-importing a meta table over a store
 // Init has just written would let a file overwrite the version of the store
-// reading it -- which is how an import turns into a corruption.
+// reading it, which would corrupt it.
 const (
 	recordHeader = "header"
 	recordItem   = "item"
@@ -70,21 +70,21 @@ type kindOnly struct {
 // Export writes the whole store to w as JSONL: one header line, then one
 // line per item, dep and event.
 //
-// # What this is, and what it deliberately is not
+// # What this is, and what it is not
 //
 // It is a round-trip. Export a store, import it into an empty one, and the
-// two hold the same rows -- that is the entire contract, and
-// TestExportImportRoundTripsEveryRow is what holds it.
+// two hold the same rows. That is the contract, and
+// TestExportImportRoundTripsEveryRow checks it.
 //
-// It is NOT sync. There is no merge, no conflict resolution, no
+// It is not sync. There is no merge, no conflict resolution, no
 // three-way anything, and Import refuses a store that already has items in
 // it rather than guessing what to do about a collision. Sharing a live store
 // between machines stays out of scope; this covers the three things people
 // actually need: backing a store up, moving one between machines, and
 // reading what is in one without this binary.
 //
-// Ordering is deterministic -- items by id, deps by their primary key,
-// events by their autoincrement id -- so two exports of an unchanged store
+// Ordering is deterministic (items by id, deps by their primary key,
+// events by their autoincrement id), so two exports of an unchanged store
 // are byte-identical and a diff between two exports means something.
 //
 // Events keep their ids. They are an append-only audit log whose ids are
@@ -202,25 +202,24 @@ type ImportSummary struct {
 //
 // Merging two stores means deciding what to do when both contain an item
 // with the same id and different bodies, and there is no answer to that
-// which is not a sync product. Refusing is not a limitation to be lifted
-// later by relaxing this check -- it is the boundary that keeps this a
-// round-trip. See ErrStoreNotEmpty.
+// which is not a sync product. Refusing is the boundary that keeps this a
+// round-trip, not a limitation to relax. See ErrStoreNotEmpty.
 //
 // # Everything lands in one transaction
 //
 // A half-imported store is worse than a failed import: it looks like a
 // working store and is missing rows nothing will tell you about. Foreign
-// keys are deferred for the duration -- items reference their own parents
+// keys are deferred for the duration: items reference their own parents
 // and deps reference items, so no ordering of the input can satisfy every
 // constraint row by row, and an import that required one would reject valid
 // exports of valid stores.
 //
-// The rows are written EXACTLY as they appear, through plain INSERTs.
+// The rows are written exactly as they appear, through plain INSERTs.
 // Import does not call AddItem or CreateDep: those allocate ids, derive
 // scores, write events and enforce transitions, all of which would rewrite
 // the very data being restored. This is the one place in the package that
 // writes an items row without going through the item lifecycle, and it is
-// correct here for the same reason it would be wrong anywhere else -- the
+// correct here for the same reason it would be wrong anywhere else: the
 // lifecycle already ran, on the machine this file came from.
 func (s *Store) Import(ctx context.Context, r io.Reader) (ImportSummary, error) {
 	empty, err := s.isEmpty(ctx)

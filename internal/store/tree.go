@@ -10,42 +10,35 @@ import (
 
 // treeCTE walks DOWN the parent-child tree from a bound root id. It is
 // appended to blockedTreeCTE (which already opens `WITH RECURSIVE`), so
-// Tree carries no second copy of the blocking recursion -- Tree is
+// Tree carries no second copy of the blocking recursion. Tree is
 // blockedTreeCTE's fifth consumer, after Ready's view, Blocked, IsBlocked
-// and isBlockedTx. That shared constant is the whole reason the tree view
-// and `keep ready` cannot disagree about which items are blocked; a second,
-// independently written recursion here would be the one way to make that
-// claim false.
+// and isBlockedTx, and that shared constant is why the tree view and
+// `keep ready` cannot disagree about which items are blocked.
 //
-// THE DIRECTION TRAP. parent-child rows are (item_id = child,
-// depends_on_id = parent). Walking DOWN therefore joins the recursive step
-// on `d.depends_on_id = t.item_id` -- the OPPOSITE of
-// parentChildCycleCheckSQL in items.go, which joins on `d.item_id = anc.id`
-// because it walks UP. items.go is the only descending/ascending CTE
-// precedent in this package, so copying its join direction here is the
-// natural mistake. It does not error: the wrong-direction query on a real
-// three-item tree returns exactly ONE row (the root), silently -- a tree
-// view rendering a
-// single node looks like an empty roadmap, not a defect. tree_test.go
-// asserts descendant COUNT for exactly this reason.
+// Direction matters. parent-child rows are (item_id = child, depends_on_id
+// = parent). Walking down therefore joins the recursive step on
+// `d.depends_on_id = t.item_id`, the opposite of parentChildCycleCheckSQL in
+// items.go, which joins on `d.item_id = anc.id` because it walks up. The
+// wrong direction does not error: on a three-item tree it silently returns
+// one row (the root), and a tree view rendering a single node looks like an
+// empty roadmap, not a defect. tree_test.go asserts descendant count for
+// that reason.
 //
 // path is a materialised depth-first sort key: the parent's path plus the
 // child's zero-padded ordinal. ORDER BY path (a plain TEXT sort) reproduces
-// exact tree reading order, so no caller sorts anything. The depth bound mirrors
-// the ready view's own, and both come from MaxDepth (depth.go): `dep` refuses to create a parent-child cycle
-// at write time, but the cost of being wrong is an unbounded loop inside a
-// browser request.
+// exact tree reading order, so no caller sorts anything. The depth bound
+// mirrors the ready view's own, and both come from MaxDepth (depth.go):
+// `dep` refuses to create a parent-child cycle at write time, but the cost
+// of being wrong is an unbounded loop inside a browser request.
 //
-// blocked_nearest is not optional and is not decoration. blocked_tree
-// (blockedTreeCTE, above) is deliberately NOT deduplicated across multiple
-// independent blocking ancestors -- its own doc comment says so. A plain
-// `LEFT JOIN blocked_tree` therefore MULTIPLIES tree rows: a three-item
-// tree where the epic and its child are each blocked by a different open
-// item produces 5 rows via a naive join, and exactly 3 (one per item, each
-// naming the nearer ancestor) via the ROW_NUMBER()-per-item dedup below.
-// Window functions are confirmed working on this project's pinned
-// modernc.org/sqlite v1.56.0. Do NOT substitute `GROUP BY item_id` +
-// bare-column `MIN(depth)`: it depends on SQLite's single-`min()`
+// blocked_nearest is required. blocked_tree (blockedTreeCTE, above) is not
+// deduplicated across multiple independent blocking ancestors, as its own
+// doc comment says, so a plain `LEFT JOIN blocked_tree` multiplies tree
+// rows: a three-item tree where the epic and its child are each blocked by
+// a different open item produces 5 rows via a naive join, and exactly 3
+// (one per item, each naming the nearer ancestor) via the
+// ROW_NUMBER()-per-item dedup below. `GROUP BY item_id` with bare-column
+// `MIN(depth)` would not work: it depends on SQLite's single-`min()`
 // bare-column special case, and this query names `MIN(depth)` twice, which
 // that special case does not cover.
 var treeCTE = expandDepthSQL(`,
@@ -71,21 +64,20 @@ var treeCTE = expandDepthSQL(`,
 // Tree returns rootID and every descendant beneath it in the parent-child
 // tree, depth-first, each annotated with its depth and blocked state.
 //
-// It walks `deps` where type = 'parent-child', NEVER items.parent_id. The
+// It walks `deps` where type = 'parent-child', never items.parent_id. The
 // two are written together in one transaction (items.go's dual write) and
-// the shipped ready view reads only deps for structure -- a tree built from
+// the ready view reads only deps for structure, so a tree built from
 // parent_id would agree with every parent_id assertion while disagreeing
 // with `ready` about the same hierarchy.
 //
-// Closed and dropped descendants are INCLUDED. A tree that hides closed
+// Closed and dropped descendants are included. A tree that hides closed
 // children misrepresents the shape of the work; the renderer may dim them,
 // the query does not decide they do not exist.
 //
 // An unknown rootID returns ErrNotFound wrapped with the id, matching
-// GetItem's precedent rather than returning an empty slice and a nil error
-// -- the query itself simply produces zero rows for an unknown root, so the
-// check must be explicit here. The
-// alternative would make a typo'd id render an empty page and exit 0.
+// GetItem rather than returning an empty slice and a nil error. The query
+// itself produces zero rows for an unknown root, so the check is explicit
+// here; otherwise a typo'd id would render an empty page and exit 0.
 func (s *Store) Tree(ctx context.Context, rootID string) ([]model.TreeNode, error) {
 	query := blockedTreeCTE + treeCTE + `
 SELECT t.depth, ` + itemColumns + `,
@@ -115,9 +107,9 @@ ORDER BY t.path`
 
 // scanTreeNodes scans rows produced by Tree's query: a leading depth column,
 // itemColumns, then trailing blocked/blocked_by columns. It is a local loop
-// rather than a call to scanItems -- Tree's row carries a leading depth and
-// two trailing columns scanItems does not expect, the same reason Blocked's
-// own scan loop does not call scanItems either.
+// rather than a call to scanItems, because Tree's row carries a leading depth
+// and two trailing columns scanItems does not expect, the same reason
+// Blocked's own scan loop does not call scanItems either.
 func scanTreeNodes(rows *sql.Rows) ([]model.TreeNode, error) {
 	out := []model.TreeNode{}
 	for rows.Next() {

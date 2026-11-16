@@ -19,10 +19,10 @@ import (
 var (
 	// ErrParentChildViaDep is returned when CreateDep is asked to write a
 	// parent-child edge directly. `add --parent` is the single writer of
-	// parent-child structure --
-	// insertParentChildEdge in items.go is its only call site -- so
-	// items.parent_id and the deps tree can never disagree. `dep` must name
-	// the correct command rather than fail obscurely on a CHECK violation.
+	// parent-child structure (insertParentChildEdge in items.go is its only
+	// call site), so items.parent_id and the deps tree can never disagree.
+	// `dep` names the correct command rather than failing obscurely on a
+	// CHECK violation.
 	ErrParentChildViaDep = errors.New("parent-child structure is created by `keep add --parent <id>`; `dep` does not reparent items")
 
 	// ErrSelfEdge is returned when ItemID == DependsOnID, for every dep type
@@ -30,8 +30,8 @@ var (
 	ErrSelfEdge = errors.New("dep: an item cannot depend on itself")
 
 	// ErrInvalidDepType is returned when Type is outside the closed
-	// vocabulary blocks/parent-child/related/derived-from. Checked
-	// against model.ValidDepTypes before any SQL runs -- the schema's own
+	// vocabulary blocks/parent-child/related/derived-from. It is checked
+	// against model.ValidDepTypes before any SQL runs. The schema's own
 	// CHECK constraint would also refuse an invalid type, but only with
 	// extended code 275 and a driver message that does not name the
 	// vocabulary a caller needs to see.
@@ -56,8 +56,8 @@ type DepInput struct {
 }
 
 // depEventPayload is the JSON body of the one `dep` event CreateDep writes,
-// naming the edge created. ItemID is not repeated in the payload -- it is
-// already the event's own item_id column.
+// naming the edge created. ItemID is not repeated in the payload, because
+// it is already the event's own item_id column.
 type depEventPayload struct {
 	DependsOnID string `json:"depends_on_id"`
 	Type        string `json:"type"`
@@ -65,10 +65,10 @@ type depEventPayload struct {
 
 // CreateDep writes one deps row and one events row, inside a single
 // transaction, for any of the three types `dep` is allowed to write directly
-// (blocks, related, derived-from). parent-child is deliberately refused --
-// see ErrParentChildViaDep -- because insertParentChildEdge (items.go),
-// reached only through AddItem's `--parent` handling, is that edge type's
-// single writer.
+// (blocks, related, derived-from). parent-child is refused (see
+// ErrParentChildViaDep) because insertParentChildEdge (items.go), reached
+// only through AddItem's `--parent` handling, is that edge type's single
+// writer.
 //
 // Validation order, all before the transaction opens: Actor required, Type
 // in the closed vocabulary, Type != parent-child, ItemID != DependsOnID.

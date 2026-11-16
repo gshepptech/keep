@@ -9,13 +9,13 @@ import (
 	"github.com/gshepptech/keep/internal/model"
 )
 
-// containsID (deps_test.go) reports whether ids contains id -- reused here
-// for TestCloseAndDropAreDistinguishable's ready-membership assertions.
+// containsID (deps_test.go) reports whether ids contains id. It is reused
+// here for TestCloseAndDropAreDistinguishable's ready-membership assertions.
 
 // TestStartItemStateTable has one subtest per row of StartItem's six-row
-// state table, each with its own fixture -- a
-// shared fixture mutated across subtests would make a failure in one row
-// cascade into later rows and hide which one actually broke. Every subtest
+// state table, each with its own fixture, because a shared fixture mutated
+// across subtests would make a failure in one row cascade into later rows
+// and hide which one actually broke. Every subtest
 // asserts the returned error (or nil), the resulting status, and the
 // change in event count.
 func TestStartItemStateTable(t *testing.T) {
@@ -160,9 +160,9 @@ func TestStartItemStateTable(t *testing.T) {
 
 // TestStartItemSameSessionKeepsOriginalClaimTime pins nowFunc to two
 // distinct values across the initial claim and the same-session retry,
-// proving the retry returns the ORIGINAL claim time rather than the retry's
-// own timestamp -- a wall-clock-timing version of this test could pass by
-// coincidence if both calls happened to land in the same instant.
+// proving the retry returns the original claim time rather than the retry's
+// own timestamp. A wall-clock version of this test could pass by
+// coincidence if both calls landed in the same instant.
 func TestStartItemSameSessionKeepsOriginalClaimTime(t *testing.T) {
 	s := openTestStore(t)
 	item := mustAdd(t, s, AddItemInput{Title: "claim-time-fixture", Actor: "tester"})
@@ -193,8 +193,8 @@ func TestStartItemSameSessionKeepsOriginalClaimTime(t *testing.T) {
 
 // TestCloseAndDropAreDistinguishable proves close and drop both remove an
 // item from ready and remain distinguishable by both items.status and
-// events.kind -- a shared kind would defeat the reason close and
-// drop are separate verbs.
+// events.kind. A shared kind would defeat the reason close and drop are
+// separate verbs.
 func TestCloseAndDropAreDistinguishable(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
@@ -287,7 +287,7 @@ func TestUpdateRecomputesScore(t *testing.T) {
 		if err != nil {
 			t.Fatalf("UpdateItem: %v", err)
 		}
-		const wantNew = 21 // 5+5-0+11 -- effort dropped by 5, score rises by exactly 5
+		const wantNew = 21 // 5+5-0+11: effort dropped by 5, score rises by exactly 5
 		if got.Score != wantNew {
 			t.Fatalf("Score = %d, want %d (delta of exactly %d)", got.Score, wantNew, wantNew-wantOriginal)
 		}
@@ -311,8 +311,8 @@ func TestUpdateRecomputesScore(t *testing.T) {
 }
 
 // TestUpdateRejectsEmptyChangeSet proves UpdateItem with no fields set is a
-// caller error, not a silent no-op -- and that it
-// writes nothing and leaves the row unchanged.
+// caller error, not a silent no-op, and that it writes nothing and leaves
+// the row unchanged.
 func TestUpdateRejectsEmptyChangeSet(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
@@ -342,11 +342,9 @@ func TestUpdateRejectsEmptyChangeSet(t *testing.T) {
 // TestStartRecordsWhoClaimedIt checks that start records the claiming actor
 // on the item.
 //
-// Found by looking at a real board: an item claimed from the page showed
-// "nobody -- claimed from the board" in the column headed "Claimed by". The
-// claim was recorded in the event trail but never on the item, so every
-// view that asks who is working on something had to answer "nobody" about
-// work a person had just picked up.
+// A claim recorded only in the event trail would leave every view that asks
+// who is working on something answering "nobody" about work a person has
+// just picked up.
 func TestStartRecordsWhoClaimedIt(t *testing.T) {
 	st, ctx := openTestStore(t), context.Background()
 	item := mustAdd(t, st, AddItemInput{Title: "a thing to claim", Actor: "someone"})
@@ -370,9 +368,10 @@ func TestStartRecordsWhoClaimedIt(t *testing.T) {
 	}
 }
 
-// TestStartLeavesAnExistingAssigneeAlone. Assigning work to someone and
-// then claiming it yourself is a real sequence; the claim must not quietly
-// reassign it. The event trail already names who did the claiming.
+// TestStartLeavesAnExistingAssigneeAlone checks that start keeps an assignee
+// already on the item. Assigning work to someone and then claiming it
+// yourself is a real sequence, and the event trail already names who did
+// the claiming.
 func TestStartLeavesAnExistingAssigneeAlone(t *testing.T) {
 	st, ctx := openTestStore(t), context.Background()
 	assigned := "rae"

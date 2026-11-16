@@ -31,27 +31,26 @@ var nowFunc = model.Now
 // permanent conflict returns ErrConflict instead of looping forever.
 const maxIDAttempts = 8
 
-// AddItemInput is the argument to AddItem. Actor is required -- the audit
+// AddItemInput is the argument to AddItem. Actor is required: the audit
 // trail means nothing if actor can be silently empty, so AddItem rejects ""
 // before doing any work. Type defaults to "task" and Stage to "ticket" when
 // left unset: `add` creates tickets directly; `capture` is what creates
 // stage=raw items.
 //
-// json tags: this struct doubles as the `add`/`capture` MCP tools'
-// wire type directly (internal/mcp), which is why every field carries a
-// snake_case tag. This changes nothing for Go callers -- every construction
-// site in this module and cmd/keep uses named fields, which struct tags do
-// not affect. Two tags are `json:"-"`, deliberately: SessionID is a
-// server-lifetime property (one MCP server process serves one agent
-// session), never a per-call argument, so it can never be supplied over the
-// wire under any spelling. Stage is also `json:"-"` because the VERB chooses
-// the stage, not an argument: `capture` pre-seeds Stage: model.StageRaw;
-// `add` leaves it zero and AddItem defaults it to "ticket". If `stage` were
-// wire-settable, `capture` -- whose whole contract is "this is raw" -- could
-// be told to make a ticket, collapsing the two tools into one with a mode
-// argument. This is an accepted CLI/MCP surface difference: the CLI's `add`
-// has a `--stage` flag; the MCP `add` tool does not. An agent that wants a
-// raw item calls `capture`, which is the verb for it.
+// json tags: this struct doubles as the `add`/`capture` MCP tools' wire type
+// directly (internal/mcp), which is why every field carries a snake_case tag.
+// This changes nothing for Go callers, because every construction site in this
+// module and cmd/keep uses named fields, which struct tags do not affect. Two
+// tags are `json:"-"`: SessionID is a server-lifetime property (one MCP server
+// process serves one agent session), never a per-call argument, so it can
+// never be supplied over the wire under any spelling. Stage is also `json:"-"`
+// because the verb chooses the stage, not an argument: `capture` pre-seeds
+// Stage: model.StageRaw; `add` leaves it zero and AddItem defaults it to
+// "ticket". If `stage` were wire-settable, `capture`, whose contract is "this
+// is raw", could be told to make a ticket, collapsing the two tools into one
+// with a mode argument. This is an accepted CLI/MCP surface difference: the
+// CLI's `add` has a `--stage` flag; the MCP `add` tool does not. An agent that
+// wants a raw item calls `capture`, which is the verb for it.
 type AddItemInput struct {
 	Title       string   `json:"title"`
 	Actor       string   `json:"actor,omitempty"`
@@ -76,7 +75,7 @@ type AddItemInput struct {
 
 // generateRootID derives a root item's id from a hash of its title,
 // createdAt, and a retry attempt number, truncated to 3 bytes (6 hex chars,
-// 24 bits = rnc-<6 hex>). This is not a security boundary -- sha256 is used
+// 24 bits = rnc-<6 hex>). This is not a security boundary: sha256 is used
 // only because its output is already a well-distributed byte stream needing
 // no further mixing before truncation. The retry loop this feeds is not
 // defensive padding: birthday-bound collision probability crosses ~1% around
@@ -124,9 +123,10 @@ func itemExists(ctx context.Context, tx *sql.Tx, id string) (bool, error) {
 // a real 4-node tree in both the positive and negative case. :b (first
 // placeholder) is the prospective PARENT, :a (second placeholder) the
 // prospective CHILD: it asks "is the prospective child already an ancestor
-// of the prospective parent?" -- if so, the candidate edge would close the
-// loop. The argument order is the whole test; swapping it silently allows
-// every cycle it exists to catch.
+// of the prospective parent?" If so, the candidate edge would close the
+// loop. Swapping the argument order silently allows every cycle it exists
+// to catch.
+//
 // The depth bound matches the ready view's own guard and stays for the same
 // reason: the cost of being wrong is an infinite loop inside a user's shell.
 // It is written once, in MaxDepth (depth.go), and substituted here so the
@@ -147,23 +147,22 @@ WITH RECURSIVE ancestors(id, depth) AS (
 SELECT 1 FROM ancestors WHERE id = ? LIMIT 1`)
 
 // insertParentChildEdge writes the deps row that makes a parent-child
-// relationship visible to the ready view. THE SHIPPED ready VIEW READS ONLY
-// deps (WHERE type = 'parent-child'); IT NEVER CONSULTS items.parent_id.
-// AddItem sets items.parent_id/ordinal for id derivation and ordinal
-// allocation ONLY -- omitting this row leaves items.parent_id looking
-// correct while blocking propagation down the tree silently does nothing
-// for this child, with no error anywhere.
+// relationship visible to the ready view. The ready view reads only deps
+// (WHERE type = 'parent-child') and never consults items.parent_id.
+// AddItem sets items.parent_id/ordinal only for id derivation and ordinal
+// allocation, so omitting this row leaves items.parent_id looking correct
+// while blocking propagation down the tree silently does nothing for this
+// child, with no error anywhere.
 //
 // Before writing, it runs parentChildCycleCheckSQL and returns ErrCycle,
 // writing nothing, if childID is already an ancestor of parentID. This guard
-// is reachable ONLY through add --parent today: CreateDep (deps.go) refuses
-// to write parent-child edges directly (ErrParentChildViaDep), which is
-// exactly what makes this the only call site that can ever place a
-// parent-child row. If a reparent command is ever added, the guard must move
-// with this helper, not be re-derived at a second call site. BEGIN IMMEDIATE
-// (this Store's DSN) fully serializes writers, so there is no TOCTOU window
-// between this check and the insert below -- both run inside the same
-// transaction the caller's withTx provides.
+// is reachable only through add --parent: CreateDep (deps.go) refuses to
+// write parent-child edges directly (ErrParentChildViaDep), which makes
+// this the only call site that can place a parent-child row. A reparent
+// command would need to reuse this helper so the guard travels with it.
+// BEGIN IMMEDIATE (this Store's DSN) fully serializes writers, so there is
+// no TOCTOU window between this check and the insert below: both run
+// inside the same transaction the caller's withTx provides.
 func insertParentChildEdge(ctx context.Context, tx *sql.Tx, childID, parentID, actor, createdAt string) error {
 	if err := checkParentChildDepth(ctx, tx, childID, parentID); err != nil {
 		return err
@@ -185,10 +184,10 @@ func insertParentChildEdge(ctx context.Context, tx *sql.Tx, childID, parentID, a
 	return err
 }
 
-// insertEdge writes one deps row of the given type -- 'blocks' or
+// insertEdge writes one deps row of the given type, 'blocks' or
 // 'derived-from' here (parent-child goes through insertParentChildEdge,
-// which is deliberately the only writer of that type). Direction is fixed
-// by the shipped ready view, not by English: a row (item_id=A,
+// which is the only writer of that type). Direction is fixed by the ready
+// view, not by English: a row (item_id=A,
 // depends_on_id=B, type='blocks') means "A is blocked until B closes"
 // (the ready view's blocked_directly CTE). So add --blocks <id>
 // means the NEW item is blocked until <id> closes, and inserts
@@ -215,12 +214,12 @@ type addEventPayload struct {
 // The title is the only field every surface displays: `ready`, `list`,
 // `search`, the board's rows, the MCP tools' output. An item without one is
 // not a partially-filled record, it is a hole in the queue that can only be
-// referred to by id -- and the id is deliberately an opaque handle nobody
-// reads. Every other field on an item is optional, and this one cannot be.
+// referred to by id, and the id is an opaque handle nobody reads. Every
+// other field on an item is optional, and this one cannot be.
 //
-// Guarded in the store rather than in each command because there are five
-// places that build an AddItemInput -- add, capture, two MCP tools and the
-// board -- and the rule should not be four-fifths true.
+// It is guarded in the store rather than in each command because five
+// places build an AddItemInput (add, capture, two MCP tools and the board),
+// and the rule must hold for all of them.
 //
 // Whitespace counts as empty. A title of "   " is exactly as unreadable as
 // "" in every list that renders it, and accepting one while rejecting the
@@ -230,12 +229,11 @@ var ErrEmptyTitle = errors.New("an item needs a title: it is the only field ever
 // ErrScoreOutOfRange is returned when a scoring input falls outside
 // model.ScoreMin..ScoreMax.
 //
-// It is enforced HERE rather than at each surface because the surfaces do not
-// all validate: cmd/keep's flag parser did, and the MCP tools did not, so an
-// agent could file effort=100 and land the item below unscored work. The MCP
-// schema now advertises the bounds, but the SDK does not validate arguments
-// against InputSchema at all -- a published enum was confirmed ignored on a
-// real call (internal/mcp/input.go) -- so the schema steers and this refuses.
+// It is enforced here rather than at each surface so that every surface
+// refuses the same values. Without it an agent could file effort=100 over
+// MCP and land the item below unscored work. The MCP schema advertises the
+// bounds, but the SDK does not validate arguments against InputSchema (see
+// internal/mcp/input.go), so the schema steers and this refuses.
 var ErrScoreOutOfRange = fmt.Errorf("value, confidence and effort must each be %d-%d", model.ScoreMin, model.ScoreMax)
 
 // checkScoreRange refuses any supplied scoring input outside the range. A nil
@@ -256,7 +254,7 @@ func checkScoreRange(value, confidence, effort *int) error {
 	return nil
 }
 
-// AddItem creates a new item -- root or child -- inside one transaction:
+// AddItem creates a new item, root or child, inside one transaction:
 // hierarchical id allocation, the dual parent-child write, blocks/
 // derived-from edges, the computed score, and exactly one `add` event. The
 // returned model.Item is constructed from the values just written rather
@@ -354,14 +352,13 @@ func (s *Store) AddItem(ctx context.Context, in AddItemInput) (model.Item, error
 			}
 		} else {
 			// Child id and ordinal allocation. The read (MAX(ordinal)) and
-			// the insert happen in this same transaction -- never split
-			// across two withTx calls. Retrying on SQLITE_CONSTRAINT_UNIQUE
-			// (2067) exists so a future refactor that splits the read from
-			// the write fails loudly instead of allocating a duplicate
-			// ordinal; concurrent inserts do not reach this branch today,
-			// because BEGIN IMMEDIATE blocks a second writer
-			// inside its own BeginTx until the first commits. Do not
-			// delete this branch as dead code.
+			// the insert happen in this same transaction, never split across
+			// two withTx calls. The retry on SQLITE_CONSTRAINT_UNIQUE (2067)
+			// makes a change that splits the read from the write fail
+			// loudly instead of allocating a duplicate ordinal. Concurrent
+			// inserts do not reach this branch, because BEGIN IMMEDIATE
+			// blocks a second writer inside its own BeginTx until the first
+			// commits, so the branch is a guard, not dead code.
 			for attempt := 0; ; attempt++ {
 				if attempt >= maxIDAttempts {
 					return fmt.Errorf("AddItem: allocate child ordinal: exhausted %d attempts: %w", maxIDAttempts, ErrConflict)
@@ -386,8 +383,8 @@ func (s *Store) AddItem(ctx context.Context, in AddItemInput) (model.Item, error
 				return execErr
 			}
 
-			// THE DUAL PARENT-CHILD WRITE. items.parent_id/ordinal (above)
-			// are structural only -- the ready view never reads them. This
+			// The dual parent-child write. items.parent_id/ordinal (above)
+			// are structural only; the ready view never reads them. This
 			// deps row is the only thing ready/blocked actually consult
 			// for tree-shaped blocking propagation. Omitting it silently
 			// disables blocking propagation for this child with no error.
@@ -455,7 +452,7 @@ func (s *Store) AddItem(ctx context.Context, in AddItemInput) (model.Item, error
 }
 
 // insertItem is the one INSERT INTO items statement AddItem uses for both
-// the root and child cases -- parentID/ordinal are nil for a root. repo,
+// the root and child cases; parentID/ordinal are nil for a root. repo,
 // paths, and assignee are converted from "" to a driver nil so an unset
 // flag stores SQL NULL rather than the empty string.
 func insertItem(ctx context.Context, tx *sql.Tx, id string, parentID *string, ordinal *int, stage, itemType, title, body, acceptance string, value, confidence, effort *int, score int, why, repo, paths, assignee, now string) error {

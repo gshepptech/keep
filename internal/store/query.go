@@ -14,14 +14,14 @@ import (
 //
 // Direction: deps(item_id = A, depends_on_id = B) reads "A depends on
 // B". So for item X:
-//   - DependsOn = rows WHERE item_id = X -- what X is waiting on, what X is
+//   - DependsOn = rows WHERE item_id = X: what X is waiting on, what X is
 //     a child of, what X was derived from.
-//   - DependedOnBy = rows WHERE depends_on_id = X -- what is waiting on X,
+//   - DependedOnBy = rows WHERE depends_on_id = X: what is waiting on X,
 //     X's children, what was derived from X.
 //
 // An unknown id returns ErrNotFound wrapped with the id, not a zero
-// ItemDetail and a nil error -- the latter is the failure mode that would
-// make `show` print an empty block and exit 0.
+// ItemDetail and a nil error, which would make `show` print an empty block
+// and exit 0.
 func (s *Store) GetItem(ctx context.Context, id string) (model.ItemDetail, error) {
 	var out model.ItemDetail
 
@@ -39,8 +39,8 @@ func (s *Store) GetItem(ctx context.Context, id string) (model.ItemDetail, error
 	}
 	out.Item = items[0]
 
-	// DependsOn: what this item is item_id for -- what it is waiting on,
-	// what it is a child of, what it was derived from.
+	// DependsOn: the rows where this item is item_id, meaning what it is
+	// waiting on, what it is a child of, and what it was derived from.
 	dependsOn, err := queryDeps(ctx, s.db,
 		`SELECT item_id, depends_on_id, type, created_at, created_by FROM deps WHERE item_id = ? ORDER BY type, depends_on_id`, id)
 	if err != nil {
@@ -48,8 +48,8 @@ func (s *Store) GetItem(ctx context.Context, id string) (model.ItemDetail, error
 	}
 	out.DependsOn = dependsOn
 
-	// DependedOnBy: what this item is depends_on_id for -- what is waiting
-	// on it, its children, what was derived from it.
+	// DependedOnBy: the rows where this item is depends_on_id, meaning what
+	// is waiting on it, its children, and what was derived from it.
 	dependedOnBy, err := queryDeps(ctx, s.db,
 		`SELECT item_id, depends_on_id, type, created_at, created_by FROM deps WHERE depends_on_id = ? ORDER BY type, item_id`, id)
 	if err != nil {
@@ -60,9 +60,9 @@ func (s *Store) GetItem(ctx context.Context, id string) (model.ItemDetail, error
 	// Ordered by id, not by at. id is INTEGER PRIMARY KEY AUTOINCREMENT and
 	// is monotonic within a store; at is a TEXT column that can tie when two
 	// events land in the same transaction (no caller writes two events in
-	// one transaction today, but one could), and a tied sort
-	// on at would make the history's order between those two rows
-	// non-deterministic -- id has no such tie, ever.
+	// one transaction, but one could), and a tied sort on at would make the
+	// history's order between those two rows non-deterministic. id never
+	// ties.
 	events, err := queryEvents(ctx, s.db, id)
 	if err != nil {
 		return model.ItemDetail{}, fmt.Errorf("GetItem: Events: %w", err)
@@ -120,12 +120,12 @@ func queryEvents(ctx context.Context, db *sql.DB, itemID string) ([]model.Event,
 	return out, nil
 }
 
-// ListFilter's zero value means "no filter" -- an empty field is omitted
+// ListFilter's zero value means "no filter": an empty field is omitted
 // from the WHERE clause entirely rather than bound as ”. Filters compose as
 // AND.
 //
 // json tags: this struct doubles as the `list` MCP tool's wire type
-// directly (internal/mcp). Every field is optional -- a bare `list` with no
+// directly (internal/mcp). Every field is optional, so a bare `list` with no
 // arguments is legal and matches every existing caller's zero-value use.
 // Tags are additive and behaviourally inert for Go callers, all of which
 // construct this struct with named fields.
@@ -151,20 +151,19 @@ type ListFilter struct {
 	Limit int `json:"limit,omitempty"`
 }
 
-// ListItems queries items directly -- never the ready view -- so `list`
-// can show raw items and closed/dropped items alike, which ready/blocked
-// deliberately cannot. Each of Stage/Status/Type/ParentID/Repo, when
-// non-empty, is bound as one `col = ?` condition; all present conditions
-// join with AND. Filter values are never validated against the closed
-// vocabularies here -- that belongs at the CLI boundary; an
-// unrecognized value here is simply a filter that matches nothing, which is
-// the honest answer to the question asked.
+// ListItems queries items directly, never the ready view, so `list` can
+// show raw items and closed/dropped items alike, which ready/blocked
+// cannot. Each of Stage/Status/Type/ParentID/Repo, when non-empty, is bound
+// as one `col = ?` condition; all present conditions join with AND. Filter
+// values are not validated against the closed vocabularies here, because
+// that belongs at the CLI boundary; an unrecognized value is a filter that
+// matches nothing, which is the correct answer to the question asked.
 //
 // Results are ordered score DESC, created_at ASC, id ASC. The trailing id
 // ASC matters: two children added inside one transaction share a created_at
 // (the single-nowFunc()-per-transaction rule), and without a final
 // tiebreak SQLite's row order for equal (score, created_at) pairs is
-// unspecified -- that would make list's output differ between runs.
+// unspecified, which would make list's output differ between runs.
 func (s *Store) ListItems(ctx context.Context, f ListFilter) ([]model.Item, error) {
 	var conds []string
 	var args []any
@@ -190,8 +189,8 @@ func (s *Store) ListItems(ctx context.Context, f ListFilter) ([]model.Item, erro
 		args = append(args, f.Repo)
 	}
 	if f.ExcludeClosed {
-		// A constant predicate with no bind parameter -- appends to conds
-		// only, never to args.
+		// A constant predicate with no bind parameter, so it appends to
+		// conds only, never to args.
 		conds = append(conds, "status NOT IN ('closed', 'dropped')")
 	}
 

@@ -21,8 +21,8 @@ const baseSchemaVersion = 1
 //
 // apply runs inside the single transaction Migrate opens for the whole
 // ladder. It must not commit, must not open its own connection, and must be
-// safe to run against a store that real people have real data in -- the only
-// store it will ever run against is one that already matters to someone.
+// safe to run against a store that real people have real data in, because
+// every store it runs against already matters to someone.
 type migration struct {
 	to    int
 	name  string
@@ -45,20 +45,20 @@ var migrations = []migration{
 		apply: func(ctx context.Context, tx *sql.Tx) error {
 			// expandDepthSQL, not expandSchemaSQL: this rung runs while the
 			// store is still at version 1, and expandSchemaSQL substitutes
-			// the version this BINARY is at, which is not what an
+			// the version this binary is at, which is not what an
 			// in-progress migration should write. Migrate records the
-			// version itself, one rung at a time. (It is also an
-			// initialization cycle -- schemaVersion is derived from this
+			// version itself, one rung at a time. (It would also be an
+			// initialization cycle, since schemaVersion is derived from this
 			// slice.) TestFTSDDLCarriesNoVersionPlaceholder holds the
 			// invariant that makes it safe.
 			if _, err := tx.ExecContext(ctx, expandDepthSQL(ftsDDL)); err != nil {
 				return fmt.Errorf("create the full-text index: %w", err)
 			}
 			// The triggers only see writes from here on. rebuild is what
-			// indexes the items that were already there -- without it,
-			// search would silently stop finding every item filed before
-			// the upgrade, which is the worst possible failure for a search
-			// command: it returns results, so it looks like it worked.
+			// indexes the items that were already there. Without it, search
+			// would silently stop finding every item filed before the
+			// upgrade, and because it still returns results, it would look
+			// like it worked.
 			if _, err := tx.ExecContext(ctx, `INSERT INTO items_fts(items_fts) VALUES('rebuild')`); err != nil {
 				return fmt.Errorf("index the items that already exist: %w", err)
 			}
@@ -142,7 +142,7 @@ type MigrationPlan struct {
 // writes, so it is safe to call on a store another process holds.
 //
 // A store already at the current version returns a plan with From == To and
-// no names -- not an error. "Nothing to do" is an answer, not a failure.
+// no names, not an error. "Nothing to do" is an answer, not a failure.
 func PlanMigration(ctx context.Context, path string) (MigrationPlan, error) {
 	if err := validateMigrations(); err != nil {
 		return MigrationPlan{}, err
@@ -174,14 +174,14 @@ func PlanMigration(ctx context.Context, path string) (MigrationPlan, error) {
 // returns the plan it carried out.
 //
 // It takes a copy of the database file first, and says where it put it. The
-// store is frequently the only record of why a piece of work exists -- a
-// captured roadmap lives in items.body and nowhere else -- so a migration
+// store is frequently the only record of why a piece of work exists (a
+// captured plan lives in items.body and nowhere else), so a migration
 // that goes wrong must be recoverable by copying one file back, not by
 // reasoning about half-applied DDL. The copy is taken after a TRUNCATE
 // checkpoint so the -wal sidecar's contents are folded into the main file
 // and the backup is complete on its own.
 //
-// The whole ladder runs in ONE transaction. Climbing three rungs and failing
+// The whole ladder runs in one transaction. Climbing three rungs and failing
 // on the fourth must leave the store at its original version, not at an
 // intermediate one no binary in the world declares support for.
 func Migrate(ctx context.Context, path string) (MigrationPlan, error) {

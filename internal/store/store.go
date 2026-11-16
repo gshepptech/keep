@@ -54,17 +54,15 @@ type Store struct {
 // after confirming its on-disk schema_version matches this binary's
 // schemaVersion constant (schema.go). This check exists alongside Init's
 // idempotent DDL, not instead of it: CREATE TABLE IF NOT EXISTS is a name
-// check, not a shape check -- it will silently
-// accept a pre-existing table with entirely different columns. The DDL
-// gives Init its idempotency; only this check gives drift detection.
-// Someone will eventually try to delete one of the two as redundant, and
-// this comment is what should stop them.
+// check, not a shape check, and will silently accept a pre-existing table
+// with entirely different columns. The DDL gives Init its idempotency; only
+// this check gives drift detection, so neither is redundant.
 //
 // Open shares its connection setup with Init via the unexported open()
 // helper (schema.go) so the two entry points cannot drift apart. A caller
 // that receives an error here is not handed a *Store it could still use,
-// and the underlying *sql.DB is closed before returning -- no leaked
-// connection on the failure path.
+// and the underlying *sql.DB is closed before returning, so no connection
+// leaks on the failure path.
 func Open(path string, opts OpenOptions) (*Store, error) {
 	s, err := open(path, opts)
 	if err != nil {
