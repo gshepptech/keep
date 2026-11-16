@@ -76,8 +76,7 @@ type rowQuerier interface {
 
 // expandDepthSQL substitutes MaxDepth into a recursive CTE's bound. The
 // placeholder is $MAXDEPTH$ rather than a `?` because SQLite does not bind
-// parameters inside a recursive CTE's WHERE clause in every driver version,
-// and a literal is what the four bounds this replaces already were.
+// parameters inside a recursive CTE's WHERE clause in every driver version.
 func expandDepthSQL(q string) string {
 	return strings.ReplaceAll(q, "$MAXDEPTH$", maxDepthSQL)
 }
@@ -122,10 +121,8 @@ func checkParentChildDepth(ctx context.Context, q rowQuerier, childID, parentID 
 }
 
 // DeepestChain reports the depth of the deepest parent-child chain in the
-// store. It exists so a store written by an older binary, or by another
-// program, can be audited against MaxDepth rather than trusted, and so
-// migrations.go can refuse to raise MaxDepth over data that already
-// violates the new bound.
+// store, counted in edges from a root, so a store can be checked against
+// MaxDepth.
 func (s *Store) DeepestChain(ctx context.Context) (int, error) {
 	const q = `
 WITH RECURSIVE chain(id, depth) AS (

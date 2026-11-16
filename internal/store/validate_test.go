@@ -183,9 +183,8 @@ func TestClosedVocabulariesAreRefusedByName(t *testing.T) {
 	})
 }
 
-// assertNamesTheValueAndTheLegalOnes: the point of naming these sentinels
-// was the message, so the message is asserted. An error that says only
-// "invalid item type" is no better than the CHECK constraint it replaced.
+// assertNamesTheValueAndTheLegalOnes checks that err names the offending
+// value and every legal one.
 func assertNamesTheValueAndTheLegalOnes(t *testing.T, err error, value string, legal []string) {
 	t.Helper()
 	if !strings.Contains(err.Error(), value) {

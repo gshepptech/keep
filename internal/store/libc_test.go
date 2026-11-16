@@ -20,20 +20,8 @@ const expectedLibcVersion = "v1.74.4"
 // modernc.org/sqlite's own requirement, which corrupts data silently
 // (gitlab.com/cznic/sqlite/-/issues/177).
 //
-// Why `go list -m` and not debug.ReadBuildInfo(): on the Go 1.26
-// toolchain, debug.ReadBuildInfo() returns ok=true but an always-
-// empty Deps slice for a test binary built from a non-main package (this
-// package, "store", is never package main); the same check inside a
-// package-main test's own _test.go correctly lists every dependency. Because
-// Deps is unconditionally empty here regardless of the actual resolved
-// version, the ReadBuildInfo() form of this test would fail every run,
-// including when libc has not drifted at all. A test that fails
-// unconditionally is as untrustworthy as one that passes unconditionally.
-//
-// `go list -m` reads the same resolved module graph (go.mod + go.sum) that
-// produces the binary in the first place. It requires the go
-// toolchain to be on PATH at test time, which holds anywhere this module
-// can be built or tested at all.
+// It uses go list -m because debug.ReadBuildInfo has no Deps in a non-main
+// test binary.
 func TestLibcVersionPinned(t *testing.T) {
 	out, err := exec.Command("go", "list", "-m", "-f", "{{.Version}}", "modernc.org/libc").Output()
 	if err != nil {

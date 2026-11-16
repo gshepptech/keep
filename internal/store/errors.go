@@ -75,15 +75,9 @@ var (
 	// ErrInvalidType and ErrInvalidStage are returned when a value outside
 	// the closed vocabulary reaches the store.
 	//
-	// The schema's CHECK constraints already refused these, and that is not
-	// the same thing: a CHECK produces a raw driver message ("constraint
-	// failed: CHECK constraint failed: type IN ('roadmap', 'epic', 'task',
-	// 'bug', 'note') (275)") which cmd/keep never sees because it
-	// pre-validates, and which the MCP surface therefore returned verbatim
-	// as a generic protocol error carrying SQLite's own text. An agent
-	// reading that cannot tell a bad argument from a broken store. Named
-	// here, both surfaces get an error that says which value was wrong and
-	// what the legal ones are.
+	// A CHECK failure yields SQLite's raw driver text, which tells an agent
+	// nothing about which value was wrong; these sentinels name the value
+	// and the legal set.
 	ErrInvalidType  = errors.New("invalid item type")
 	ErrInvalidStage = errors.New("invalid item stage")
 

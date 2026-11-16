@@ -91,9 +91,8 @@ func TestOwnClaimGuardTreatsAnonymousAsNobody(t *testing.T) {
 	s := openTestStore(t)
 	item := mustAdd(t, s, AddItemInput{Title: "held anonymously", Actor: "agent-a"})
 
-	// A claim as an older binary would have left it: in progress, with a
-	// NULL session. It is written directly, because the store refuses to
-	// create one.
+	// An anonymous claim: in progress, with a NULL session. It is written
+	// directly, because the store refuses to create one.
 	if _, err := s.db.ExecContext(ctx,
 		`UPDATE items SET status = ?, claimed_by_session = NULL, claimed_at = ? WHERE id = ?`,
 		model.StatusInProgress, model.Now(), item.ID); err != nil {

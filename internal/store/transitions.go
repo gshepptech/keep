@@ -204,8 +204,8 @@ func claimItemTx(ctx context.Context, tx *sql.Tx, in StartItemInput) (model.Item
 		if item.ClaimedBySession != nil {
 			holder = *item.ClaimedBySession
 		}
-		// A legacy anonymous claim (claimed_by_session NULL, written by an
-		// older binary) reads back as "" and cannot match here, because the
+		// An anonymous claim (claimed_by_session NULL) reads back as "" and
+		// cannot match here, because the
 		// check at the top of this function guarantees in.SessionID is not
 		// "". So it falls through to the ErrConflict below rather than being
 		// handed to whoever asked next as their own retry, and needs no

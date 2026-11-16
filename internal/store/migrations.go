@@ -112,7 +112,7 @@ func storedSchemaVersion(ctx context.Context, q rowQuerier) (int, error) {
 	return n, nil
 }
 
-// Pending reports which rungs a store at `from` still has to climb.
+// pendingMigrations reports which rungs a store at `from` still has to climb.
 func pendingMigrations(from int) []migration {
 	var out []migration
 	for _, m := range migrations {

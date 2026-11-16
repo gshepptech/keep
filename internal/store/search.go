@@ -76,26 +76,12 @@ func SearchFieldRank(matchedIn string) int {
 //
 // # FTS5, and why it is a prefilter rather than the search
 //
-// Plain LIKE '%x%' scans look sufficient: a corpus of a few thousand rows
-// scans in under a millisecond, and FTS5's virtual table, triggers and
-// migration are three new ways for a work store to disagree with itself.
-// Larger stores do not scan that fast. Searching a store of items with 120-word
-// bodies with scans alone:
-//
-//	 1,000 items     14 ms
-//	10,000 items    178 ms
-//	50,000 items  1,008 ms
-//
-// A full second is not "under a millisecond", and a store an agent files
-// into all day reaches ten thousand items without anybody deciding to let
-// it. With the index, the same 50,000-item store answers a term that
-// actually narrows it in 0.2 ms.
-//
-// The cost: a term matching nearly every item makes the index return
-// nearly every row, so the lookup narrows nothing and is paid for on top of
-// the scan. That case is about 55% slower than scanning alone.
-// search_bench_test.go carries the full table and the reasoning for
-// accepting it.
+// LIKE '%x%' scans every row, which is fast on a small store and slow on a
+// store of tens of thousands of items, the size a store an agent files into
+// all day reaches. An index answers a term that narrows the store in a
+// fraction of a millisecond. A term matching nearly every item gains
+// nothing from the index and pays for the lookup on top of the scan.
+// search_bench_test.go measures both cases.
 //
 // So there is an items_fts index (internal/store/schema.go, migrations
 // rung 2), and it is used as a candidate filter in front of the LIKE
@@ -276,7 +262,7 @@ func fieldName(rank int) string {
 // ftsMinTermLength is the trigram tokenizer's floor: it indexes every run of
 // three characters, so a term shorter than that has no trigram to look up
 // and MATCH returns nothing for it. Such a query skips the prefilter and
-// scans, which is what searching for "id" did before the index existed.
+// scans.
 const ftsMinTermLength = 3
 
 // ftsMatchQuery renders a user's query as an FTS5 phrase, and reports
