@@ -155,7 +155,7 @@ itself and does not want to. A second supervisor is a second thing to be
 wrong.
 
 **Ask an agent**, below the queue, is the same path without an item, for work
-you would not have written a ticket for. Both report what actually happened: a
+you would not have written a ticket for. Both report what happened: a
 run that fails on startup (no credentials, no such runner) is reported as a
 failure with Interlock's own reason, not as a successful launch.
 

@@ -152,7 +152,7 @@ rnc-4e47ef.2  14  task  Low value child  ← blocked by rnc-4e47ef
 
 The epic names the bug directly, because that's the real blocker. Both children name
 the epic, not the bug: `blocked` always names the *nearest* blocked ancestor,
-which is what you actually want to look at first when you're untangling why
+which is what you want to look at first when you're untangling why
 something isn't workable. A grandchild three levels down would still name its
 immediate blocked parent, not the root cause, and you'd walk up from there.
 
@@ -232,7 +232,7 @@ rnc-8f2c91.1  23  task  Extract the shared config loader
 
 `--parent` puts the new ticket in the tree, so blocking the roadmap (or an
 epic above it) reaches this ticket too. `--derived-from` records where the
-ticket's content actually came from. They're usually the same id, as they
+ticket's content came from. They're usually the same id, as they
 are here, but they don't have to be: a ticket can be parented under one
 epic while its content was refined out of an entirely different parked note.
 That's why they're two separate edges rather than one flag.
@@ -373,7 +373,7 @@ The page has eight views:
 | **Projects** | every registered project, its directory, and its counts |
 | **Queue, all projects** | every project's queue merged into one ranked list |
 
-The tree view is the one that actually earns having a web page at all. A
+The tree view is the main reason the board is a web page. A
 blocked epic greying out its entire subtree is legible in about a second,
 and takes several separate commands to reconstruct from the CLI. It's built
 on the exact same blocked-tree logic `ready` itself uses (not a
@@ -451,7 +451,7 @@ This is deliberate. Every store
 `repos`/`ready --all` reads is opened **read-only**. A normal read-write
 open against a missing path would silently succeed and create a fresh,
 empty, 4096-byte SQLite file right there, which means a deleted repository
-would come back looking exactly like a genuinely empty one, not like a
+would come back looking like an empty one, not like a
 problem. Opening read-only instead creates nothing and fails outright, which
 is what turns "deleted" into a visible, distinguishable error instead of a
 lie. `repos forget <path>` removes a store from the registry without
