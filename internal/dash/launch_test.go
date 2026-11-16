@@ -120,8 +120,9 @@ func TestBoardReleasesHolds(t *testing.T) {
 	}
 }
 
-// A failing Interlock must land the person back on the board with the reason,
-// not on a 500. The board is the thing they are watching; losing it because a
+// TestBoardReportsAFailedReleaseWithoutBreaking checks that a failing
+// Interlock lands the person back on the board with the reason, not on a
+// 500. The board is the thing they are watching; losing it because a
 // peer tool exited non-zero is the wrong trade.
 func TestBoardReportsAFailedReleaseWithoutBreaking(t *testing.T) {
 	s, _, _ := interlockFixture(t, 1)
@@ -196,7 +197,8 @@ func TestBoardRefusesAnUnknownAgent(t *testing.T) {
 	}
 }
 
-// The sentinel is a real defence, not a formality: without it a prompt
+// TestBoardPromptKeepsAHostileFirstCharacterOutOfTheFlags checks that a
+// prompt starting with a dash goes after the sentinel. Without the sentinel a prompt
 // beginning with a dash is parsed as flags, so --env and --model become
 // injectable and the prompt itself is discarded. The text comes from a web
 // form, so this is the one argument on the board that is not trusted.
@@ -247,8 +249,8 @@ func TestBoardRefusesAnEmptyPrompt(t *testing.T) {
 	}
 }
 
-// Every one of these starts a process or releases another agent's holds, so
-// each has to be behind the guard. A missing token must stop the request
+// TestTheAgentStartingRoutesAreAllGuarded checks that every route that
+// starts a process or releases another agent's holds is behind the guard. A missing token must stop the request
 // before anything is executed, not merely fail to persist afterwards.
 func TestTheAgentStartingRoutesAreAllGuarded(t *testing.T) {
 	for _, route := range []struct {

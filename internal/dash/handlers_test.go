@@ -210,8 +210,8 @@ func TestTheActiveNavSaysSoOutLoud(t *testing.T) {
 
 	// The stylesheet is inlined into every page and contains the selector
 	// `.nav-item[aria-current="page"]`, so a naive Contains matches the CSS
-	// and passes even when no element carries the attribute. It did exactly
-	// that when first written. Strip the style block before looking.
+	// and passes even when no element carries the attribute. Strip the style
+	// block before looking.
 	body := get(t, s.Handler(), "/").Body.String()
 	if i := strings.Index(body, "<style>"); i >= 0 {
 		if j := strings.Index(body[i:], "</style>"); j >= 0 {

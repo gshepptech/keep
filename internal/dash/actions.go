@@ -186,7 +186,7 @@ func (s *Server) flashURL(r *http.Request, dest, key, msg string) string {
 	// else and makes their change look like it did not happen.
 	//
 	// The prefix is DERIVED from the project name, never taken from the
-	// form. The form does carry one, and trusting it was an open redirect:
+	// form. The form does carry one; trusting it would allow an open redirect:
 	// a posted prefix of "//evil.example" concatenates into a
 	// protocol-relative URL that browsers follow off-host. The project name
 	// is checked against the registry before it becomes a prefix, so only a

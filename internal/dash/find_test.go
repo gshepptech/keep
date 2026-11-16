@@ -18,14 +18,8 @@ func ptr(s string) *string { return &s }
 //
 // The snippet answers "why is this in my results?" and is only worth the
 // line it takes when the answer is somewhere the row cannot already show.
-// A match in paths produced:
-//
-//	Replace the hand-rolled retry loop with a backoff library
-//	open · matched in paths · internal/payments/refund.go · rnc-616bf0
-//	internal/payments/refund.go
-//
-// The template special-cased the title alone, which was the same rule
-// written for one field out of the two the row displays.
+// The row displays the title and the paths, so a snippet that repeats either
+// field is omitted.
 func TestASnippetThatRepeatsTheRowIsNotShown(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -124,8 +118,8 @@ func TestTheRenderedSearchPageDoesNotRepeatThePath(t *testing.T) {
 	}
 	body := rec.Body.String()
 
-	// Strip the inlined stylesheet before counting: an earlier test in this
-	// package passed by matching its own search string inside <style>.
+	// Strip the inlined stylesheet before counting, because it contains the
+	// search string.
 	if i, j := strings.Index(body, "<style>"), strings.Index(body, "</style>"); i >= 0 && j > i {
 		body = body[:i] + body[j:]
 	}
@@ -148,8 +142,8 @@ func TestTheRenderedSearchPageDoesNotRepeatThePath(t *testing.T) {
 // picking one and writing something false into the event trail. Unclaim is the
 // third exit.
 //
-// Asserted on the rendered page rather than on the handler, because the
-// defect was that a control did not exist where a person was looking.
+// Asserted on the rendered page rather than on the handler, because what
+// matters is that the control exists where a person is looking.
 func TestBeingWorkedOnOffersAllThreeExits(t *testing.T) {
 	s, _ := writableFixture(t)
 

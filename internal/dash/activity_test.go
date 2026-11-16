@@ -78,8 +78,7 @@ type renderedEvent struct{ kind, itemID string }
 // It parses rather than searching for substrings because both events in the
 // fixture belong to the same item, so an assertion that looks the item id up
 // with strings.Index finds the same first occurrence for every event and
-// cannot see a reordered feed at all. That was this test's first shape, and
-// it passed against a handler that rendered the log backwards.
+// cannot see a reordered feed at all.
 func activityRows(t *testing.T, body string) []renderedEvent {
 	t.Helper()
 	start := strings.Index(body, `<ol class="queue">`)
