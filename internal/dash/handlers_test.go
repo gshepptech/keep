@@ -45,7 +45,7 @@ func newHandlerFixture(t *testing.T) (*Server, handlerFixtureIDs) {
 	if err != nil {
 		t.Fatalf("NewServer: %v", err)
 	}
-	t.Cleanup(func() { s.Close() })
+	t.Cleanup(func() { s.ln.Close() })
 
 	if strings.Count(grandchild.ID, ".") < 2 {
 		t.Fatalf("fixture bug: grandchild id %q does not contain two dots", grandchild.ID)
@@ -68,7 +68,7 @@ func get(t *testing.T, h http.Handler, path string) *httptest.ResponseRecorder {
 
 func TestHandlerReadyRendersQueue(t *testing.T) {
 	s, ids := newHandlerFixture(t)
-	rec := get(t, s.Handler(), "/")
+	rec := get(t, s.srv.Handler, "/")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /: status = %d, want 200", rec.Code)
 	}
@@ -82,7 +82,7 @@ func TestHandlerReadyRendersQueue(t *testing.T) {
 
 func TestHandlerBacklogRendersGroupedByType(t *testing.T) {
 	s, ids := newHandlerFixture(t)
-	rec := get(t, s.Handler(), "/backlog")
+	rec := get(t, s.srv.Handler, "/backlog")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /backlog: status = %d, want 200", rec.Code)
 	}
@@ -103,7 +103,7 @@ func TestHandlerBacklogRendersGroupedByType(t *testing.T) {
 
 func TestHandlerItemRendersOneItem(t *testing.T) {
 	s, ids := newHandlerFixture(t)
-	rec := get(t, s.Handler(), "/item/"+ids.grandchild)
+	rec := get(t, s.srv.Handler, "/item/"+ids.grandchild)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /item/%s: status = %d, want 200", ids.grandchild, rec.Code)
 	}
@@ -121,7 +121,7 @@ func TestHandlerItemRendersOneItem(t *testing.T) {
 // child, not its ancestor.
 func TestHandlerItemDotContainingIDRoutesToTheRightChild(t *testing.T) {
 	s, ids := newHandlerFixture(t)
-	rec := get(t, s.Handler(), "/item/"+ids.grandchild)
+	rec := get(t, s.srv.Handler, "/item/"+ids.grandchild)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /item/%s (two-dot id): status = %d, want 200", ids.grandchild, rec.Code)
 	}
@@ -136,7 +136,7 @@ func TestHandlerItemDotContainingIDRoutesToTheRightChild(t *testing.T) {
 
 func TestHandlerTreeRendersSubtreeWithBlockedWord(t *testing.T) {
 	s, ids := newHandlerFixture(t)
-	rec := get(t, s.Handler(), "/tree/"+ids.epic)
+	rec := get(t, s.srv.Handler, "/tree/"+ids.epic)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /tree/%s: status = %d, want 200", ids.epic, rec.Code)
 	}
@@ -153,7 +153,7 @@ func TestHandlerTreeRendersSubtreeWithBlockedWord(t *testing.T) {
 
 func TestHandlerItemUnknownIDIs404(t *testing.T) {
 	s, _ := newHandlerFixture(t)
-	rec := get(t, s.Handler(), "/item/rnc-nope")
+	rec := get(t, s.srv.Handler, "/item/rnc-nope")
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("GET /item/rnc-nope: status = %d, want 404", rec.Code)
 	}
@@ -161,7 +161,7 @@ func TestHandlerItemUnknownIDIs404(t *testing.T) {
 
 func TestHandlerTreeUnknownIDIs404(t *testing.T) {
 	s, _ := newHandlerFixture(t)
-	rec := get(t, s.Handler(), "/tree/rnc-nope")
+	rec := get(t, s.srv.Handler, "/tree/rnc-nope")
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("GET /tree/rnc-nope: status = %d, want 404", rec.Code)
 	}
@@ -171,7 +171,7 @@ func TestHandlerRootRefusesPOST(t *testing.T) {
 	s, _ := newHandlerFixture(t)
 	req := httptest.NewRequest(http.MethodPost, "/", nil)
 	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, req)
+	s.srv.Handler.ServeHTTP(rec, req)
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Errorf("POST /: status = %d, want 405", rec.Code)
 	}
@@ -184,13 +184,13 @@ func TestHandlerRootRefusesPOST(t *testing.T) {
 // board whose URLs carry ids is a board people edit URLs on, so this is
 // reached by ordinary use and must not be a dead end.
 //
-// execute() wraps its argument in a fresh page, so passing an already-built
-// page nests it inside Data and the template falls back to bare text. The
-// body assertion catches that; the status code alone would not.
+// A page nested inside another page's Data makes the template fall back to
+// bare text. The body assertion catches that; the status code alone would
+// not.
 func TestAMissingIdGetsAPageNotBareText(t *testing.T) {
 	s, _ := writableFixture(t)
 
-	rec := get(t, s.Handler(), "/item/rnc-nothing")
+	rec := get(t, s.srv.Handler, "/item/rnc-nothing")
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("status = %d, want 404", rec.Code)
 	}
@@ -212,7 +212,7 @@ func TestTheActiveNavSaysSoOutLoud(t *testing.T) {
 	// `.nav-item[aria-current="page"]`, so a naive Contains matches the CSS
 	// and passes even when no element carries the attribute. Strip the style
 	// block before looking.
-	body := get(t, s.Handler(), "/").Body.String()
+	body := get(t, s.srv.Handler, "/").Body.String()
 	if i := strings.Index(body, "<style>"); i >= 0 {
 		if j := strings.Index(body[i:], "</style>"); j >= 0 {
 			body = body[:i] + body[i+j:]

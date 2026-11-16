@@ -52,7 +52,7 @@ func twoProjects(t *testing.T) (*Server, string) {
 	if err != nil {
 		t.Fatalf("NewServer: %v", err)
 	}
-	t.Cleanup(func() { s.Close() })
+	t.Cleanup(func() { s.ln.Close() })
 	return s, home
 }
 
@@ -69,7 +69,7 @@ func TestBoardNamesItsProject(t *testing.T) {
 	}
 	s, home := twoProjects(t)
 
-	body := get(t, s.Handler(), "/").Body.String()
+	body := get(t, s.srv.Handler, "/").Body.String()
 	if !strings.Contains(body, "here") {
 		t.Errorf("the board does not name its project:\n%s", body)
 	}
@@ -91,8 +91,8 @@ func TestEachProjectHasItsOwnBoard(t *testing.T) {
 	}
 	s, _ := twoProjects(t)
 
-	here := get(t, s.Handler(), "/").Body.String()
-	there := get(t, s.Handler(), "/p/there").Body.String()
+	here := get(t, s.srv.Handler, "/").Body.String()
+	there := get(t, s.srv.Handler, "/p/there").Body.String()
 
 	if !strings.Contains(here, "work in here") || strings.Contains(here, "work in there") {
 		t.Errorf("the default board is not showing only its own project's work:\n%s", here)
@@ -121,7 +121,7 @@ func TestOtherProjectLinksStayInThatProject(t *testing.T) {
 	}
 	s, _ := twoProjects(t)
 
-	body := get(t, s.Handler(), "/p/there").Body.String()
+	body := get(t, s.srv.Handler, "/p/there").Body.String()
 	if !strings.Contains(body, `href="/p/there/item/`) {
 		t.Errorf("item links on /p/there do not stay in that project:\n%s", body)
 	}
@@ -143,7 +143,7 @@ func TestUnknownProjectIs404(t *testing.T) {
 	}
 	s, _ := twoProjects(t)
 
-	if rec := get(t, s.Handler(), "/p/nope"); rec.Code != http.StatusNotFound {
+	if rec := get(t, s.srv.Handler, "/p/nope"); rec.Code != http.StatusNotFound {
 		t.Errorf("GET /p/nope returned %d, want 404", rec.Code)
 	}
 }
@@ -161,7 +161,7 @@ func TestProjectsPageListsEveryProject(t *testing.T) {
 	}
 	s, home := twoProjects(t)
 
-	body := get(t, s.Handler(), "/projects").Body.String()
+	body := get(t, s.srv.Handler, "/projects").Body.String()
 	for _, want := range []string{"here", "there", filepath.Join(home, "here"), filepath.Join(home, "there")} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the projects page is missing %q:\n%s", want, body)
@@ -191,7 +191,7 @@ func TestAddingAProjectRequiresAStore(t *testing.T) {
 	if loc := rec.Header().Get("Location"); !strings.Contains(loc, "keep+init") && !strings.Contains(loc, "keep%20init") {
 		t.Errorf("the refusal does not say how to make it a project: %s", loc)
 	}
-	if strings.Contains(get(t, s.Handler(), "/projects").Body.String(), empty) {
+	if strings.Contains(get(t, s.srv.Handler, "/projects").Body.String(), empty) {
 		t.Error("a directory with no store was registered anyway")
 	}
 }
@@ -222,7 +222,7 @@ func TestAddingAProjectRegistersIt(t *testing.T) {
 	if rec := post(t, s, "/do/project-add", url.Values{"dir": {dir}}); rec.Code != http.StatusSeeOther {
 		t.Fatalf("status %d, want 303: %s", rec.Code, rec.Body.String())
 	}
-	if !strings.Contains(get(t, s.Handler(), "/projects").Body.String(), dir) {
+	if !strings.Contains(get(t, s.srv.Handler, "/projects").Body.String(), dir) {
 		t.Error("the added project is not listed")
 	}
 }
@@ -256,7 +256,7 @@ func TestAddingAProjectCreatesAStoreOnlyWhenAsked(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, ".rounce", "db.sqlite")); err != nil {
 		t.Errorf("asked to create the store and it did not: %v", err)
 	}
-	if !strings.Contains(get(t, s.Handler(), "/projects").Body.String(), dir) {
+	if !strings.Contains(get(t, s.srv.Handler, "/projects").Body.String(), dir) {
 		t.Error("the created project is not listed")
 	}
 }
@@ -308,11 +308,11 @@ func TestActionsWriteToTheProjectTheyCameFrom(t *testing.T) {
 		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
 	}
 
-	there := get(t, s.Handler(), "/p/there").Body.String()
+	there := get(t, s.srv.Handler, "/p/there").Body.String()
 	if !strings.Contains(there, "filed from the other board") {
 		t.Errorf("the item did not land in the project it was filed from:\n%s", there)
 	}
-	here := get(t, s.Handler(), "/").Body.String()
+	here := get(t, s.srv.Handler, "/").Body.String()
 	if strings.Contains(here, "filed from the other board") {
 		t.Errorf("the item landed in the started-in project instead:\n%s", here)
 	}
@@ -333,7 +333,7 @@ func TestEveryActionFormCarriesItsProject(t *testing.T) {
 	s, _ := twoProjects(t)
 
 	for _, path := range []string{"/p/there", "/p/there/new", "/p/there/backlog"} {
-		body := get(t, s.Handler(), path).Body.String()
+		body := get(t, s.srv.Handler, path).Body.String()
 		forms := strings.Count(body, `action="/do/`)
 		if forms == 0 {
 			continue
@@ -389,7 +389,7 @@ func TestAgentControlsFollowTheProject(t *testing.T) {
 
 	// Neither project is set up, so neither offers to launch.
 	for _, path := range []string{"/", "/p/there"} {
-		body := get(t, s.Handler(), path).Body.String()
+		body := get(t, s.srv.Handler, path).Body.String()
 		if strings.Contains(body, `action="/do/launch"`) {
 			t.Errorf("%s offers to start an agent with no coordination set up:\n%s", path, body)
 		}
@@ -402,10 +402,10 @@ func TestAgentControlsFollowTheProject(t *testing.T) {
 	// that directory, which is the question Watches actually asks.
 	t.Setenv(interlock.EnvBinary, doctorStub(t, filepath.Join(home, "there")))
 
-	if body := get(t, s.Handler(), "/p/there").Body.String(); !strings.Contains(body, `action="/do/launch"`) {
+	if body := get(t, s.srv.Handler, "/p/there").Body.String(); !strings.Contains(body, `action="/do/launch"`) {
 		t.Errorf("/p/there does not offer to start an agent although it is set up:\n%s", body)
 	}
-	if body := get(t, s.Handler(), "/").Body.String(); strings.Contains(body, `action="/do/launch"`) {
+	if body := get(t, s.srv.Handler, "/").Body.String(); strings.Contains(body, `action="/do/launch"`) {
 		t.Error("the other project offers to start an agent although only /p/there is set up")
 	}
 }

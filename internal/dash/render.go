@@ -1,50 +1,26 @@
 package dash
 
 import (
-	"bytes"
-	"fmt"
 	"strconv"
 	"time"
 
 	"github.com/gshepptech/keep/internal/model"
 )
 
-// This file's only non-stdlib import is internal/model, so every render
-// function below can be fixtured from struct literals alone. That lets the
-// tree view's golden test run without a live database or a wall clock: rnc-
-// ids are sha256(title, createdAt, attempt)-derived, and createdAt is
-// wall-clock time, so a golden file built by round-tripping through a live
-// store.AddItem would pass only on the machine and moment it was generated.
-
-// renderReady renders the ready-queue view: the id (linked to /item/{{.ID}}),
-// score, type, and title, in the order items is already in. No sort:
-// ordering is store.Ready's job, not this package's.
-func renderReady(items []model.Item) ([]byte, error) {
-	return execute("board", boardData{Ready: items, Counts: boardCounts{Ready: len(items)}})
-}
-
 // backlogRow pairs an item with whether it opens a new type group in the
-// backlog view. This is presentation detection over the slice's own
-// existing order: items is already grouped-then-sorted by store.Backlog
-// (contiguous per type, in model.TypesOrdered order); a row's NewGroup is
-// true exactly when its Type differs from the previous row's Type, matching
-// cmd/keep/backlog.go's renderBacklog precedent. renderBacklog does not
-// sort or re-group; ranging over model.TypesOrdered and filtering here would
-// silently drop any type the slice's own order did not anticipate.
+// backlog view. items is already grouped and sorted by store.Backlog
+// (contiguous per type, in model.TypesOrdered order), so a row's NewGroup is
+// true exactly when its Type differs from the previous row's, matching
+// cmd/keep/backlog.go's renderBacklog. Nothing here sorts or regroups:
+// ranging over model.TypesOrdered and filtering would silently drop any type
+// the slice's own order did not anticipate.
 type backlogRow struct {
 	model.Item
 	NewGroup bool
 }
 
-// renderBacklog renders the raw backlog, grouped by type via backlogRow
-// above. backlog.html emits a group header row whenever NewGroup is true.
-func renderBacklog(items []model.Item) ([]byte, error) {
-	return execute("backlog", backlogRows(items))
-}
-
-// backlogRows is the grouping itself, split out so a handler can build the
-// rows without also rendering them, because the page wrapper needs the
-// data, not the bytes.
+// backlogRows builds the backlog view's rows. backlog.html emits a group
+// header whenever a row's NewGroup is true.
 func backlogRows(items []model.Item) []backlogRow {
 	rows := make([]backlogRow, len(items))
 	prevType := ""
@@ -53,51 +29,6 @@ func backlogRows(items []model.Item) []backlogRow {
 		prevType = it.Type
 	}
 	return rows
-}
-
-// renderItem renders one item's full detail: header fields (show's own
-// field order: id, stage, type, status, score, parent, repo, paths, why,
-// acceptance, created, updated), dependencies in both directions, event
-// history oldest-first (already ordered by store.GetItem), then the body.
-// The body renders inside <pre> as plain text, never markdown-to-HTML and
-// never template.HTML. A parent id and each dep's other end are links to
-// /item/{{...}}, built from the id field alone.
-//
-// The item view carries the lease holding it back, if any. renderItem takes
-// a bare detail and wraps it with no hold, because its callers (the smoke
-// test and any other non-HTTP renderer) have no Interlock to ask. The
-// handler builds the view itself.
-func renderItem(d model.ItemDetail) ([]byte, error) {
-	return execute("item", itemView{ItemDetail: d})
-}
-
-// renderTree renders one row per model.TreeNode, indented by Depth via the
-// depthClass FuncMap helper (templates.go) rather than an inline style.
-// nodes is already depth-first ordered by store.Tree's own `ORDER BY path`;
-// this function does not sort.
-func renderTree(nodes []model.TreeNode) ([]byte, error) {
-	return execute("tree", nodes)
-}
-
-// execute renders one view from data alone, with no server behind it. It
-// runs the named top-level view template into a buffer and returns its
-// bytes. Each view composes templates/layout.html's shared "head"/"foot"
-// blocks itself (that file's header comment explains why there is no single
-// shared "layout" template dispatching by name). There is no io.Writer
-// parameter: a returned []byte is what both the golden test and the
-// rendered-output scan want, and handlers write it themselves.
-//
-// It wraps data in the same page envelope a request would, minus the parts
-// only a server can supply: no CSRF token, so no mutating control renders,
-// and Writable false, so the templates skip every action. That keeps these
-// functions fixturable from struct literals, the property the golden file
-// depends on.
-func execute(name string, data any) ([]byte, error) {
-	var buf bytes.Buffer
-	if err := tmpl.ExecuteTemplate(&buf, name, page{Data: data}); err != nil {
-		return nil, fmt.Errorf("dash: render %s: %w", name, err)
-	}
-	return buf.Bytes(), nil
 }
 
 // relativeTime renders an RFC3339 instant as the distance from now: "in 4m",

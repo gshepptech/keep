@@ -112,7 +112,7 @@ func TestTheRenderedSearchPageDoesNotRepeatThePath(t *testing.T) {
 		}
 	}
 
-	rec := get(t, s.Handler(), "/search?q=refund")
+	rec := get(t, s.srv.Handler, "/search?q=refund")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
@@ -153,7 +153,7 @@ func TestBeingWorkedOnOffersAllThreeExits(t *testing.T) {
 		t.Fatalf("filing: status = %d", rec.Code)
 	}
 
-	body := get(t, s.Handler(), "/").Body.String()
+	body := get(t, s.srv.Handler, "/").Body.String()
 	id := regexp.MustCompile(`rnc-[0-9a-f]{6}`).FindString(body)
 	if id == "" {
 		t.Fatal("no item id on the board")
@@ -162,7 +162,7 @@ func TestBeingWorkedOnOffersAllThreeExits(t *testing.T) {
 		t.Fatalf("claiming: status = %d", rec.Code)
 	}
 
-	page := get(t, s.Handler(), "/").Body.String()
+	page := get(t, s.srv.Handler, "/").Body.String()
 	if i, j := strings.Index(page, "<style>"), strings.Index(page, "</style>"); i >= 0 && j > i {
 		page = page[:i] + page[j:]
 	}
@@ -187,13 +187,13 @@ func TestBeingWorkedOnOffersAllThreeExits(t *testing.T) {
 func TestPuttingWorkBackNeedsAReason(t *testing.T) {
 	s, _ := writableFixture(t)
 	post(t, s, "/do/add", url.Values{"title": {"A thing"}, "type": {"task"}})
-	body := get(t, s.Handler(), "/").Body.String()
+	body := get(t, s.srv.Handler, "/").Body.String()
 	id := regexp.MustCompile(`rnc-[0-9a-f]{6}`).FindString(body)
 	post(t, s, "/do/start", url.Values{"id": {id}})
 
 	rec := post(t, s, "/do/unclaim", url.Values{"id": {id}, "reason": {"   "}})
 	if rec.Code == http.StatusSeeOther {
-		if page := get(t, s.Handler(), "/").Body.String(); !strings.Contains(page, "Being worked on") {
+		if page := get(t, s.srv.Handler, "/").Body.String(); !strings.Contains(page, "Being worked on") {
 			t.Fatal("a blank reason released the item anyway")
 		}
 	}
@@ -203,7 +203,7 @@ func TestPuttingWorkBackNeedsAReason(t *testing.T) {
 	}); rec.Code != http.StatusSeeOther {
 		t.Fatalf("a real reason was refused: status = %d", rec.Code)
 	}
-	if page := get(t, s.Handler(), "/").Body.String(); strings.Contains(page, "Being worked on") {
+	if page := get(t, s.srv.Handler, "/").Body.String(); strings.Contains(page, "Being worked on") {
 		t.Error("the item is still being worked on after a successful unclaim")
 	}
 }

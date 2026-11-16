@@ -51,7 +51,7 @@ func newAgreementFixture(t *testing.T) (*Server, *store.Store) {
 	if err != nil {
 		t.Fatalf("NewServer: %v", err)
 	}
-	t.Cleanup(func() { s.Close() })
+	t.Cleanup(func() { s.ln.Close() })
 
 	return s, st
 }
@@ -136,7 +136,7 @@ func idsOf(items []model.Item) []string {
 func TestQueueViewAgreesWithReady(t *testing.T) {
 	s, st := newAgreementFixture(t)
 
-	rec := get(t, s.Handler(), "/")
+	rec := get(t, s.srv.Handler, "/")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /: status = %d, want 200", rec.Code)
 	}

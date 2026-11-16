@@ -48,7 +48,7 @@ func TestNewServerRefusesNonLoopback(t *testing.T) {
 	st := openTestStore(t)
 	for _, addr := range []string{"0.0.0.0:0", ":0", "192.168.1.5:0", "::1:0"} {
 		if s, err := NewServer(st, addr, ""); err == nil {
-			s.Close()
+			s.ln.Close()
 			t.Errorf("NewServer(%q): want error, got nil", addr)
 		}
 	}
@@ -64,7 +64,7 @@ func TestNewServerBindsLoopbackEphemeralPort(t *testing.T) {
 		if err != nil {
 			t.Fatalf("NewServer(%q): unexpected error: %v", addr, err)
 		}
-		t.Cleanup(func() { s.Close() })
+		t.Cleanup(func() { s.ln.Close() })
 
 		u, err := url.Parse(s.URL())
 		if err != nil {
@@ -83,7 +83,7 @@ func TestNewServerLeaksNoListenerOnFailure(t *testing.T) {
 	st := openTestStore(t)
 	for i := 0; i < 50; i++ {
 		if s, err := NewServer(st, "0.0.0.0:0", ""); err == nil {
-			s.Close()
+			s.ln.Close()
 			t.Fatalf("NewServer(bad address) attempt %d: want error, got nil", i)
 		}
 	}
@@ -91,5 +91,5 @@ func TestNewServerLeaksNoListenerOnFailure(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewServer(127.0.0.1:0) after 50 failed attempts: %v", err)
 	}
-	s.Close()
+	s.ln.Close()
 }

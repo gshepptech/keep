@@ -129,12 +129,6 @@ func (s *Server) URL() string {
 	return "http://" + s.ln.Addr().String()
 }
 
-// Handler returns the server's route table, for httptest-driven tests that
-// never bind a real port.
-func (s *Server) Handler() http.Handler {
-	return s.srv.Handler
-}
-
 // Serve blocks, serving over the already-bound listener.
 func (s *Server) Serve() error {
 	return s.srv.Serve(s.ln)
@@ -143,12 +137,6 @@ func (s *Server) Serve() error {
 // Shutdown gracefully stops the server.
 func (s *Server) Shutdown(ctx context.Context) error {
 	return s.srv.Shutdown(ctx)
-}
-
-// Close closes the listener directly, for tests that construct a Server but
-// never call Serve.
-func (s *Server) Close() error {
-	return s.ln.Close()
 }
 
 // Option configures a Server at construction. There are two, both about

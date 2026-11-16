@@ -65,7 +65,7 @@ func activityFixture(t *testing.T) (*Server, map[string]*store.Store) {
 	if err != nil {
 		t.Fatalf("NewServer: %v", err)
 	}
-	t.Cleanup(func() { s.Close() })
+	t.Cleanup(func() { s.ln.Close() })
 	return s, stores
 }
 
@@ -148,7 +148,7 @@ func assertRendersFeedOf(t *testing.T, body string, st *store.Store, path string
 func TestActivityRendersWhatHappened(t *testing.T) {
 	s, stores := activityFixture(t)
 
-	rec := get(t, s.Handler(), "/activity")
+	rec := get(t, s.srv.Handler, "/activity")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /activity: status = %d, want 200", rec.Code)
 	}
@@ -174,7 +174,7 @@ func TestActivityRendersWhatHappened(t *testing.T) {
 func TestProjectScopedActivityServesThatProjectsHistory(t *testing.T) {
 	s, stores := activityFixture(t)
 
-	rec := get(t, s.Handler(), "/p/there/activity")
+	rec := get(t, s.srv.Handler, "/p/there/activity")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /p/there/activity: status = %d, want 200", rec.Code)
 	}
@@ -200,7 +200,7 @@ func TestProjectScopedActivityServesThatProjectsHistory(t *testing.T) {
 func TestActivityForAnUnknownProjectIs404(t *testing.T) {
 	s, _ := activityFixture(t)
 
-	if rec := get(t, s.Handler(), "/p/nope/activity"); rec.Code != http.StatusNotFound {
+	if rec := get(t, s.srv.Handler, "/p/nope/activity"); rec.Code != http.StatusNotFound {
 		t.Errorf("GET /p/nope/activity: status = %d, want 404", rec.Code)
 	}
 }

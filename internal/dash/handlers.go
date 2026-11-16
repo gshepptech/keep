@@ -162,10 +162,8 @@ func (s *Server) fail(w http.ResponseWriter, err error) {
 // internal error string on a page is noise to the reader and detail to
 // anyone else.
 func (s *Server) failPage(w http.ResponseWriter, code int, heading, body string) {
-	// Executed directly rather than through execute() or render(): execute
-	// wraps whatever it is given in a fresh page, which would bury this one
-	// inside its own Data, and render() reports a failure by calling fail(),
-	// which is this function, and would recurse.
+	// Executed directly rather than through render(): render reports a
+	// failure by calling fail(), which is this function, and would recurse.
 	req := (&http.Request{URL: &url.URL{Path: "/"}}).WithContext(context.Background())
 	var buf bytes.Buffer
 	if err := tmpl.ExecuteTemplate(&buf, "failure", s.pageFor(req, "", s.activeName(), errorData{Heading: heading, Body: body})); err != nil {

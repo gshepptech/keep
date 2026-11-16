@@ -95,7 +95,7 @@ func interlockFixture(t *testing.T, exitCode int) (*Server, string, string) {
 	if err != nil {
 		t.Fatalf("NewServer: %v", err)
 	}
-	t.Cleanup(func() { s.Close() })
+	t.Cleanup(func() { s.ln.Close() })
 	return s, dbPath, log
 }
 

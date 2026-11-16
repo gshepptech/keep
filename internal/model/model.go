@@ -105,10 +105,9 @@ type BlockedItem struct {
 // how deep beneath the requested root it sits, and whether it is blocked.
 // It lives here, beside BlockedItem, for the same reason BlockedItem does:
 // it is an Item plus one annotation, returned by a store method and rendered
-// by a caller. Keeping it in internal/model is what lets internal/dash's
-// render functions be pure (model in, HTML out) with no internal/store
-// import at all, which is what makes the tree view's golden test possible
-// without a live database.
+// by a caller. Keeping it in internal/model lets internal/dash's render
+// helpers take model values in and give HTML out, with no internal/store
+// import at all.
 type TreeNode struct {
 	Item
 	Depth     int    `json:"depth"`

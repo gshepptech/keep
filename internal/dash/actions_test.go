@@ -26,7 +26,7 @@ func writableFixture(t *testing.T) (*Server, string) {
 	if err != nil {
 		t.Fatalf("NewServer: %v", err)
 	}
-	t.Cleanup(func() { s.Close() })
+	t.Cleanup(func() { s.ln.Close() })
 	return s, dir
 }
 
@@ -39,7 +39,7 @@ func post(t *testing.T, s *Server, path string, form url.Values) *httptest.Respo
 	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, req)
+	s.srv.Handler.ServeHTTP(rec, req)
 	return rec
 }
 
@@ -56,7 +56,7 @@ func TestBoardFilesAnItem(t *testing.T) {
 		t.Fatalf("add: status %d, want 303: %s", rec.Code, rec.Body.String())
 	}
 
-	body := get(t, s.Handler(), "/").Body.String()
+	body := get(t, s.srv.Handler, "/").Body.String()
 	if !strings.Contains(body, "Filed from the board") {
 		t.Errorf("the new item is not on the board:\n%s", body)
 	}
@@ -80,7 +80,7 @@ func TestBoardRefusesAForeignToken(t *testing.T) {
 	if rec.Code != http.StatusForbidden {
 		t.Errorf("a wrong token got %d, want 403", rec.Code)
 	}
-	if body := get(t, s.Handler(), "/").Body.String(); strings.Contains(body, "Should not exist") {
+	if body := get(t, s.srv.Handler, "/").Body.String(); strings.Contains(body, "Should not exist") {
 		t.Error("an item was filed with a wrong token")
 	}
 }
@@ -97,7 +97,7 @@ func TestBoardRefusesAForeignOrigin(t *testing.T) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Origin", "http://evil.example")
 	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, req)
+	s.srv.Handler.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusForbidden {
 		t.Errorf("a foreign Origin got %d, want 403", rec.Code)
@@ -111,7 +111,7 @@ func TestBoardGetCannotMutate(t *testing.T) {
 	s, _ := writableFixture(t)
 
 	for _, verb := range []string{"add", "start", "close", "drop", "update", "promote"} {
-		if rec := get(t, s.Handler(), "/do/"+verb); rec.Code != http.StatusMethodNotAllowed {
+		if rec := get(t, s.srv.Handler, "/do/"+verb); rec.Code != http.StatusMethodNotAllowed {
 			t.Errorf("GET /do/%s returned %d, want 405", verb, rec.Code)
 		}
 	}
@@ -124,7 +124,7 @@ func TestBoardWithoutWritableRendersNoActions(t *testing.T) {
 	t.Setenv(interlock.EnvBinary, "off")
 	s, _ := newHandlerFixture(t) // built without Writable
 
-	body := get(t, s.Handler(), "/").Body.String()
+	body := get(t, s.srv.Handler, "/").Body.String()
 	if strings.Contains(body, "/do/start") {
 		t.Errorf("a read-only board rendered an action form:\n%s", body)
 	}
@@ -145,14 +145,14 @@ func TestBoardStartsAndClosesAnItem(t *testing.T) {
 	if rec := post(t, s, "/do/start", url.Values{"id": {id}}); rec.Code != http.StatusSeeOther {
 		t.Fatalf("start: %d %s", rec.Code, rec.Body.String())
 	}
-	if body := get(t, s.Handler(), "/").Body.String(); !strings.Contains(body, "Being worked on") {
+	if body := get(t, s.srv.Handler, "/").Body.String(); !strings.Contains(body, "Being worked on") {
 		t.Errorf("a started item is not in the being-worked-on section:\n%s", body)
 	}
 
 	if rec := post(t, s, "/do/close", url.Values{"id": {id}, "reason": {"done"}}); rec.Code != http.StatusSeeOther {
 		t.Fatalf("close: %d", rec.Code)
 	}
-	if body := get(t, s.Handler(), "/").Body.String(); strings.Contains(body, "Walk the transitions") {
+	if body := get(t, s.srv.Handler, "/").Body.String(); strings.Contains(body, "Walk the transitions") {
 		t.Errorf("a closed item is still on the board:\n%s", body)
 	}
 }
@@ -166,11 +166,11 @@ func TestBoardPromotesAParkedItem(t *testing.T) {
 	post(t, s, "/do/add", url.Values{
 		"title": {"Noticed in passing"}, "type": {"note"}, "park": {"1"},
 	})
-	if body := get(t, s.Handler(), "/").Body.String(); strings.Contains(body, "Noticed in passing") {
+	if body := get(t, s.srv.Handler, "/").Body.String(); strings.Contains(body, "Noticed in passing") {
 		t.Errorf("a parked item went straight onto the board:\n%s", body)
 	}
 
-	backlog := get(t, s.Handler(), "/backlog").Body.String()
+	backlog := get(t, s.srv.Handler, "/backlog").Body.String()
 	if !strings.Contains(backlog, "Noticed in passing") {
 		t.Fatalf("the parked item is not in the backlog:\n%s", backlog)
 	}
@@ -179,7 +179,7 @@ func TestBoardPromotesAParkedItem(t *testing.T) {
 	if rec := post(t, s, "/do/promote", url.Values{"id": {id}}); rec.Code != http.StatusSeeOther {
 		t.Fatalf("promote: %d %s", rec.Code, rec.Body.String())
 	}
-	if body := get(t, s.Handler(), "/").Body.String(); !strings.Contains(body, "Noticed in passing") {
+	if body := get(t, s.srv.Handler, "/").Body.String(); !strings.Contains(body, "Noticed in passing") {
 		t.Errorf("a promoted item did not reach the queue:\n%s", body)
 	}
 }
@@ -198,7 +198,7 @@ func TestBoardEditsAnItem(t *testing.T) {
 		t.Fatalf("update: %d %s", rec.Code, rec.Body.String())
 	}
 
-	item := get(t, s.Handler(), "/item/"+id).Body.String()
+	item := get(t, s.srv.Handler, "/item/"+id).Body.String()
 	if !strings.Contains(item, "After") {
 		t.Errorf("the title did not change:\n%s", item)
 	}
@@ -209,7 +209,7 @@ func TestBoardEditsAnItem(t *testing.T) {
 
 func firstIDOnBoard(t *testing.T, s *Server) string {
 	t.Helper()
-	return idFromBody(t, get(t, s.Handler(), "/").Body.String())
+	return idFromBody(t, get(t, s.srv.Handler, "/").Body.String())
 }
 
 func idFromBody(t *testing.T, body string) string {
@@ -310,7 +310,7 @@ func TestConfirmPageNamesWhatItWillDestroyAndActsOnNothing(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/confirm?verb=drop&id="+id, nil)
 	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, req)
+	s.srv.Handler.ServeHTTP(rec, req)
 	body := rec.Body.String()
 
 	// The TITLE is the property here: an id is what you clicked, a title is
@@ -325,7 +325,7 @@ func TestConfirmPageNamesWhatItWillDestroyAndActsOnNothing(t *testing.T) {
 	// Viewing it must not have dropped anything.
 	after := httptest.NewRequest(http.MethodGet, "/", nil)
 	arec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(arec, after)
+	s.srv.Handler.ServeHTTP(arec, after)
 	if !strings.Contains(arec.Body.String(), id) {
 		t.Error("the item left the board after merely viewing the confirm page")
 	}

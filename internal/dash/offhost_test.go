@@ -234,22 +234,18 @@ type offhostFixtureIDs struct {
 // hostile value planted through the real store.AddItem/CreateDep API, never
 // as model.Item/model.TreeNode struct literals.
 //
-// This is the opposite fixture strategy from the tree golden test, on
-// purpose. The golden test needs byte-stable output, so it fixtures with
-// literal, stable ids and never touches a live store or a clock. The
-// off-host scan needs the opposite proof: that data which travelled through
-// AddItem and back out of a real query (wall-clock-derived rnc- ids, the
-// real column round-trip, the real html/template execution against real
-// model.Item/model.ItemDetail/model.TreeNode values) cannot produce an
-// off-host reference at render time. A struct-literal fixture here would
-// only prove the template is safe against values Go can construct in a
-// test file. Nothing in this test compares byte-for-byte, so the
-// wall-clock-derived ids are harmless.
+// Struct literals would only prove the templates are safe against values Go
+// can build in a test file. This fixture proves that data which travelled
+// through AddItem and back out of a real query (wall-clock-derived rnc- ids,
+// the real column round-trip, real html/template execution against real
+// model.Item, model.ItemDetail and model.TreeNode values) cannot produce an
+// off-host reference at render time. Nothing here compares byte for byte, so
+// the wall-clock-derived ids are harmless.
 //
-// The fixture is also the three-level blocked subtree the tree route (and
-// the golden test) uses: epic (blocked, root) -> child -> grandchild, plus
-// a separate blocker and one ready item and one raw-backlog item so all
-// four views have hostile content to render.
+// The fixture is a three-level blocked subtree for the tree route: epic
+// (blocked, root) -> child -> grandchild, plus a separate blocker, one ready
+// item and one raw-backlog item, so all four views have hostile content to
+// render.
 func newOffhostFixture(t *testing.T) (*Server, offhostFixtureIDs) {
 	t.Helper()
 	st := openTestStore(t)
@@ -286,7 +282,7 @@ func newOffhostFixture(t *testing.T) (*Server, offhostFixtureIDs) {
 	if err != nil {
 		t.Fatalf("NewServer: %v", err)
 	}
-	t.Cleanup(func() { s.Close() })
+	t.Cleanup(func() { s.ln.Close() })
 
 	return s, offhostFixtureIDs{
 		epic: epic.ID, child: child.ID, grandchild: grandchild.ID,
@@ -295,7 +291,7 @@ func newOffhostFixture(t *testing.T) (*Server, offhostFixtureIDs) {
 }
 
 // TestNoExternalReferencesInRenderedViews checks that all four rendered
-// views, driven through the real Handler() via httptest (real HTTP
+// views, driven through the real route table via httptest (real HTTP
 // responses, not template source), contain no off-host reference. The
 // hostile text is confirmed present in each body first, so a view that
 // silently dropped a field cannot make the scan pass vacuously.
@@ -323,7 +319,7 @@ func TestNoExternalReferencesInRenderedViews(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tc.path, nil))
+			s.srv.Handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tc.path, nil))
 			if rec.Code != http.StatusOK {
 				t.Fatalf("%s: status = %d, want 200", tc.path, rec.Code)
 			}
@@ -351,7 +347,7 @@ func TestNoExternalReferencesInRenderedViews(t *testing.T) {
 	// the tree view under scan here is also the blocked one, so this
 	// test is not accidentally scanning an all-workable tree.
 	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/tree/"+ids.epic, nil))
+	s.srv.Handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/tree/"+ids.epic, nil))
 	if !strings.Contains(rec.Body.String(), "blocked") {
 		t.Fatalf("/tree/%s: body does not contain the word \"blocked\" -- fixture is not exercising the blocked-subtree shape", ids.epic)
 	}

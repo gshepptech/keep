@@ -64,7 +64,7 @@ func crossRepoFixture(t *testing.T) (*Server, string) {
 	if err != nil {
 		t.Fatalf("NewServer: %v", err)
 	}
-	t.Cleanup(func() { s.Close() })
+	t.Cleanup(func() { s.ln.Close() })
 	return s, home
 }
 
@@ -81,7 +81,7 @@ func TestAllRanksAcrossRepositories(t *testing.T) {
 	}
 	s, _ := crossRepoFixture(t)
 
-	rec := get(t, s.Handler(), "/all")
+	rec := get(t, s.srv.Handler, "/all")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /all: status = %d, want 200", rec.Code)
 	}
@@ -131,7 +131,7 @@ func TestAllReportsUnreadableRepositoryAsARowNotAPage(t *testing.T) {
 		t.Fatalf("remove beta store: %v", err)
 	}
 
-	rec := get(t, s.Handler(), "/all")
+	rec := get(t, s.srv.Handler, "/all")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /all with one unreadable store: status = %d, want 200 -- one broken repository must not cost the page", rec.Code)
 	}
@@ -174,7 +174,7 @@ func TestAllWithNoRegistryIsAnEmptyPageNotAnError(t *testing.T) {
 	}
 	s, _ := newHandlerFixture(t) // built with home ""
 
-	rec := get(t, s.Handler(), "/all")
+	rec := get(t, s.srv.Handler, "/all")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /all with no registry: status = %d, want 200", rec.Code)
 	}
@@ -198,7 +198,7 @@ func TestAllNavLinkIsOnEveryView(t *testing.T) {
 	s, ids := newHandlerFixture(t)
 
 	for _, path := range []string{"/", "/backlog", "/item/" + ids.ready, "/tree/" + ids.epic} {
-		rec := get(t, s.Handler(), path)
+		rec := get(t, s.srv.Handler, path)
 		if rec.Code != http.StatusOK {
 			t.Fatalf("GET %s: status = %d", path, rec.Code)
 		}
@@ -280,9 +280,9 @@ func TestNoExternalReferencesInCrossRepoView(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewServer: %v", err)
 	}
-	t.Cleanup(func() { s.Close() })
+	t.Cleanup(func() { s.ln.Close() })
 
-	rec := get(t, s.Handler(), "/all")
+	rec := get(t, s.srv.Handler, "/all")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /all: status = %d, want 200", rec.Code)
 	}
@@ -326,7 +326,7 @@ func TestInterlockPageSaysSoWhenInterlockIsAbsent(t *testing.T) {
 	t.Setenv(interlock.EnvBinary, "off")
 	s, _ := newHandlerFixture(t)
 
-	rec := get(t, s.Handler(), "/")
+	rec := get(t, s.srv.Handler, "/")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /: status = %d, want 200", rec.Code)
 	}
@@ -353,10 +353,10 @@ func TestBoardIsOnePage(t *testing.T) {
 	t.Setenv(interlock.EnvBinary, "off")
 	s, _ := newHandlerFixture(t)
 
-	if rec := get(t, s.Handler(), "/who"); rec.Code != http.StatusNotFound {
+	if rec := get(t, s.srv.Handler, "/who"); rec.Code != http.StatusNotFound {
 		t.Errorf("GET /who returned %d; the separate Interlock view was folded into the board", rec.Code)
 	}
-	body := get(t, s.Handler(), "/").Body.String()
+	body := get(t, s.srv.Handler, "/").Body.String()
 	for _, want := range []string{"Workable now", "Agents"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the board is missing its %q section:\n%s", want, body)
@@ -411,9 +411,9 @@ func TestQueueAndInterlockViewAgree(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewServer: %v", err)
 	}
-	t.Cleanup(func() { s.Close() })
+	t.Cleanup(func() { s.ln.Close() })
 
-	body := get(t, s.Handler(), "/").Body.String()
+	body := get(t, s.srv.Handler, "/").Body.String()
 
 	// One page now, so the two claims have to be read out of two sections
 	// of it. Splitting on the heading is what keeps "absent from the queue"

@@ -9,15 +9,12 @@ import (
 
 // allPage is /all's page data.
 //
-// It lives here rather than in render.go because render.go states, and a
-// reader relies on, that its only non-stdlib import is internal/model,
-// which is what makes every function there fixturable from struct literals
-// with no database and no wall clock. The cross-repo view does need
-// registry's types, so it takes its own file rather than quietly widening
-// that claim.
+// It lives here rather than in render.go so that render.go imports nothing
+// beyond internal/model and its helpers stay testable from struct literals.
+// The cross-repo view needs registry's types, so it takes its own file.
 type allPage struct {
 	// Items is already merged and ranked ACROSS stores by registry.Merge.
-	// This package does not re-sort it, the same rule renderReady follows
+	// This package does not re-sort it, the same rule the board view follows
 	// for store.Ready.
 	Items []registry.MergedItem
 
