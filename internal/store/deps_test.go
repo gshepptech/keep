@@ -229,8 +229,8 @@ func TestParentChildDepthBoundRefusesChainPastMaxDepth(t *testing.T) {
 		ids[i] = mustAdd(t, s, AddItemInput{Title: fmt.Sprintf("p%d", i), Actor: "tester", ParentID: ids[i-1]}).ID
 	}
 
-	if got, err := s.DeepestChain(ctx); err != nil || got != MaxDepth {
-		t.Fatalf("DeepestChain after building a %d-hop chain = %d, %v; want %d, nil", MaxDepth, got, err, MaxDepth)
+	if got := deepestChain(t, s); got != MaxDepth {
+		t.Fatalf("deepest chain after building a %d-hop chain = %d; want %d", MaxDepth, got, MaxDepth)
 	}
 
 	// One hop further is refused, and refused before anything is written.
@@ -298,9 +298,31 @@ func TestParentChildDepthBoundCountsTheChildsOwnSubtree(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("grafting the same subtree so its deepest leaf lands at exactly %d = %v, want nil", MaxDepth, err)
 	}
-	if got, err := s.DeepestChain(ctx); err != nil || got != MaxDepth {
-		t.Fatalf("DeepestChain after the legal graft = %d, %v; want %d, nil", got, err, MaxDepth)
+	if got := deepestChain(t, s); got != MaxDepth {
+		t.Fatalf("deepest chain after the legal graft = %d; want %d", got, MaxDepth)
 	}
+}
+
+// deepestChain returns the depth of the deepest parent-child chain in s,
+// counted in edges from a root.
+func deepestChain(t *testing.T, s *Store) int {
+	t.Helper()
+	const q = `
+WITH RECURSIVE chain(id, depth) AS (
+  SELECT i.id, 0 FROM items i
+  WHERE NOT EXISTS (SELECT 1 FROM deps d WHERE d.item_id = i.id AND d.type = 'parent-child')
+  UNION ALL
+  SELECT d.item_id, c.depth + 1
+  FROM chain c
+  JOIN deps d ON d.depends_on_id = c.id AND d.type = 'parent-child'
+  WHERE c.depth <= $MAXDEPTH$
+)
+SELECT COALESCE(MAX(depth), 0) FROM chain`
+	var depth int
+	if err := s.db.QueryRowContext(context.Background(), expandDepthSQL(q)).Scan(&depth); err != nil {
+		t.Fatalf("deepestChain: %v", err)
+	}
+	return depth
 }
 
 // TestBlocksEdgeDirection checks the edge direction as an observable

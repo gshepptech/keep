@@ -119,26 +119,3 @@ func checkParentChildDepth(ctx context.Context, q rowQuerier, childID, parentID 
 	}
 	return nil
 }
-
-// DeepestChain reports the depth of the deepest parent-child chain in the
-// store, counted in edges from a root, so a store can be checked against
-// MaxDepth.
-func (s *Store) DeepestChain(ctx context.Context) (int, error) {
-	const q = `
-WITH RECURSIVE chain(id, depth) AS (
-  SELECT i.id, 0 FROM items i
-  WHERE NOT EXISTS (SELECT 1 FROM deps d WHERE d.item_id = i.id AND d.type = 'parent-child')
-  UNION ALL
-  SELECT d.item_id, c.depth + 1
-  FROM chain c
-  JOIN deps d ON d.depends_on_id = c.id AND d.type = 'parent-child'
-  WHERE c.depth <= $MAXDEPTH$
-)
-SELECT COALESCE(MAX(depth), 0) FROM chain`
-
-	var depth int
-	if err := s.db.QueryRowContext(ctx, expandDepthSQL(q)).Scan(&depth); err != nil {
-		return 0, fmt.Errorf("DeepestChain: %w", err)
-	}
-	return depth, nil
-}
