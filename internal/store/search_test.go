@@ -107,9 +107,9 @@ func TestSearchLeavesClosedWorkOutUnlessAsked(t *testing.T) {
 }
 
 // TestSearchRefusesAnEmptyQuery checks that an empty query is an error. An
-// empty search is a request for the whole
-// store, which `list` already answers; answering it here would make an
-// accidental empty box look like a working search.
+// empty search is a request for the whole store, which `list` already
+// answers; answering it here would make an accidental empty box look like a
+// working search.
 func TestSearchRefusesAnEmptyQuery(t *testing.T) {
 	st, ctx := openTestStore(t), context.Background()
 	mustAdd(t, st, AddItemInput{Title: "anything", Actor: "a"})

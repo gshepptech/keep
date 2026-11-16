@@ -120,14 +120,13 @@ func (s *Store) Ready(ctx context.Context, limit int) ([]model.Item, error) {
 }
 
 // Blocked returns every open ticket ready omits, each annotated with the id
-// of the nearest item blocking it. It embeds blockedTreeCTE
-// rather than a second copy of the tree-walk SQL, and applies the exact same
-// base predicate the ready view applies (stage='ticket' AND status='open').
-// That is not a defensive re-filter: Blocked does not read from the view at
-// all. It is the view's
-// structural inverse, and this predicate is what "open ticket" means for
-// both queries. Ordered i.score DESC, i.created_at ASC to match ready's own
-// ordering, since people read both lists side by side.
+// of the nearest item blocking it. It embeds blockedTreeCTE rather than a
+// second copy of the tree-walk SQL, and applies the exact same base
+// predicate the ready view applies (stage='ticket' AND status='open'). That
+// is not a defensive re-filter: Blocked does not read from the view at all.
+// It is the view's structural inverse, and this predicate is what "open
+// ticket" means for both queries. Ordered i.score DESC, i.created_at ASC to
+// match ready's own ordering, since people read both lists side by side.
 //
 // Blocked names one blocker per item, the nearest, which the recursion's
 // own traversal produces via nearest_blocked_id/blocker_id. Showing all

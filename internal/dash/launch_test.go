@@ -198,10 +198,10 @@ func TestBoardRefusesAnUnknownAgent(t *testing.T) {
 }
 
 // TestBoardPromptKeepsAHostileFirstCharacterOutOfTheFlags checks that a
-// prompt starting with a dash goes after the sentinel. Without the sentinel a prompt
-// beginning with a dash is parsed as flags, so --env and --model become
-// injectable and the prompt itself is discarded. The text comes from a web
-// form, so this is the one argument on the board that is not trusted.
+// prompt starting with a dash goes after the sentinel. Without the sentinel
+// a prompt beginning with a dash is parsed as flags, so --env and --model
+// become injectable and the prompt itself is discarded. The text comes from
+// a web form, so this is the one argument on the board that is not trusted.
 func TestBoardPromptKeepsAHostileFirstCharacterOutOfTheFlags(t *testing.T) {
 	s, _, log := interlockFixture(t, 0)
 

@@ -141,10 +141,9 @@ func TestFindUpwardTerminatesAtRoot(t *testing.T) {
 }
 
 // TestOSExistsOnRealTempDir checks the real OSExists implementation against
-// a real t.TempDir(), so
-// the injected ExistsFunc used everywhere else is known to be trustworthy
-// at least once, not just assumed correct because the synthetic fake agrees
-// with itself.
+// a real t.TempDir(), so the injected ExistsFunc used everywhere else is
+// known to be trustworthy at least once, not just assumed correct because
+// the synthetic fake agrees with itself.
 func TestOSExistsOnRealTempDir(t *testing.T) {
 	dir := t.TempDir()
 

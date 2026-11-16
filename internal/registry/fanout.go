@@ -43,8 +43,8 @@ type RepoResult struct {
 //
 // This exists because the SQL driver CANNOT distinguish them. With the
 // pinned driver/libc versions, a missing file, a missing parent directory,
-// and a chmod-000 file all return the identical driver error value,
-// carrying failure code 14 (SQLITE_CANTOPEN). The stdlib's own fs.ErrNotExist /
+// and a chmod-000 file all return the identical driver error value, carrying
+// failure code 14 (SQLITE_CANTOPEN). The stdlib's own fs.ErrNotExist /
 // fs.ErrPermission sentinels distinguish the same three paths cleanly.
 //
 // Do not try to make the SQLite error carry the distinction, and do not

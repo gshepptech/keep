@@ -32,9 +32,8 @@ type OpenOptions struct {
 
 // dsn builds the single DSN string used by every connection this package
 // opens, production or test. A second, hand-built DSN anywhere else in the
-// codebase would be a
-// second source of truth for the pragma set that could silently drift from
-// this one.
+// codebase would be a second source of truth for the pragma set that could
+// silently drift from this one.
 func dsn(path string, opts OpenOptions) string {
 	d := fmt.Sprintf(readWriteDSNFmt, path)
 	if opts.ReadOnly {

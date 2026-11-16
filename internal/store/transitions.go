@@ -12,9 +12,9 @@ import (
 )
 
 // ErrNoFieldsToUpdate is returned by UpdateItem when the caller sets no
-// fields at all. A no-flag update is a caller error, not a silent no-op;
-// the CLI maps this to a usage
-// error (exit 2), the same treatment `add` with no title would get.
+// fields at all. A no-flag update is a caller error, not a silent no-op; the
+// CLI maps this to a usage error (exit 2), the same treatment `add` with no
+// title would get.
 var ErrNoFieldsToUpdate = errors.New("update: no fields supplied")
 
 // nullableString converts "" to a driver NULL and anything else to itself,
@@ -205,11 +205,10 @@ func claimItemTx(ctx context.Context, tx *sql.Tx, in StartItemInput) (model.Item
 			holder = *item.ClaimedBySession
 		}
 		// An anonymous claim (claimed_by_session NULL) reads back as "" and
-		// cannot match here, because the
-		// check at the top of this function guarantees in.SessionID is not
-		// "". So it falls through to the ErrConflict below rather than being
-		// handed to whoever asked next as their own retry, and needs no
-		// `holder != ""` guard of its own.
+		// cannot match here, because the check at the top of this function
+		// guarantees in.SessionID is not "". So it falls through to the
+		// ErrConflict below rather than being handed to whoever asked next
+		// as their own retry, and needs no `holder != ""` guard of its own.
 		if holder == in.SessionID {
 			// Idempotent no-op: this is the same session retrying its own
 			// claim. No update and no event: this is the deliberate

@@ -13,10 +13,9 @@ import (
 
 // defaultTitleWidth is the title-truncation budget used whenever stdout is
 // not a character device: titles truncate to the terminal width, or to 100
-// columns when not a TTY. This is also what
-// makes every CLI test's captured stdout deterministic: a test's stdout is
-// always a pipe, never a real terminal, so titleWidth always returns this
-// constant under `go test`.
+// columns when not a TTY. This is also what makes every CLI test's captured
+// stdout deterministic: a test's stdout is always a pipe, never a real
+// terminal, so titleWidth always returns this constant under `go test`.
 const defaultTitleWidth = 100
 
 // minTitleBudget is the floor renderItems clamps the title column to once
@@ -129,8 +128,8 @@ func renderItems(w io.Writer, items []model.Item, opts renderOpts) {
 }
 
 // truncateTitle cuts title to at most width columns, appending a trailing
-// "…" when cut. Operates on runes, not
-// bytes, so a multi-byte title is never cut mid-rune.
+// "…" when cut. Operates on runes, not bytes, so a multi-byte title is never
+// cut mid-rune.
 func truncateTitle(title string, width int) string {
 	r := []rune(title)
 	if len(r) <= width {

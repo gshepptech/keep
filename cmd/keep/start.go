@@ -108,10 +108,10 @@ func runStart(args []string, stdout, stderr io.Writer) int {
 	// A same-session retry returns success with the item UNCHANGED.
 	// StartItem deliberately does not report which case fired (fresh claim
 	// vs idempotent retry), since telling the two apart would require the
-	// store to return state it does not track (restated here because the
-	// CLI is where the temptation to print "already claimed by you" would
-	// otherwise show up). Both cases
-	// print the identical confirmation line below.
+	// store to return state it does not track (restated here because the CLI
+	// is where the temptation to print "already claimed by you" would
+	// otherwise show up). Both cases print the identical confirmation line
+	// below.
 	fmt.Fprintf(stdout, "%s claimed by session %q\n", item.ID, session)
 	return 0
 }

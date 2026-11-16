@@ -24,10 +24,10 @@ const agreementFixtureReadyCount = 16
 // newAgreementFixture builds a Server backed by a real store.Store
 // containing agreementFixtureReadyCount plain ready tickets, a blocked
 // subtree (an epic blocked by a separate blocker, with one child), and one
-// raw backlog item, so the queue view has real content to disagree about.
-// It returns the Server (for driving real HTTP
-// requests) and the underlying Store (for calling st.Ready directly, the
-// exact call the queue handler itself makes).
+// raw backlog item, so the queue view has real content to disagree about. It
+// returns the Server (for driving real HTTP requests) and the underlying
+// Store (for calling st.Ready directly, the exact call the queue handler
+// itself makes).
 func newAgreementFixture(t *testing.T) (*Server, *store.Store) {
 	t.Helper()
 	st := openTestStore(t)

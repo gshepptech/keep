@@ -66,7 +66,8 @@ type Dep struct {
 }
 
 // Event mirrors the events table one field per column. SessionID and Payload
-// are the nullable columns; ID is the table's INTEGER PRIMARY KEY AUTOINCREMENT.
+// are the nullable columns; ID is the table's INTEGER PRIMARY KEY
+// AUTOINCREMENT.
 type Event struct {
 	ID        int64   `json:"id"`
 	ItemID    string  `json:"item_id"`

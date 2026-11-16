@@ -55,8 +55,7 @@ func countEventsOfKind(d showDetail, kind string) int {
 }
 
 // TestStartClaimsAndIsIdempotent proves a same-session repeat of `start`
-// succeeds again (exit 0) without
-// writing a second `start` event.
+// succeeds again (exit 0) without writing a second `start` event.
 func TestStartClaimsAndIsIdempotent(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)

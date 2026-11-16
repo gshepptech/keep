@@ -174,19 +174,18 @@ func TestMCPToolsListReturnsCommandSurface(t *testing.T) {
 
 	// A hand-rolled JSON-RPC client that explicitly sends
 	// "protocolVersion":"2025-11-25" in its initialize request sees the
-	// classic initialize handshake cap the negotiated version at that
-	// value. mcp.NewClient's own default (opts == nil, as used by
-	// mcpSession above) does not behave that way: Client.Connect tries the newer
-	// SEP-2575 server/discover RPC first at latestProtocolVersion
-	// (2026-07-28, mcp/shared.go), the negotiate-when-supported branch in
-	// discover() takes it (keep's server supports every version, since
-	// mcp.NewServer's ServerOptions never restricts one), and
-	// negotiatedVersion's 2025-11-25 cap is only reachable through the
-	// legacy `initialize` fallback path this client never takes.
-	// ClientSessionOptions' protocolVersion field is unexported ("reserved
-	// for future use" / "for testing"), so this package cannot force the
-	// older handshake to observe the capped value directly. This asserts
-	// the value the SDK actually negotiates.
+	// classic initialize handshake cap the negotiated version at that value.
+	// mcp.NewClient's own default (opts == nil, as used by mcpSession above)
+	// does not behave that way: Client.Connect tries the newer SEP-2575
+	// server/discover RPC first at latestProtocolVersion (2026-07-28,
+	// mcp/shared.go), the negotiate-when-supported branch in discover()
+	// takes it (keep's server supports every version, since mcp.NewServer's
+	// ServerOptions never restricts one), and negotiatedVersion's 2025-11-25
+	// cap is only reachable through the legacy `initialize` fallback path
+	// this client never takes. ClientSessionOptions' protocolVersion field
+	// is unexported ("reserved for future use" / "for testing"), so this
+	// package cannot force the older handshake to observe the capped value
+	// directly. This asserts the value the SDK actually negotiates.
 	if got := cs.InitializeResult().ProtocolVersion; got != "2026-07-28" {
 		t.Errorf("negotiated protocol version = %q, want \"2026-07-28\" (mcp.NewClient's default discover-first negotiation)", got)
 	}

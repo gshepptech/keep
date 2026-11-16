@@ -239,7 +239,8 @@ func typeNames() []string {
 	return out
 }
 
-// titledPage pairs a page with its browser title, so "head" can take one value.
+// titledPage pairs a page with its browser title, so "head" can take one
+// value.
 type titledPage struct {
 	Page page
 

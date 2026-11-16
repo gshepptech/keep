@@ -87,8 +87,8 @@ func TestBoardRefusesAForeignToken(t *testing.T) {
 
 // TestBoardRefusesAForeignOrigin checks that a POST with a foreign Origin is
 // refused, independently of the token. A browser that sends neither header
-// is still covered by the token; one that
-// sends a foreign Origin is refused before the token is even read.
+// is still covered by the token; one that sends a foreign Origin is refused
+// before the token is even read.
 func TestBoardRefusesAForeignOrigin(t *testing.T) {
 	s, _ := writableFixture(t)
 

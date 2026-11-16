@@ -15,12 +15,12 @@ import (
 // verbs are tested here through a real built binary rather than only through
 // internal/store.
 //
-// cmd/keep's job is exit codes, which stream
-// output lands on, and flag interaction, and none of those exist at the
-// store layer: `why-not` returning the right answer with the wrong exit code
-// passes every store test in the repository. This package's tests run a
-// subprocess for exactly that reason, and scripts/coverage.sh
-// is what measures whether it actually got there.
+// cmd/keep's job is exit codes, which stream output lands on, and flag
+// interaction, and none of those exist at the store layer: `why-not`
+// returning the right answer with the wrong exit code passes every store
+// test in the repository. This package's tests run a subprocess for exactly
+// that reason, and scripts/coverage.sh is what measures whether it actually
+// got there.
 
 // addScored files an item and returns its id.
 func addScored(t *testing.T, bin, repo string, e []string, score, title string) string {

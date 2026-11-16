@@ -87,10 +87,9 @@ func runReady(args []string, stdout, stderr io.Writer) int {
 
 	if *jsonFlag {
 		// A nil []model.Item marshals to `null`, and an agent doing
-		// `for item in $(jq '.[]')` breaks on null. An empty queue is
-		// exit 0, not an error, so the JSON shape must
-		// say so unambiguously: substitute an empty, non-nil slice
-		// before encoding.
+		// `for item in $(jq '.[]')` breaks on null. An empty queue is exit
+		// 0, not an error, so the JSON shape must say so unambiguously:
+		// substitute an empty, non-nil slice before encoding.
 		if items == nil {
 			items = []model.Item{}
 		}

@@ -214,11 +214,11 @@ func TestCreateDepWritesOneEvent(t *testing.T) {
 // the same bound, would not error. It would quietly stop propagating a
 // block partway down a tree.
 //
-// checkParentChildDepth (depth.go) prevents it by making the input unbuildable.
-// A chain of exactly MaxDepth hops is allowed; the hop that would create an
-// item at MaxDepth+1 is refused with ErrTooDeep and writes nothing. Every
-// recursive query in this package can therefore reach every item in any store
-// this binary wrote.
+// checkParentChildDepth (depth.go) prevents it by making the input
+// unbuildable. A chain of exactly MaxDepth hops is allowed; the hop that
+// would create an item at MaxDepth+1 is refused with ErrTooDeep and writes
+// nothing. Every recursive query in this package can therefore reach every
+// item in any store this binary wrote.
 func TestParentChildDepthBoundRefusesChainPastMaxDepth(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)

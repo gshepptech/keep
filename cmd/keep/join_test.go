@@ -230,13 +230,13 @@ func TestInterlockJoinAgainstARealBinary(t *testing.T) {
 
 // interlockSource finds the Interlock checkout, or skips.
 //
-// Three outcomes, deliberately distinct. An explicitly set INTERLOCK_SRC that
-// does not hold a Go module is a misconfiguration and fails loudly, because
-// falling back from it would turn "you pointed this at the wrong place"
-// into "the join test quietly did not run". An absent Interlock is a skip,
-// because keep must build and
-// pass alone. KEEP_REQUIRE_INTERLOCK turns that skip into a failure, for an
-// environment that should always have the real thing.
+// Three outcomes, deliberately distinct. An explicitly set INTERLOCK_SRC
+// that does not hold a Go module is a misconfiguration and fails loudly,
+// because falling back from it would turn "you pointed this at the wrong
+// place" into "the join test quietly did not run". An absent Interlock is a
+// skip, because keep must build and pass alone. KEEP_REQUIRE_INTERLOCK turns
+// that skip into a failure, for an environment that should always have the
+// real thing.
 func interlockSource(t *testing.T) string {
 	t.Helper()
 

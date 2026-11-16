@@ -85,12 +85,11 @@ func assertPragmas(t *testing.T, ctx context.Context, conn *sql.Conn, name strin
 }
 
 // TestTxlockImmediateHonored proves _txlock=immediate is honored: a bare
-// BEGIN on a
-// keep connection (connA, production DSN via dsn()) already holds the
-// write lock before any statement runs, so a second connection (connB, DSN
-// built by replacing busy_timeout(3000) with busy_timeout(0) so it retries
-// zero times) fails immediately rather than after busy_timeout. dsnA comes
-// from the production dsn() function, and dsnB is derived from it by a
+// BEGIN on a keep connection (connA, production DSN via dsn()) already holds
+// the write lock before any statement runs, so a second connection (connB,
+// DSN built by replacing busy_timeout(3000) with busy_timeout(0) so it
+// retries zero times) fails immediately rather than after busy_timeout. dsnA
+// comes from the production dsn() function, and dsnB is derived from it by a
 // single string replacement. No time.Sleep, no time.Since, no "should be
 // fast" comment: the result is pass/fail on the first line, with no clock
 // involved.
@@ -165,12 +164,12 @@ func TestTxlockImmediateHonored(t *testing.T) {
 }
 
 // TestOpenCapsMaxOpenConns proves the one-connection cap on the production
-// path: a *Store
-// built by the real Open (not a *sql.DB the test built itself) reports
-// MaxOpenConnections == 1. Kept as its own three-line test rather than an
-// assertion bolted onto TestPragmasApplyToEverySecondConnection, since that
-// test deliberately raises its own cap to 2 for its own purposes and so can
-// never be the thing that proves production stays at 1.
+// path: a *Store built by the real Open (not a *sql.DB the test built
+// itself) reports MaxOpenConnections == 1. Kept as its own three-line test
+// rather than an assertion bolted onto
+// TestPragmasApplyToEverySecondConnection, since that test deliberately
+// raises its own cap to 2 for its own purposes and so can never be the thing
+// that proves production stays at 1.
 func TestOpenCapsMaxOpenConns(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "caps.sqlite")
 	// Open enforces the schema_version guard, so this must

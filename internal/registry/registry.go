@@ -55,8 +55,7 @@ func PathIn(home string) string {
 // `keep init --db /tmp/scratch/x.sqlite`, where two levels up is "/tmp".
 // Checking for the .rounce/ component first gives the repository
 // directory's base name in both layouts. The store file's own name is never
-// used: it is always
-// "db.sqlite" and useless as a label.
+// used: it is always "db.sqlite" and useless as a label.
 func NameFor(storePath string) string {
 	dir := filepath.Dir(storePath)
 	if filepath.Base(dir) == store.StoreDirName {
@@ -158,9 +157,8 @@ func Save(home string, env Envelope) error {
 }
 
 // Register adds storePath to home's registry, or updates its last_seen if it
-// is already there. It is idempotent: re-registering never appends a
-// second row, so `keep init` run twice
-// in one repository leaves one entry, not two.
+// is already there. It is idempotent: re-registering never appends a second
+// row, so `keep init` run twice in one repository leaves one entry, not two.
 //
 // storePath is stored exactly as given. Register does not absolutize it:
 // filepath.Abs consults the process's working directory, which is a property

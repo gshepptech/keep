@@ -5,10 +5,10 @@ import (
 	"testing"
 )
 
-// mustCapture runs `keep capture <title> --body -` (the canonical
-// invocation order: title first, flags after, proving permuteArgs handles
-// it) with stdin as the body, and fails
-// the test immediately if it does not succeed, returning the trimmed id.
+// mustCapture runs `keep capture <title> --body -` (the canonical invocation
+// order: title first, flags after, proving permuteArgs handles it) with
+// stdin as the body, and fails the test immediately if it does not succeed,
+// returning the trimmed id.
 func mustCapture(t *testing.T, bin, repo string, e []string, stdin, title string) string {
 	t.Helper()
 	stdout, stderr, code := runStdin(t, bin, repo, e, stdin, "capture", title, "--body", "-")
@@ -78,11 +78,10 @@ func TestCaptureShowBodyRoundTripsByteIdentical(t *testing.T) {
 		"Final paragraph.\n"
 	withoutTrailingNewline := strings.TrimSuffix(markdown, "\n")
 	crlf := strings.ReplaceAll(markdown, "\n", "\r\n")
-	// The NUL/invalid-UTF-8 case is a regression lock, not an open
-	// question: it round-trips with zero transform through TEXT NOT NULL on
-	// the pinned driver. It exists to
-	// catch someone later adding "defensive" encoding, not to discover new
-	// behavior.
+	// The NUL/invalid-UTF-8 case is a regression lock, not an open question:
+	// it round-trips with zero transform through TEXT NOT NULL on the pinned
+	// driver. It exists to catch someone later adding "defensive" encoding,
+	// not to discover new behavior.
 	nulAndInvalidUTF8 := "before\x00after " + string([]byte{0xff, 0xfe, 0xfd}) + " end\x00"
 	large := buildLargeMarkdownDoc()
 

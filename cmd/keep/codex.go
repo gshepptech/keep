@@ -79,12 +79,11 @@ func runCodex(args []string, stdout, stderr io.Writer) int {
 // # Why this command exists rather than a documented config snippet
 //
 // Codex will not run a hook it has not been told to trust, and installing
-// the plugin does not grant that: a freshly
-// installed keep plugin reports trustStatus "untrusted", and the hook
-// does not fire until the trust entry exists. That is a security control
-// working as designed, and this command grants it on purpose rather than
-// bypassing it. It is the same consent `claude plugin install` takes; Codex
-// just makes it a separate step.
+// the plugin does not grant that: a freshly installed keep plugin reports
+// trustStatus "untrusted", and the hook does not fire until the trust entry
+// exists. That is a security control working as designed, and this command
+// grants it on purpose rather than bypassing it. It is the same consent
+// `claude plugin install` takes; Codex just makes it a separate step.
 //
 // # Why it asks Codex for the hash instead of computing one
 //

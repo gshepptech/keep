@@ -169,10 +169,9 @@ func TestConcurrentNextItemNeverHandsOutTheSameItemTwice(t *testing.T) {
 
 // TestWhyNotAgreesWithReadyForEveryItem checks that, for every item in the
 // store, WhyNot's `ready` flag matches whether the item is actually in the
-// ready view. A WhyNot that
-// reasoned about the predicate independently could drift from the view, and
-// an explanation that disagrees with the thing it explains is worse than no
-// explanation.
+// ready view. A WhyNot that reasoned about the predicate independently could
+// drift from the view, and an explanation that disagrees with the thing it
+// explains is worse than no explanation.
 func TestWhyNotAgreesWithReadyForEveryItem(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)

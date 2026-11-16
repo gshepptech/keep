@@ -104,8 +104,8 @@ func TestPermuteArgs(t *testing.T) {
 			t.Errorf("type = %q, want empty (flag.Parse's own native handling of the malformed tail)", *typeFlag)
 		}
 		// The tail stays in fs.Args() exactly as flag alone would leave it:
-		// flag.Parse on the un-permuted
-		// ["title", "--type"] stops at "title" and never touches --type.
+		// flag.Parse on the un-permuted ["title", "--type"] stops at "title"
+		// and never touches --type.
 		if got, want := fs.Args(), []string{"title", "--type"}; !reflect.DeepEqual(got, want) {
 			t.Errorf("fs.Args() = %v, want %v", got, want)
 		}

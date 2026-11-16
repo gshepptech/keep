@@ -21,10 +21,10 @@ import (
 // convention.
 //
 // It holds four tables, five indexes, one unique index, and the ready view,
-// applied as a single statement string inside
-// one transaction by initWithDDL. Every statement form uses its
-// IF NOT EXISTS/OR IGNORE idiom so that a second Init on an
-// already-initialized store is a true no-op rather than an error.
+// applied as a single statement string inside one transaction by
+// initWithDDL. Every statement form uses its IF NOT EXISTS/OR IGNORE idiom
+// so that a second Init on an already-initialized store is a true no-op
+// rather than an error.
 //
 // items carries an ordinal INTEGER column. It is required for two things:
 // UNIQUE(parent_id, ordinal) below cannot be expressed without it, and

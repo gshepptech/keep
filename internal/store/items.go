@@ -23,12 +23,12 @@ import (
 // either.
 var nowFunc = model.Now
 
-// maxIDAttempts bounds both the root-id collision retry (SQLITE_CONSTRAINT_
-// PRIMARYKEY, 1555) and the child-ordinal collision retry (SQLITE_CONSTRAINT_
-// UNIQUE, 2067). Under this DSN's BEGIN IMMEDIATE, concurrent inserts do not
-// collide in practice, so in
-// practice each loop body runs exactly once; the bound exists so a genuine,
-// permanent conflict returns ErrConflict instead of looping forever.
+// maxIDAttempts bounds both the root-id collision retry
+// (SQLITE_CONSTRAINT_PRIMARYKEY, 1555) and the child-ordinal collision retry
+// (SQLITE_CONSTRAINT_UNIQUE, 2067). Under this DSN's BEGIN IMMEDIATE,
+// concurrent inserts do not collide, so each loop body runs exactly once;
+// the bound exists so a genuine, permanent conflict returns ErrConflict
+// instead of looping forever.
 const maxIDAttempts = 8
 
 // AddItemInput is the argument to AddItem. Actor is required: the audit
@@ -87,12 +87,12 @@ func generateRootID(title, createdAt string, attempt int) string {
 
 // isConstraintPrimaryKey and isConstraintUnique classify two DISTINCT SQLite
 // extended result codes that both look like "a uniqueness violation" in
-// prose but require different recoveries: an
-// items.id collision (1555, SQLITE_CONSTRAINT_PRIMARYKEY) means regenerate
-// the hash and retry; an idx_items_parent_ordinal collision (2067,
-// SQLITE_CONSTRAINT_UNIQUE) means re-read MAX(ordinal) and retry.
-// Deliberately two separate functions, not one "isConstraint" that matches
-// both: collapsing them would retry the wrong recovery for one of the two.
+// prose but require different recoveries: an items.id collision (1555,
+// SQLITE_CONSTRAINT_PRIMARYKEY) means regenerate the hash and retry; an
+// idx_items_parent_ordinal collision (2067, SQLITE_CONSTRAINT_UNIQUE) means
+// re-read MAX(ordinal) and retry. Deliberately two separate functions, not
+// one "isConstraint" that matches both: collapsing them would retry the
+// wrong recovery for one of the two.
 func isConstraintPrimaryKey(err error) bool {
 	var e *sqlite.Error
 	return errors.As(err, &e) && e.Code() == sqlite3.SQLITE_CONSTRAINT_PRIMARYKEY
@@ -187,11 +187,10 @@ func insertParentChildEdge(ctx context.Context, tx *sql.Tx, childID, parentID, a
 // insertEdge writes one deps row of the given type, 'blocks' or
 // 'derived-from' here (parent-child goes through insertParentChildEdge,
 // which is the only writer of that type). Direction is fixed by the ready
-// view, not by English: a row (item_id=A,
-// depends_on_id=B, type='blocks') means "A is blocked until B closes"
-// (the ready view's blocked_directly CTE). So add --blocks <id>
-// means the NEW item is blocked until <id> closes, and inserts
-// (item_id=new, depends_on_id=<id>, type='blocks').
+// view, not by English: a row (item_id=A, depends_on_id=B, type='blocks')
+// means "A is blocked until B closes" (the ready view's blocked_directly
+// CTE). So add --blocks <id> means the NEW item is blocked until <id>
+// closes, and inserts (item_id=new, depends_on_id=<id>, type='blocks').
 func insertEdge(ctx context.Context, tx *sql.Tx, itemID, dependsOnID, depType, actor, createdAt string) error {
 	_, err := tx.ExecContext(ctx,
 		`INSERT INTO deps (item_id, depends_on_id, type, created_at, created_by) VALUES (?, ?, ?, ?, ?)`,
@@ -334,8 +333,8 @@ func (s *Store) AddItem(ctx context.Context, in AddItemInput) (model.Item, error
 		if in.ParentID == "" {
 			// Root id allocation and insert, retrying on a PRIMARYKEY
 			// collision against already-committed data. BEGIN IMMEDIATE
-			// means a collision here can only
-			// be against committed data, never a concurrent in-flight id.
+			// means a collision here can only be against committed data,
+			// never a concurrent in-flight id.
 			for attempt := 0; ; attempt++ {
 				if attempt >= maxIDAttempts {
 					return fmt.Errorf("AddItem: generate root id: exhausted %d attempts: %w", maxIDAttempts, ErrConflict)

@@ -103,9 +103,9 @@ func startRawMCP(t *testing.T, bin, dir string, environ []string) *rawMCPConn {
 
 	// rawOut accumulates every byte read from stdoutPipe, independently of
 	// whatever this file's own read loop (awaitID) does with it. The
-	// byte-level assertion in
-	// TestMCPStdoutIsProtocolBytesOnly reads rawOut directly, never a value
-	// that passed through awaitID's own parsing first.
+	// byte-level assertion in TestMCPStdoutIsProtocolBytesOnly reads rawOut
+	// directly, never a value that passed through awaitID's own parsing
+	// first.
 	var raw bytes.Buffer
 	tee := io.TeeReader(stdoutPipe, &raw)
 
@@ -358,11 +358,10 @@ func TestMCPPipelinedCallsDoNotRace(t *testing.T) {
 	// the order 1, 2, 4, 5, 3, 6, which is also why awaitID (above) files
 	// responses by id instead of assuming arrival order.
 
-	// Write all four requests to stdin with NO read between them.
-	// Inserting an awaitID
-	// call between these four sends would silently turn this into four
-	// SEQUENTIAL calls and prove nothing about concurrent dispatch, and the
-	// test would still pass.
+	// Write all four requests to stdin with NO read between them. Inserting
+	// an awaitID call between these four sends would silently turn this into
+	// four SEQUENTIAL calls and prove nothing about concurrent dispatch, and
+	// the test would still pass.
 	for i, id := range []int{10, 11, 12, 13} {
 		conn.send(t, map[string]any{
 			"jsonrpc": "2.0",
