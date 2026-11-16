@@ -14,10 +14,9 @@ import (
 	"github.com/gshepptech/keep/internal/store"
 )
 
-// addItem is this package's own minimal fixture helper -- internal/store's
-// testhelp_test.go helpers are unexported to that package and cannot be
-// reused here. It always fails the test on error, matching that package's
-// mustAdd shape.
+// addItem is this package's own minimal fixture helper, because
+// internal/store's testhelp_test.go helpers are unexported to that package.
+// It always fails the test on error, matching that package's mustAdd shape.
 func addItem(t *testing.T, st *store.Store, in store.AddItemInput) model.Item {
 	t.Helper()
 	if in.Actor == "" {
@@ -216,9 +215,9 @@ func TestWithStoreRealStoreRunsCallback(t *testing.T) {
 	}
 }
 
-// TestWithStoreMissingStoreNeverOpens proves withStore on a missing store
-// returns classify's error and never reaches store.Open -- observed
-// indirectly via the empty-store trap: no file appears at path.
+// TestWithStoreMissingStoreNeverOpens checks that withStore on a missing
+// store returns classify's error and never reaches store.Open. That is
+// observed through the empty-store trap: no file appears at path.
 func TestWithStoreMissingStoreNeverOpens(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "db.sqlite")
@@ -284,9 +283,8 @@ func TestFetchReadyOrderAndContent(t *testing.T) {
 // TestFetchReadyIsolatesFailures proves that with the middle repo's store
 // file deleted, the first and third results still carry their items with a
 // nil Err, the middle result carries a non-nil Err and no items, and the
-// LENGTH and ORDER are unchanged -- a fan-out that returned early or skipped
-// the bad row would return a silent partial result, the failure this
-// design avoids.
+// length and order are unchanged. A fan-out that returned early or skipped
+// the bad row would return a silent partial result.
 func TestFetchReadyIsolatesFailures(t *testing.T) {
 	repos := make([]Repo, 3)
 	for i, name := range []string{"alpha", "beta", "gamma"} {
@@ -337,12 +335,12 @@ func TestFetchReadyIsolatesFailures(t *testing.T) {
 	}
 }
 
-// TestFetchReadyMissingStoreCreatesNoFile is the empty-store trap's
-// regression lock, both halves in one test. A Repo points at a path inside
-// an EXISTING directory where no store file exists. After FetchReady: (1)
-// the result's Err is non-nil, AND (2) os.Stat(path) still returns
-// fs.ErrNotExist -- no stray database file was fabricated. Dropping the
-// read-only open makes this test fail.
+// TestFetchReadyMissingStoreCreatesNoFile checks both halves of the
+// empty-store trap. A Repo points at a path inside an existing directory
+// where no store file exists. After FetchReady, the result's Err is
+// non-nil and os.Stat(path) still returns fs.ErrNotExist, so no stray
+// database file was created. Dropping the read-only open makes this test
+// fail.
 func TestFetchReadyMissingStoreCreatesNoFile(t *testing.T) {
 	dir := t.TempDir() // exists
 	path := filepath.Join(dir, "db.sqlite")
@@ -379,7 +377,7 @@ func TestFetchCounts(t *testing.T) {
 	// Two ready tickets.
 	addItem(t, st, store.AddItemInput{Title: "ticket-1"})
 	addItem(t, st, store.AddItemInput{Title: "ticket-2"})
-	// One raw item -- counted in ItemCount, not ReadyCount.
+	// One raw item, counted in ItemCount but not ReadyCount.
 	addItem(t, st, store.AddItemInput{Title: "note-1", Stage: model.StageRaw})
 
 	wantLastActivity, _, err := st.LastActivity(context.Background())
@@ -418,9 +416,9 @@ func TestFetchCounts(t *testing.T) {
 	}
 }
 
-// TestFetchCountsEmptyStoreIsNormalRow proves FetchCounts on a store with
-// zero events returns LastActivity == "" and a nil Err -- an empty store is
-// a normal row, not a failed one.
+// TestFetchCountsEmptyStoreIsNormalRow checks that FetchCounts on a store
+// with zero events returns LastActivity == "" and a nil Err, because an
+// empty store is a normal row, not a failed one.
 func TestFetchCountsEmptyStoreIsNormalRow(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "db.sqlite")

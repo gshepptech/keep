@@ -24,7 +24,7 @@ import (
 // type. See internal/registry/merge.go for why a repository-name
 // field's json tag needs care.
 type RepoResult struct {
-	Repo string // the registry's name field -- NOT items.repo
+	Repo string // the registry's name field, not items.repo
 	Path string
 
 	Items []model.Item // FetchReady only
@@ -52,8 +52,8 @@ type RepoResult struct {
 // driver message text is not a contract, and here message-parsing would not
 // work even if it were allowed, because the three messages are the same.
 //
-// classify returning nil does NOT mean the store is usable -- only that the
-// pre-check succeeded. store.Open (with its schema-version check) is still
+// classify returning nil means only that the pre-check succeeded, not that
+// the store is usable. store.Open (with its schema-version check) is still
 // the actual failure mechanism, and its error is still surfaced on the row.
 // classify governs the wording, not the outcome.
 //
@@ -88,9 +88,9 @@ func classify(path string) error {
 // mode=ro is a correctness requirement, not an optimisation: a DEFAULT
 // read-write open of a missing path SUCCEEDS and creates a 4096-byte
 // database file; mode=ro creates nothing and fails.
-// Without ReadOnly, a deleted repository would be reported as an EMPTY
-// repository -- and a stray database file would appear where the deleted one
-// was, which is the more alarming half. fanout_test.go asserts both halves.
+// Without ReadOnly, a deleted repository would be reported as an empty
+// repository, and a stray database file would appear where the deleted one
+// was. fanout_test.go asserts both halves.
 //
 // The store is closed before withStore returns, so no connection is held
 // across the fan-out loop. Every store read method materialises its rows
@@ -115,17 +115,17 @@ func withStore(path string, fn func(*store.Store) error) error {
 // check, not a combined database. Concurrency here would buy little and
 // would complicate the one-connection-per-process model the store relies on.
 //
-// Each store is queried with s.Ready(ctx, 0) -- UNLIMITED, deliberately.
+// Each store is queried with s.Ready(ctx, 0), which is deliberately unlimited.
 // Limiting per store before the merge would let each store's own tiebreak
 // (created_at, which is not comparable across stores) decide which rows even
-// reach the cross-store ranking. The caller limits the MERGED result. This
-// is the same discipline board.go applies with its one unlimited
-// Ready call feeding both the count and the rows.
+// reach the cross-store ranking. The caller limits the MERGED result. This is
+// the same discipline board.go applies with its one unlimited Ready call
+// feeding both the count and the rows.
 //
-// The ready query itself is store.Ready, never a reimplementation: a second
-// "what is workable" query in Go would drift, and calling the shipped one is
-// what makes `ready --all`'s per-repo view structurally unable to disagree
-// with that repository's own single-store `keep ready`.
+// The ready query itself is store.Ready, never a reimplementation. A second
+// "what is workable" query in Go would drift, and calling the store's own
+// means `ready --all`'s per-repo view cannot disagree with that repository's
+// single-store `keep ready`.
 // It is a thin call on FetchEach (each.go), the generic form of the loop
 // that `backlog --all`, `search --all` and `log --all` share.
 func FetchReady(ctx context.Context, repos []Repo) []RepoResult {
@@ -143,12 +143,12 @@ func FetchReady(ctx context.Context, repos []Repo) []RepoResult {
 // `keep repos` renders: total items, ready items, and last activity.
 //
 // The counts come from full item fetches plus len(), not from a COUNT(*)
-// method. That matches cmd/keep/board.go exactly -- it calls
-// Ready/ListItems/Blocked/Backlog purely to take len() -- and keep's rule is
-// correct before fast: a COUNT(*)-shaped method is a measured optimisation,
-// not an upfront design decision. LastActivity is store.LastActivity, i.e.
-// MAX(events.at), because CreateDep touches no items row and
-// MAX(items.updated_at) would therefore under-report.
+// method. That matches cmd/keep/board.go, which calls
+// Ready/ListItems/Blocked/Backlog only to take len(). keep favours correct
+// over fast: a COUNT(*)-shaped method is an optimisation to add once it is
+// measured, not an upfront design decision. LastActivity is
+// store.LastActivity, i.e. MAX(events.at), because CreateDep touches no items
+// row and MAX(items.updated_at) would therefore under-report.
 func FetchCounts(ctx context.Context, repos []Repo) []RepoResult {
 	out := make([]RepoResult, 0, len(repos))
 	for _, r := range repos {

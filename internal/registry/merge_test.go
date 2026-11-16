@@ -9,10 +9,9 @@ import (
 )
 
 // item is a small synthetic-fixture helper: every field Merge's comparator
-// or a JSON assertion cares about, nothing else. No store, no temp
-// directory -- that is what makes ids and names controllable enough to
-// assert tie-breaking deterministically; real rnc- ids are hash-derived and
-// cannot be arranged.
+// or a JSON assertion cares about, nothing else. It uses no store and no
+// temp directory, so ids and names can be chosen to assert tie-breaking
+// deterministically; real rnc- ids are hash-derived and cannot be arranged.
 func item(id string, score int) model.Item {
 	return model.Item{ID: id, Score: score, Title: "t-" + id}
 }
@@ -38,13 +37,12 @@ func TestMergeOrdersByScoreDescending(t *testing.T) {
 	}
 }
 
-// TestMergeTiebreaksByRepositoryNameThenID proves two items with the SAME
-// score, from repos named beta and alpha, come back alpha first -- and the
-// fixture gives beta's item the lexically SMALLER id, so a comparator that
+// TestMergeTiebreaksByRepositoryNameThenID checks that two items with the
+// same score, from repos named beta and alpha, come back alpha first. The
+// fixture gives beta's item the lexically smaller id, so a comparator that
 // dropped the repository-name key and fell through to id would produce the
-// opposite order. This disagreement between id order and repository order
-// is deliberate: do not "tidy" these ids to agree with
-// their repository names, or this test would silently stop proving anything.
+// opposite order. The test depends on id order and repository order
+// disagreeing.
 func TestMergeTiebreaksByRepositoryNameThenID(t *testing.T) {
 	results := []RepoResult{
 		{Repo: "beta", Items: []model.Item{item("aaa-beta", 20)}},
@@ -104,10 +102,10 @@ func TestMergeDropsErroredResultsWithoutAffectingOrder(t *testing.T) {
 	}
 }
 
-// TestMergeEmptyReturnsNonNilEmptySlice proves an empty input returns a
-// non-nil, zero-length slice, never nil -- the same discipline runReady
-// already applies to an empty queue: a consumer doing `for x in $(jq
-// '.[]')` breaks on null.
+// TestMergeEmptyReturnsNonNilEmptySlice checks that an empty input returns
+// a non-nil, zero-length slice, never nil. runReady does the same for an
+// empty queue, because a consumer doing `for x in $(jq '.[]')` breaks on
+// null.
 func TestMergeEmptyReturnsNonNilEmptySlice(t *testing.T) {
 	got := Merge(nil)
 	if got == nil {

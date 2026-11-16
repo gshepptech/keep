@@ -11,9 +11,9 @@ func lockPath(home string) string {
 	return filepath.Join(filepath.Dir(PathIn(home)), lockName)
 }
 
-// TestWithLockRemovesTheLockFile: a lock left behind after a clean run
-// would block every later writer for lockStale (a minute) before anyone
-// reclaimed it -- turning a fixed race into a slow one.
+// TestWithLockRemovesTheLockFile checks that a clean run removes its lock
+// file. A lock left behind would block every later writer for lockStale (a
+// minute) before anyone reclaimed it.
 func TestWithLockRemovesTheLockFile(t *testing.T) {
 	home := t.TempDir()
 
@@ -81,7 +81,7 @@ func TestAcquireReclaimsAStaleLock(t *testing.T) {
 	if err := os.WriteFile(path, []byte("99999\n"), 0o600); err != nil {
 		t.Fatalf("seed lock: %v", err)
 	}
-	// Backdate well past lockStale -- the holder is, by construction, dead.
+	// Backdate well past lockStale, so the holder counts as dead.
 	old := time.Now().Add(-2 * lockStale)
 	if err := os.Chtimes(path, old, old); err != nil {
 		t.Fatalf("chtimes: %v", err)
@@ -97,10 +97,10 @@ func TestAcquireReclaimsAStaleLock(t *testing.T) {
 	os.Remove(path)
 }
 
-// TestAcquireDoesNotReclaimAFreshLock is the other half of the same
-// decision. Reclaiming eagerly would steal the lock from a live writer on a
-// loaded machine, turning a lost update into a corrupted one -- strictly
-// worse than the bug this all exists to fix.
+// TestAcquireDoesNotReclaimAFreshLock checks that a lock younger than
+// lockStale is left alone. Reclaiming eagerly would steal the lock from a
+// live writer on a loaded machine, turning a lost update into a corrupted
+// one.
 func TestAcquireDoesNotReclaimAFreshLock(t *testing.T) {
 	home := t.TempDir()
 	if err := os.MkdirAll(filepath.Dir(PathIn(home)), 0o755); err != nil {

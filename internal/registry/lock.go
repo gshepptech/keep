@@ -13,11 +13,10 @@ const lockName = FileName + ".lock"
 
 // These bound how long a caller waits and how long a lock is believed.
 //
-// lockTimeout matches the store's own busy_timeout(3000): the two are the
-// same promise about the same situation -- another keep process is
-// mid-write, wait a moment rather than failing -- and picking a different
-// number here would mean two different answers to "how long is contention
-// normal for".
+// lockTimeout matches the store's own busy_timeout(3000). Both cover the
+// same situation, another keep process mid-write, by waiting a moment
+// rather than failing, and a different number here would give two answers
+// to how long contention is normal for.
 //
 // lockStale is deliberately much longer. The window it protects is a read,
 // a small JSON edit, and a rename; a process that has held the lock for a
@@ -36,7 +35,7 @@ const (
 // # Why a lock file rather than atomic writes
 //
 // Save already writes a temp file and renames it, which POSIX guarantees is
-// atomic -- a reader sees the old file or the new one, never a torn one.
+// atomic: a reader sees the old file or the new one, never a torn one.
 // But atomicity of the write says nothing about isolation of the
 // read-modify-write sequence around it. Two processes registering two
 // different repositories, each having read before the other's rename
@@ -52,19 +51,19 @@ const (
 // exist on Windows, so it would mean a build-tagged file per platform for
 // a lock held across three filesystem operations. O_CREATE|O_EXCL is
 // atomic on every filesystem keep can plausibly run on, needs no build
-// tags, and adds no dependency -- and the failure mode it does have (a
-// process dying while holding the lock) is one flock does not have but
-// which is handled below by reclaiming a lock that has gone stale.
+// tags, and adds no dependency. Its one extra failure mode, a process
+// dying while holding the lock, is handled below by reclaiming a lock that
+// has gone stale.
 //
 // # Why failing to lock is not fatal
 //
-// The registry's whole contract is never-fatal: Load hands back a usable
+// The registry's contract is never-fatal: Load hands back a usable
 // empty envelope on any error rather than refusing, and Register ignores
 // Load's error deliberately so a corrupted registry cannot make every
 // future `keep init` fail. Refusing to register because a lock could not
 // be taken would break exactly that promise, and would trade a rare lost
 // update for a routine hard failure. So a lock that cannot be acquired
-// within lockTimeout proceeds anyway, unlocked -- accepting a possible lost
+// within lockTimeout proceeds anyway, unlocked. That accepts a possible lost
 // update, and only for the runs that could not get in.
 func withLock(home string, fn func() error) error {
 	path := filepath.Join(filepath.Dir(PathIn(home)), lockName)

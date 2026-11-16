@@ -21,7 +21,7 @@ import (
 // or a blank render. A store that will not open reports on its own row and
 // the others are read anyway.
 type Fanout[T any] struct {
-	Repo string // the registry's name field -- NOT items.repo
+	Repo string // the registry's name field, not items.repo
 	Path string
 	Rows []T
 	Err  error
@@ -78,14 +78,13 @@ type Tagged[T any] struct {
 // Flatten collects every successful fan-out's rows into one slice, tagging
 // each with its repository, and orders them with less.
 //
-// Errored results contribute nothing -- they have no rows to contribute.
-// The caller surfaces them separately, because a silent partial result is
-// the failure mode the whole cross-repository surface is shaped against.
+// Errored results contribute nothing, because they have no rows. The
+// caller surfaces them separately, since a silent partial result is the
+// failure the cross-repository commands are designed to prevent.
 //
-// less must impose a TOTAL order. sort.Slice is documented as unstable, so
+// less must impose a total order. sort.Slice is documented as unstable, so
 // a comparison that returns false in both directions for two distinct rows
-// produces output that varies between runs -- a trap this codebase hit once
-// already (see Merge).
+// produces output that varies between runs (see Merge).
 func Flatten[T any](results []Fanout[T], less func(a, b Tagged[T]) bool) []Tagged[T] {
 	out := make([]Tagged[T], 0)
 	for _, r := range results {
