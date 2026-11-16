@@ -17,7 +17,7 @@ import (
 //
 // The same property RepoResult was built for holds here and is the reason
 // there is no error return: FetchEach returns []Fanout[T] and NO error, so a
-// caller structurally cannot propagate one repository's failure as a crash
+// caller cannot propagate one repository's failure as a crash
 // or a blank render. A store that will not open reports on its own row and
 // the others are read anyway.
 type Fanout[T any] struct {
@@ -42,7 +42,7 @@ type Fanout[T any] struct {
 // check, not a combined database.
 //
 // query is a store method, never a reimplementation of one. That is what
-// makes a cross-repository view structurally unable to disagree with the
+// makes a cross-repository view unable to disagree with the
 // single-store command it aggregates.
 func FetchEach[T any](ctx context.Context, repos []Repo, query func(context.Context, *store.Store) ([]T, error)) []Fanout[T] {
 	out := make([]Fanout[T], 0, len(repos))

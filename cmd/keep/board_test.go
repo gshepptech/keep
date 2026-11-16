@@ -370,7 +370,7 @@ func startBoardWeb(t *testing.T, bin, repo string, e []string, extraArgs ...stri
 	return u, p, r
 }
 
-// TestBoardWebPrintsURLThenServes proves the URL is genuinely the first
+// TestBoardWebPrintsURLThenServes proves the URL is the first
 // (and, this test asserts, only necessary) line, names 127.0.0.1 as the
 // host, and that all four views answer 200 over real HTTP requests --
 // reading the URL alone would only prove a string was printed, not that

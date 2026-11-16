@@ -36,8 +36,8 @@ type migration struct {
 //
 // TestFreshInitMatchesMigratedV1 compares the schema a fresh Init produces
 // against the schema schemaDDLv1-plus-this-ladder produces, object by object.
-// That test is what keeps the two definitions honest; it is not optional
-// scaffolding and it is the reason schemaDDLv1 is frozen rather than deleted.
+// That test keeps the two definitions in agreement, and it is why
+// schemaDDLv1 is frozen rather than deleted.
 var migrations = []migration{
 	{
 		to:   2,

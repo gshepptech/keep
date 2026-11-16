@@ -44,7 +44,7 @@ import (
 // words is the vocabulary the synthetic corpus is built from. It is small
 // on purpose: a 25-word vocabulary in a 120-word body means almost every
 // item contains almost every word, which is what makes the "common" case
-// genuinely unselective rather than accidentally so.
+// truly unselective rather than accidentally so.
 var words = []string{"refresh", "token", "expire", "queue", "agent", "store", "sqlite", "dashboard", "lease", "interlock", "migration", "schema", "blocked", "roadmap", "capture", "refine", "score", "effort", "retry", "handler", "payment", "refund", "auth", "session", "backlog"}
 
 func seedStore(tb testing.TB, n int) *Store {

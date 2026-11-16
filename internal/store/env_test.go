@@ -7,7 +7,7 @@ import (
 
 // setOrUnset sets name, or removes it entirely when set is false. t.Setenv
 // is called either way so the testing package registers the restore; the
-// Unsetenv after it is what makes "absent" genuinely absent rather than
+// Unsetenv after it is what makes "absent" really absent rather than
 // present-and-empty. Env treats those two the same on purpose, and this
 // helper is what lets the test prove it rather than assume it.
 func setOrUnset(t *testing.T, name, value string, set bool) {

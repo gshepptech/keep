@@ -21,8 +21,8 @@ import (
 //
 // mcpSession (mcp.CommandTransport + mcp.NewClient, cmd/keep/mcp_test.go)
 // is the right tool for correctness assertions and is NOT replaced by
-// this. This exists for the two properties the SDK's client structurally
-// cannot prove:
+// this. This exists for the two properties the SDK's client cannot
+// prove:
 //
 //   - pipelined calls not racing needs both requests WRITTEN before either
 //     response is READ, which a request/response client will not do --

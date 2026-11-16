@@ -195,7 +195,7 @@ func TestMCPToolsListReturnsCommandSurface(t *testing.T) {
 // TestMCPCallSequenceCaptureRefineReadyStartClose proves that over ONE
 // `keep mcp` session, capture -> refine (add) -> show -> ready -> start ->
 // close -> ready completes with the payload asserted at every step. This is
-// the whole reason MCP exists: one agent session driving the entire loop
+// why MCP exists: one agent session driving the entire loop
 // without shelling out.
 func TestMCPCallSequenceCaptureRefineReadyStartClose(t *testing.T) {
 	bin := buildKeep(t, "")

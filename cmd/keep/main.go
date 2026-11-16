@@ -27,7 +27,7 @@ var version = ""
 //     work tree, shortened, with a +dirty marker when the tree had uncommitted
 //     changes. This is the case the documented install actually hits.
 //  4. Only if the build carries no information at all does it say "dev",
-//     which then means "genuinely unknown" rather than "nobody passed a flag".
+//     which then means "really unknown" rather than "nobody passed a flag".
 func resolveVersion() string {
 	if version != "" {
 		return version

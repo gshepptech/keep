@@ -40,7 +40,7 @@ type confirmData struct {
 // about to happen and take the reason at the same time, which a yes/no box
 // cannot.
 //
-// Only genuinely lossy actions come through here. Claim, close and promote
+// Only lossy actions come through here. Claim, close and promote
 // do not: they move an item along its normal path and the event trail says
 // who did it. Drop abandons work, and releasing a lease interrupts an agent
 // that is mid-edit; neither is undoable from this board.

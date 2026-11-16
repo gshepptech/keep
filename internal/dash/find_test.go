@@ -145,8 +145,7 @@ func TestTheRenderedSearchPageDoesNotRepeatThePath(t *testing.T) {
 // Close and Drop both record something about the work (done, or not worth
 // doing), and an agent that simply stopped had neither happen to it. With
 // only those two, whoever was looking at this board could only rescue the
-// item by picking one and writing something false into the event trail the
-// rest of the design works to keep honest. Unclaim is the third exit.
+// item by picking one and writing something false into the event trail. Unclaim is the third exit.
 //
 // Asserted on the rendered page rather than on the handler, because the
 // defect was that a control did not exist where a person was looking.

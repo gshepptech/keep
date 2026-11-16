@@ -20,8 +20,7 @@ import (
 // close and drop are kept distinguishable so abandoned work is never
 // counted as done. That guarantee only means something if there is a third
 // exit for the case where neither is true; otherwise the rescue path is to
-// pick one and lie, in the audit trail the whole design exists to keep
-// honest.
+// pick one and write something false into the audit trail.
 func TestUnclaimIsTheThirdExitFromInProgress(t *testing.T) {
 	ctx := context.Background()
 

@@ -14,7 +14,7 @@ import (
 // RepoResult is one registered repository's contribution to a fan-out.
 //
 // Its shape makes "the whole fan-out failed" unrepresentable: FetchReady and
-// FetchCounts return []RepoResult and NO error, so a caller structurally
+// FetchCounts return []RepoResult and NO error, so a caller
 // cannot propagate one repository's failure as a crash or a blank render.
 // That is "one broken repository is a row, not a failure" expressed as a
 // type rather than as a rule somebody has to remember.
