@@ -1,8 +1,12 @@
 package registry
 
 import (
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -311,6 +315,59 @@ func TestForgetUnregisteredPathReturnsFalseNotError(t *testing.T) {
 	}
 	if len(env.Repos) != 1 {
 		t.Fatalf("Forget(unregistered): registry now has %d rows, want unchanged 1", len(env.Repos))
+	}
+}
+
+// TestRegistryNeverCallsUserHomeDir checks that no non-test file in this
+// package calls os.UserHomeDir. The package takes `home` as a parameter
+// everywhere, so no code path here can reach the developer's real
+// ~/.rounce/repos.json and every test is hermetic without having to remember
+// to set $HOME. cmd/keep is the one place that lookup is used, and its tests
+// run the real binary with an explicit HOME (cli_test.go's env helper).
+func TestRegistryNeverCallsUserHomeDir(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("cannot locate this test's own file to derive internal/registry's directory")
+	}
+	dir := filepath.Dir(thisFile)
+
+	fset := token.NewFileSet()
+	filesWalked := 0
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("ReadDir(%s): %v", dir, err)
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		path := filepath.Join(dir, name)
+		f, err := parser.ParseFile(fset, path, nil, 0)
+		if err != nil {
+			t.Fatalf("parse %s: %v", path, err)
+		}
+		filesWalked++
+
+		ast.Inspect(f, func(n ast.Node) bool {
+			sel, ok := n.(*ast.SelectorExpr)
+			if !ok {
+				return true
+			}
+			ident, ok := sel.X.(*ast.Ident)
+			if !ok {
+				return true
+			}
+			if ident.Name == "os" && sel.Sel.Name == "UserHomeDir" {
+				t.Errorf("%s calls os.UserHomeDir; internal/registry must take home as a parameter everywhere, or its tests are no longer hermetic", path)
+			}
+			return true
+		})
+	}
+
+	if filesWalked == 0 {
+		t.Fatal("TestRegistryNeverCallsUserHomeDir walked zero non-test .go files; the directory layout is broken, and an empty walk must fail rather than pass")
 	}
 }
 

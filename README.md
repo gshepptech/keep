@@ -26,7 +26,8 @@ a network request. It stores the decisions, and agents do the reasoning.
 - **Atomic claiming.** `keep next` picks the top item and claims it in one
   transaction, so ten agents calling it at once get ten different items.
 - **MCP server with 20 tools.** `keep mcp` serves the queue over stdio. Each
-  tool makes exactly one store call.
+  tool makes exactly one store call, and a test that walks the AST enforces
+  that.
 - **Claude Code and Codex plugins.** A `SessionStart` hook puts the ranked
   queue into the agent's context before your first message. The plugins also
   add `/keep:ready`, `/keep:board` and `/keep:file`.
@@ -104,7 +105,8 @@ flowchart LR
 
 - **One core, three surfaces.** The CLI (`cmd/keep`), the MCP server
   (`internal/mcp`) and the dashboard (`internal/dash`) are thin wrappers over
-  `internal/store`. That package holds all the SQL.
+  `internal/store`. That package holds all the SQL, and a boundary test fails
+  the build if SQL appears anywhere else.
 - **The queue is a view.** `ready` is a recursive SQL view. It drops raw
   items, closed items and anything with an open `blocks` edge on itself or an
   ancestor. No caller can forget to apply the filter.

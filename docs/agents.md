@@ -91,7 +91,8 @@ plugin's session hook fills that gap.
 | `update` | Change an item's title, body, why, acceptance, score, type, stage, repo, paths or assignee. Status changes go through `start`, `close`, `drop`, `unclaim` and `reopen`. |
 
 The canonical list is `internal/mcp.ToolNames`. Each tool is one call to one
-store method with no logic in between. Validation happens in `internal/store`:
+store method with no logic in between, and `internal/mcp/structure_test.go`
+enforces this by walking the AST. Validation happens in `internal/store`:
 required reasons, closed vocabularies such as `type` and `stage`, and the
 0-10 range for scores. As a result, the MCP server and the CLI accept and
 reject the same inputs.
