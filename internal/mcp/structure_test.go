@@ -14,30 +14,26 @@ import (
 )
 
 // wantHandlerCount is the number of MCP tools this package registers,
-// derived from ToolNames rather than typed again. Fewer than this must fail
-// loudly -- a broken matcher (or a tool registered through a different
-// path) must not pass vacuously.
+// derived from ToolNames rather than typed again, so a broken matcher or a
+// tool registered through a different path fails instead of passing with
+// nothing checked.
 //
-// This is still an independent check despite sharing a source with the
-// schema test: that one reads a map BuildSchemas built, this one counts
-// function literals in the parsed AST. A tool listed in ToolNames with a
-// schema and no handler fails here and passes there.
+// The schema test shares this source but checks something else: it reads
+// the map BuildSchemas returns, while this test counts function literals in
+// the parsed AST. A tool in ToolNames with a schema and no handler fails
+// here and passes there.
 var wantHandlerCount = len(ToolNames)
 
-// TestNoConditionalInToolHandlers is the AST proof of the handler rule:
-// "no conditional on business state in a tool handler; the single
-// errors.Is switch mapping store sentinels to results is permitted, lives
-// in one shared helper, and is the only branch in the package." This test
-// replaces review of that rule with a mechanical walk, following the same
-// go/ast-over-go/types-free precedent cmd/keep/boundary_test.go's
-// TestNoSQLAboveStore and internal/store/mutating_scan_test.go's
-// mutatingStoreMethods already established in this codebase (grep would
-// not distinguish the permitted switch from business branching; an AST
-// walk states the rule precisely enough that nobody has to interpret it).
+// TestNoConditionalInToolHandlers checks the handler rule: no tool handler
+// branches on business state, and the one switch that maps store sentinels
+// to results lives in a shared helper and is the only switch in the
+// package. It walks the AST, as cmd/keep's TestNoSQLAboveStore and
+// internal/store's mutatingStoreMethods do, because grep cannot tell the
+// permitted switch from business branching.
 func TestNoConditionalInToolHandlers(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
-		t.Fatal("runtime.Caller(0) failed -- cannot locate this test's own file to derive internal/mcp's directory")
+		t.Fatal("runtime.Caller(0) failed: cannot locate this test's own file to derive internal/mcp's directory")
 	}
 	dir := filepath.Dir(thisFile)
 
@@ -55,22 +51,21 @@ func TestNoConditionalInToolHandlers(t *testing.T) {
 			files = append(files, f)
 		}
 	}
-	// A walk that finds nothing must fail -- this is the single most common
-	// way a repository-scanning test rots into a permanent pass (same
-	// discipline TestNoSQLAboveStore and mutatingStoreMethods follow).
+	// A walk that finds nothing must fail, or the test passes forever
+	// without checking anything.
 	if len(files) == 0 {
-		t.Fatal("walked zero non-test .go files in internal/mcp -- the walk is broken; treat this as a failure, not a vacuous pass")
+		t.Fatal("walked zero non-test .go files in internal/mcp; the walk is broken, and an empty walk must fail rather than pass")
 	}
 
 	// storeParamName is the identifier bound to internal/mcp's one
-	// *store.Store parameter (NewServer's "st") -- discovered from the AST
+	// *store.Store parameter (NewServer's "st"). It is read from the AST
 	// rather than hard-coded, so a rename cannot silently defeat the
 	// "exactly one store call per handler" check below.
 	storeParamName := findStoreParamName(t, files)
 
 	handlers := findToolHandlers(files)
 	if len(handlers) != wantHandlerCount {
-		t.Fatalf("found %d tool-handler function literals, want exactly %d -- either the matcher is broken or the registration path changed (registering a tool through the SDK's generic AddTool[In,Out] instead of the low-level path produces exactly this failure)", len(handlers), wantHandlerCount)
+		t.Fatalf("found %d tool-handler function literals, want exactly %d; either the matcher is broken or the registration path changed (registering a tool through the SDK's generic AddTool[In,Out] instead of the low-level path produces this failure)", len(handlers), wantHandlerCount)
 	}
 
 	for _, h := range handlers {
@@ -82,10 +77,9 @@ func TestNoConditionalInToolHandlers(t *testing.T) {
 
 // findToolHandlers returns every *ast.FuncLit in files whose type matches
 // mcp.ToolHandler's shape: func(context.Context, *mcp.CallToolRequest)
-// (*mcp.CallToolResult, error). Matching on the parameter/result type
-// expressions -- not on "second argument to s.AddTool" -- so this keeps
-// finding the handlers even if registration is ever refactored into a
-// helper function.
+// (*mcp.CallToolResult, error). It matches on the parameter and result
+// types, not on "second argument to s.AddTool", so it keeps finding the
+// handlers if registration moves into a helper function.
 func findToolHandlers(files []*ast.File) []*ast.FuncLit {
 	var out []*ast.FuncLit
 	for _, f := range files {
@@ -136,10 +130,9 @@ func isIdentType(expr ast.Expr, name string) bool {
 }
 
 // findStoreParamName locates the exactly-one top-level function parameter
-// of type *store.Store in internal/mcp's own (non-test) source and returns
-// the identifier it is bound to. Failing loudly (rather than defaulting to
-// a hard-coded "st") if that assumption -- exactly one such parameter,
-// belonging to NewServer -- ever stops holding.
+// of type *store.Store in internal/mcp's non-test source and returns the
+// identifier it is bound to. If there is not exactly one such parameter,
+// NewServer's, it fails rather than falling back to a hard-coded "st".
 func findStoreParamName(t *testing.T, files []*ast.File) string {
 	t.Helper()
 	var name string
@@ -161,7 +154,7 @@ func findStoreParamName(t *testing.T, files []*ast.File) string {
 		}
 	}
 	if count != 1 {
-		t.Fatalf("findStoreParamName: found %d *store.Store parameters across internal/mcp's top-level functions, want exactly 1 (NewServer's) -- cannot determine which identifier handler bodies' store calls are made through", count)
+		t.Fatalf("findStoreParamName: found %d *store.Store parameters across internal/mcp's top-level functions, want exactly 1 (NewServer's); cannot determine which identifier handler bodies' store calls are made through", count)
 	}
 	return name
 }
@@ -169,25 +162,22 @@ func findStoreParamName(t *testing.T, files []*ast.File) string {
 // injectedReaders names the local identifiers a handler may call INSTEAD of
 // a *store.Store method, and there is exactly one.
 //
-// The handler rule is "exactly one exported call on the store parameter", and
-// that rule was right for every tool that reads or writes THIS store. The
-// `ready_all` tool does not: the cross-repository queue needs the machine's
-// registry, opens every other store read-only, and reports which of them it
-// could not read. None of that belongs in internal/mcp -- importing
-// internal/registry here would put a fan-out inside the package whose whole
-// claim is that it has no logic of its own -- so cmd/keep injects it as
+// The handler rule is "exactly one exported call on the store parameter",
+// which fits every tool that reads or writes this store. The `ready_all`
+// tool does not: the cross-repository queue needs the machine's registry,
+// opens every other store read-only, and reports which of them it could not
+// read. Importing internal/registry here would put a fan-out inside the
+// package that is meant to hold no logic, so cmd/keep injects it as
 // Options.ReadyAll and NewServer binds it to this local.
 //
-// The property the rule was protecting is preserved exactly: ONE data call
-// per handler, its result passed straight to resultFor, with nowhere for
-// logic to hide. The only widening is that the call may be to one named,
-// injected reader instead of to the store. Widening the rule by name rather
-// than by loosening the count is what stops this becoming "handlers may call
-// anything": a second entry here is a decision someone has to write down.
+// Each handler still makes one data call and passes its result straight to
+// resultFor. The call may go to one named, injected reader instead of the
+// store. The exception is by name rather than a looser count, so a second
+// entry here is a decision someone has to write down.
 //
-// opts.ActorFor is NOT in this list and must not be. Every mutating handler
-// calls it to resolve who is asking, which is not a data read -- counting it
-// would let a handler make a store call AND a second call to something else
+// opts.ActorFor is not in this list and must not be. Every mutating handler
+// calls it to resolve who is asking, which is not a data read. Counting it
+// would let a handler make a store call and a second call to something else
 // while still totalling one.
 var injectedReaders = map[string]bool{
 	"readyAll": true,
@@ -206,7 +196,7 @@ func injectedReaderNames() []string {
 
 // checkHandlerShape enforces the per-handler property: exactly one if
 // statement (the json.Unmarshal error check), no switch/type-switch/for/
-// range/select, and exactly one data call -- either an exported method on
+// range/select, and exactly one data call, either an exported method on
 // the *store.Store parameter or one of injectedReaders.
 func checkHandlerShape(t *testing.T, fset *token.FileSet, lit *ast.FuncLit, storeParamName string) {
 	pos := fset.Position(lit.Pos())
@@ -239,23 +229,23 @@ func checkHandlerShape(t *testing.T, fset *token.FileSet, lit *ast.FuncLit, stor
 
 	if len(forbidden) > 0 {
 		fpos := fset.Position(forbidden[0].Pos())
-		t.Errorf("tool handler at %s:%d contains a %T at %s -- a handler may not hold a loop or a second branch; if this logic is needed, it belongs in internal/store where the CLI reaches it too", pos.Filename, pos.Line, forbidden[0], fpos)
+		t.Errorf("tool handler at %s:%d contains a %T at %s; a handler may not hold a loop or a second branch; if this logic is needed, it belongs in internal/store where the CLI reaches it too", pos.Filename, pos.Line, forbidden[0], fpos)
 	}
 
 	if len(ifStmts) != 1 {
-		t.Errorf("tool handler at %s:%d contains %d if statements, want exactly 1 (the json.Unmarshal error check). A handler may not hold a conditional on business state -- if this branch is needed, it belongs in internal/store where the CLI reaches it too. If it is error mapping, it belongs in resultFor (internal/mcp/errors.go), which is the one permitted shared switch.", pos.Filename, pos.Line, len(ifStmts))
+		t.Errorf("tool handler at %s:%d contains %d if statements, want exactly 1 (the json.Unmarshal error check). A handler may not hold a conditional on business state. If this branch is needed, it belongs in internal/store where the CLI reaches it too. If it is error mapping, it belongs in resultFor (internal/mcp/errors.go), which is the one permitted shared switch.", pos.Filename, pos.Line, len(ifStmts))
 	} else if !isUnmarshalErrorCheck(ifStmts[0]) {
-		t.Errorf("tool handler at %s:%d has exactly one if statement, but its shape is not `if err := json.Unmarshal(...); err != nil` -- this is the only conditional a handler may hold", pos.Filename, pos.Line)
+		t.Errorf("tool handler at %s:%d has exactly one if statement, but its shape is not `if err := json.Unmarshal(...); err != nil`, which is the only conditional a handler may hold", pos.Filename, pos.Line)
 	}
 
 	if storeCalls+injectedCalls != 1 {
-		t.Errorf("tool handler at %s:%d makes %d data call(s) -- %d exported method(s) on %q (the *store.Store parameter) and %d on an injected reader (%v) -- want exactly 1 in total. A handler makes one data call, its result passed straight to resultFor. If this handler needs a second source, the composition belongs in cmd/keep, injected as one function.",
+		t.Errorf("tool handler at %s:%d makes %d data call(s): %d exported method(s) on %q (the *store.Store parameter) and %d on an injected reader (%v). Want exactly 1 in total. A handler makes one data call, its result passed straight to resultFor. If this handler needs a second source, the composition belongs in cmd/keep, injected as one function.",
 			pos.Filename, pos.Line, storeCalls+injectedCalls, storeCalls, storeParamName, injectedCalls, injectedReaderNames())
 	}
 }
 
 // isUnmarshalErrorCheck reports whether stmt is exactly
-// `if err := json.Unmarshal(...); err != nil { ... }` -- the one
+// `if err := json.Unmarshal(...); err != nil { ... }`, the one
 // conditional a handler may hold.
 func isUnmarshalErrorCheck(stmt *ast.IfStmt) bool {
 	assign, ok := stmt.Init.(*ast.AssignStmt)
@@ -306,20 +296,18 @@ type ifOutsideHandler struct {
 //  2. NewServer's schema-error check.
 //  3. NewServer's nil-Options.ReadyAll default.
 //
-// The third is the one worth explaining. `ready_all` is
-// served by an injected function, and a server started without one has to
-// answer something rather than panic. Deciding that once, in NewServer,
-// where the handlers are built, is what keeps the handler itself branchless
-// -- the alternative is `if opts.ReadyAll == nil` inside the handler, which
-// is exactly the conditional the handler rule forbids. The branch lives in
-// one of the two places this package allows one, and this count is what
-// makes that a decision rather than a drift.
+// `ready_all` is served by an injected function, and a server started
+// without one has to answer something rather than panic. Deciding that once
+// in NewServer, where the handlers are built, keeps the handler itself
+// branchless; the alternative is `if opts.ReadyAll == nil` inside the
+// handler, which the handler rule forbids. The count makes each new branch
+// a decision rather than drift.
 const wantIfsOutsideHandlers = 3
 
 // checkOnlyBranchOutsideHandlers enforces the package-wide half of the rule:
 // exactly one *ast.SwitchStmt in the whole package (resultFor's sentinel
 // classification), and exactly wantIfsOutsideHandlers *ast.IfStmt outside
-// every tool handler -- named by enclosing function, so a new one anywhere
+// every tool handler, named by enclosing function, so a new one anywhere
 // else fails by name, not just by count.
 func checkOnlyBranchOutsideHandlers(t *testing.T, fset *token.FileSet, files []*ast.File, handlers []*ast.FuncLit) {
 	handlerSet := make(map[*ast.FuncLit]bool, len(handlers))
@@ -341,9 +329,9 @@ func checkOnlyBranchOutsideHandlers(t *testing.T, fset *token.FileSet, files []*
 			}
 			ast.Inspect(fn.Body, func(n ast.Node) bool {
 				if lit, ok := n.(*ast.FuncLit); ok && handlerSet[lit] {
-					// Already fully checked by checkHandlerShape --
-					// do not descend, so its own if/switch/etc. is
-					// not double-counted here as "outside a handler".
+					// checkHandlerShape already covers handlers. Not
+					// descending keeps their branches from being
+					// counted again as "outside a handler".
 					return false
 				}
 				switch node := n.(type) {
@@ -370,24 +358,23 @@ func checkOnlyBranchOutsideHandlers(t *testing.T, fset *token.FileSet, files []*
 		t.Errorf("the package's one *ast.SwitchStmt is in %q at %s, want it inside resultFor (internal/mcp/errors.go)", switches[0].fn, fset.Position(switches[0].node.Pos()))
 	}
 
-	// Which FUNCTIONS may hold one, and how MANY there may be in total, are
-	// two separate assertions on purpose. The set is what stops a branch
-	// appearing in a third function; the count is what stops NewServer
-	// quietly accumulating them, which is the likelier drift now that it
-	// legitimately holds two.
+	// Which functions may hold one and how many there may be in total are
+	// separate assertions. The set stops a branch appearing in a third
+	// function; the count stops NewServer, which holds two, from quietly
+	// accumulating more.
 	wantIfFuncs := map[string]bool{"NewServer": true, "resultFor": true}
 	if len(ifs) != wantIfsOutsideHandlers {
 		var locs []string
 		for _, e := range ifs {
 			locs = append(locs, fmt.Sprintf("%s (in %s)", fset.Position(e.node.Pos()), e.fn))
 		}
-		t.Fatalf("package contains %d *ast.IfStmt outside tool handlers, want exactly %d (resultFor's err == nil check, NewServer's schema-error check, and NewServer's nil-ReadyAll default -- see wantIfsOutsideHandlers): %v", len(ifs), wantIfsOutsideHandlers, locs)
+		t.Fatalf("package contains %d *ast.IfStmt outside tool handlers, want exactly %d (resultFor's err == nil check, NewServer's schema-error check, and NewServer's nil-ReadyAll default; see wantIfsOutsideHandlers): %v", len(ifs), wantIfsOutsideHandlers, locs)
 	}
 	seen := map[string]bool{}
 	for _, e := range ifs {
 		seen[e.fn] = true
 		if !wantIfFuncs[e.fn] {
-			t.Errorf("unexpected *ast.IfStmt outside a tool handler in function %q at %s -- want only NewServer and resultFor", e.fn, fset.Position(e.node.Pos()))
+			t.Errorf("unexpected *ast.IfStmt outside a tool handler in function %q at %s; want only NewServer and resultFor", e.fn, fset.Position(e.node.Pos()))
 		}
 	}
 	for fn := range wantIfFuncs {

@@ -5,7 +5,9 @@ import (
 	"testing"
 )
 
-// TestSearchFindsAndSeparatesItsStreams.
+// TestSearchFindsAndSeparatesItsStreams checks that the search command prints
+// only matching items on stdout and reports a miss on stderr with stdout left
+// empty.
 //
 // A cross-process run, because the thing being checked is what a
 // person and a script each see, and that only exists once the binary has
@@ -55,7 +57,8 @@ func TestSearchFindsAndSeparatesItsStreams(t *testing.T) {
 	}
 }
 
-// TestLogReportsWhatHappened. The question the tool could not answer before.
+// TestLogReportsWhatHappened checks that `keep log` lists the events a store
+// recorded.
 func TestLogReportsWhatHappened(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)
@@ -87,8 +90,9 @@ func TestLogReportsWhatHappened(t *testing.T) {
 	}
 }
 
-// TestLogRejectsATimeItCannotRead. Guessing at "--since lastweek" would
-// silently answer a different question than the one asked.
+// TestLogRejectsATimeItCannotRead checks that an unparseable --since is a
+// usage error. Guessing at "--since lastweek" would silently answer a
+// different question than the one asked.
 func TestLogRejectsATimeItCannotRead(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)
@@ -105,7 +109,8 @@ func TestLogRejectsATimeItCannotRead(t *testing.T) {
 	}
 }
 
-// TestStaleReportsButNeverReleases.
+// TestStaleReportsButNeverReleases checks that the stale command lists quiet
+// claims and leaves every one of them claimed.
 //
 // The design point worth locking: keep never unclaims anything on its
 // own. An automatic release cannot tell a dead session from a slow one, and

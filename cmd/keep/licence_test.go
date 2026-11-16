@@ -15,10 +15,10 @@ import (
 const repoRoot = "../.."
 
 // licenceIdentifier is the SPDX identifier the LICENSE file's first line
-// names, mapped from the human title it actually opens with. Only the
-// licences this project has ever used need to be here -- an unrecognised
-// title is a failure, not a silent pass, because a test that cannot read
-// the authority cannot check anything against it.
+// names, mapped from the human title it actually opens with. Only licences
+// this project uses need to be here. An unrecognised title is a failure,
+// not a silent pass, because a test that cannot read the authority cannot
+// check anything against it.
 var licenceIdentifier = map[string]string{
 	"MIT License":                "MIT",
 	"Apache License":             "Apache-2.0",
@@ -26,18 +26,17 @@ var licenceIdentifier = map[string]string{
 	"GNU General Public License": "GPL-3.0",
 }
 
-// TestEveryDeclaredLicenceAgreesWithTheLicenceFile.
+// TestEveryDeclaredLicenceAgreesWithTheLicenceFile checks that every manifest
+// with a licence field names the licence that LICENSE grants.
 //
 // Nothing in the build cares whether the plugin manifests' licence fields
-// agree with LICENSE, which is exactly why a mismatch would survive: a
-// manifest's licence field is read by a marketplace, at install time, by
-// somebody who is not us -- so the only person the mistake is visible to is
-// the one person who cannot fix it.
+// agree with LICENSE, so a mismatch would otherwise survive: a manifest's
+// licence field is read by a marketplace, at install time, by someone
+// outside the project, who sees the mistake but cannot fix it.
 //
 // The check is written against whatever LICENSE says rather than against
 // the string "MIT", so relicensing the project means editing one file and
-// this test follows. Hard-coding "MIT" here would make the test a second
-// place to remember, which is the same class of problem it exists to catch.
+// this test follows.
 func TestEveryDeclaredLicenceAgreesWithTheLicenceFile(t *testing.T) {
 	raw, err := os.ReadFile(filepath.Join(repoRoot, "LICENSE"))
 	if err != nil {
@@ -63,10 +62,9 @@ func TestEveryDeclaredLicenceAgreesWithTheLicenceFile(t *testing.T) {
 			return err
 		}
 		if d.IsDir() {
-			// .git is huge and .agents holds vendored third-party skills
-			// whose licences are their authors' business, not ours.
+			// .git and node_modules are not ours to check.
 			switch d.Name() {
-			case ".git", ".agents", "node_modules":
+			case ".git", "node_modules":
 				return filepath.SkipDir
 			}
 			return nil

@@ -20,14 +20,13 @@ import (
 // the empty string" are never conflated into the same row.
 //
 // payload is marshalled with encoding/json when non-nil; a nil payload
-// stores NULL. at is always nowFunc() at the moment of the write -- the
-// same clock indirection items.go uses, so a test that pins the clock pins
-// the whole store rather than half of it; a staleness query needs exactly
-// that control. See items.go's nowFunc seam for how callers keep a single
-// mutation's
-// created_at/updated_at/deps.created_at/event.at values internally
-// consistent by threading one timestamp through, rather than calling
-// writeEvent's own clock read.
+// stores NULL. at is always nowFunc() at the moment of the write, the same
+// clock indirection items.go uses, so a test that pins the clock pins the
+// whole store rather than half of it; a staleness query needs that control.
+// See items.go's nowFunc seam for how callers keep a single mutation's
+// created_at/updated_at/deps.created_at/event.at values consistent by
+// threading one timestamp through, rather than calling writeEvent's own
+// clock read.
 func writeEvent(ctx context.Context, tx *sql.Tx, itemID, kind, actor, sessionID string, payload any) error {
 	var payloadJSON sql.NullString
 	if payload != nil {

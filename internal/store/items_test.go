@@ -10,8 +10,8 @@ import (
 var rootIDShape = regexp.MustCompile(`^rnc-[0-9a-f]{6}$`)
 
 // TestAddItemIDShapes proves a root gets rnc-<6 hex>, three
-// children of it get .1/.2/.3 in order, and a child of .1 gets .1.1 -- the
-// whole parent chain is readable from the id alone.
+// children of it get .1/.2/.3 in order, and a child of .1 gets .1.1, so the
+// parent chain is readable from the id alone.
 func TestAddItemIDShapes(t *testing.T) {
 	s := openTestStore(t)
 
@@ -46,10 +46,9 @@ func TestAddItemIDShapes(t *testing.T) {
 
 // TestBlockedParentRemovesChildFromReady builds a three-level tree via real
 // AddItem calls (epic -> child -> grandchild), inserts a `blocks` edge on
-// the EPIC with raw fixture SQL (independent of CreateDep), and asserts the
-// child and
-// grandchild both disappear from `ready` -- proving AddItem wrote the
-// parent-child deps rows, not just items.parent_id.
+// the epic with raw fixture SQL (independent of CreateDep), and asserts the
+// child and grandchild both disappear from `ready`. That proves AddItem
+// wrote the parent-child deps rows, not just items.parent_id.
 func TestBlockedParentRemovesChildFromReady(t *testing.T) {
 	s := openTestStore(t)
 
@@ -70,7 +69,7 @@ func TestBlockedParentRemovesChildFromReady(t *testing.T) {
 		}
 	}
 
-	// Block the EPIC directly, via raw fixture SQL -- not a store method.
+	// Block the epic directly, via raw fixture SQL rather than a store method.
 	execSQL(t, s, `INSERT INTO deps (item_id, depends_on_id, type, created_at, created_by) VALUES (?, ?, 'blocks', ?, ?)`,
 		epic.ID, blocker.ID, nowFunc(), "tester")
 

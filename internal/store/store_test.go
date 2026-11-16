@@ -85,12 +85,11 @@ func assertPragmas(t *testing.T, ctx context.Context, conn *sql.Conn, name strin
 }
 
 // TestTxlockImmediateHonored proves _txlock=immediate is honored: a bare
-// BEGIN on a
-// keep connection (connA, production DSN via dsn()) already holds the
-// write lock before any statement runs, so a second connection (connB, DSN
-// built by replacing busy_timeout(3000) with busy_timeout(0) so it retries
-// zero times) fails immediately rather than after busy_timeout. dsnA comes
-// from the production dsn() function, and dsnB is derived from it by a
+// BEGIN on a keep connection (connA, production DSN via dsn()) already holds
+// the write lock before any statement runs, so a second connection (connB,
+// DSN built by replacing busy_timeout(3000) with busy_timeout(0) so it
+// retries zero times) fails immediately rather than after busy_timeout. dsnA
+// comes from the production dsn() function, and dsnB is derived from it by a
 // single string replacement. No time.Sleep, no time.Since, no "should be
 // fast" comment: the result is pass/fail on the first line, with no clock
 // involved.
@@ -128,8 +127,8 @@ func TestTxlockImmediateHonored(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Step 2: connB, with busy_timeout=0, must fail *now* if the lock is
-	// really held -- there is no window in which this could pass by luck.
+	// Step 2: connB, with busy_timeout=0, must fail immediately if the lock
+	// is really held, so there is no window in which this could pass by luck.
 	txB, err := dbB.BeginTx(ctx, nil)
 	if err == nil {
 		_, err = txB.Exec("INSERT INTO t (v) VALUES ('from-b')")
@@ -147,7 +146,7 @@ func TestTxlockImmediateHonored(t *testing.T) {
 	}
 	t.Logf("connB correctly failed with SQLITE_BUSY while connA held the lock: %v", err)
 
-	// Step 3: release, and prove this isn't a permanent/false failure --
+	// Step 3: release, and prove this isn't a permanent/false failure:
 	// connB must now succeed immediately.
 	if err := txA.Rollback(); err != nil {
 		t.Fatal(err)
@@ -165,12 +164,12 @@ func TestTxlockImmediateHonored(t *testing.T) {
 }
 
 // TestOpenCapsMaxOpenConns proves the one-connection cap on the production
-// path: a *Store
-// built by the real Open (not a *sql.DB the test built itself) reports
-// MaxOpenConnections == 1. Kept as its own three-line test rather than an
-// assertion bolted onto TestPragmasApplyToEverySecondConnection, since that
-// test deliberately raises its own cap to 2 for its own purposes and so can
-// never be the thing that proves production stays at 1.
+// path: a *Store built by the real Open (not a *sql.DB the test built
+// itself) reports MaxOpenConnections == 1. Kept as its own three-line test
+// rather than an assertion bolted onto
+// TestPragmasApplyToEverySecondConnection, since that test deliberately
+// raises its own cap to 2 for its own purposes and so can never be the thing
+// that proves production stays at 1.
 func TestOpenCapsMaxOpenConns(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "caps.sqlite")
 	// Open enforces the schema_version guard, so this must
@@ -237,10 +236,10 @@ func TestWithTxCommitsAndRollsBack(t *testing.T) {
 	assertCanaryCount(t, ctx, s, 2, 0)
 }
 
-// TestReadOnlyOpenServesReadsAndRefusesWrites proves the dashboard's whole
-// mechanism: OpenOptions{ReadOnly: true} coexists
-// with this DSN's _txlock=immediate, serves every read method the dashboard
-// needs, and refuses a write.
+// TestReadOnlyOpenServesReadsAndRefusesWrites proves what the dashboard
+// relies on: OpenOptions{ReadOnly: true} coexists with this DSN's
+// _txlock=immediate, serves every read method the dashboard needs, and
+// refuses a write.
 //
 // Observed output of the same sequence against a real store:
 //
@@ -253,7 +252,7 @@ func TestWithTxCommitsAndRollsBack(t *testing.T) {
 //	RO AddItem err=attempt to write a readonly database (8)
 //
 // The write's failure is asserted by err != nil plus an unchanged
-// len(ListItems(...)) -- never strings.Contains(err.Error(), "readonly").
+// len(ListItems(...)), never strings.Contains(err.Error(), "readonly").
 // Driver message text is not a contract (errors.go's standing
 // classification rule). The extended code (8, SQLITE_READONLY) is recorded
 // above for reference only, not asserted on here.

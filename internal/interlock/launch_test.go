@@ -31,20 +31,20 @@ func argv(t *testing.T, log string) []string {
 	return strings.Split(strings.TrimRight(string(raw), "\n"), "\n")
 }
 
-// TestPromptCannotSmuggleFlags is the whole reason the sentinel exists.
+// TestPromptCannotSmuggleFlags checks that a prompt beginning with a dash
+// reaches Interlock as the prompt, after the "--" sentinel, and not as
+// flags.
 //
 // A prompt is whatever a person typed into a web form. Passed as a bare
 // argument it is parsed as flags, so --env and --model become injectable
-// and the prompt itself is discarded -- the run then does something other
-// than what was asked, which is worse than refusing. Quoting cannot fix it
-// from this side: argv carries no quoting.
+// and the prompt itself is discarded. The run would then do something
+// other than what was asked. Quoting cannot fix it from this side: argv
+// carries no quoting.
 func TestPromptCannotSmuggleFlags(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is keep's, not the
-	// shell's, but there is no honest way to assert it here without a
-	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: keep's Interlock integration is unverified on
-	// Windows.
+	// Windows cannot execute. Without a Windows stub the test is skipped
+	// there rather than passing on nothing, so keep's Interlock
+	// integration is unverified on Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
 	}
@@ -80,15 +80,14 @@ func TestPromptCannotSmuggleFlags(t *testing.T) {
 	}
 }
 
-// TestLaunchPassesNoPromptSentinel: an item launch has no untrusted text,
-// so it carries no sentinel and nothing after the flags.
+// TestLaunchPassesNoPromptSentinel checks that an item launch carries no
+// prompt sentinel and nothing after the flags, because it has no untrusted
+// text.
 func TestLaunchPassesNoPromptSentinel(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is keep's, not the
-	// shell's, but there is no honest way to assert it here without a
-	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: keep's Interlock integration is unverified on
-	// Windows.
+	// Windows cannot execute. Without a Windows stub the test is skipped
+	// there rather than passing on nothing, so keep's Interlock
+	// integration is unverified on Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
 	}
@@ -105,17 +104,15 @@ func TestLaunchPassesNoPromptSentinel(t *testing.T) {
 	}
 }
 
-// TestLaunchRunsInTheProjectDirectory. Interlock's own --cwd is relative to
-// the repository it resolves, so an absolute path is rejected outright --
-// which is why the directory is set on the process instead. Discovered by
-// running it rather than by stubbing it.
+// TestLaunchRunsInTheProjectDirectory checks that the launched process runs
+// in the project directory. Interlock's own --cwd is relative to the
+// repository it resolves, so an absolute path is rejected outright, which
+// is why the directory is set on the process instead.
 func TestLaunchRunsInTheProjectDirectory(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is keep's, not the
-	// shell's, but there is no honest way to assert it here without a
-	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: keep's Interlock integration is unverified on
-	// Windows.
+	// Windows cannot execute. Without a Windows stub the test is skipped
+	// there rather than passing on nothing, so keep's Interlock
+	// integration is unverified on Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
 	}
@@ -136,11 +133,9 @@ func TestLaunchRunsInTheProjectDirectory(t *testing.T) {
 // TestUnknownAgentIsRefused before anything is spawned.
 func TestUnknownAgentIsRefused(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is keep's, not the
-	// shell's, but there is no honest way to assert it here without a
-	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: keep's Interlock integration is unverified on
-	// Windows.
+	// Windows cannot execute. Without a Windows stub the test is skipped
+	// there rather than passing on nothing, so keep's Interlock
+	// integration is unverified on Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
 	}
@@ -173,22 +168,19 @@ func launcher(t *testing.T, state string) string {
 	return bin
 }
 
-// TestLaunchReportsARunThatDiedImmediately.
+// TestLaunchReportsARunThatDiedImmediately checks that a launched run which
+// exits straight away is reported as a failure.
 //
 // --no-follow returns as soon as the supervisor is up, so a zero exit means
-// "launched", not "working". A run that fails on configuration -- not
-// logged in, no such model, a broken hook -- does so within a second or
-// two. Reporting those as started is the same overclaim as announcing an
-// outcome nobody checked, and it was caught by running a real agent rather
-// than by reading the code: the board said "Started" while the run had
-// already failed.
+// "launched", not "working". A run that fails on configuration (not logged
+// in, no such model, a broken hook) does so within a second or two.
+// Reporting those as started is the same overclaim as announcing an outcome
+// nobody checked.
 func TestLaunchReportsARunThatDiedImmediately(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is keep's, not the
-	// shell's, but there is no honest way to assert it here without a
-	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: keep's Interlock integration is unverified on
-	// Windows.
+	// Windows cannot execute. Without a Windows stub the test is skipped
+	// there rather than passing on nothing, so keep's Interlock
+	// integration is unverified on Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
 	}
@@ -203,15 +195,14 @@ func TestLaunchReportsARunThatDiedImmediately(t *testing.T) {
 	}
 }
 
-// TestLaunchAcceptsARunThatIsStillGoing. The outcome of a live run belongs
-// in Interlock, not in a redirect -- the board's job is to say it started.
+// TestLaunchAcceptsARunThatIsStillGoing checks that a run still alive after
+// the startup wait is reported as started. The outcome of a live run
+// belongs in Interlock, not in a redirect.
 func TestLaunchAcceptsARunThatIsStillGoing(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is keep's, not the
-	// shell's, but there is no honest way to assert it here without a
-	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: keep's Interlock integration is unverified on
-	// Windows.
+	// Windows cannot execute. Without a Windows stub the test is skipped
+	// there rather than passing on nothing, so keep's Interlock
+	// integration is unverified on Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
 	}

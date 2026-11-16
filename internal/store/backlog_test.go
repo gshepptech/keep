@@ -7,8 +7,8 @@ import (
 	"github.com/gshepptech/keep/internal/model"
 )
 
-// typesOf returns the sequence of Type values in items, in order -- what
-// TestBacklogGroupOrder compares against model.TypesOrdered.
+// typesOf returns the sequence of Type values in items, in order, for
+// TestBacklogGroupOrder to compare against model.TypesOrdered.
 func typesOf(items []model.Item) []string {
 	out := make([]string, len(items))
 	for i, it := range items {
@@ -19,8 +19,8 @@ func typesOf(items []model.Item) []string {
 
 // TestBacklogOnlyRawNonDiscarded proves Backlog(ctx, "") returns every
 // stage='raw' item whose status is not closed or dropped, and no
-// ticket-stage item at all -- built through the real AddItem/CloseItem/
-// DropItem, never raw SQL.
+// ticket-stage item at all. The fixture is built through the real
+// AddItem/CloseItem/DropItem, never raw SQL.
 func TestBacklogOnlyRawNonDiscarded(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
@@ -78,9 +78,8 @@ func TestBacklogInProgressRawIsPresent(t *testing.T) {
 // model.TypesOrdered order: one raw item of each of the five types,
 // inserted in a deliberately scrambled order, comes back with a Type
 // sequence exactly equal to model.TypesOrdered. The expected order is read
-// from model.TypesOrdered itself, never re-typed here -- re-typing it would
-// make this test and backlog.go's CASE two independent statements of the
-// same order, defeating the point of having one.
+// from model.TypesOrdered itself rather than re-typed, so this test and
+// backlog.go's CASE do not become two independent statements of one order.
 func TestBacklogGroupOrder(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)

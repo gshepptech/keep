@@ -8,22 +8,18 @@ import (
 	"github.com/gshepptech/keep/internal/model"
 )
 
-// styleCSS is the whole embedded stylesheet, compiled into the binary --
+// styleCSS is the whole embedded stylesheet, compiled into the binary,
 // the page fetches nothing (no external assets).
 //
 //go:embed style.css
 var styleCSS string
 
-// styleInline is the ONE permitted use of a template.* trust type in this
-// package -- doc.go states the rule this is the deliberate, documented
-// exception to. styleCSS is a compile-time go:embed of a static file living
-// in this repository: it is not agent data, cannot become agent data (no
-// code in this package ever writes to it), and is reviewable once by a
-// human rather than scanned per render. structure_test.go's check for
-// template.HTML/HTMLAttr/URL/JS/CSS would otherwise have no way to
-// distinguish this line from a genuine violation; naming it here, at the
-// declaration, is what keeps the exception visible rather than rediscovered
-// later.
+// styleInline is the one permitted use of a template.* trust type in this
+// package, the documented exception to the rule doc.go states. styleCSS is
+// a compile-time go:embed of a static file living in this repository: it is
+// not agent data, cannot become agent data (no code in this package ever
+// writes to it), and is reviewable once by a human rather than scanned per
+// render. structure_test.go allows template.CSS in this file only.
 var styleInline = template.CSS(styleCSS)
 
 // templateFS is every *.html template this package parses. Kept as an
@@ -38,8 +34,8 @@ var templateFS embed.FS
 //     stylesheet without threading it through every render function's page
 //     data.
 //   - "state" and "depthClass" (render.go) are this package's only
-//     presentation logic -- see render.go's doc comments for what each
-//     decides and, just as importantly, what it does not decide.
+//     presentation logic; their doc comments say what each decides and
+//     what it does not.
 var funcMap = template.FuncMap{
 	"style":      func() template.CSS { return styleInline },
 	"state":      state,
@@ -62,9 +58,8 @@ var funcMap = template.FuncMap{
 		return stateTag{Slug: slug, Label: label}
 	},
 	// either picks between two strings without a branch in the template.
-	// html/template has no ternary, and the alternative -- an {{if}} around
-	// the whole head call -- would duplicate the line that sets every
-	// page's title.
+	// html/template has no ternary, and an {{if}} around the whole head call
+	// would duplicate the line that sets every page's title.
 	"either": func(cond bool, yes, no string) string {
 		return map[bool]string{true: yes, false: no}[cond]
 	},
@@ -77,18 +72,18 @@ var funcMap = template.FuncMap{
 
 // tmpl is the package's one parsed template set, built once at package
 // initialisation from every file under templates/. A template that fails to
-// parse is a build-time mistake, not a runtime condition -- template.Must
-// panicking here means every render function is free of a branch for
+// parse is a build-time mistake, not a runtime condition, so template.Must
+// panicking here leaves every render function free of a branch for
 // something that can never vary once the binary has started.
 var tmpl = template.Must(template.New("dash").Funcs(funcMap).ParseFS(templateFS, "templates/*.html"))
 
-// state maps an item to one of exactly three semantic states -- the only
+// state maps an item to one of exactly three semantic states, the only
 // three colour carries (workable / claimed / blocked). Order matters:
-// blocked wins over claimed, because a
-// claimed-but-blocked item is not workable and the page must say the more
-// important thing. This is a presentation mapping over values the store
-// already computed (Status, Blocked); it decides nothing about the data --
-// the only piece of logic in this package alongside depthClass below.
+// blocked wins over claimed, because a claimed-but-blocked item is not
+// workable and the page must say the more important thing. This is a
+// presentation mapping over values the store already computed (Status,
+// Blocked); it decides nothing about the data, and it is the only piece of
+// logic in this package alongside depthClass below.
 func state(status string, blocked bool) string {
 	if blocked {
 		return "blocked"

@@ -35,11 +35,10 @@ func (s *Server) readyItemsFrom(ctx context.Context, st *store.Store, dir string
 
 // heldFor reports the collision holding one item back, if any.
 //
-// It runs the item through interlock.Exclude -- the same call the queue
-// uses -- rather than comparing paths itself. A second rule for "is this
-// held" could disagree with the board's: the item page would offer Claim
-// on work the
-// queue had already hidden, and neither page could explain the other.
+// It runs the item through interlock.Exclude, the same call the queue uses,
+// rather than comparing paths itself. A second rule for "is this held"
+// could disagree with the board's: the item page would offer Claim on work
+// the queue had already hidden, and neither page could explain the other.
 func (s *Server) heldFor(ctx context.Context, item model.Item, dir string) *interlock.Collision {
 	if !interlock.Watches(dir) {
 		return nil

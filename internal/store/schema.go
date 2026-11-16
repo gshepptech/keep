@@ -11,19 +11,20 @@ import (
 	sqlite3 "modernc.org/sqlite/lib"
 )
 
-// schemaDDL is the schema THIS binary creates for a brand-new store. It is
-// the current shape, at the top of the migration ladder -- edit it when the
-// schema changes, and append a matching rung to `migrations` in the same
-// commit so that stores which already exist reach the same shape.
+// schemaDDLBase is the schema this binary creates for a brand-new store,
+// before the full-text index and version row are appended. It is the
+// current shape, at the top of the migration ladder. A schema change edits
+// it and appends a matching rung to `migrations` in the same commit, so
+// stores that already exist reach the same shape.
 // TestFreshInitMatchesMigratedV1 compares the two paths object by object and
-// fails if they disagree, which is what makes "edit both" enforceable rather
-// than a convention.
+// fails if they disagree, so "edit both" is enforced rather than a
+// convention.
 //
-// schemaDDL is the entire schema -- four tables, five indexes, one unique
-// index, and the ready view -- applied as a single statement string inside
-// one transaction by initWithDDL. Every statement form uses its
-// IF NOT EXISTS/OR IGNORE idiom so that a second Init on an
-// already-initialized store is a true no-op rather than an error.
+// It holds four tables, five indexes, one unique index, and the ready view,
+// applied as a single statement string inside one transaction by
+// initWithDDL. Every statement form uses its IF NOT EXISTS/OR IGNORE idiom
+// so that a second Init on an already-initialized store is a true no-op
+// rather than an error.
 //
 // items carries an ordinal INTEGER column. It is required for two things:
 // UNIQUE(parent_id, ordinal) below cannot be expressed without it, and
@@ -32,8 +33,7 @@ import (
 // multiple root items (parent_id AND ordinal both NULL) never collide on
 // this constraint.
 //
-// No is_blocked column. It gets added when a benchmark says so, not in
-// anticipation.
+// There is no is_blocked column; blocking is computed by the view.
 const schemaDDLBase = `
 
 CREATE TABLE IF NOT EXISTS items (
@@ -135,44 +135,27 @@ INSERT OR IGNORE INTO meta (key, value) VALUES ('schema_version', '$SCHEMAVERSIO
 // index reads from, then the index and its triggers, then the version row.
 var schemaDDL = expandSchemaSQL(schemaDDLBase + ftsDDL + metaDDL)
 
-// schemaDDLv1 is the schema keep shipped before there was a migration
-// ladder, frozen. It is NEVER edited again, by anyone, for any reason -- not
-// to fix a typo in a comment, not to add an index. Its only job is to be the
-// starting shape that `migrations` is proven to climb from: without a frozen
-// copy, the "does a migrated old store match a fresh new one" test compares
-// today's DDL against today's DDL and passes while asserting nothing.
-//
-// Today it is character-identical to schemaDDL, because the ladder has no
-// rungs yet. That is the one and only moment at which the duplication looks
-// pointless. The first rung is what makes it load-bearing, and the first rung
-// is exactly when nobody wants to be reconstructing what v1 looked like from
-// git history.
 // ftsDDL is the full-text index and its three synchronisation triggers,
-// held separately because it has TWO callers that must produce the identical
-// result: schemaDDL, which gives a brand-new store the index from the
-// start, and migrations rung 2, which adds it to a store that already has
-// items in it. A second copy of this text is the exact way a migrated store
-// ends up with a subtly different index from a fresh one --
-// TestFreshInitMatchesMigratedV1 compares sqlite_master between the two
-// paths and would catch it, which is why there is one copy to catch a
-// divergence in.
+// held separately because it has two callers that must produce the same
+// result: schemaDDL, which gives a brand-new store the index from the start,
+// and migrations rung 2, which adds it to a store that already has items in
+// it. A second copy of this text could leave a migrated store with a subtly
+// different index from a fresh one. TestFreshInitMatchesMigratedV1 compares
+// sqlite_master between the two paths and would catch that.
 const ftsDDL = `-- The full-text index over the five columns Search matches on. It is an
 -- EXTERNAL-CONTENT table (content='items'): FTS5 stores only the index and
 -- reads the text back out of items, so a captured roadmap's body is not
 -- held twice and cannot drift between two copies.
 --
--- tokenize='trigram' rather than the default unicode61, and that choice is
--- what preserves the contract Search has always had. The default tokenizer
--- matches WORDS, so a search for "oken" would stop finding "token" -- a
--- silent narrowing of what the command does, dressed up as a performance
--- fix. Trigram indexes every three-character run, which makes MATCH an
--- arbitrary case-insensitive SUBSTRING search: the same thing LIKE '%x%'
--- does, and the same thing the doc comment on SearchFilter.Query promises
--- ("A person searching for 'token expiry' means those characters, and a
--- search syntax is a thing to learn before you can find your own note").
--- Verified against this module's pinned driver (SQLite 3.53.3) before it
--- was relied on: infix 'oken' matches, and 'REFRESH TOK' matches
--- lower-case text.
+-- tokenize='trigram' rather than the default unicode61, because Search is a
+-- substring search. The default tokenizer matches WORDS, so a search for
+-- "oken" would not find "token". Trigram indexes every three-character run,
+-- which makes MATCH an arbitrary case-insensitive SUBSTRING search: the same
+-- thing LIKE '%x%' does, and the same thing the doc comment on
+-- SearchFilter.Query promises ("A person searching for 'token expiry' means
+-- those characters, and a search syntax is a thing to learn before you can
+-- find your own note"). With the pinned driver, infix 'oken' matches, and
+-- 'REFRESH TOK' matches lower-case text.
 CREATE VIRTUAL TABLE IF NOT EXISTS items_fts USING fts5(
     title, why, acceptance, paths, body,
     content='items', content_rowid='rowid', tokenize='trigram'
@@ -201,6 +184,11 @@ CREATE TRIGGER IF NOT EXISTS items_fts_after_update AFTER UPDATE ON items BEGIN
 END;
 `
 
+// schemaDDLv1 is the version-1 schema, frozen. It is never edited, not
+// even to fix a typo in a comment or add an index, because it is the
+// starting shape that `migrations` is proven to climb from. Without a frozen
+// copy, the "does a migrated old store match a fresh new one" test would
+// compare today's DDL against today's DDL and pass while asserting nothing.
 var schemaDDLv1 = expandDepthSQL(`
 CREATE TABLE IF NOT EXISTS items (
     id                  TEXT PRIMARY KEY,
@@ -310,7 +298,7 @@ func open(path string, opts OpenOptions) (*Store, error) {
 
 // initDDLMaxAttempts bounds the SQLITE_BUSY retry described below. Each
 // retry's own backoff is a few milliseconds, so even the worst case (every
-// attempt but the last hits the race) adds well under a tenth of a second --
+// attempt but the last hits the race) adds well under a tenth of a second;
 // this is not a substitute for busy_timeout, it covers a narrower window
 // busy_timeout does not.
 const initDDLMaxAttempts = 8
@@ -319,7 +307,7 @@ const initDDLMaxAttempts = 8
 // single transaction" a falsifiable claim rather than an unverified comment.
 // Init(path) is exactly initWithDDL(path, schemaDDL, schemaVersion); the
 // parameters stay unexported so no caller outside this package may choose
-// its own schema -- they exist only so this package's own tests can feed a
+// its own schema. They exist only so this package's own tests can feed a
 // DDL that fails partway through and assert that nothing survived, and so
 // the migration tests can build a genuine version-1 store from the frozen
 // schemaDDLv1 without the version guard rejecting it for being exactly what
@@ -338,16 +326,16 @@ func initWithDDL(path string, ddl string, wantVersion int) (*Store, error) {
 
 	// The very first writer to a brand-new database file must briefly hold
 	// an exclusive lock while SQLite bootstraps WAL mode for that file
-	// (creating the -wal/-shm sidecars and running wal-index recovery --
-	// see sqlite.org/wal.html, "Concurrency"). If two concurrent `keep init`
-	// processes race to be that first writer, the loser's BEGIN
-	// IMMEDIATE can come back SQLITE_BUSY almost instantly, without waiting
-	// out busy_timeout=3000. TestConcurrentInitSameDirectory (cmd/keep)
-	// reproduces this intermittently, always at this BeginTx, always well
-	// under 3000ms elapsed. It is a real, narrow SQLite WAL-bootstrap race.
+	// (creating the -wal/-shm sidecars and running wal-index recovery;
+	// see sqlite.org/wal.html, "Concurrency"). If two concurrent `keep
+	// init` processes race to be that first writer, the loser's BEGIN
+	// IMMEDIATE can come back SQLITE_BUSY almost instantly, without
+	// waiting out busy_timeout=3000. TestConcurrentInitSameDirectory
+	// (cmd/keep) exercises this race, which always surfaces at this
+	// BeginTx, well under 3000ms elapsed.
 	//
 	// The whole DDL block is idempotent (IF NOT EXISTS / OR IGNORE
-	// throughout), so retrying it from scratch is always safe -- a retry
+	// throughout), so retrying it from scratch is always safe: a retry
 	// here can never leave a partial or duplicated schema. A handful of
 	// near-immediate retries (a few milliseconds of backoff each) covers
 	// this bootstrap window without masking any other class of failure:
@@ -395,7 +383,7 @@ func isSQLiteBusy(err error) bool {
 
 // Init creates (or idempotently re-verifies) the schema at path: items,
 // deps, events, meta, and the ready view, all in one transaction, plus the
-// meta.schema_version row. Init does not create path's parent directory --
+// meta.schema_version row. Init does not create path's parent directory:
 // internal/store takes a path and does not invent filesystem layout; that is
 // the CLI's job.
 func Init(path string) (*Store, error) {
@@ -409,7 +397,7 @@ func Init(path string) (*Store, error) {
 // detects that kind of drift.
 //
 // A missing meta table or missing schema_version row is also treated as an
-// ErrSchemaVersion failure, not a valid empty store -- a default read-write
+// ErrSchemaVersion failure, not a valid empty store: a default read-write
 // sql.Open fabricates an empty database file on a path that was never
 // initialized, and without this, that would look identical to success.
 //
@@ -420,8 +408,8 @@ func Init(path string) (*Store, error) {
 //     is a ladder that fixes it. ErrNeedsMigration, naming `keep migrate`.
 //   - NEWER than this binary: the store was written by a keep that knows
 //     something this one does not. ErrSchemaVersion, and nothing this binary
-//     can do about it -- migrating downwards would mean discarding data it
-//     cannot even name.
+//     can do about it, because migrating downwards would mean discarding
+//     data it cannot even name.
 func (s *Store) checkSchemaVersion(ctx context.Context) error {
 	return s.checkSchemaVersionAgainst(ctx, schemaVersion)
 }

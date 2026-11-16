@@ -7,14 +7,14 @@ import (
 	"testing"
 )
 
-// likeOnlyMatches is the oracle: the search predicate exactly as it was
-// before items_fts existed, five LIKE '%x%' conditions and nothing else,
-// executed here rather than through Search.
+// likeOnlyMatches is the oracle: the search predicate without the items_fts
+// prefilter, five LIKE '%x%' conditions and nothing else, executed here
+// rather than through Search.
 //
 // It is written out again on purpose. Reusing Search with a flag to turn the
-// prefilter off would make the comparison circular -- the same expression
-// would be producing both sides of it, and the one thing this test has to
-// rule out is that the prefilter changed what the expression means.
+// prefilter off would make the comparison circular: the same expression
+// would produce both sides of it, and this test has to rule out that the
+// prefilter changed what the expression means.
 func likeOnlyMatches(t *testing.T, s *Store, query string, includeClosed bool) []string {
 	t.Helper()
 	pattern := "%" + escapeLike(query) + "%"
@@ -48,14 +48,14 @@ func likeOnlyMatches(t *testing.T, s *Store, query string, includeClosed bool) [
 	return out
 }
 
-// TestSearchFTSAgreesWithAFullScan is what licenses the prefilter. Adding an
-// index in front of a query is only safe if it changes how long the answer
-// takes and not what the answer is, and the failure when it does not is
-// invisible: search returns results, they are just missing the one you
-// wanted.
+// TestSearchFTSAgreesWithAFullScan checks that Search with the FTS5
+// prefilter returns exactly what a plain LIKE scan returns. An index in
+// front of a query is only safe if it changes how long the answer takes and
+// not what the answer is, and the failure when it does not is invisible:
+// search returns results, they are just missing the one you wanted.
 //
 // The queries below are the cases where a token-based index would silently
-// diverge from substring matching -- an infix, a case difference, a
+// diverge from substring matching: an infix, a case difference, a
 // punctuation-only fragment, a LIKE metacharacter, a term shorter than a
 // trigram, a query with FTS5 operator syntax in it, and non-ASCII text.
 func TestSearchFTSAgreesWithAFullScan(t *testing.T) {
@@ -140,11 +140,11 @@ func TestSearchFTSAgreesWithAFullScan(t *testing.T) {
 	}
 }
 
-// TestFTSIndexTracksEveryWriteToItems. External-content FTS5 does not update
-// itself; three triggers do. A missing or wrong trigger produces a store
-// where search silently answers from stale text -- finding a title that was
-// renamed, or failing to find one that was just filed. Neither raises an
-// error anywhere.
+// TestFTSIndexTracksEveryWriteToItems checks that new and edited items are
+// reflected in search. External-content FTS5 does not
+// update itself; three triggers do. A missing or wrong trigger produces a
+// store where search silently answers from stale text, finding a title
+// that was renamed or failing to find one that was just filed.
 func TestFTSIndexTracksEveryWriteToItems(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
@@ -191,12 +191,11 @@ func searchIDs(t *testing.T, s *Store, query string) []string {
 	return out
 }
 
-// TestMigratedStoreFindsItemsFiledBeforeTheIndexExisted. The rung that adds
-// items_fts runs against a store that already has items in it, and the
-// triggers only fire on writes from that moment on. Without the rebuild,
-// search would return nothing for every item filed before the upgrade --
-// while still returning results for everything filed after it, which is the
-// shape of failure nobody notices.
+// TestMigratedStoreFindsItemsFiledBeforeTheIndexExisted checks that search
+// finds items filed before the migration that adds items_fts. The triggers
+// only fire on writes from that rung on, so without the rebuild, search
+// would return nothing for older items while still returning results for
+// newer ones, a failure nobody would notice.
 func TestMigratedStoreFindsItemsFiledBeforeTheIndexExisted(t *testing.T) {
 	ctx := context.Background()
 	path := t.TempDir() + "/old.sqlite"

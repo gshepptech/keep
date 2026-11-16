@@ -12,9 +12,9 @@ import (
 )
 
 // ErrNoFieldsToUpdate is returned by UpdateItem when the caller sets no
-// fields at all. A no-flag update is a caller error, not a silent no-op --
-// the CLI maps this to a usage
-// error (exit 2), the same treatment `add` with no title would get.
+// fields at all. A no-flag update is a caller error, not a silent no-op; the
+// CLI maps this to a usage error (exit 2), the same treatment `add` with no
+// title would get.
 var ErrNoFieldsToUpdate = errors.New("update: no fields supplied")
 
 // nullableString converts "" to a driver NULL and anything else to itself,
@@ -58,14 +58,14 @@ func derefIntPtr(p *int) any {
 // open transaction, so the second query blocks forever waiting for a
 // connection the pool is not allowed to create. With a deadline, the call
 // only returns once the deadline expires, which forces database/sql to
-// auto-rollback the transaction and free the connection -- the pending
-// query then succeeds, but the enclosing withTx fails with "sql:
+// auto-rollback the transaction and free the connection. The pending query
+// then succeeds, but the enclosing withTx fails with "sql:
 // transaction has already been committed or rolled back".
 // With no deadline on the caller's context (the normal case for a CLI
 // invocation), this is a permanent hang, not a slow query.
 //
-// isBlockedTx embeds the SAME blockedTreeCTE constant (ready.go) IsBlocked
-// does -- not a second copy of the SQL -- so the two can never disagree
+// isBlockedTx embeds the same blockedTreeCTE constant (ready.go) IsBlocked
+// does, not a second copy of the SQL, so the two can never disagree
 // about which items are blocked; it differs only in running the query
 // against tx instead of s.db. BEGIN IMMEDIATE (this Store's DSN) already
 // serializes every writer against this transaction, so there is no
@@ -113,11 +113,11 @@ func getItemForUpdateTx(ctx context.Context, tx *sql.Tx, id string) (model.Item,
 // StartItemInput is the argument to StartItem. Actor is required, same rule
 // as every other mutation in this package (the audit trail means nothing if
 // actor can be silently empty). SessionID is the caller's KEEP_SESSION,
-// which may legitimately be empty -- there is no requirement that an agent
-// set one.
+// which the CLI and the board fill in for callers that do not set one;
+// StartItem refuses an empty one (ErrNoSession).
 //
 // json tags: this struct doubles as the `start` MCP tool's wire type
-// directly (internal/mcp). SessionID is `json:"-"` -- session is a
+// directly (internal/mcp). SessionID is `json:"-"` because session is a
 // server-lifetime property (resolved once from KEEP_SESSION at server
 // start), never a per-call argument, matching every other mutating *Input
 // struct in this package. Tags are additive and behaviourally inert for Go
@@ -135,12 +135,11 @@ type startEventPayload struct {
 }
 
 // StartItem implements a six-row state table exactly. All six rows execute
-// inside one withTx -- the read (current status/stage/claim) and the write
+// inside one withTx: the read (current status/stage/claim) and the write
 // (the claim itself) must never be split across two transactions, or a
 // concurrent StartItem could observe stale state.
 //
-// Check order inside the transaction is load-bearing, in this exact
-// sequence:
+// Check order inside the transaction matters, in this exact sequence:
 //  1. Missing item -> ErrNotFound.
 //  2. stage != ticket -> ErrInvalidTransition ("raw items are not
 //     workable; promote it first").
@@ -150,17 +149,14 @@ type startEventPayload struct {
 //     naming the holder and claimed_at.
 //  5. Blocked (directly or through the parent tree, via isBlockedTx) ->
 //     ErrInvalidTransition naming the blocker.
-//  6. Otherwise: claim it -- one UPDATE, one `start` event.
+//  6. Otherwise: claim it, with one UPDATE and one `start` event.
 //
-// Check 4 runs BEFORE check 5 deliberately: an agent retrying its own start
+// Check 4 runs before check 5 deliberately: an agent retrying its own start
 // on an item that has since become blocked by someone else's work must
 // still get its idempotent success for the claim it already holds, rather
-// than a confusing new failure it did nothing to cause. A later refactor
-// that "simplifies" this by reordering the checks (e.g. to check blocking
-// unconditionally before claim status) would silently break every agent's
-// retry loop the moment a race window opens between claiming and a
-// concurrent block -- this comment is the load-bearing part, not the code
-// shape.
+// than a confusing new failure it did nothing to cause. Checking blocking
+// before claim status would break every agent's retry loop whenever a
+// concurrent block lands between claiming and retrying.
 func (s *Store) StartItem(ctx context.Context, in StartItemInput) (model.Item, error) {
 	if in.Actor == "" {
 		return model.Item{}, fmt.Errorf("StartItem: Actor is required")
@@ -184,8 +180,8 @@ func (s *Store) StartItem(ctx context.Context, in StartItemInput) (model.Item, e
 // terminal item, another session's claim and a blocked item in the same way,
 // and a change to the table is a change to one function.
 //
-// It takes a *sql.Tx rather than opening one, because NextItem's whole point
-// is that choosing the item and claiming it happen in ONE transaction.
+// It takes a *sql.Tx rather than opening one, because NextItem must
+// choose the item and claim it in ONE transaction.
 func claimItemTx(ctx context.Context, tx *sql.Tx, in StartItemInput) (model.Item, error) {
 	if in.SessionID == "" {
 		return model.Item{}, fmt.Errorf("StartItem: item %q: %w -- set $KEEP_SESSION, or claim through a surface that derives one", in.ID, ErrNoSession)
@@ -208,19 +204,17 @@ func claimItemTx(ctx context.Context, tx *sql.Tx, in StartItemInput) (model.Item
 		if item.ClaimedBySession != nil {
 			holder = *item.ClaimedBySession
 		}
-		// A legacy anonymous claim -- claimed_by_session NULL, written by a
-		// binary from before ErrNoSession existed -- reads back as "" and
+		// An anonymous claim (claimed_by_session NULL) reads back as "" and
 		// cannot match here, because the check at the top of this function
 		// guarantees in.SessionID is not "". So it falls through to the
 		// ErrConflict below rather than being handed to whoever asked next
-		// as their own retry. A `holder != ""` clause was written here for
-		// that case and removed again: it is unreachable, and a guard that
-		// cannot fire is a claim about the code that no test can check.
+		// as their own retry, and needs no `holder != ""` guard of its own.
 		if holder == in.SessionID {
 			// Idempotent no-op: this is the same session retrying its own
-			// claim. NO update, NO event -- the deliberate exception to
-			// "every mutation writes one event": a retried event would put
-			// a claim in the audit trail that never happened.
+			// claim. No update and no event: this is the deliberate
+			// exception to "every mutation writes one event", because a
+			// retried event would put a claim in the audit trail that never
+			// happened.
 			return item, nil
 		}
 		claimedAt := ""
@@ -244,7 +238,7 @@ func claimItemTx(ctx context.Context, tx *sql.Tx, in StartItemInput) (model.Item
 	// A claim says someone picked this up, so it records who. Without this
 	// the item is in progress with an empty assignee, and every view asking
 	// "who is working on this?" has to answer "nobody" for something a
-	// person just claimed -- which is how this was found.
+	// person just claimed.
 	//
 	// An assignee already on the item is left alone: assigning work to
 	// someone and then claiming it yourself is a real sequence, and the
@@ -284,10 +278,10 @@ func claimItemTx(ctx context.Context, tx *sql.Tx, in StartItemInput) (model.Item
 // record who performed the release, not who held the claim.
 //
 // json tags: this struct doubles as the `unclaim` MCP tool's wire type.
-// RequireOwnClaim is `json:"-"` and deliberately unreachable over the wire
-// -- the MCP handler pre-seeds it true and no argument can turn it off. See
-// UnclaimItem's doc comment for why that distinction is the whole reason
-// there is an MCP tool at all.
+// RequireOwnClaim is `json:"-"` and unreachable over the wire: the MCP
+// handler pre-seeds it true and no argument can turn it off. UnclaimItem's
+// doc comment explains why that restriction is what makes the MCP tool
+// safe.
 type UnclaimItemInput struct {
 	ID        string `json:"id"`
 	Reason    string `json:"reason"`
@@ -314,8 +308,8 @@ type unclaimEventPayload struct {
 // # Why this verb has to exist
 //
 // `start` moves open -> in_progress, and without this only `close` and
-// `drop` could move it out again. An agent that dies mid-item -- the
-// ordinary failure for the thing this store is built around -- would leave
+// `drop` could move it out again. An agent that dies mid-item, which is the
+// ordinary failure for the agents this store serves, would leave
 // the item stuck in progress, out of `ready`, with two exits that both
 // record something false: `close` says it was done, `drop` says it was
 // abandoned as not worth doing.
@@ -328,25 +322,24 @@ type unclaimEventPayload struct {
 // # Why any session may do it
 //
 // `start` refuses a claim held by a different session (ErrConflict), because
-// two agents on one item is the exact collision this exists to prevent.
-// Unclaim deliberately does NOT check the holder: the holder is, by
+// two agents on one item is the collision it exists to prevent. Unclaim
+// does not check the holder by default: the holder is, by
 // definition of the case this serves, not coming back to release it itself.
 // The event records who did the releasing, so a rescue is never anonymous.
 //
 // That openness is also why `stale` only reports (internal/store/stale.go)
 // and why the unrestricted form is not an MCP tool: a verb that can take
-// work away from a LIVE agent belongs with the person who can look at the
+// work away from a live agent belongs with the person who can look at the
 // terminal, not in the hands of another agent that has just been told the
 // queue is empty.
 //
 // That argument holds for someone else's claim and does not hold for your
-// own. An agent that claimed an item and then found it could not do the work
-// would otherwise have exactly the two exits UnclaimItem was written
-// to avoid forcing on anyone: close, which says it was done, and drop, which
-// says it was not worth doing. It had no way to say only that it was putting
-// the item back. So the wire surface is the narrow half of this verb --
-// RequireOwnClaim true, releasing your own claim and nothing else -- and the
-// unrestricted rescue stays where it was, with the person at the terminal.
+// own. An agent that claimed an item and then found it could not do the
+// work would otherwise have only close, which says it was done, and drop,
+// which says it was not worth doing, with no way to say it is putting the
+// item back. So the wire surface is the narrow half of this verb
+// (RequireOwnClaim true, releasing your own claim and nothing else), and
+// the unrestricted rescue stays with the person at the terminal.
 //
 // The status returns to open and the claim fields clear. Assignee is left
 // alone: "who has this right now" and "who should do this" are different
@@ -415,12 +408,11 @@ func (s *Store) UnclaimItem(ctx context.Context, in UnclaimItemInput) (model.Ite
 
 // CloseItemInput is the argument to CloseItem.
 //
-// json tags (04-02): this struct doubles as the `close` MCP tool's wire type
-// directly (internal/mcp). SessionID is `json:"-"`, same reason as every
-// other mutating *Input struct in this package -- session is a
-// server-lifetime property, never a per-call argument. Split into one field
-// per line (rather than the previous combined declaration) so each can carry
-// its own tag; tags are additive and behaviourally inert for Go callers.
+// json tags: this struct doubles as the `close` MCP tool's wire type
+// directly (internal/mcp). SessionID is `json:"-"`, for the same reason as
+// every other mutating *Input struct in this package: session is a
+// server-lifetime property, never a per-call argument. Tags are additive
+// and behaviourally inert for Go callers.
 type CloseItemInput struct {
 	ID        string `json:"id"`
 	Reason    string `json:"reason"`
@@ -428,8 +420,8 @@ type CloseItemInput struct {
 	SessionID string `json:"-"`
 }
 
-// DropItemInput is the argument to DropItem. See CloseItemInput's doc
-// comment -- identical shape, identical json-tag reasoning.
+// DropItemInput is the argument to DropItem. It has the same shape and
+// json-tag reasoning as CloseItemInput.
 type DropItemInput struct {
 	ID        string `json:"id"`
 	Reason    string `json:"reason"`
@@ -458,17 +450,16 @@ func (s *Store) DropItem(ctx context.Context, in DropItemInput) (model.Item, err
 }
 
 // closeOrDrop is CloseItem's and DropItem's shared implementation. Abandoned
-// work must never be counted as done -- that only holds if
-// `close` and `drop` stay distinguishable in both items.status and
-// events.kind, which is exactly the two parameters (status, kind) the two
-// exported wrappers vary. Two independent near-duplicate implementations is
-// how `close` and `drop` would eventually drift into doing the same thing;
+// work must never be counted as done, which only holds if `close` and
+// `drop` stay distinguishable in both items.status and events.kind: the two
+// parameters (status, kind) the two exported wrappers vary. Two
+// near-duplicate implementations could drift into doing the same thing;
 // one shared body parameterized by the two constants that must never match
-// is what keeps that from happening.
+// prevents that.
 //
 // Closing (or dropping) an item that is already closed or dropped returns
-// ErrInvalidTransition -- terminal states do not transition again, in
-// either direction, through either verb.
+// ErrInvalidTransition: terminal states do not transition again, in either
+// direction, through either verb.
 func (s *Store) closeOrDrop(ctx context.Context, id, status, kind, reason, actor, sessionID string) (model.Item, error) {
 	if actor == "" {
 		return model.Item{}, fmt.Errorf("%s: Actor is required", kind)
@@ -544,7 +535,7 @@ type reopenEventPayload struct {
 // making a mis-typed id unrecoverable: the work would have to be filed
 // again, losing the id, the event history, and every dependency edge
 // pointing at the original. UnclaimItem solves the same problem for
-// in_progress, and this solves it the same way -- not by editing the close,
+// in_progress, and this solves it the same way: not by editing the close,
 // since events are never edited, but by appending a `reopen` event that
 // says the close was wrong and when.
 //
@@ -559,10 +550,10 @@ type reopenEventPayload struct {
 // history belongs.
 //
 // The claim columns are cleared for the same reason. close and drop leave
-// claimed_by_session set -- on a finished item it records who did the work,
-// which is useful. On an open one it is a contradiction: open means nobody
-// holds this, and a leftover session id would show a phantom holder on the
-// board and in `stale`. UnclaimItem clears them on the same transition for
+// claimed_by_session set, because on a finished item it records who did the
+// work, which is useful. On an open one it is a contradiction: open means
+// nobody holds this, and a leftover session id would show a phantom holder on
+// the board and in `stale`. UnclaimItem clears them on the same transition for
 // the same reason.
 func (s *Store) ReopenItem(ctx context.Context, in ReopenItemInput) (model.Item, error) {
 	if in.Actor == "" {
@@ -611,12 +602,12 @@ func (s *Store) ReopenItem(ctx context.Context, in ReopenItemInput) (model.Item,
 
 // UpdateItemInput is the argument to UpdateItem. Every field is a pointer
 // so "not supplied" (nil) and "supplied" (non-nil, even if the pointed-to
-// value is the zero value) are different requests -- clearing a title to ""
+// value is the zero value) are different requests: clearing a title to ""
 // and leaving the title alone are not the same operation.
 //
 // There is deliberately no Status field: open -> in_progress ->
 // closed/dropped moves only through StartItem/CloseItem/DropItem, so the
-// event log always records WHY a status changed.
+// event log always records why a status changed.
 // There is deliberately no ParentID field either: nothing reparents an
 // item, which is what lets AddItem's --parent handling (insertParentChildEdge,
 // items.go) stay the single writer of parent-child structure.
@@ -624,11 +615,11 @@ func (s *Store) ReopenItem(ctx context.Context, in ReopenItemInput) (model.Item,
 // Value/Confidence/Effort are double pointers: the outer pointer is
 // "touched or not" (nil = leave this scoring input alone); the inner
 // pointer is the value itself, which may legitimately be nil (clear this
-// input back to unscored) -- "unscored" (column NULL) and "scored 0" must
-// remain distinguishable, and a single *int cannot express
-// both "leave it" and "clear it" at once. This encoding is what the
-// `update` CLI is written against; if it ever changes, that CLI's `--score`
-// handling must change with it.
+// input back to unscored). "Unscored" (column NULL) and "scored 0" must
+// remain distinguishable, and a single *int cannot express both "leave it"
+// and "clear it" at once. The `update` CLI's `--score` handling is written
+// against this encoding.
+//
 // The json tags are what puts this type on the wire: `update` is an MCP
 // tool, and internal/mcp reuses this struct unmodified so its handler stays
 // the same branchless three lines as every other tool's (a handler may hold
@@ -660,23 +651,22 @@ type UpdateItemInput struct {
 }
 
 // updateEventPayload is the JSON body of the one `update` event UpdateItem
-// writes. It names the CHANGED FIELDS, not their values -- the values are
-// already in the items row the event refers to.
+// writes. It names the changed fields, not their values, because the values
+// are already in the items row the event refers to.
 type updateEventPayload struct {
 	Fields []string `json:"fields"`
 }
 
 // UpdateItem applies only the fields the caller set, leaves every other
 // column untouched, always bumps updated_at, and writes one `update` event
-// naming the changed fields. Score is recomputed in the same
-// transaction whenever any of value/confidence/effort was supplied -- using
-// rank.Score on the item's POST-UPDATE triple, not on the raw deltas the
-// caller passed, since a caller may set only one of the three and expect
-// the other two to keep contributing to the recomputed score.
+// naming the changed fields. Score is recomputed in the same transaction
+// whenever any of value/confidence/effort was supplied, using rank.Score on
+// the item's post-update triple rather than on the raw deltas the caller
+// passed, since a caller may set only one of the three and expect the other
+// two to keep contributing to the recomputed score.
 //
 // Supplying no fields at all is a caller error (ErrNoFieldsToUpdate), not a
-// silent no-op -- checked, and returned, before
-// any write is attempted.
+// silent no-op, and is returned before any write is attempted.
 func (s *Store) UpdateItem(ctx context.Context, in UpdateItemInput) (model.Item, error) {
 	if in.Actor == "" {
 		return model.Item{}, fmt.Errorf("UpdateItem: Actor is required")

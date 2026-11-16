@@ -50,7 +50,7 @@ func newToken() (string, error) {
 }
 
 // checkOrigin refuses a request whose Origin or Referer names a different
-// host. A request carrying neither is allowed through to the token check --
+// host. A request carrying neither is allowed through to the token check:
 // some clients omit both, and refusing them here would break `curl` against
 // a person's own dashboard while stopping no attack the token does not.
 func (s *Server) checkOrigin(r *http.Request) error {
@@ -70,13 +70,9 @@ func (s *Server) checkOrigin(r *http.Request) error {
 	return nil
 }
 
-// mutate wraps every POST handler with the checks above, then redirects.
-//
-// It redirects rather than rendering, so a reload after acting does not
-// repeat the action -- the POST-redirect-GET shape, which matters more here
-// than usual because the actions are things like "close this item".
 // prefixOf is the URL prefix a request's own project lives under, derived
-// rather than trusted -- see the note in flashURL.
+// from the registry rather than trusted from the form (see the note in
+// flashURL).
 func (s *Server) prefixOf(r *http.Request) string {
 	name := r.PostFormValue("project")
 	if name == "" || name == s.activeName() {
@@ -94,8 +90,8 @@ func (s *Server) prefixOf(r *http.Request) string {
 //
 // Every mutating form carries a hidden project field for this. A form that
 // omitted it would write to the wrong store and say nothing, so the
-// fallback is the started-in project rather than an error -- but the forms
-// all carry it, and the tests check that they do.
+// fallback is the started-in project rather than an error; the forms all
+// carry it, and the tests check that they do.
 func (s *Server) writablePathFor(r *http.Request) (string, error) {
 	name := r.PostFormValue("project")
 	if name == "" || name == s.activeName() {
@@ -131,9 +127,13 @@ func (s *Server) guard(r *http.Request) error {
 // Announcing those is telling someone what they are already looking at.
 //
 // A banner is kept for the two cases where the page cannot show it: work
-// that LEFT the view (closed, dropped, promoted, released -- you cannot
-// see the absence of a thing you were not looking for), and work that
-// happened somewhere else entirely (an agent starting in another process).
+// that left the view (closed, dropped, promoted, released: you cannot see
+// the absence of a thing you were not looking for), and work that happened
+// somewhere else entirely (an agent starting in another process).
+//
+// It redirects rather than rendering, so a reload after acting does not
+// repeat the action. That POST-redirect-GET shape matters more here than
+// usual because the actions are things like "close this item".
 func (s *Server) mutate(w http.ResponseWriter, r *http.Request, done string, fn func(*store.Store) (string, error)) {
 	if err := s.guard(r); err != nil {
 		http.Error(w, "refused: "+err.Error(), http.StatusForbidden)
@@ -141,9 +141,9 @@ func (s *Server) mutate(w http.ResponseWriter, r *http.Request, done string, fn 
 	}
 
 	// The project comes from the form, not from startup. Without this a
-	// person looking at one project's board files into another's store --
-	// which is exactly what happened, and it is silent: the item lands
-	// somewhere real, just not where they were looking.
+	// person looking at one project's board files into another's store,
+	// and silently: the item lands somewhere real, just not where they were
+	// looking.
 	path, err := s.writablePathFor(r)
 	if err != nil {
 		s.fail(w, err)
@@ -165,9 +165,9 @@ func (s *Server) mutate(w http.ResponseWriter, r *http.Request, done string, fn 
 		return
 	}
 	// And a success says so. An action that reports nothing looks like an
-	// action that did nothing -- particularly here, where closing an item
-	// makes it vanish from the list you were looking at, which is
-	// indistinguishable from the click having missed.
+	// action that did nothing, particularly here, where closing an item
+	// makes it vanish from the list you were looking at, which looks the
+	// same as the click having missed.
 	http.Redirect(w, r, s.flashURL(r, dest, "done", done), http.StatusSeeOther)
 }
 
@@ -186,7 +186,7 @@ func (s *Server) flashURL(r *http.Request, dest, key, msg string) string {
 	// else and makes their change look like it did not happen.
 	//
 	// The prefix is DERIVED from the project name, never taken from the
-	// form. The form does carry one, and trusting it was an open redirect:
+	// form. The form does carry one; trusting it would allow an open redirect:
 	// a posted prefix of "//evil.example" concatenates into a
 	// protocol-relative URL that browsers follow off-host. The project name
 	// is checked against the registry before it becomes a prefix, so only a
@@ -283,11 +283,11 @@ func (s *Server) doDrop(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// reasonOr supplies a default reason. The store REFUSES an empty one --
-// close, drop, unclaim and reopen all return ErrEmptyReason
-// (internal/store/validate.go) -- so this is the board supplying a true
-// statement, not the board routing around a rule. "closed from the board"
-// says where the close came from.
+// reasonOr supplies a default reason. The store refuses an empty one
+// (close, drop, unclaim and reopen all return ErrEmptyReason, see
+// internal/store/validate.go), so this is the board supplying a true
+// statement, not routing around a rule. "closed from the board" says where
+// the close came from.
 //
 // Close keeps the one-click path and drop does not, and the difference is
 // reversibility rather than inconsistency: drop abandons work and goes
@@ -313,7 +313,7 @@ func (s *Server) doAdd(w http.ResponseWriter, r *http.Request) {
 			ParentID:   r.PostFormValue("parent_id"),
 			Actor:      s.actor,
 		}
-		// "park it" files a raw note instead of a ticket -- the same
+		// "park it" files a raw note instead of a ticket, the same
 		// distinction `capture` makes on the CLI, offered as a checkbox
 		// because it is the one choice a person actually makes at filing
 		// time: is this workable, or is it something I noticed.
@@ -406,7 +406,7 @@ func intField(r *http.Request, name string) (*int, bool) {
 // reason internal/interlock reads status over a CLI contract: keep must
 // keep building and working with Interlock absent, and a Go import would
 // end that. The command is Interlock's own documented one, confirmation
-// argument and all -- keep does not get to invent a gentler version of
+// argument and all, because keep must not invent a gentler version of
 // another tool's guard rail.
 func (s *Server) doRelease(w http.ResponseWriter, r *http.Request) {
 	if err := s.guard(r); err != nil {
@@ -440,10 +440,9 @@ func (s *Server) doAssign(w http.ResponseWriter, r *http.Request) {
 
 // doLaunch starts an agent on one item, through Interlock.
 //
-// keep does not start agents. That is a deliberate limit -- it holds the
-// list and never calls a model -- and this
-// does not change it: the board shells out to `interlock run`, which is the
-// tool whose job is process lifecycle. If Interlock is not installed the
+// keep does not start agents itself: it holds the list and never calls a
+// model. The board shells out to `interlock run`, which is the tool whose
+// job is process lifecycle. If Interlock is not installed the
 // button is not rendered, so this path is reachable only where something
 // exists to do the starting.
 //
@@ -479,8 +478,9 @@ func nowStamp() string { return time.Now().UTC().Format(model.TimeFormat) }
 //
 // Not silent, and not at startup. `interlock init` writes hook
 // registrations into each agent's own settings and trust hashes into
-// ~/.codex/config.toml -- configuration that makes agents run commands on
-// this machine. A board may offer that in one click; it may not take it.
+// ~/.codex/config.toml, which is configuration that makes agents run
+// commands on this machine. A board may offer that in one click; it may not
+// take it.
 func (s *Server) doWatch(w http.ResponseWriter, r *http.Request) {
 	if err := s.guard(r); err != nil {
 		http.Error(w, "refused: "+err.Error(), http.StatusForbidden)
@@ -496,10 +496,8 @@ func (s *Server) doWatch(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, s.flashURL(r, "/", "problem", err.Error()), http.StatusSeeOther)
 		return
 	}
-	// Confirm rather than assume. The first version of this reported
-	// success on an exit code alone and was wrong -- it had run init
-	// against a check that tested for something init does not create, so
-	// the board said coordination was on while still showing it as off.
+	// Confirm rather than assume: init exiting 0 does not prove the hooks
+	// are wired, so ask Watches before reporting success.
 	if !interlock.Watches(dir) {
 		http.Redirect(w, r, s.flashURL(r, "/", "problem",
 			"Ran interlock init, but coordination still is not active here. Run `interlock doctor` in "+dir+" to see what it is missing."),
@@ -515,7 +513,7 @@ func (s *Server) doWatch(w http.ResponseWriter, r *http.Request) {
 // The queue is still the normal way in: an item carries a brief, acceptance
 // criteria and the files it touches, and an agent started from one begins
 // with all of that. This is for the thing you want done now and would not
-// have written a ticket for -- and it goes through the same launcher, so
+// have written a ticket for, and it goes through the same launcher, so
 // Interlock supervises it and its guard still applies.
 func (s *Server) doPrompt(w http.ResponseWriter, r *http.Request) {
 	if err := s.guard(r); err != nil {

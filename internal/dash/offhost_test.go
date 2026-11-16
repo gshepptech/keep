@@ -15,8 +15,8 @@ import (
 )
 
 // resourceAttrs are the attributes whose values a browser resolves as a URL
-// and fetches. Only these -- plus the inline `style` attribute -- are
-// inspected. Scanning every attribute (or, worse, the page's raw bytes)
+// and fetches. Only these, plus the inline `style` attribute, are
+// inspected. Scanning every attribute (or the page's raw bytes)
 // false-positives the moment an agent's title or body legitimately contains
 // a URL as prose, which is ordinary content in a work tracker and must
 // render as inert text without failing the build.
@@ -29,23 +29,20 @@ var resourceAttrs = map[string]bool{
 // scanRenderedHTML parses page as real HTML and walks every element's
 // attributes, reporting one violation string per resource-fetching
 // reference that resolves off-host. It walks a parsed DOM (golang.org/x/net/
-// html), never the page's raw bytes, precisely so that legitimate prose
-// containing a URL, or an HTML comment mentioning "//", is never inspected
-// in the first place -- there is no attribute to check on a text node or a
-// comment node.
+// html), never the page's raw bytes, so that legitimate prose containing a
+// URL, or an HTML comment mentioning "//", is never inspected in the first
+// place: there is no attribute to check on a text node or a comment node.
 //
-// This walk deliberately never reads any node's TEXT content (html.TextNode
-// data), only html.ElementNode attribute values -- which is what keeps
-// <style> element content out of scope without any special-casing for it.
-// research's own first scanner false-positived on a legitimate <style>
-// block containing only the CSS comment "/* no @import, no url() here */",
-// because a raw substring check cannot tell a comment from a declaration.
-// The correct fix is not a better CSS parser: internal/dash's stylesheet is
-// entirely static, go:embed-ed once, and never built from a template
-// variable or agent data, so it is not an injection surface and does not
-// need re-checking on every render (see
-// TestEmbeddedStylesheetHasNoExternalReference below for the compensating
-// one-time static check this scope decision requires).
+// This walk never reads any node's text content (html.TextNode data), only
+// html.ElementNode attribute values, which keeps <style> element content
+// out of scope without special-casing it. A raw substring check would
+// false-positive on a <style> block containing only the CSS comment
+// "/* no @import, no url() here */", because it cannot tell a comment from
+// a declaration. internal/dash's stylesheet is entirely static, go:embed-ed
+// once, and never built from a template variable or agent data, so it is
+// not an injection surface and does not need re-checking on every render
+// (TestEmbeddedStylesheetHasNoExternalReference below is the one-time
+// static check that covers it).
 func scanRenderedHTML(page string) []string {
 	doc, err := html.Parse(strings.NewReader(page))
 	if err != nil {
@@ -91,8 +88,8 @@ func scanRenderedHTML(page string) []string {
 // valueViolates reports a violation when v: starts with "//"; contains
 // "http://" or "https://"; contains "@import"; or contains a "url(" whose
 // argument does not begin "data:" (allowing url(data:...), url('data:...'),
-// url("data:...")). Everything else -- including "/item/rnc-abc123.1.2",
-// "/", "#frag", and an empty value -- passes.
+// url("data:...")). Everything else, including "/item/rnc-abc123.1.2",
+// "/", "#frag", and an empty value, passes.
 func valueViolates(v string) (string, bool) {
 	if strings.HasPrefix(v, "//") {
 		return "protocol-relative reference", true
@@ -115,9 +112,9 @@ func valueViolates(v string) (string, bool) {
 	return "", false
 }
 
-// hostileAdversarialPage plants exactly four traps -- an href, a
+// hostileAdversarialPage plants exactly four traps (an href, a
 // protocol-relative img src, an inline style url(), and a legacy
-// `background` attribute -- alongside five legitimate shapes that must NOT
+// `background` attribute) alongside five legitimate shapes that must not
 // be flagged: prose containing a URL, two internal links, an HTML comment
 // mentioning "//" and "http://", a data: URI image, and a <style> block
 // whose only content is a CSS comment mentioning "@import".
@@ -160,13 +157,11 @@ func TestScanRenderedHTMLCatchesTrapsAndNothingElse(t *testing.T) {
 	}
 }
 
-// TestEmbeddedStylesheetHasNoExternalReference is the compensating static
-// check that scanRenderedHTML's <style>-content scope requires: it
-// never reads a <style> element's text content (comment above scanRenderedHTML
-// explains why), which means the one place this stylesheet's own text is
-// still worth checking is here, once, statically -- comments stripped first,
-// to avoid the false positive a raw substring check produces on a comment
-// merely mentioning "@import".
+// TestEmbeddedStylesheetHasNoExternalReference checks that the embedded
+// stylesheet contains no external reference. scanRenderedHTML never reads
+// a <style> element's text content (its comment explains why), so the
+// stylesheet's own text is checked here, once, statically, with comments
+// stripped first so a comment mentioning "@import" is not flagged.
 func TestEmbeddedStylesheetHasNoExternalReference(t *testing.T) {
 	css := stripCSSComments(styleCSS)
 	for _, forbidden := range []string{"@import", "http://", "https://", "//"} {
@@ -191,7 +186,7 @@ func TestEmbeddedStylesheetHasNoExternalReference(t *testing.T) {
 
 // stripCSSComments removes every /* ... */ span from s. Used only by
 // TestEmbeddedStylesheetHasNoExternalReference, over a fixed, go:embed-ed
-// asset, once -- not part of the per-render scan.
+// asset, once; it is not part of the per-render scan.
 func stripCSSComments(s string) string {
 	var b strings.Builder
 	for {
@@ -211,16 +206,15 @@ func stripCSSComments(s string) string {
 }
 
 // The six hostile values below are planted into a real store fixture's
-// Title/Body/Why/Acceptance/Repo fields (never into a struct literal --
-// see newOffhostFixture's own comment for why that distinction matters
-// here specifically). hostileImgTagMarker is checked for presence using a
-// metachar-free substring ("evil.example/z.png") rather than the literal
-// tag text, because html/template's own escaping of "<img src=\"...\">"
-// inside a <pre> turns the angle brackets and quotes into entities --
-// which is the correct, desired behaviour (the tag must render as inert
-// text, not become a live element), so the presence check must survive
-// that escaping rather than defeat the point of the test by asserting
-// against unescaped markup.
+// Title/Body/Why/Acceptance/Repo fields, never into a struct literal
+// (newOffhostFixture's comment explains why that matters here).
+// hostileImgTagMarker is checked for presence using a metachar-free substring
+// ("evil.example/z.png") rather than the literal tag text, because
+// html/template's own escaping of "<img src=\"...\">" inside a <pre> turns the
+// angle brackets and quotes into entities, which is the correct, desired
+// behaviour (the tag must render as inert text, not become a live element), so
+// the presence check must survive that escaping rather than defeat the point
+// of the test by asserting against unescaped markup.
 const (
 	hostileHTTP          = "http://evil.example/x.png"
 	hostileProtoRelative = "//evil.example/y.png"
@@ -236,28 +230,22 @@ type offhostFixtureIDs struct {
 	epic, child, grandchild, readyItem, rawNote string
 }
 
-// newOffhostFixture builds a Server backed by a REAL store.Store, with every
-// hostile value planted through the real store.AddItem/CreateDep API --
-// never as model.Item/model.TreeNode struct literals.
+// newOffhostFixture builds a Server backed by a real store.Store, with every
+// hostile value planted through the real store.AddItem/CreateDep API, never
+// as model.Item/model.TreeNode struct literals.
 //
-// This is the opposite fixture strategy from the tree golden test, and
-// deliberately so, for a reason worth recording rather than letting a
-// future reader "clean up" into one consistent choice: the golden test needs
-// byte-stable output, so it fixtures with literal, stable ids and never
-// touches a live store or a clock. The off-host scan needs the opposite proof --
-// that data which genuinely travelled through AddItem and back out of a
-// real query (wall-clock-derived rnc- ids, the real column round-trip,
-// the real html/template execution against real model.Item/model.ItemDetail/
-// model.TreeNode values) cannot produce an off-host reference at render
-// time. A struct-literal fixture here would only prove the template is
-// safe against values Go can construct in a test file, not against values
-// that actually survived a store round-trip -- and nothing in this test
-// compares byte-for-byte, so the wall-clock-derived ids are harmless.
+// Struct literals would only prove the templates are safe against values Go
+// can build in a test file. This fixture proves that data which travelled
+// through AddItem and back out of a real query (wall-clock-derived rnc- ids,
+// the real column round-trip, real html/template execution against real
+// model.Item, model.ItemDetail and model.TreeNode values) cannot produce an
+// off-host reference at render time. Nothing here compares byte for byte, so
+// the wall-clock-derived ids are harmless.
 //
-// The fixture is also the three-level blocked subtree the tree route (and
-// the golden test) uses: epic (blocked, root) -> child -> grandchild, plus
-// a separate blocker and one ready item and one raw-backlog item so all
-// four views have hostile content to render.
+// The fixture is a three-level blocked subtree for the tree route: epic
+// (blocked, root) -> child -> grandchild, plus a separate blocker, one ready
+// item and one raw-backlog item, so all four views have hostile content to
+// render.
 func newOffhostFixture(t *testing.T) (*Server, offhostFixtureIDs) {
 	t.Helper()
 	st := openTestStore(t)
@@ -294,7 +282,7 @@ func newOffhostFixture(t *testing.T) (*Server, offhostFixtureIDs) {
 	if err != nil {
 		t.Fatalf("NewServer: %v", err)
 	}
-	t.Cleanup(func() { s.Close() })
+	t.Cleanup(func() { s.ln.Close() })
 
 	return s, offhostFixtureIDs{
 		epic: epic.ID, child: child.ID, grandchild: grandchild.ID,
@@ -302,11 +290,11 @@ func newOffhostFixture(t *testing.T) (*Server, offhostFixtureIDs) {
 	}
 }
 
-// TestNoExternalReferencesInRenderedViews is the off-host proof: all
-// four rendered views, driven through the real Handler() via httptest (real
-// HTTP responses, not template source), scan clean -- and the hostile text
-// is confirmed PRESENT in each body first, so a view that silently dropped
-// a field could not make the scan pass vacuously.
+// TestNoExternalReferencesInRenderedViews checks that all four rendered
+// views, driven through the real route table via httptest (real HTTP
+// responses, not template source), contain no off-host reference. The
+// hostile text is confirmed present in each body first, so a view that
+// silently dropped a field cannot make the scan pass vacuously.
 func TestNoExternalReferencesInRenderedViews(t *testing.T) {
 	s, ids := newOffhostFixture(t)
 
@@ -321,7 +309,7 @@ func TestNoExternalReferencesInRenderedViews(t *testing.T) {
 			"item detail", "/item/" + ids.grandchild,
 			[]string{hostileJS, hostileImgTagMarker, hostileStyleURL, hostileImportCSS, hostileHTTP, hostileProtoRelative},
 		},
-		// tree.html renders only Title (never Body/Why/Acceptance/Repo) --
+		// tree.html renders only Title (never Body/Why/Acceptance/Repo):
 		// epic's and child's titles carry hostileHTTP/hostileProtoRelative;
 		// grandchild's own hostile fields (checked above, under item detail)
 		// are Body-only and therefore not expected to appear in this view.
@@ -331,7 +319,7 @@ func TestNoExternalReferencesInRenderedViews(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tc.path, nil))
+			s.srv.Handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tc.path, nil))
 			if rec.Code != http.StatusOK {
 				t.Fatalf("%s: status = %d, want 200", tc.path, rec.Code)
 			}
@@ -341,7 +329,7 @@ func TestNoExternalReferencesInRenderedViews(t *testing.T) {
 			}
 
 			// Confirm the hostile text is actually present (escaped, as
-			// inert text) BEFORE trusting a clean scan -- a view that
+			// inert text) before trusting a clean scan, because a view that
 			// silently dropped the field would pass the scan vacuously.
 			for _, want := range tc.wantSubstrings {
 				if !strings.Contains(body, want) {
@@ -355,11 +343,11 @@ func TestNoExternalReferencesInRenderedViews(t *testing.T) {
 		})
 	}
 
-	// The tree route's fixture is the three-level blocked subtree -- confirm
+	// The tree route's fixture is the three-level blocked subtree. Confirm
 	// the tree view under scan here is also the blocked one, so this
 	// test is not accidentally scanning an all-workable tree.
 	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/tree/"+ids.epic, nil))
+	s.srv.Handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/tree/"+ids.epic, nil))
 	if !strings.Contains(rec.Body.String(), "blocked") {
 		t.Fatalf("/tree/%s: body does not contain the word \"blocked\" -- fixture is not exercising the blocked-subtree shape", ids.epic)
 	}

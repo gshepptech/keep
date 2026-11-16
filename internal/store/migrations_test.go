@@ -12,12 +12,12 @@ import (
 	"testing"
 )
 
-// schemaObjects reads back every object SQLite actually created -- tables,
-// indexes, views, triggers -- with the exact SQL text it stored for each.
+// schemaObjects reads back every object SQLite actually created (tables,
+// indexes, views, triggers) with the exact SQL text it stored for each.
 // Comparing this between two stores is a shape comparison, not a name
 // comparison, and that distinction matters: CREATE TABLE IF NOT EXISTS
-// matches on name and would happily leave two
-// stores with the same table names and different columns.
+// matches on name and would happily leave two stores with the same table
+// names and different columns.
 //
 // Autoindexes are excluded: SQLite names them sqlite_autoindex_<table>_<n>
 // and stores NULL sql for them, so they carry no information this comparison
@@ -47,10 +47,9 @@ func schemaObjects(t *testing.T, s *Store) []string {
 	return out
 }
 
-// TestFreshInitMatchesMigratedV1 is the test that makes the migration ladder
-// worth having. Two stores are built by the two paths that must never
-// diverge -- a brand-new Init, and a v1 store climbed all the way up -- and
-// their entire schemas are compared object by object.
+// TestFreshInitMatchesMigratedV1 checks that a brand-new Init and a v1
+// store climbed all the way up the migration ladder end with identical
+// schemas, compared object by object.
 //
 // Without it, `migrations` and `schemaDDL` are two independent descriptions
 // of one shape, and the only thing keeping them in agreement is whoever
@@ -121,8 +120,8 @@ func TestMigrationLadderIsContiguous(t *testing.T) {
 }
 
 // TestOpenOlderStoreAsksForMigration proves an older store is told to
-// migrate, not refused with the same flat error as a corrupted one -- a
-// flat refusal would brick every existing store on the first schema change.
+// migrate, not refused with the same flat error as a corrupted one. A flat
+// refusal would brick every existing store on the first schema change.
 func TestOpenOlderStoreAsksForMigration(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "old.sqlite")
 	s, err := Init(path)
@@ -147,8 +146,9 @@ func TestOpenOlderStoreAsksForMigration(t *testing.T) {
 	}
 }
 
-// TestOpenNewerStoreRefusesWithoutOfferingMigration is the other half. A
-// store written by a newer keep cannot be repaired by an older one, and
+// TestOpenNewerStoreRefusesWithoutOfferingMigration checks that a store
+// from a newer keep is refused without suggesting `keep migrate`. A store
+// written by a newer keep cannot be repaired by an older one, and
 // offering `keep migrate` there would send someone round a loop that cannot
 // terminate.
 func TestOpenNewerStoreRefusesWithoutOfferingMigration(t *testing.T) {
@@ -175,8 +175,9 @@ func TestOpenNewerStoreRefusesWithoutOfferingMigration(t *testing.T) {
 	}
 }
 
-// TestMigrateAtCurrentVersionIsANoOp: "nothing to do" is an answer. A
-// migrate that errored on an up-to-date store would make it unusable in any
+// TestMigrateAtCurrentVersionIsANoOp checks that migrating an up-to-date
+// store succeeds and changes nothing. A migrate that errored on an
+// up-to-date store would make it unusable in any
 // script that runs it unconditionally, and would take a pointless backup
 // copy of the store every time.
 func TestMigrateAtCurrentVersionIsANoOp(t *testing.T) {
@@ -210,11 +211,11 @@ func TestMigrateAtCurrentVersionIsANoOp(t *testing.T) {
 	}
 }
 
+// withTestMigrations swaps in a temporary ladder for the rest of the test.
 // TestMigrateBacksUpBeforeTouchingTheStore and
 // TestFailingMigrationLeavesTheStoreAtItsOriginalVersion both need a rung to
-// exercise, and the real ladder may legitimately be empty. They install a
-// temporary one so the machinery is tested on its own terms rather than only
-// through whichever migration happens to exist today.
+// exercise while the real ladder may be empty, so the machinery is tested
+// on its own terms rather than only through whichever migration exists.
 func withTestMigrations(t *testing.T, m []migration) {
 	t.Helper()
 	oldMigrations, oldVersion := migrations, schemaVersion
@@ -346,9 +347,9 @@ func TestFailingMigrationLeavesTheStoreAtItsOriginalVersion(t *testing.T) {
 	}
 }
 
-// TestBackupNeverOverwritesAnEarlierOne: a second migration attempt after a
-// first went wrong must not destroy the first attempt's copy, which at that
-// moment is the most valuable file on the disk.
+// TestBackupNeverOverwritesAnEarlierOne checks that a second migration
+// attempt writes a new backup rather than replacing the first one, which
+// after a failed attempt is the most valuable file on the disk.
 func TestBackupNeverOverwritesAnEarlierOne(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
@@ -396,9 +397,10 @@ func TestBackupNeverOverwritesAnEarlierOne(t *testing.T) {
 	}
 }
 
-// TestFTSDDLCarriesNoVersionPlaceholder holds the invariant that lets
+// TestFTSDDLCarriesNoVersionPlaceholder checks that ftsDDL contains no
+// schema-version placeholder, the invariant that lets
 // migrations rung 2 expand ftsDDL with expandDepthSQL rather than
-// expandSchemaSQL. Rung 2 runs while the store is still at the OLD version,
+// expandSchemaSQL. Rung 2 runs while the store is still at the old version,
 // so substituting this binary's version into it would write the wrong
 // number; and expandSchemaSQL cannot be called from the migrations slice
 // anyway, because schemaVersion is derived from that slice. The rung is
@@ -410,10 +412,11 @@ func TestFTSDDLCarriesNoVersionPlaceholder(t *testing.T) {
 	}
 }
 
-// TestSchemaDDLExpandsEveryPlaceholder: an unsubstituted placeholder in the
-// DDL is not a compile error and not a test failure anywhere else -- it is a
-// SQLite syntax error at Init time, or worse, a literal string written into
-// meta.schema_version that every subsequent Open then compares against.
+// TestSchemaDDLExpandsEveryPlaceholder checks that no placeholder survives
+// expansion of the DDL. An unsubstituted placeholder is not a compile error
+// and fails no other test; it is a SQLite syntax error at Init time, or a
+// literal string written into meta.schema_version that every later Open
+// compares against.
 func TestSchemaDDLExpandsEveryPlaceholder(t *testing.T) {
 	for _, ph := range []string{"$MAXDEPTH$", "$SCHEMAVERSION$"} {
 		if strings.Contains(schemaDDL, ph) {

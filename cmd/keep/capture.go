@@ -11,37 +11,34 @@ import (
 	"github.com/gshepptech/keep/internal/store"
 )
 
-// runCapture implements the `capture` subcommand -- the raw-path front
-// door -- as a thin wrapper over the existing store.AddItem: no new store
-// method, no new kind of event.
+// runCapture implements the `capture` subcommand, the front door for raw
+// items, as a thin wrapper over store.AddItem: no new store method, no new
+// kind of event.
 //
 // `capture` earns being its own command rather than an alias for
 // `add --stage raw` in three ways:
 //  1. `--body -` reads stdin (via the shared resolveBody, cmd/keep/
-//     flags.go), so an agent can pipe a document straight in --
+//     flags.go), so an agent can pipe a document straight in:
 //     `keep capture "Q3 roadmap" --type roadmap --body - < q3-plan.md`
 //     is the canonical invocation.
-//  2. Its stage is pinned to model.StageRaw and cannot be set to "ticket" --
-//     capture means capture; something that could produce a ticket is
-//     `add`. `--stage` is deliberately NOT a registered flag on this
-//     FlagSet, mirroring update.go's identical, deliberate omission of
-//     `--status`: a caller who types `keep capture --stage ticket ...`
-//     gets flag's own native "flag provided but not defined: -stage" at
-//     exit 2, not a hand-written refusal -- the same structural-enforcement
-//     idiom `update` uses.
+//  2. Its stage is pinned to model.StageRaw and cannot be set to "ticket";
+//     something that could produce a ticket is `add`. `--stage` is not a
+//     registered flag on this FlagSet, as update.go omits `--status`: a
+//     caller who types `keep capture --stage ticket ...` gets flag's own
+//     "flag provided but not defined: -stage" at exit 2, not a
+//     hand-written refusal.
 //  3. `--type` defaults to model.TypeNote (not add's "task", and not
-//     AddItem's own empty-Type default) -- the common case: a finding
+//     AddItem's own empty-Type default), the common case being a finding
 //     parked mid-session, with `--type roadmap` for documents.
 //
-// `--parent`, `--blocks`, and `--score` are omitted deliberately, not by
-// oversight: placement and scoring are refinement's job (`add --parent
-// --derived-from`), not capture's. It is purely additive to expand this
-// flag set later; it is not additive to remove from it.
+// `--parent`, `--blocks`, and `--score` are omitted on purpose: placement
+// and scoring are refinement's job (`add --parent --derived-from`), not
+// capture's. Adding a flag later is compatible; removing one is not.
 //
-// cmd/keep must never import a database driver package, must never
-// contain a SQL string, and must never receive a raw DB handle or a row
-// -- runCapture builds exactly one store.AddItemInput and makes
-// exactly one store.AddItem call, mirroring runAdd's shape.
+// cmd/keep never imports a database driver package, never contains a SQL
+// string, and never receives a raw DB handle or a row: runCapture builds
+// exactly one store.AddItemInput and makes exactly one store.AddItem call,
+// as runAdd does.
 func runCapture(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("capture", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -114,9 +111,8 @@ func runCapture(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 
-	// One bare line of id, nothing else -- what makes
-	// `id=$(keep capture ...)` work in an agent's shell pipeline, exactly
-	// as `add` already does.
+	// One bare line of id, nothing else, so `id=$(keep capture ...)` works
+	// in an agent's shell pipeline, as it does for `add`.
 	fmt.Fprintln(stdout, item.ID)
 	return 0
 }

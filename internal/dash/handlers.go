@@ -13,21 +13,21 @@ import (
 )
 
 // stderrLog is this package's one logger: a store error's detail is written
-// HERE, never into a response body -- a store error message can echo
-// agent-supplied text, and the response body is exactly what the off-host
+// here, never into a response body, because a store error message can echo
+// agent-supplied text, and the response body is what the off-host
 // reference scan inspects.
 var stderrLog = slog.New(slog.NewTextHandler(os.Stderr, nil))
 
 // routes returns the server's five-route table: the four views plus the
 // implicit 405 http.ServeMux already produces for a wrong method on a
 // registered pattern. {$} on the root pattern is Go 1.22+ ServeMux's own
-// exact-match syntax -- without it, "/anything" would fall through to the
+// exact-match syntax; without it, "/anything" would fall through to the
 // ready-queue handler instead of 404ing.
 //
-// Each handler below makes exactly ONE store call and holds no rows or
-// transaction across its render -- every store read method already
-// materialises fully into Go values before returning (itemColumns/
-// scanItems), so "call it, render the returned value" is the whole rule.
+// Each handler below makes exactly one store call and holds no rows or
+// transaction across its render. Every store read method materialises
+// fully into Go values before returning (itemColumns/scanItems), so each
+// handler calls the store and renders the returned value.
 func (s *Server) routes() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", s.handleReady)
@@ -56,10 +56,10 @@ func (s *Server) routes() *http.ServeMux {
 	return mux
 }
 
-// handleReady renders the ready queue. The store call is UNLIMITED
-// (limit 0) -- the agreement test asserts the board and `keep ready` come
-// from the same call, and a hard-coded limit that happens to match a
-// fixture's size today would pass it by coincidence.
+// handleReady renders the ready queue. The store call is unlimited (limit
+// 0): the agreement test asserts the board and `keep ready` come from the
+// same call, and a hard-coded limit that happened to match a fixture's size
+// would pass it by coincidence.
 func (s *Server) handleReady(w http.ResponseWriter, r *http.Request) {
 	// boardDataFrom, not s.st.Ready directly: it goes through
 	// readyItemsFrom so the queue and the "held back" section apply the
@@ -80,8 +80,8 @@ func (s *Server) handleReady(w http.ResponseWriter, r *http.Request) {
 	s.render(w, "board", s.pageFor(r, "board", name, data))
 }
 
-// handleBacklog renders the raw backlog, grouped by type -- store.Backlog
-// already does the grouping/ordering; this handler adds nothing.
+// handleBacklog renders the raw backlog, grouped by type. store.Backlog
+// does the grouping and ordering; this handler adds nothing.
 func (s *Server) handleBacklog(w http.ResponseWriter, r *http.Request) {
 	st, done, name, err := s.storeFor(r)
 	if err != nil {
@@ -99,8 +99,8 @@ func (s *Server) handleBacklog(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleItem renders one item's full detail, keyed on the path's {id}
-// wildcard -- a dot-containing id (every id below a root has dots) is
-// captured whole, covered by this package's own handlers_test.go.
+// wildcard. A dot-containing id (every id below a root has dots) is
+// captured whole, as handlers_test.go checks.
 func (s *Server) handleItem(w http.ResponseWriter, r *http.Request) {
 	st, done, name, err := s.storeFor(r)
 	if err != nil {
@@ -138,7 +138,8 @@ func (s *Server) handleTree(w http.ResponseWriter, r *http.Request) {
 
 // fail classifies err by errors.Is, never message text: store.ErrNotFound
 // becomes 404; anything else becomes a generic 500, with the actual error
-// logged to stderr only -- never echoed into the response body.
+// logged to stderr only and never echoed into the response body.
+//
 // fail renders a real page rather than http.Error's bare text.
 //
 // http.Error writes an unstyled sentence with no nav and no way back, and a
@@ -161,10 +162,8 @@ func (s *Server) fail(w http.ResponseWriter, err error) {
 // internal error string on a page is noise to the reader and detail to
 // anyone else.
 func (s *Server) failPage(w http.ResponseWriter, code int, heading, body string) {
-	// Executed directly rather than through execute() or render(): execute
-	// wraps whatever it is given in a fresh page, which would bury this one
-	// inside its own Data, and render() reports a failure by calling fail()
-	// -- which is this function, and would recurse.
+	// Executed directly rather than through render(): render reports a
+	// failure by calling fail(), which is this function, and would recurse.
 	req := (&http.Request{URL: &url.URL{Path: "/"}}).WithContext(context.Background())
 	var buf bytes.Buffer
 	if err := tmpl.ExecuteTemplate(&buf, "failure", s.pageFor(req, "", s.activeName(), errorData{Heading: heading, Body: body})); err != nil {
@@ -183,8 +182,8 @@ type errorData struct {
 	Body    string
 }
 
-// writeHTML sets the content type explicitly -- never relies on
-// http.DetectContentType -- then writes b.
+// writeHTML sets the content type explicitly, rather than relying on
+// http.DetectContentType, then writes b.
 func writeHTML(w http.ResponseWriter, b []byte) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write(b)

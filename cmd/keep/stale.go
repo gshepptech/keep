@@ -18,10 +18,9 @@ import (
 // nothing ever says why. Interlock's leases expire on their own; a keep
 // claim does not, because a claim is a statement about intent rather than
 // about a live process, and expiring intent automatically would mean two
-// agents on one item -- the exact thing keep exists to prevent.
+// agents on one item, which is what keep exists to prevent.
 //
-// So this reports and does not act. What it gives you is the one thing that
-// was missing: the question being asked at all.
+// So this reports and does not act: it makes sure the question gets asked.
 func runStale(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("stale", flag.ContinueOnError)
 	fs.SetOutput(stderr)

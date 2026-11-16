@@ -96,10 +96,10 @@ func readRequests(t *testing.T, logPath string) []map[string]any {
 	return out
 }
 
-// TestCodexTrustWritesTheHashCodexReported is the design decision this
-// whole command exists for. A locally computed hash breaks silently when
-// Codex changes its format, so keep must write back exactly what
-// hooks/list said and never a value of its own.
+// TestCodexTrustWritesTheHashCodexReported checks that `keep codex trust`
+// writes back exactly the hash hooks/list reported and never a value of its
+// own, because a locally computed hash breaks silently when Codex changes
+// its format.
 func TestCodexTrustWritesTheHashCodexReported(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)
@@ -142,10 +142,10 @@ func TestCodexTrustWritesTheHashCodexReported(t *testing.T) {
 	}
 }
 
-// TestCodexTrustLeavesOtherPluginsAlone: hooks/list returns every hook on
-// the machine. Trusting one keep did not install would be keep granting
-// consent on someone else's behalf, which is the exact thing that makes
-// --dangerously-bypass-hook-trust a bad answer.
+// TestCodexTrustLeavesOtherPluginsAlone checks that only keep's own hooks
+// are trusted. hooks/list returns every hook on the machine, and trusting
+// one keep did not install would be granting consent on someone else's
+// behalf, which is what makes --dangerously-bypass-hook-trust a bad answer.
 func TestCodexTrustLeavesOtherPluginsAlone(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)
@@ -169,9 +169,9 @@ func TestCodexTrustLeavesOtherPluginsAlone(t *testing.T) {
 	}
 }
 
-// TestCodexTrustDryRunWritesNothing: --dry-run must reach Codex to read the
-// state and then stop. A dry run that skipped the read could not report
-// what it would do.
+// TestCodexTrustDryRunWritesNothing checks that --dry-run reads the state
+// from Codex and writes nothing. A dry run that skipped the read could not
+// report what it would do.
 func TestCodexTrustDryRunWritesNothing(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)
@@ -201,10 +201,10 @@ func TestCodexTrustDryRunWritesNothing(t *testing.T) {
 	}
 }
 
-// TestCodexTrustFailsLoudlyWithNoPlugin: a hook keep cannot find is a
-// half-install, and the one thing this command must not do is exit 0 having
-// silently done nothing -- that is the failure mode Interlock's doctor is
-// on record as having (reporting trust healthy while Codex ignored it).
+// TestCodexTrustFailsLoudlyWithNoPlugin checks that the command exits
+// non-zero when it finds no keep hook. A hook keep cannot find is a
+// half-install, and exiting 0 having silently done nothing would report
+// trust as healthy while Codex ignores it.
 func TestCodexTrustFailsLoudlyWithNoPlugin(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)

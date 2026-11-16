@@ -5,7 +5,7 @@ import "time"
 // TimeFormat is the layout every timestamp keep writes uses. It is
 // deliberately NOT time.RFC3339Nano: RFC3339Nano trims trailing zeros from the
 // fractional second, which makes its output variable-width, and variable-width
-// timestamps do not sort lexically in the order they occurred --
+// timestamps do not sort lexically in the order they occurred:
 // "2026-01-01T00:00:00Z" sorts AFTER "2026-01-01T00:00:00.5Z" because '.'
 // (0x2E) precedes 'Z' (0x5A). The ready view orders by created_at ASC on a
 // TEXT column (see internal/store/schema.go), so a variable-width format would
@@ -66,7 +66,8 @@ type Dep struct {
 }
 
 // Event mirrors the events table one field per column. SessionID and Payload
-// are the nullable columns; ID is the table's INTEGER PRIMARY KEY AUTOINCREMENT.
+// are the nullable columns; ID is the table's INTEGER PRIMARY KEY
+// AUTOINCREMENT.
 type Event struct {
 	ID        int64   `json:"id"`
 	ItemID    string  `json:"item_id"`
@@ -82,11 +83,11 @@ type Event struct {
 type ItemDetail struct {
 	Item
 
-	// DependsOn holds the deps rows where this item is item_id -- the edges
-	// this item points FROM, i.e. what this item depends on.
+	// DependsOn holds the deps rows where this item is item_id: the edges
+	// this item points from, which are what it depends on.
 	DependsOn []Dep `json:"depends_on"`
 
-	// DependedOnBy holds the deps rows where this item is depends_on_id --
+	// DependedOnBy holds the deps rows where this item is depends_on_id:
 	// the edges this item points TO it, i.e. what depends on this item.
 	DependedOnBy []Dep `json:"depended_on_by"`
 
@@ -94,8 +95,8 @@ type ItemDetail struct {
 }
 
 // BlockedItem is a ready-eligible-shape item annotated with the id of the
-// nearest item blocking it -- either the item itself, if it is
-// directly blocked, or the nearest blocked ancestor in its parent-child tree.
+// nearest item blocking it. That is the item itself when it is directly
+// blocked, or else the nearest blocked ancestor in its parent-child tree.
 type BlockedItem struct {
 	Item
 	BlockedBy string `json:"blocked_by"`
@@ -103,12 +104,11 @@ type BlockedItem struct {
 
 // TreeNode is one row of a parent-child subtree walk (store.Tree): the item,
 // how deep beneath the requested root it sits, and whether it is blocked.
-// It lives here, beside BlockedItem, for the same reason BlockedItem does --
+// It lives here, beside BlockedItem, for the same reason BlockedItem does:
 // it is an Item plus one annotation, returned by a store method and rendered
-// by a caller. Keeping it in internal/model is what lets internal/dash's
-// render functions be pure (model in, HTML out) with no internal/store
-// import at all, which is what makes the tree view's golden test possible
-// without a live database.
+// by a caller. Keeping it in internal/model lets internal/dash's render
+// helpers take model values in and give HTML out, with no internal/store
+// import at all.
 type TreeNode struct {
 	Item
 	Depth     int    `json:"depth"`
@@ -177,9 +177,8 @@ const (
 // (internal/store/backlog.go's CASE expression) and the MCP tools' JSON
 // Schema `enum` decoration (internal/mcp). Ranging over ValidTypes to build
 // either would emit a different order on every process, which makes a demo
-// transcript and a tools/list assertion flaky -- the same reason
-// cmd/keep/add.go's validTypesList() has always spelled the order out by
-// hand. This is now the ONE place it is spelled out.
+// transcript and a tools/list assertion flaky. This is the one place the
+// order is spelled out.
 var TypesOrdered = []string{TypeRoadmap, TypeEpic, TypeTask, TypeBug, TypeNote}
 
 // Item statuses.

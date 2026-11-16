@@ -3,11 +3,10 @@
 //
 // # Why shelling out, and not a Go import
 //
-// keep and Interlock answer different questions -- keep says what needs
-// doing, Interlock says who is doing what and where -- and both roadmaps
-// state that neither depends on the other to be useful. Importing
-// Interlock's packages would make that false in the one direction that
-// matters: keep would stop building without it.
+// keep and Interlock answer different questions. keep says what needs
+// doing; Interlock says who is doing what and where. Each is useful without
+// the other, and importing Interlock's packages would break that in the
+// direction that matters: keep would stop building without it.
 //
 // So this package shells out to the `interlock` binary and parses its
 // documented `status --json` envelope. The coupling is a CLI contract with
@@ -21,8 +20,8 @@
 // which is that keep has nothing to add to its own answer. `ready` then
 // reports exactly what it would without Interlock installed.
 //
-// The alternative -- surfacing an error -- would make `keep ready` fail in
-// every repository that does not use Interlock, which is most of them. That
+// Surfacing an error instead would make `keep ready` fail in every
+// repository that does not use Interlock, which is most of them. That
 // is the same never-fatal rule internal/registry follows for an unreadable
 // store, and the same one plugin/scripts/session-queue.py follows when
 // keep itself is not installed.
@@ -47,9 +46,9 @@ import (
 // hides workable items, which is worse than a queue that filters nothing.
 const SupportedVersion = 1
 
-// fetchTimeout bounds the subprocess. `ready` is on the hot path -- the
-// SessionStart hook and the MCP handshake both call it -- so a hung
-// Interlock must cost a bounded pause, never the session.
+// fetchTimeout bounds the subprocess. `ready` is on the hot path, since the
+// SessionStart hook and the MCP handshake both call it, so a hung Interlock
+// must cost a bounded pause, never the session.
 const fetchTimeout = 2 * time.Second
 
 // Status is Interlock's `status --json` envelope, narrowed to what keep
@@ -90,8 +89,8 @@ type Lease struct {
 
 // Collision is one item excluded from `ready` because a path it declares is
 // held. It names the path and the holder, because "this is not workable" is
-// only actionable if you can see who to wait for -- the same reason
-// `keep blocked` names the blocking item rather than just omitting it.
+// only actionable if you can see who to wait for. `keep blocked` names the
+// blocking item rather than just omitting it for the same reason.
 type Collision struct {
 	Item  model.Item
 	Path  string
@@ -102,8 +101,8 @@ type Collision struct {
 //
 // The bool reports whether the answer is usable. It is false, with no error,
 // whenever Interlock is absent, failed, timed out, spoke an unsupported
-// version, or produced output that will not parse -- see the package comment
-// for why none of those is worth surfacing.
+// version, or produced output that will not parse. The package comment
+// explains why none of those is worth surfacing.
 func Fetch(ctx context.Context, dir string) (Status, bool) {
 	bin, ok := binary()
 	if !ok {
@@ -133,15 +132,14 @@ func Fetch(ctx context.Context, dir string) (Status, bool) {
 // EnvBinary names the environment variable that overrides how the Interlock
 // binary is found.
 //
-//	unset  -- look for `interlock` on $PATH (the normal case)
-//	"off"  -- do not consult Interlock at all
-//	other  -- use this exact path
+//	unset   look for `interlock` on $PATH (the normal case)
+//	"off"   do not consult Interlock at all
+//	other   use this exact path
 //
-// The "off" value is not only for tests, though it is what makes them
-// deterministic: without it, whether a test sees a filtered queue depends on
-// whether the developer running it happens to have Interlock installed,
-// which is precisely the environment leak cmd/keep's env() helper exists
-// to prevent. It is also the answer for anyone who wants the two tools
+// "off" makes tests deterministic: without it, whether a test sees a
+// filtered queue depends on whether the developer running it has
+// Interlock installed, which is the environment leak cmd/keep's env()
+// helper exists to prevent. It also serves anyone who wants the two tools
 // installed but not joined.
 const EnvBinary = "KEEP_INTERLOCK"
 
@@ -186,15 +184,15 @@ func SplitPaths(paths *string) []string {
 
 // Exclude partitions items into those still workable and those held.
 //
-// It is one function with two callers -- `keep ready` and the dashboard's
-// queue view -- for the same reason internal/store's blockedTreeCTE is one
-// constant with five: two implementations of "is this held" would drift, and
-// the drift would be invisible until the board and the CLI disagreed about
-// what is workable. The dashboard's agreement test guards exactly that.
+// It is one function with two callers, `keep ready` and the dashboard's
+// queue view, for the same reason internal/store's blockedTreeCTE is one
+// constant with five: two implementations of "is this held" would drift,
+// and the drift would stay invisible until the board and the CLI disagreed
+// about what is workable. The dashboard's agreement test guards that.
 //
 // An item with no paths is never excluded. Declaring no paths means keep
 // does not know what the work touches, and guessing that it collides would
-// hide workable items -- the failure direction this must not take.
+// hide workable items, which is the worse way to be wrong.
 func Exclude(items []model.Item, st Status) ([]model.Item, []Collision) {
 	held := make(map[string]Lease, len(st.Leases))
 	for _, l := range st.Leases {
@@ -230,9 +228,9 @@ func firstHeld(paths []string, held map[string]Lease) (string, Lease, bool) {
 // command, confirmation argument included.
 //
 // keep does not reach into Interlock's lease files to do this. Releasing
-// someone else's hold is a guard rail Interlock built deliberately -- it
-// takes the session id twice on purpose -- and a second implementation here
-// would be keep deciding that guard rail is optional.
+// someone else's hold is a deliberate guard rail in Interlock, which takes
+// the session id twice on purpose, and a second implementation here would
+// make that guard rail optional.
 func Release(ctx context.Context, session string) error {
 	bin, ok := binary()
 	if !ok {
@@ -254,9 +252,8 @@ func Release(ctx context.Context, session string) error {
 
 // Run starts an agent on one item, through Interlock's own launcher.
 //
-// keep does not start agents -- that is a stated limit, not an oversight,
-// and this does not change it. Interlock owns process lifecycle, so the
-// board asks Interlock rather than growing a supervisor of its own.
+// keep does not start agents itself. Interlock owns process lifecycle, so
+// the board asks Interlock rather than growing a supervisor of its own.
 //
 // --no-follow because the caller is an HTTP handler: the run outlives the
 // request, and Interlock is the thing watching it.
@@ -266,7 +263,7 @@ func Run(ctx context.Context, agent, item, dir string) error {
 
 // Prompt starts an agent on a free-text instruction rather than an item.
 //
-// The queue is the normal way in -- an item carries a brief, acceptance
+// The queue is the normal way in: an item carries a brief, acceptance
 // criteria and the files it touches, and an agent started from one begins
 // with all of that. A prompt has none of it, so this is for the thing you
 // want done now and would not have written a ticket for. Interlock still
@@ -281,15 +278,14 @@ func Prompt(ctx context.Context, agent, text, dir string) error {
 
 // run is the shared launcher.
 //
-// flags are trusted, built here. prompt is not -- it is whatever a person
-// typed into a web form -- so it goes last, behind a "--" sentinel, and
-// every flag goes in front of it.
+// flags are trusted, built here. prompt is not, because it is whatever a
+// person typed into a web form, so it goes last, behind a "--" sentinel,
+// and every flag goes in front of it.
 //
 // Without the sentinel a prompt beginning with a dash is parsed as flags:
 // --env and --model become injectable, and the prompt itself is discarded,
 // so the run does something other than what was asked. Quoting cannot fix
-// that from this side, because argv carries no quoting. Interlock gained
-// the sentinel for this.
+// that from this side, because argv carries no quoting.
 func run(ctx context.Context, agent, dir string, flags []string, prompt string) error {
 	bin, ok := binary()
 	if !ok {
@@ -325,13 +321,12 @@ func run(ctx context.Context, agent, dir string, flags []string, prompt string) 
 
 	// --no-follow returns as soon as the supervisor is up, so a zero exit
 	// means "launched", not "working". A run that is going to fail on
-	// configuration -- not logged in, no such model, a bad hook -- does so
-	// within a second or two, and reporting those as started is the same
-	// overclaim as announcing an outcome nobody checked.
+	// configuration (not logged in, no such model, a bad hook) does so
+	// within a second or two, and reporting those as started would announce
+	// an outcome nobody checked.
 	//
-	// So: give it a moment, then ask. A run still alive after that is
-	// genuinely running and its outcome belongs in Interlock, not in a
-	// redirect.
+	// So give it a moment, then ask. A run still alive after that is
+	// running, and its outcome belongs in Interlock, not in a redirect.
 	id := runIDFrom(string(out))
 	if id == "" {
 		return nil
@@ -387,15 +382,15 @@ func runState(ctx context.Context, bin, dir, id string) (state, why string) {
 // Watches reports whether Interlock is wired into this repository.
 //
 // It asks Interlock, via `doctor`, which exits 0 when the hooks are in
-// place and 1 when they are not. Two cheaper-looking checks are both wrong,
-// and both were tried:
+// place and 1 when they are not. Two cheaper-looking checks both give the
+// wrong answer:
 //
 //   - "is the binary installed" answers about the machine, not the
 //     repository. `status` succeeds from a directory Interlock has never
 //     touched, so this offers controls that quietly do nothing.
 //   - "does .interlock exist" answers about history, not configuration.
 //     That directory appears when the first session or lease is recorded,
-//     not when init runs -- so a freshly wired project reads as unwired
+//     not when init runs, so a freshly wired project reads as unwired
 //     until an agent happens to work in it.
 //
 // doctor is the only one of the three that answers the question actually
@@ -420,10 +415,9 @@ func Watches(dir string) bool {
 // Init runs `interlock init` in dir.
 //
 // Offered rather than done silently. It writes hook registrations into each
-// agent's own settings and trust hashes into ~/.codex/config.toml -- that
-// is configuration which makes agents execute commands on this machine, and
-// it is not a thing to do because someone opened a board. One click, not
-// zero.
+// agent's own settings and trust hashes into ~/.codex/config.toml. That
+// configuration makes agents execute commands on this machine, so it takes
+// an explicit click and never happens just because someone opened a board.
 func Init(ctx context.Context, dir string) error {
 	bin, ok := binary()
 	if !ok {

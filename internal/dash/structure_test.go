@@ -13,11 +13,10 @@ import (
 
 // forbiddenTemplateTrustCalls are template.* constructors that fully defeat
 // html/template's contextual escaping. Wrapping agent-supplied data in any
-// of these tells the template engine to trust the string literally --
-// exactly the thing the rendered-output scan depends on never happening.
-// template.CSS is deliberately absent from this set: it has its own,
-// narrower check below (allowed at most once, and only in one documented
-// file).
+// of these tells the engine to trust the string literally, which the
+// rendered-output scan depends on never happening. template.CSS is absent
+// from this set because it has its own, narrower check below: at most once,
+// and only in one documented file.
 var forbiddenTemplateTrustCalls = map[string]bool{
 	"HTML":     true,
 	"HTMLAttr": true,
@@ -25,35 +24,29 @@ var forbiddenTemplateTrustCalls = map[string]bool{
 	"JS":       true,
 }
 
-// allowedCSSFile is the one file documented as template.CSS's exception:
-// templates.go's own comment on styleInline explains why --
-// styleCSS is a compile-time go:embed of a static stylesheet living in this
-// repository, not agent data, and cannot become agent data (no code in this
-// package ever writes to it), so it is reviewable once by a human rather
-// than scanned per render. If the CSS is ever inlined differently,
-// this constant (and the "at most 1" assertion below) is what a reader
-// updates -- not a wider exception.
+// allowedCSSFile is the one file allowed to call template.CSS. styleInline
+// there wraps styleCSS, a compile-time go:embed of a static stylesheet in
+// this repository. It is not agent data and cannot become agent data, so it
+// is reviewed once by a person rather than scanned per render. If the CSS
+// is ever inlined differently, this constant and the "at most 1" assertion
+// below change, not the size of the exception.
 const allowedCSSFile = "templates.go"
 
-// forbiddenDashImports mirrors cmd/keep/boundary_test.go's own list for
-// the two entries relevant here. TestNoSQLAboveStore already enforces this
-// module-wide (and its coverage assertion proves it reaches
-// internal/dash); asserting it again HERE, locally, means a failure
-// names this package directly rather than requiring a reader to trust that
-// the module-wide walk's reach has not silently shrunk.
+// forbiddenDashImports mirrors cmd/keep/boundary_test.go's list.
+// TestNoSQLAboveStore already enforces it module-wide; checking it here as
+// well means a failure names this package directly.
 var forbiddenDashImports = []string{"database/sql", "modernc.org/sqlite", "modernc.org/sqlite/lib"}
 
-// TestDashHasNoStoreBehaviour is the AST proof that internal/dash carries no
-// behaviour and no trust types of its own: internal/dash is a thin caller
-// of internal/store. It follows internal/mcp/structure_test.go's own
-// technique (TestNoConditionalInToolHandlers): parse the package's non-test
-// .go files with go/parser, walk with ast.Inspect, and assert on AST shapes
-// -- never on grep output, which flags a doc-comment mention of a forbidden
-// pattern exactly as readily as a real one.
+// TestDashHasNoStoreBehaviour checks that internal/dash is a thin caller of
+// internal/store with no SQL driver import, no transaction and no
+// html/template trust types. Like internal/mcp's
+// TestNoConditionalInToolHandlers, it parses the package's non-test files
+// and asserts on AST shapes rather than grep output, which would flag a
+// comment that mentions a forbidden pattern as readily as real code.
 func TestDashHasNoStoreBehaviour(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
-		t.Fatal("runtime.Caller(0) failed -- cannot locate this test's own file to derive internal/dash's directory")
+		t.Fatal("runtime.Caller(0) failed: cannot locate this test's own file to derive internal/dash's directory")
 	}
 	dir := filepath.Dir(thisFile)
 
@@ -75,12 +68,10 @@ func TestDashHasNoStoreBehaviour(t *testing.T) {
 			files = append(files, fileEntry{filepath.Base(name), f})
 		}
 	}
-	// A walk that finds nothing must fail -- the same discipline
-	// TestNoSQLAboveStore and internal/mcp's TestNoConditionalInToolHandlers
-	// already follow, so a repository-scanning test cannot rot into a
-	// vacuous pass.
+	// A walk that finds nothing must fail, or the test passes forever
+	// without checking anything.
 	if len(files) == 0 {
-		t.Fatal("walked zero non-test .go files in internal/dash -- the walk is broken; treat this as a failure, not a vacuous pass")
+		t.Fatal("walked zero non-test .go files in internal/dash; the walk is broken, and an empty walk must fail rather than pass")
 	}
 
 	cssCount := 0
@@ -91,7 +82,7 @@ func TestDashHasNoStoreBehaviour(t *testing.T) {
 			path := strings.Trim(imp.Path.Value, `"`)
 			for _, forbidden := range forbiddenDashImports {
 				if path == forbidden {
-					t.Errorf("internal/dash/%s imports %q -- internal/dash must never import a SQL driver directly", fe.name, path)
+					t.Errorf("internal/dash/%s imports %q; internal/dash must never import a SQL driver directly", fe.name, path)
 				}
 			}
 		}
@@ -109,7 +100,7 @@ func TestDashHasNoStoreBehaviour(t *testing.T) {
 				}
 				if forbiddenTemplateTrustCalls[sel.Sel.Name] {
 					pos := fset.Position(node.Pos())
-					t.Errorf("internal/dash/%s:%d calls template.%s(...) -- this fully defeats html/template's contextual escaping; the off-host guarantee depends on this never happening", fe.name, pos.Line, sel.Sel.Name)
+					t.Errorf("internal/dash/%s:%d calls template.%s(...), which fully defeats html/template's contextual escaping; the off-host guarantee depends on this never happening", fe.name, pos.Line, sel.Sel.Name)
 				}
 				if sel.Sel.Name == "CSS" {
 					cssCount++
@@ -118,21 +109,18 @@ func TestDashHasNoStoreBehaviour(t *testing.T) {
 			case *ast.Ident:
 				if node.Name == "withTx" {
 					pos := fset.Position(node.Pos())
-					t.Errorf("internal/dash/%s:%d references withTx -- internal/dash must never hold a transaction; every existing store read method already opens and closes its own connection use per call", fe.name, pos.Line)
+					t.Errorf("internal/dash/%s:%d references withTx; internal/dash must never hold a transaction, because every store read method opens and closes its own connection use per call", fe.name, pos.Line)
 				}
 			}
 			return true
 		})
 	}
 
-	// template.CSS is the one documented exception (styleInline,
-	// templates.go): a compile-time go:embed of a static file, not agent
-	// data. Assert the count is at most 1 and name the file it is allowed
-	// in, rather than a blanket zero -- if a future plan inlines the
-	// stylesheet differently (0 occurrences), this assertion still holds,
-	// since "at most 1" permits zero.
+	// template.CSS is allowed at most once, and only in allowedCSSFile.
+	// "At most" rather than "exactly" so that inlining the stylesheet
+	// some other way does not fail this test.
 	if cssCount > 1 {
-		t.Errorf("template.CSS(...) called %d times across %v, want at most 1 -- the one documented exception is templates.go's styleInline", cssCount, cssFiles)
+		t.Errorf("template.CSS(...) called %d times across %v, want at most 1; the one documented exception is templates.go's styleInline", cssCount, cssFiles)
 	}
 	for _, f := range cssFiles {
 		if f != allowedCSSFile {

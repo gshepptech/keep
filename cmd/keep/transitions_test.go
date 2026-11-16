@@ -10,7 +10,7 @@ import (
 // need: enough to count events by kind, read a payload's raw JSON, and read
 // the item's own status/title/score. Kept local (not model.ItemDetail
 // itself) so this file has no reliance on field ordering or unrelated
-// columns -- just the ones these tests actually assert on.
+// columns, only the ones these tests assert on.
 type showDetail struct {
 	Status string  `json:"status"`
 	Title  string  `json:"title"`
@@ -39,12 +39,11 @@ func mustShow(t *testing.T, bin, repo string, e []string, id string) showDetail 
 }
 
 // countEventsOfKind counts a show --json ItemDetail's events by kind.
-// Counting through the real CLI's own JSON output -- not by reading the
-// database directly -- is the whole point of TestStartClaimsAndIsIdempotent
-// below: asserting "exit 0 twice" alone would also pass for an
-// implementation that appends a second claim event, which is exactly the
-// failure the idempotent retry exists to prevent (proven at the store
-// layer too; this proves it again at the CLI boundary).
+// TestStartClaimsAndIsIdempotent below counts through the real CLI's own
+// JSON output, not by reading the database directly: asserting "exit 0
+// twice" alone would also pass for an implementation that appends a second
+// claim event, which the idempotent retry exists to prevent. The store
+// tests check this too; this checks it again at the CLI boundary.
 func countEventsOfKind(d showDetail, kind string) int {
 	n := 0
 	for _, ev := range d.Events {
@@ -56,8 +55,7 @@ func countEventsOfKind(d showDetail, kind string) int {
 }
 
 // TestStartClaimsAndIsIdempotent proves a same-session repeat of `start`
-// succeeds again (exit 0) without
-// writing a second `start` event.
+// succeeds again (exit 0) without writing a second `start` event.
 func TestStartClaimsAndIsIdempotent(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)
@@ -245,7 +243,7 @@ func TestCloseAndDropAreDistinguishableOnCLI(t *testing.T) {
 }
 
 // TestCloseWithoutReasonExitsTwo proves both an absent --reason and an
-// explicit --reason "" exit 2 -- flag's *string default makes the two
+// explicit --reason "" exit 2. flag's *string default makes the two
 // indistinguishable, so close.go must reject both explicitly.
 func TestCloseWithoutReasonExitsTwo(t *testing.T) {
 	bin := buildKeep(t, "")
@@ -274,9 +272,9 @@ func TestCloseWithoutReasonExitsTwo(t *testing.T) {
 }
 
 // TestUpdateChangesFieldsAndScore proves --title alone changes only the
-// title (score untouched), and --score changes the score AND the resulting
-// ordering consequence in ready -- asserting the stored score column alone
-// would pass for a store that writes it and a ready view that ignores it.
+// title (score untouched), and --score changes both the score and the
+// resulting order in ready. Asserting the stored score column alone would
+// pass for a store that writes it and a ready view that ignores it.
 func TestUpdateChangesFieldsAndScore(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)

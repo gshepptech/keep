@@ -1,17 +1,17 @@
 {{/*
   The application shell: one bar across the top, and a single column of
-  content beneath it, held to a measure.
-  header. Every view fills the region; none of them draws chrome.
+  content beneath it, held to a measure. Every view fills the column; none
+  of them draws chrome.
 
   Why there is no shared {{define "layout"}}: html/template parses every
-  *.html file here into ONE associated set, and two files defining the same
+  *.html file here into one associated set, and two files defining the same
   block name silently keep only the last parsed. So each view defines its
   own uniquely-named top-level template and calls these shared blocks
   directly.
 
   Icons are inline SVG, drawn here rather than fetched: rendered output may
   hold no off-host reference, so an icon font or a sprite sheet
-  is not available. They are 16px, 1.5px stroke, currentColor -- one visual
+  is not available. They are 16px, 1.5px stroke, currentColor: one visual
   weight across the whole nav.
 */}}
 {{define "head"}}<!doctype html>
@@ -27,40 +27,31 @@
      because the off-host scanner rejects that substring in a resource
      attribute, and it is right to: it cannot tell a namespace from a URL.
 
-     The mark is a keep -- three merlons, two embrasures, filled rather
-     than stroked. Filled because the first three candidates were drawn in
-     line and every one of them collapsed at 16px: the stroked keep read
-     as a folder, the portcullis as a table. At favicon size a mark has
-     about five usable shapes and the outline is not one of them. */}}
+     The mark is a keep: three merlons, two embrasures, filled rather
+     than stroked. At favicon size a stroked outline collapses into a
+     generic shape, so the mark is solid. */}}
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%27http%3A//www.w3.org/2000/svg%27%20viewBox=%270%200%2032%2032%27%3E%3Crect%20width=%2732%27%20height=%2732%27%20rx=%277%27%20fill=%27%23101013%27/%3E%3Cpath%20d=%27M6%206h4v4h4V6h4v4h4V6h4v19H6z%27%20fill=%27%233fb950%27/%3E%3C/svg%3E">
 <style>{{style}}</style>
 </head>
 <body>
-{{/* The first thing in the tab order. A keyboard user was walking the whole
-     rail -- nav, every project, manage projects, all projects -- before
-     reaching the content, once per page. */}}
+{{/* The first thing in the tab order, so a keyboard user can pass the bar
+     and the project switcher on every page. */}}
 <a class="skip" href="#content">Skip to content</a>
-{{/* One bar, then a column. This was a 208px rail beside a surface that ran
-     to the window edge -- the admin-dashboard skeleton, and the reason the
-     page read as generated however the pieces inside it were styled.
-
-     It was also costing legibility: on a wide screen the content ran past
-     1100px, so a queue row's title sat on the left and its controls a
-     thousand pixels away on the right, and the eye had to travel the whole
-     screen to connect them. A measure fixes both at once.
+{{/* One bar, then a column capped at a readable width so a row's title and
+     its controls stay close.
 
      The project switcher is a <details>, which is a disclosure widget with
-     no JavaScript -- keyboard-operable and screen-reader-announced by the
-     browser, for free. */}}
+     no JavaScript, keyboard-operable and screen-reader-announced by the
+     browser for free. */}}
 <div class="app">
 
 <header class="bar">
   <a class="brand" href="{{if .Page.Prefix}}{{.Page.Prefix}}{{else}}/{{end}}">
     {{/* A keep: the tower you put the thing you cannot afford to lose in.
-         Filled and solid, unlike every other icon on this board, and that
-         is the point -- the nav icons are 1.5px strokes that agree with
-         each other, and a brand mark that joins that chorus stops being a
-         brand mark. It is also the only shape here that survives 16px. */}}
+         Filled and solid, unlike every other icon on this board, on
+         purpose: the nav icons are 1.5px strokes that agree with each
+         other, and a brand mark that joins them stops being a brand mark.
+         It is also the only shape here that survives 16px. */}}
     <span class="brand-mark"><svg viewBox="0 0 16 16" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M3 5h2v2h2V5h2v2h2V5h2v9H3V5z"/></svg></span>
     <span class="brand-name">keep</span>
   </a>
@@ -146,11 +137,8 @@
 </form>{{end}}
 
 {{/* One count in the board's tally line: the figure, then what it counts.
-     The caption the card version carried is gone -- beside four other
-     counts on one line there is no room for a sentence, and the panel each
-     number refers to is a few inches below saying the same thing. */}}
+     No caption: beside four other counts on one line there is no room for a
+     sentence, and the panel each number refers to sits just below. */}}
 {{define "count"}}<span class="count{{if .Accent}} count-{{.Accent}}{{end}}"><b>{{.Value}}</b> {{.Label}}</span>{{end}}
 
-{{/* The stat-card block that lived here is gone with the cards: the board
-     shows its counts as one line under the lede. statCardFor survives and
-     is what `count` above takes -- the zero-suppression rule lives in it. */}}
+{{/* statCardFor holds the zero-suppression rule used by count. */}}

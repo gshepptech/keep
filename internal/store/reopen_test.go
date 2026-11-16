@@ -9,7 +9,8 @@ import (
 	"github.com/gshepptech/keep/internal/model"
 )
 
-// TestReopenIsTheWayOutOfTerminal.
+// TestReopenIsTheWayOutOfTerminal checks that reopen moves a closed or
+// dropped item back into the queue.
 //
 // Without reopen, close and drop would be statuses with no exit. A
 // mis-typed id could not be undone: the work would have to be filed again
@@ -18,7 +19,7 @@ import (
 // the work is done.
 //
 // The events table is the complete record of every mutation, so the way
-// out is not to edit the close — nothing edits history here — but to
+// out is not to edit the close (nothing edits history here) but to
 // append a `reopen` that says the close was wrong. These tests pin what that
 // append has to record for the log to stay honest.
 func TestReopenIsTheWayOutOfTerminal(t *testing.T) {

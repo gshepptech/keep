@@ -27,16 +27,15 @@ type ShowInput struct {
 // BlockedInput is the `blocked` tool's argument shape. store.Blocked takes
 // no arguments at all, so this is deliberately empty: it exists so the
 // handler has something to unmarshal into and therefore has the same shape
-// as every other handler in this package -- one unmarshal, one store call,
+// as every other handler in this package: one unmarshal, one store call,
 // one resultFor. A handler that skipped the unmarshal would be the only one
-// without it, and internal/mcp/structure_test.go asserts the shape rather
-// than trusting it.
+// without it.
 type BlockedInput struct{}
 
 // ReadyAllInput is the `ready_all` tool's argument shape. It is empty for
 // the same reason BlockedInput is: the underlying read takes no arguments,
 // and a handler with nothing to unmarshal would be the only one in this
-// package without the shape structure_test.go asserts.
+// package without that shape.
 type ReadyAllInput struct{}
 
 // WhyNotInput is the `why_not` tool's argument shape. store.WhyNot takes a
@@ -52,11 +51,10 @@ type BacklogInput struct {
 	Type string `json:"type,omitempty"`
 }
 
-// schemaSet collects the generated schemas and every generation error,
-// so BuildSchemas needs exactly ONE error check rather than ten. errors.Join
+// schemaSet collects the generated schemas and every generation error, so
+// BuildSchemas needs one error check rather than one per tool. errors.Join
 // returns nil when every element is nil, so no conditional is needed here
-// either -- which is what keeps the structural test able to say the
-// error switch in errors.go is the only branch in this package.
+// either.
 type schemaSet struct {
 	m    map[string]*jsonschema.Schema
 	errs []error
@@ -70,27 +68,13 @@ func (s *schemaSet) put(name string, sc *jsonschema.Schema, err error) {
 	s.errs = append(s.errs, err)
 }
 
-// err reports whether any of the ten schemaSet.put calls failed.
+// err reports whether any schemaSet.put call failed.
 // errors.Join(nil, nil, ..., nil) is nil, so a fully successful accumulation
 // needs no conditional to detect.
 func (s *schemaSet) err() error {
 	return errors.Join(s.errs...)
 }
 
-// withEnum publishes a closed vocabulary on one property of one schema.
-// Every call site below names a property jsonschema.For is known to have
-// generated (title/type/stage/status on these fixed, concrete struct
-// types), so this has no existence guard -- an unknown property name would
-// be a bug in this file, and a nil-map write panicking loudly beats a
-// silently-dropped enum.
-//
-// Advertisement, NOT enforcement:
-// mcp.Server.AddTool (the low-level path this package uses -- see errors.go
-// for why) does not validate arguments against InputSchema at all. A
-// published enum and additionalProperties:false were both ignored on a real
-// call. The enum earns its place by steering a model toward a legal value,
-// and nothing in this package may depend on the SDK rejecting one that
-// isn't.
 // withRange publishes an integer property's bounds, the numeric parallel of
 // withEnum and subject to the same caveat: the SDK does not validate
 // arguments against InputSchema, so this steers a model toward a legal
@@ -98,8 +82,8 @@ func (s *schemaSet) err() error {
 // store.ErrScoreOutOfRange is what actually refuses.
 //
 // jsonschema's Minimum/Maximum are *float64, so the bounds are taken by
-// value and addressed here -- one place, rather than a package-level var per
-// bound whose address could be shared by accident.
+// value and addressed here, in one place, rather than through a
+// package-level var per bound whose address could be shared by accident.
 func withRange(sc *jsonschema.Schema, prop string, min, max float64) {
 	sc.Properties[prop].Minimum = &min
 	sc.Properties[prop].Maximum = &max
@@ -113,6 +97,19 @@ func withScoreRange(sc *jsonschema.Schema) {
 	}
 }
 
+// withEnum publishes a closed vocabulary on one property of one schema.
+// Every call site below names a property jsonschema.For is known to have
+// generated (title/type/stage/status on these fixed, concrete struct
+// types), so this has no existence guard. An unknown property name would
+// be a bug in this file, and a nil-map write panicking loudly beats a
+// silently dropped enum.
+//
+// The enum is advertisement, not enforcement. mcp.Server.AddTool, the
+// low-level path this package uses (server.go explains why), does not
+// validate arguments against InputSchema, and a published enum and
+// additionalProperties:false are both ignored on a call. The enum steers a
+// model toward a legal value, and nothing in this package may depend on the
+// SDK rejecting one that isn't.
 func withEnum(sc *jsonschema.Schema, prop string, values []string) {
 	enum := make([]any, len(values))
 	for i, v := range values {
@@ -123,13 +120,13 @@ func withEnum(sc *jsonschema.Schema, prop string, values []string) {
 
 // depTypesForWire is model.DepTypesOrdered minus "parent-child", built once
 // here rather than inlined at the withEnum call site below. slices.DeleteFunc
-// SKIPS model.DepParentChild by predicate rather than by a separately
-// hand-maintained literal list -- so a fifth dep type added to the model
-// appears in this enum automatically, with no second place to remember to
-// update, and with no `if` in this file's own control flow (the predicate is
-// an expression, not a statement).
+// skips model.DepParentChild by predicate rather than by a separately
+// hand-maintained literal list, so a fifth dep type added to the model
+// appears in this enum automatically, with no second place to update and no
+// `if` in this file's own control flow (the predicate is an expression, not
+// a statement).
 //
-// This is deliberate: store.CreateDep refuses parent-child outright
+// parent-child is left out because store.CreateDep refuses it outright
 // (ErrParentChildViaDep, whose message names `keep add --parent`).
 // Advertising a value that is always refused would be worse than not
 // advertising it. This runs once at construction time (BuildSchemas), never
@@ -140,51 +137,41 @@ func depTypesForWire() []string {
 	})
 }
 
-// ToolNames is every tool this server registers, in registration order --
+// ToolNames is every tool this server registers, in registration order,
 // which is the order tools/list returns.
 //
-// It exists because the count was written out in four places (a schema-count
-// test, an AST handler-count constant, a wire-level tools/list assertion,
-// and a prose sentence in server.go's own doc comment) and three of them had
-// already drifted. Each of those places now derives from this one, and each
-// still checks something independent: BuildSchemas is checked against it by
-// map key, the AST walk counts real function literals, and cmd/keep's MCP
-// test reads the list back over a real stdio session. Agreeing with this
-// slice is a claim about three different mechanisms, not one.
+// It is the one place the tool set is written down. The schema test checks
+// BuildSchemas against it by map key, and cmd/keep's MCP test reads the
+// list back over a real stdio session.
 var ToolNames = []string{
 	"capture", "add", "ready", "backlog", "show", "list", "search", "log",
 	"stale", "dep", "start", "close", "drop", "update",
 	"blocked", "ready_all", "why_not", "next", "unclaim", "reopen",
 }
 
-// BuildSchemas generates every tool's InputSchema value via
-// jsonschema.For[T] -- the same reflection helper the SDK's generic
-// AddTool[In,Out] uses
-// internally -- and decorates every closed-vocabulary property with its
-// enum, read from internal/model's ordered slices (never a local literal
-// list, never a range over a Valid* map, whose iteration order differs per
-// process and would make a tools/list assertion flaky).
+// BuildSchemas returns the InputSchema for every tool in ToolNames, keyed by
+// tool name. Each schema comes from jsonschema.For[T], the reflection helper
+// the SDK's generic AddTool[In,Out] uses internally. BuildSchemas then
+// decorates the result: every closed-vocabulary property (type, stage,
+// status, dep type) gets an enum read from internal/model's ordered slices,
+// so tools/list output is the same in every process, and the three scoring
+// inputs on add, capture and update get model's score range. The error is
+// every generation error joined, or nil.
 //
-// Ordered as ToolNames lists them.
-//
-// capture and add both reuse store.AddItemInput unmodified -- the same
-// struct, two independent jsonschema.For calls, each producing its own
-// *jsonschema.Schema (two calls for the same type return distinct
-// pointers, so decorating one cannot leak into the other). Their
-// wire shape is identical by construction: title required, session_id and
-// stage both absent. The one behavioural difference between the two tools
-// (capture always writes stage=raw, add defaults to stage=ticket) lives in
-// the handler that pre-seeds AddItemInput.Stage before unmarshalling,
-// never in the schema.
+// capture and add share store.AddItemInput, but each gets its own
+// jsonschema.For call and so its own *jsonschema.Schema, which keeps a
+// decoration on one from leaking into the other. Their wire shapes are
+// identical: title is required, and session_id and stage are not exposed.
+// The one difference between the two tools, capture writing stage=raw where
+// add takes the store's default of ticket, is set by the capture handler
+// before it unmarshals, not by the schema.
 func BuildSchemas() (map[string]*jsonschema.Schema, error) {
 	set := &schemaSet{m: make(map[string]*jsonschema.Schema)}
 
 	// Go does not allow a multi-value call to stand in for two of three
-	// arguments to put (the "call g() as f's sole argument list" special
-	// case only applies when g's call is f's ONLY argument) -- verified by
-	// compiling. sc/err are reused across all ten pairs instead; this is
-	// still zero conditionals, which is the property that matters here, not
-	// statement count.
+	// arguments to put: the "call g() as f's sole argument list" special
+	// case only applies when g's call is f's only argument. sc/err are
+	// reused across every pair instead, which still adds no conditional.
 	sc, err := jsonschema.For[store.AddItemInput](nil)
 	set.put("capture", sc, err)
 	sc, err = jsonschema.For[store.AddItemInput](nil)
@@ -229,12 +216,10 @@ func BuildSchemas() (map[string]*jsonschema.Schema, error) {
 	// No error-guard branch here: every one of the nineteen types above is a
 	// fixed, concrete struct (plain strings/ints/slices/pointers, no map
 	// with a non-string key, no func/chan/complex/unsafe-pointer field), so
-	// jsonschema.For genuinely cannot fail for any of them -- verified by
-	// this file's own passing tests, which would panic on a nil schema
-	// entry the moment decoration below ran if that assumption were ever
-	// wrong. set.err() is still returned to the caller (never silently
-	// dropped), consistent with schemaSet's own doc comment that BuildSchemas
-	// needs exactly one error check -- it is the caller's, not a branch here.
+	// jsonschema.For cannot fail for any of them. If it did, the decoration
+	// below would panic on a nil schema entry and this package's tests would
+	// fail. set.err() is still returned to the caller, so the one error
+	// check schemaSet promises belongs to the caller, not to a branch here.
 	withEnum(set.m["add"], "type", model.TypesOrdered)
 	withEnum(set.m["capture"], "type", model.TypesOrdered)
 	withEnum(set.m["list"], "type", model.TypesOrdered)
@@ -263,9 +248,8 @@ type StaleInput struct {
 // After turns the wire value into a duration. It does not apply a default:
 // StaleClaims already treats a non-positive duration as its own default, so
 // an omitted field arrives as zero and means exactly that. Defaulting here
-// too would be a second copy of one policy, and the structure test that
-// forbids branches outside the two places this package allows them is right
-// to have caught the attempt.
+// too would be a second copy of one policy, and it would need a branch,
+// which this package keeps to NewServer and resultFor.
 func (in StaleInput) After() time.Duration {
 	return time.Duration(in.SilentHours * float64(time.Hour))
 }

@@ -11,8 +11,8 @@ import (
 	"github.com/gshepptech/keep/internal/store"
 )
 
-// runBacklog implements the `backlog` subcommand -- the pen: every
-// raw item still parked, grouped by type in schema-enum order, newest first
+// runBacklog implements the `backlog` subcommand, the pen: every raw item
+// still parked, grouped by type in schema-enum order, newest first
 // within each group, filterable by --type.
 //
 // Grouping and ordering live entirely in store.Backlog, not here: `keep
@@ -87,8 +87,8 @@ func runBacklog(args []string, stdout, stderr io.Writer) int {
 // a bare, unadorned header line per non-empty type group in schema-enum
 // order, a blank line BETWEEN groups (never after the last one), and one
 // "id  created  title" line per item, newest first within its group. Empty
-// groups print nothing at all -- not even an empty header. ordered must
-// already be grouped-then-sorted (store.Backlog's output) -- a new group
+// groups print nothing at all, not even an empty header. ordered must
+// already be grouped-then-sorted (store.Backlog's output): a new group
 // boundary is detected by Type changing between consecutive items, since
 // store.Backlog guarantees each type's rows are contiguous.
 func renderBacklog(w io.Writer, ordered []model.Item) {
@@ -123,11 +123,11 @@ func renderBacklog(w io.Writer, ordered []model.Item) {
 // direct 10-rune slice of CreatedAt, not a time.Parse/Format round trip.
 // model.TimeFormat ("2006-01-02T15:04:05.000000000Z") is fixed-width and
 // always UTC by construction (internal/model/model.go), so the first ten
-// characters are always exactly YYYY-MM-DD -- a parse/format round trip
-// would only add a timezone-conversion class of bug that cannot occur
-// here. The length guard protects against a
-// malformed or truncated CreatedAt value rather than assuming the schema's
-// NOT NULL guarantee always holds in every future caller.
+// characters are always exactly YYYY-MM-DD, and a parse/format round trip
+// would only add a timezone-conversion class of bug that cannot occur here.
+// The length guard protects against a malformed or truncated CreatedAt
+// value rather than assuming the schema's NOT NULL guarantee holds for
+// every caller.
 func createdDate(createdAt string) string {
 	if len(createdAt) < 10 {
 		return createdAt
@@ -147,11 +147,11 @@ type backlogAllJSON struct {
 // runBacklogAll merges every registered store's pen.
 //
 // Ordering is newest first across all of them, which is a different decision
-// from `ready --all`'s and deliberately so -- see byNewest. `backlog` is
+// from `ready --all`'s on purpose (see byNewest). `backlog` is
 // "what have I parked", and the answer to that is chronological; the pen is
 // not ranked, and a raw item has no score to rank it by in the first place.
 //
-// This does NOT preserve single-store backlog's grouping by type. Grouping
+// This does not preserve single-store backlog's grouping by type. Grouping
 // depends on rows of one type being contiguous, and interleaving several
 // stores breaks that; --type narrows to one type when the grouping is what
 // you wanted.

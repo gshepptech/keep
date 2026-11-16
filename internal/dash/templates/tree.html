@@ -1,14 +1,13 @@
-{{/* tree.html -- the tree view (and the golden test's subject).
+{{/* tree.html: the tree view.
      Data: []model.TreeNode, already depth-first ordered by store.Tree's own
      ORDER BY path; this template does not sort.
 
      Indentation is a class (depthClass, templates.go), never an inline
-     style attribute -- inline style is one of the surfaces the off-host scan
-     inspects. Closed/dropped rows get the "dimmed" class (opacity), never a
+     style attribute, because inline style is one of the surfaces the
+     off-host scan inspects. Closed/dropped rows get the "dimmed" class (opacity), never a
      fourth colour. The state cell's class comes from the shared `state`
-     helper; a blocked row ALSO carries the literal word "blocked" in text --
-     the page says "blocked", not a metaphor for blocked -- because colour
-     alone fails colourblind readers. */}}
+     helper; a blocked row also carries the literal word "blocked" in text,
+     because colour alone fails colourblind readers. */}}
 {{define "tree"}}{{template "head" (titled . "Tree" "Tree" "Everything beneath this item, and what is blocking it.")}}
 {{$p := .}}{{with .Data}}
 <div class="panel"><table class="tree">

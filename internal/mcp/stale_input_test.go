@@ -10,11 +10,7 @@ import (
 // TestStaleInputAfter covers the one conversion between what an agent sends
 // and what the store is asked. `stale` is the tool that answers "which
 // claims has nothing happened to", so getting this wrong does not fail
-// loudly -- it silently reports the wrong set of abandoned work.
-//
-// It was the only function in this package with no coverage at all, which
-// is how a one-line conversion ends up unexamined: it looks too small to be
-// worth a test right up until the units are wrong.
+// loudly. It silently reports the wrong set of abandoned work.
 func TestStaleInputAfter(t *testing.T) {
 	cases := []struct {
 		name  string
@@ -23,8 +19,8 @@ func TestStaleInputAfter(t *testing.T) {
 	}{
 		// Zero is not "no wait", it is "the store decides". StaleClaims
 		// treats any non-positive duration as its own default, and After
-		// deliberately does not apply one -- two copies of one policy is
-		// how the two drift apart.
+		// deliberately does not apply one, because two copies of one policy
+		// drift apart.
 		{"omitted or zero defers to the store", 0, 0},
 
 		{"whole hours", 2, 2 * time.Hour},
@@ -61,9 +57,9 @@ func TestStaleInputAfter(t *testing.T) {
 	})
 }
 
-// TestStaleInputWireShape pins what actually crosses the protocol, because
-// After is only correct if the field it reads was populated the way the
-// schema says.
+// TestStaleInputWireShape checks that silent_hours on the wire decodes into
+// the field After reads, because After is only correct if that field was
+// populated the way the schema says.
 func TestStaleInputWireShape(t *testing.T) {
 	t.Run("an omitted field is zero, which means the store's default", func(t *testing.T) {
 		var in StaleInput

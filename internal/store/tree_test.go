@@ -8,10 +8,10 @@ import (
 	"github.com/gshepptech/keep/internal/model"
 )
 
-// TestTree covers the seven behaviours Tree promises. Every
-// fixture is built through the real AddItem/CreateDep/CloseItem/DropItem via
-// testhelp_test.go's helpers -- never raw SQL for the tree structure, since
-// AddItem's dual parent-child write is precisely the mechanism under test.
+// TestTree covers the seven behaviours Tree promises. Every fixture is
+// built through the real AddItem/CreateDep/CloseItem/DropItem via
+// testhelp_test.go's helpers, never raw SQL for the tree structure, since
+// AddItem's dual parent-child write is the mechanism under test.
 // Returned ids are captured into local variables and asserted against those;
 // no `rnc-` id is ever hard-coded (they are hash-derived from title plus
 // wall-clock creation time and differ on every run).
@@ -19,12 +19,11 @@ func TestTree(t *testing.T) {
 	const actor = "tester"
 
 	t.Run("DescendantCountAndOrder", func(t *testing.T) {
-		// A three-level chain: epic -> child -> grandchild. The direction
-		// trap (joining the recursive step the same way items.go's ANCESTOR
-		// walk does) does not error -- it silently returns exactly 1 row
-		// (the root only), for any root that is not itself someone else's
-		// child. Asserting descendant COUNT, not merely "no error", is what
-		// catches that.
+		// A three-level chain: epic -> child -> grandchild. Joining the
+		// recursive step the same way items.go's ancestor walk does would
+		// not error; it would silently return 1 row (the root only) for any
+		// root that is not itself someone else's child. Asserting
+		// descendant count, not merely "no error", catches that.
 		s := openTestStore(t)
 		ctx := context.Background()
 
@@ -56,8 +55,8 @@ func TestTree(t *testing.T) {
 
 	t.Run("SiblingOrderAndDepthFirst", func(t *testing.T) {
 		// Two children of one parent, plus a grandchild under the first
-		// child. The test does no sorting of its own -- it asserts the
-		// order Tree itself returns.
+		// child. The test does no sorting of its own; it asserts the order
+		// Tree itself returns.
 		s := openTestStore(t)
 		ctx := context.Background()
 
@@ -128,9 +127,9 @@ func TestTree(t *testing.T) {
 	})
 
 	t.Run("ClosedAndDroppedIncluded", func(t *testing.T) {
-		// A closed child and a dropped child are both PRESENT in the
-		// result -- the renderer dims them, the query does not decide they
-		// do not exist.
+		// A closed child and a dropped child are both present in the
+		// result: the renderer dims them, the query does not decide they do
+		// not exist.
 		s := openTestStore(t)
 		ctx := context.Background()
 
@@ -170,10 +169,10 @@ func TestTree(t *testing.T) {
 
 	t.Run("DoubleBlockerNearestWins", func(t *testing.T) {
 		// A grandchild whose parent is blocked by one item while the epic
-		// is blocked by a DIFFERENT item yields exactly ONE row for that
-		// grandchild (and for the parent), each naming the nearer of the
-		// two ancestors -- proving blocked_nearest's ROW_NUMBER() dedup,
-		// not a plain LEFT JOIN blocked_tree, which would multiply rows.
+		// is blocked by a different item yields exactly one row for that
+		// grandchild (and for the parent), each naming the nearer of the two
+		// ancestors. That proves blocked_nearest's ROW_NUMBER() dedup rather
+		// than a plain LEFT JOIN blocked_tree, which would multiply rows.
 		s := openTestStore(t)
 		ctx := context.Background()
 

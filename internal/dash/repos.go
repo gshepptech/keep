@@ -9,15 +9,12 @@ import (
 
 // allPage is /all's page data.
 //
-// It lives here rather than in render.go because render.go states, and a
-// reader relies on, that its only non-stdlib import is internal/model --
-// which is what makes every function there fixturable from struct literals
-// with no database and no wall clock. The cross-repo view genuinely needs
-// registry's types, so it takes its own file rather than quietly widening
-// that claim.
+// It lives here rather than in render.go so that render.go imports nothing
+// beyond internal/model and its helpers stay testable from struct literals.
+// The cross-repo view needs registry's types, so it takes its own file.
 type allPage struct {
 	// Items is already merged and ranked ACROSS stores by registry.Merge.
-	// This package does not re-sort it, the same rule renderReady follows
+	// This package does not re-sort it, the same rule the board view follows
 	// for store.Ready.
 	Items []registry.MergedItem
 
@@ -48,9 +45,9 @@ type repoError struct {
 // It is the one handler that does not make exactly one store call, because
 // it makes none: it never opens this repository's store at all. The fan-out
 // opens each registered store read-only through internal/registry, which is
-// where the read-only open and failure classification already live -- duplicating
-// any of that here would be a second implementation of the rule that a
-// missing store must not be fabricated as an empty one.
+// where the read-only open and failure classification already live.
+// Duplicating any of that here would be a second implementation of the
+// rule that a missing store must not be fabricated as an empty one.
 func (s *Server) handleAll(w http.ResponseWriter, r *http.Request) {
 	data, err := s.allData(r.Context())
 	if err != nil {

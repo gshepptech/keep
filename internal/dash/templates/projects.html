@@ -1,9 +1,9 @@
-{{/* projects.html -- every project keep knows about. Data: []project.
+{{/* projects.html: every project keep knows about. Data: []project.
 
      "Project" rather than "repository": what a person switches between here
      is a body of work, and the git repository is where it happens to live.
-     The registry keeps its own vocabulary; renaming a stored field to match
-     a page would be the tail wagging the dog. */}}
+     The registry keeps its own vocabulary, because a stored field should
+     not be renamed to match a page. */}}
 {{define "projects"}}{{template "head" (titled . "Projects" "Projects" "Every project keep is tracking. Each has its own board, its own queue, and its own store.")}}
 {{$p := .}}
 

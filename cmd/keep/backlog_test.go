@@ -20,10 +20,10 @@ func mustBacklogCapture(t *testing.T, bin, repo string, e []string, flagsAndTitl
 }
 
 // backlogLines splits backlog's rendered stdout into its non-trailing-blank
-// lines, preserving line index -- both group headers ("roadmap", "note", ...)
-// and item rows live in this same indexed list, which is what lets a test
-// assert relative ORDER (a header's line index vs. another header's, or one
-// item row's line index vs. another's) rather than mere presence.
+// lines, preserving line index. Group headers ("roadmap", "note", ...) and
+// item rows live in this same indexed list, which lets a test assert
+// relative order (a header's line index vs. another header's, or one item
+// row's line index vs. another's) rather than mere presence.
 func backlogLines(stdout string) []string {
 	stdout = strings.TrimRight(stdout, "\n")
 	if stdout == "" {
@@ -45,12 +45,11 @@ func lineIndexOfHeader(lines []string, header string) int {
 	return -1
 }
 
-// lineIndexOfID returns the index of the line whose exact FIRST
-// whitespace-separated field is id -- never a substring match. An id is a
+// lineIndexOfID returns the index of the line whose exact first
+// whitespace-separated field is id, never a substring match. An id is a
 // literal prefix of its own children's ids (rnc-a3f8e9 vs rnc-a3f8e9.1), so
 // a substring/prefix match on the whole line would silently pass for the
-// wrong row; matching the row's own first field, split on whitespace, is
-// the pattern this codebase already uses (idsFromLines, read_test.go).
+// wrong row. idsFromLines (read_test.go) matches the same way.
 func lineIndexOfID(lines []string, id string) int {
 	for i, l := range lines {
 		fields := strings.Fields(l)
@@ -63,15 +62,15 @@ func lineIndexOfID(lines []string, id string) int {
 
 // backlogFixture captures/adds the shared set of items every test in this
 // file runs against: two notes and one roadmap captured in an interleaved
-// order (note, roadmap, note -- not two notes back to back -- so a sort bug
+// order (note, roadmap, note, not two notes back to back, so a sort bug
 // grouping by insertion order rather than by type cannot pass by accident),
 // one raw task later dropped, one raw bug later closed, and one ordinary
 // ticket (never raw, so it can never appear in backlog regardless of
 // status).
 type backlogFixture struct {
-	firstNote   string // captured first -- must sort AFTER secondNote
+	firstNote   string // captured first, so must sort after secondNote
 	roadmap     string
-	secondNote  string // captured last -- must sort BEFORE firstNote
+	secondNote  string // captured last, so must sort before firstNote
 	droppedTask string
 	closedBug   string
 	ticket      string
@@ -101,8 +100,8 @@ func buildBacklogFixture(t *testing.T, bin, repo string, e []string) backlogFixt
 }
 
 // TestBacklogGroupsByTypeInSchemaOrder proves the roadmap header precedes
-// the note header (schema-enum order, not alphabetical -- alphabetically
-// "note" would precede "roadmap"), and that only non-empty groups appear:
+// the note header (schema-enum order, not alphabetical, where "note" would
+// precede "roadmap"), and that only non-empty groups appear:
 // no epic/task/bug header line, since this fixture's only task and bug are
 // dropped/closed and excluded from backlog's scope entirely.
 func TestBacklogGroupsByTypeInSchemaOrder(t *testing.T) {
@@ -229,9 +228,8 @@ func TestBacklogTypeFilter(t *testing.T) {
 }
 
 // TestBacklogTypeFilterRejectsUnknownType proves --type bogus exits 2 naming
-// the legal types, before the store is opened -- verified by checking a
-// nonexistent store path still produces the same usage error rather than a
-// store-open failure.
+// the legal types, before the store is opened: a nonexistent store path
+// still produces the same usage error rather than a store-open failure.
 func TestBacklogTypeFilterRejectsUnknownType(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)
@@ -289,9 +287,9 @@ func TestBacklogJSONIsFlatArray(t *testing.T) {
 		t.Fatalf("backlog --json: stderr = %q, want empty", jsonStderr)
 	}
 
-	// Unmarshalling into a flat []map[string]any is what matters -- a
-	// grouped {"note": [...], "roadmap": [...]} object would fail this
-	// unmarshal (json.Unmarshal into a slice from a JSON object errors).
+	// The output must unmarshal into a flat []map[string]any. A grouped
+	// {"note": [...], "roadmap": [...]} object would fail this unmarshal
+	// (json.Unmarshal into a slice from a JSON object errors).
 	var items []map[string]any
 	if err := json.Unmarshal([]byte(jsonStdout), &items); err != nil {
 		t.Fatalf("backlog --json: json.Unmarshal(%q) into []map[string]any: %v", jsonStdout, err)

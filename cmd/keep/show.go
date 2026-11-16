@@ -10,10 +10,10 @@ import (
 	"github.com/gshepptech/keep/internal/model"
 )
 
-// runShow implements the `show` subcommand: the labelled block an
-// agent reads before starting an item -- id, stage/type/status, score with
-// its raw value/confidence/effort, dependencies in both directions, event
-// history oldest first, then the body verbatim last.
+// runShow implements the `show` subcommand: the labelled block an agent
+// reads before starting an item (id, stage/type/status, score with its raw
+// value/confidence/effort, dependencies in both directions, event history
+// oldest first), then the body, unchanged, last.
 //
 // One store.GetItem call. An unknown id returns store.ErrNotFound, already
 // wrapped with the id by GetItem, mapped to exit 1 with nothing on stdout by
@@ -35,10 +35,10 @@ func runShow(args []string, stdout, stderr io.Writer) int {
 	}
 	id := fs.Arg(0)
 
-	// --body and --json are two different output contracts -- one raw
-	// bytes, one a labelled structure -- and combining them means nothing
-	// Checked before the store is opened, same
-	// as every other CLI-boundary validation in this package.
+	// --body and --json are two different output contracts (one raw bytes,
+	// one a labelled structure), and combining them means nothing. This is
+	// checked before the store is opened, as every other CLI-boundary
+	// validation in this package is.
 	if *bodyFlag && *jsonFlag {
 		fmt.Fprintln(stderr, "keep: show: --body and --json are mutually exclusive")
 		return 2
@@ -57,11 +57,10 @@ func runShow(args []string, stdout, stderr io.Writer) int {
 	}
 
 	// The byte-identical surface `capture` rests on: no header, no label, no
-	// newline added, none stripped, nothing printed before or after it --
-	// `keep show <id> --body | diff - <original>` must be silent. Reached
+	// newline added, none stripped, nothing printed before or after it, so
+	// `keep show <id> --body | diff - <original>` is silent. It is reached
 	// only after a successful GetItem, so an unknown id already exits 1
-	// with nothing on stdout by construction -- no special-case handling
-	// needed here.
+	// with nothing on stdout, and no special case is needed here.
 	if *bodyFlag {
 		io.WriteString(stdout, detail.Body)
 		return 0
@@ -80,10 +79,9 @@ func runShow(args []string, stdout, stderr io.Writer) int {
 	writeDepSection(stdout, "depended on by", detail.DependedOnBy, func(d model.Dep) string { return d.ItemID })
 	writeEventsSection(stdout, detail.Events)
 
-	// The body goes last and verbatim: one blank line, the "body" header,
-	// then the body's own bytes with nothing appended -- no trailing
-	// decoration, so `keep show <id> | tail -n +N` gets the document
-	// back intact.
+	// The body goes last and unchanged: one blank line, the "body" header,
+	// then the body's own bytes with nothing appended, so
+	// `keep show <id> | tail -n +N` gets the document back intact.
 	fmt.Fprintln(stdout)
 	fmt.Fprintln(stdout, "body")
 	io.WriteString(stdout, detail.Body)
@@ -98,10 +96,10 @@ func runShow(args []string, stdout, stderr io.Writer) int {
 const showLabelWidth = 11
 
 // writeShowHeader renders the fixed-order labelled block: id, stage, type,
-// status, score, parent, repo, paths, why, acceptance, created, updated
+// status, score, parent, repo, paths, why, acceptance, created, updated.
 // A field's line is omitted entirely when the underlying column is null or
-// empty, rather than printed with an empty value -- a show full of blank
-// labels is harder to read than a short one.
+// empty, rather than printed with an empty value, because a show full of
+// blank labels is harder to read than a short one.
 func writeShowHeader(w io.Writer, it model.Item) {
 	line := func(label, value string) {
 		fmt.Fprintf(w, "%-*s%s\n", showLabelWidth, label, value)
@@ -132,10 +130,9 @@ func writeShowHeader(w io.Writer, it model.Item) {
 }
 
 // scoreDetail renders the raw value/confidence/effort inputs alongside the
-// stored score. "Unscored" is only the
-// all-NULL case; any other combination shows the raw inputs, missing ones
-// counted as 0 -- the same substitution rank.Score itself already applied to
-// produce the stored score.
+// stored score. "Unscored" is only the all-NULL case; any other combination
+// shows the raw inputs, missing ones counted as 0, the same substitution
+// rank.Score applied to produce the stored score.
 func scoreDetail(it model.Item) string {
 	if it.Value == nil && it.Confidence == nil && it.Effort == nil {
 		return "(unscored)"
@@ -161,7 +158,7 @@ const depTypeWidth = 14
 
 // writeDepSection renders one dependency-direction block: a blank line, the
 // header, then one indented "<type>  <id>" line per dep, via idFor (which
-// side of the edge -- DependsOnID or ItemID -- to print depends on the
+// side of the edge, DependsOnID or ItemID, to print depends on the
 // section's direction). The whole section, including its header, is omitted
 // when there are no deps in that direction: a header over nothing is
 // clutter, not information.
@@ -178,11 +175,11 @@ func writeDepSection(w io.Writer, header string, deps []model.Dep, idFor func(mo
 
 // writeEventsSection renders the event history, oldest first (Events is
 // already ordered id ASC by GetItem). Kind/actor columns are aligned to the
-// widest value in THIS item's own event set, matching renderItems' own
-// per-result-set alignment convention rather than a fixed width. The section
-// is omitted entirely when there are no events (never true in practice --
-// every item has at least an `add` event -- but treated the same as the dep
-// sections for consistency).
+// widest value in this item's own event set, matching renderItems'
+// per-result-set alignment convention rather than a fixed width. The
+// section is omitted entirely when there are no events (never true in
+// practice, since every item has at least an `add` event, but treated the
+// same as the dep sections for consistency).
 func writeEventsSection(w io.Writer, events []model.Event) {
 	if len(events) == 0 {
 		return

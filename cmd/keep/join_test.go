@@ -10,26 +10,22 @@ import (
 	"testing"
 )
 
-// The Interlock join is the one feature of keep that unit tests cannot
-// break.
+// TestInterlockJoinAgainstARealBinary checks the Interlock join against a
+// real Interlock, because unit tests cannot catch a break in it.
 //
 // keep's internal/interlock tests drive a /bin/sh stub that answers
-// whatever they wrote into it, and Interlock's own suite has never heard of
-// keep. A contract change on either side -- a renamed JSON field, a bumped
-// version, a different exit code -- would ship green on both sides and be
-// found by a person looking at a board.
+// whatever they wrote into it, and Interlock's own suite does not know
+// about keep. A contract change on either side (a renamed JSON field, a
+// bumped version, a different exit code) would pass both suites.
 //
 // So this builds a real interlock from source, takes a real lease through a
-// real hook, and asserts that a real `keep ready` drops the item. It is the
-// slow kind of test on purpose: a stub cannot fail the way the real contract
-// can, which is the entire point.
+// real hook, and asserts that a real `keep ready` drops the item. It is
+// slow on purpose: a stub cannot fail the way the real contract can.
 //
 // If Interlock is not on this machine the test skips with a stated reason,
-// because keep must build and pass alone -- a Go import between the two would
-// have made the independence a slogan instead of a fact. Set
-// KEEP_REQUIRE_INTERLOCK=1 to turn that skip into a failure wherever
-// Interlock is expected to be present: a skip nobody notices is the same
-// blind spot in a new place.
+// because keep must build and pass alone. Set KEEP_REQUIRE_INTERLOCK=1 to
+// turn that skip into a failure wherever Interlock is expected to be
+// present, so the skip cannot go unnoticed there.
 func TestInterlockJoinAgainstARealBinary(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("the join is exercised through a POSIX shell hook payload; Windows support is a separate, deliberately deferred question")
@@ -45,7 +41,7 @@ func TestInterlockJoinAgainstARealBinary(t *testing.T) {
 	// PATH is how keep finds Interlock (internal/interlock/binary uses
 	// exec.LookPath), so the built binary goes in a directory of its own and
 	// that directory goes on PATH. Nothing else about the environment is
-	// inherited -- run() takes a complete environment on purpose.
+	// inherited, because run() takes a complete environment on purpose.
 	binDir := filepath.Dir(interlockBin)
 	environ := append(env(home, "", "KEEP_SESSION=join-test"), "PATH="+binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 
@@ -104,8 +100,8 @@ func TestInterlockJoinAgainstARealBinary(t *testing.T) {
 	}
 
 	// The contract itself, before asking keep to interpret it. If this fails,
-	// the break is on Interlock's side and keep is innocent -- worth
-	// distinguishing, because the two are released separately.
+	// the break is on Interlock's side, not keep's, which matters because the
+	// two are released separately.
 	status, _, code := run(t, interlockBin, repo, environ, "status", "--json")
 	if code != 0 {
 		t.Fatalf("interlock status --json exited %d", code)
@@ -146,8 +142,8 @@ func TestInterlockJoinAgainstARealBinary(t *testing.T) {
 
 	// The queue omitting a held item is only half the join. An agent that
 	// already knows the id it wants never sees the omission, so `start` has
-	// to refuse too -- and `next`, which claims for you, has to choose past
-	// it rather than hand you the collision the queue existed to prevent.
+	// to refuse too, and `next`, which claims for you, has to choose past it
+	// rather than hand you the collision the queue existed to prevent.
 	t.Run("start refuses an item whose file is held", func(t *testing.T) {
 		_, errOut, code := run(t, keepBin, repo, environ, "start", held)
 		if code == 0 {
@@ -234,13 +230,13 @@ func TestInterlockJoinAgainstARealBinary(t *testing.T) {
 
 // interlockSource finds the Interlock checkout, or skips.
 //
-// Three outcomes, deliberately distinct. An explicitly set INTERLOCK_SRC that
-// does not hold a Go module is a misconfiguration and fails loudly -- falling
-// back from it would turn "you pointed this at the wrong place" into "the
-// join proof quietly did not run", which is the exact failure this test
-// exists to catch. An absent Interlock is a skip, because keep must build and
-// pass alone. KEEP_REQUIRE_INTERLOCK turns that skip into a failure, for an
-// environment that should always have the real thing.
+// Three outcomes, deliberately distinct. An explicitly set INTERLOCK_SRC
+// that does not hold a Go module is a misconfiguration and fails loudly,
+// because falling back from it would turn "you pointed this at the wrong
+// place" into "the join test quietly did not run". An absent Interlock is a
+// skip, because keep must build and pass alone. KEEP_REQUIRE_INTERLOCK turns
+// that skip into a failure, for an environment that should always have the
+// real thing.
 func interlockSource(t *testing.T) string {
 	t.Helper()
 

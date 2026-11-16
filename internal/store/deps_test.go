@@ -12,7 +12,7 @@ import (
 )
 
 // countDeps returns the total number of rows in deps, for tests that assert
-// "no row was written" by diffing a before/after count -- mirrors
+// "no row was written" by diffing a before/after count. It mirrors
 // testhelp_test.go's countEvents.
 func countDeps(t *testing.T, s *Store) int {
 	t.Helper()
@@ -24,8 +24,9 @@ func countDeps(t *testing.T, s *Store) int {
 }
 
 // countDepsOfType returns how many deps rows exactly match
-// (item_id, depends_on_id, type) -- the table's own PRIMARY KEY, so this is
-// always 0 or 1, but tests read better asserting "exactly 1" than "exists".
+// (item_id, depends_on_id, type). That is the table's own PRIMARY KEY, so
+// this is always 0 or 1, but tests read better asserting "exactly 1" than
+// "exists".
 func countDepsOfType(t *testing.T, s *Store, itemID, dependsOnID, typ string) int {
 	t.Helper()
 	var n int
@@ -37,8 +38,8 @@ func countDepsOfType(t *testing.T, s *Store, itemID, dependsOnID, typ string) in
 	return n
 }
 
-// containsID reports whether id is present in ids -- used against
-// readyIDs's output.
+// containsID reports whether id is present in ids, such as readyIDs's
+// output.
 func containsID(ids []string, id string) bool {
 	for _, x := range ids {
 		if x == id {
@@ -86,7 +87,7 @@ func TestCreateDepVocabulary(t *testing.T) {
 // the four types rejects a -> a. parent-child is special-cased to accept
 // either ErrSelfEdge or ErrParentChildViaDep, since CreateDep's validation
 // order checks the parent-child refusal before the self-edge check and both
-// are correct rejections -- what matters is that no row was written.
+// are correct rejections. Either way, no row may be written.
 func TestCreateDepRejectsSelfEdge(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
@@ -112,7 +113,7 @@ func TestCreateDepRejectsSelfEdge(t *testing.T) {
 
 // TestCreateDepRefusesParentChild proves dep <a> parent-child <b> returns
 // ErrParentChildViaDep, writes no row and no event, and the error message
-// names `add --parent` -- the `dep` CLI tests assert against this wording.
+// names `add --parent`, which the `dep` CLI tests assert against.
 func TestCreateDepRefusesParentChild(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
@@ -205,19 +206,19 @@ func TestCreateDepWritesOneEvent(t *testing.T) {
 }
 
 // TestParentChildDepthBoundRefusesChainPastMaxDepth asserts the bound is
-// enforced where the depth is CREATED, not where it is read.
+// enforced where the depth is created, not where it is read.
 //
 // Every recursive walk in this package stops at MaxDepth. A chain deeper
 // than that would be a blind spot: parentChildCycleCheckSQL's ancestor walk
 // would never visit the hops past the bound, and the ready view, which uses
-// the same bound, would not error -- it would quietly stop propagating a
+// the same bound, would not error. It would quietly stop propagating a
 // block partway down a tree.
 //
-// checkParentChildDepth (depth.go) prevents it by making the input unbuildable.
-// A chain of exactly MaxDepth hops is allowed; the hop that would create an
-// item at MaxDepth+1 is refused with ErrTooDeep and writes nothing. Every
-// recursive query in this package can therefore reach every item in any store
-// this binary wrote.
+// checkParentChildDepth (depth.go) prevents it by making the input
+// unbuildable. A chain of exactly MaxDepth hops is allowed; the hop that
+// would create an item at MaxDepth+1 is refused with ErrTooDeep and writes
+// nothing. Every recursive query in this package can therefore reach every
+// item in any store this binary wrote.
 func TestParentChildDepthBoundRefusesChainPastMaxDepth(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
@@ -228,8 +229,8 @@ func TestParentChildDepthBoundRefusesChainPastMaxDepth(t *testing.T) {
 		ids[i] = mustAdd(t, s, AddItemInput{Title: fmt.Sprintf("p%d", i), Actor: "tester", ParentID: ids[i-1]}).ID
 	}
 
-	if got, err := s.DeepestChain(ctx); err != nil || got != MaxDepth {
-		t.Fatalf("DeepestChain after building a %d-hop chain = %d, %v; want %d, nil", MaxDepth, got, err, MaxDepth)
+	if got := deepestChain(t, s); got != MaxDepth {
+		t.Fatalf("deepest chain after building a %d-hop chain = %d; want %d", MaxDepth, got, MaxDepth)
 	}
 
 	// One hop further is refused, and refused before anything is written.
@@ -242,10 +243,9 @@ func TestParentChildDepthBoundRefusesChainPastMaxDepth(t *testing.T) {
 		t.Fatalf("refused AddItem wrote %d items, want 0", after-before)
 	}
 
-	// The cycle guard's old blind spot: closing the loop by making the root a
-	// child of its own deepest descendant. It is now unreachable for the
-	// depth reason before the cycle reason is ever consulted, which is the
-	// point -- the store never holds a chain the ancestor walk cannot cross.
+	// Closing the loop by making the root a child of its own deepest
+	// descendant is refused for depth before the cycle check is consulted,
+	// so the store never holds a chain the ancestor walk cannot cross.
 	err = s.withTx(ctx, func(tx *sql.Tx) error {
 		return insertParentChildEdge(ctx, tx, ids[0], ids[MaxDepth], "tester", model.Now())
 	})
@@ -291,22 +291,44 @@ func TestParentChildDepthBoundCountsTheChildsOwnSubtree(t *testing.T) {
 	}
 
 	// The same graft one level higher up the trunk lands its deepest leaf at
-	// exactly MaxDepth and is allowed -- the guard rejects what is too deep,
+	// exactly MaxDepth and is allowed: the guard rejects what is too deep,
 	// not everything that is deep.
 	if err := s.withTx(ctx, func(tx *sql.Tx) error {
 		return insertParentChildEdge(ctx, tx, branchRoot, trunkIDs[MaxDepth-branch-1], "tester", model.Now())
 	}); err != nil {
 		t.Fatalf("grafting the same subtree so its deepest leaf lands at exactly %d = %v, want nil", MaxDepth, err)
 	}
-	if got, err := s.DeepestChain(ctx); err != nil || got != MaxDepth {
-		t.Fatalf("DeepestChain after the legal graft = %d, %v; want %d, nil", got, err, MaxDepth)
+	if got := deepestChain(t, s); got != MaxDepth {
+		t.Fatalf("deepest chain after the legal graft = %d; want %d", got, MaxDepth)
 	}
 }
 
-// TestBlocksEdgeDirection is the direction assertion stated as an observable
-// outcome: CreateDep(a blocks b) means "a is blocked until b closes"
-// (the ready view's blocked_directly CTE), so it must remove a
-// from ready and leave b in it -- not the reverse.
+// deepestChain returns the depth of the deepest parent-child chain in s,
+// counted in edges from a root.
+func deepestChain(t *testing.T, s *Store) int {
+	t.Helper()
+	const q = `
+WITH RECURSIVE chain(id, depth) AS (
+  SELECT i.id, 0 FROM items i
+  WHERE NOT EXISTS (SELECT 1 FROM deps d WHERE d.item_id = i.id AND d.type = 'parent-child')
+  UNION ALL
+  SELECT d.item_id, c.depth + 1
+  FROM chain c
+  JOIN deps d ON d.depends_on_id = c.id AND d.type = 'parent-child'
+  WHERE c.depth <= $MAXDEPTH$
+)
+SELECT COALESCE(MAX(depth), 0) FROM chain`
+	var depth int
+	if err := s.db.QueryRowContext(context.Background(), expandDepthSQL(q)).Scan(&depth); err != nil {
+		t.Fatalf("deepestChain: %v", err)
+	}
+	return depth
+}
+
+// TestBlocksEdgeDirection checks the edge direction as an observable
+// outcome. CreateDep(a blocks b) means "a is blocked until b closes" (the
+// ready view's blocked_directly CTE), so it must remove a from ready and
+// leave b in it, not the reverse.
 func TestBlocksEdgeDirection(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)

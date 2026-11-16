@@ -11,7 +11,7 @@ import (
 )
 
 // openTestStore initialises a fresh, empty store in t.TempDir() for
-// internal/dash's own tests -- the same three lines as internal/store's own
+// internal/dash's own tests. It is the same three lines as internal/store's
 // testhelp_test.go helper of the same name, which internal/dash cannot
 // import (it is unexported and lives in another package's _test.go file).
 func openTestStore(t *testing.T) *store.Store {
@@ -40,16 +40,15 @@ func mustAdd(t *testing.T, st *store.Store, in store.AddItemInput) model.Item {
 	return it
 }
 
-// TestNewServerRefusesNonLoopback: attempt a
-// non-loopback bind and require an error. Only the error's presence is
-// asserted -- never message text (server.go's own comment explains why: the
-// addresses that get past validation would fail at Listen with OS-dependent
-// text, and coupling to that text is how this test rots).
+// TestNewServerRefusesNonLoopback checks that a non-loopback bind returns an
+// error. Only the error's presence is asserted, never message text: the
+// addresses that get past validation would fail at Listen with
+// OS-dependent text.
 func TestNewServerRefusesNonLoopback(t *testing.T) {
 	st := openTestStore(t)
 	for _, addr := range []string{"0.0.0.0:0", ":0", "192.168.1.5:0", "::1:0"} {
 		if s, err := NewServer(st, addr, ""); err == nil {
-			s.Close()
+			s.ln.Close()
 			t.Errorf("NewServer(%q): want error, got nil", addr)
 		}
 	}
@@ -65,7 +64,7 @@ func TestNewServerBindsLoopbackEphemeralPort(t *testing.T) {
 		if err != nil {
 			t.Fatalf("NewServer(%q): unexpected error: %v", addr, err)
 		}
-		t.Cleanup(func() { s.Close() })
+		t.Cleanup(func() { s.ln.Close() })
 
 		u, err := url.Parse(s.URL())
 		if err != nil {
@@ -78,13 +77,13 @@ func TestNewServerBindsLoopbackEphemeralPort(t *testing.T) {
 }
 
 // TestNewServerLeaksNoListenerOnFailure calls NewServer 50 times with a bad
-// address, then confirms a real loopback bind still succeeds afterward -- a
-// failed validation must never open (and leak) a socket.
+// address, then confirms a real loopback bind still succeeds afterward,
+// because a failed validation must never open (and leak) a socket.
 func TestNewServerLeaksNoListenerOnFailure(t *testing.T) {
 	st := openTestStore(t)
 	for i := 0; i < 50; i++ {
 		if s, err := NewServer(st, "0.0.0.0:0", ""); err == nil {
-			s.Close()
+			s.ln.Close()
 			t.Fatalf("NewServer(bad address) attempt %d: want error, got nil", i)
 		}
 	}
@@ -92,5 +91,5 @@ func TestNewServerLeaksNoListenerOnFailure(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewServer(127.0.0.1:0) after 50 failed attempts: %v", err)
 	}
-	s.Close()
+	s.ln.Close()
 }

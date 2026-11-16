@@ -15,9 +15,9 @@ import (
 )
 
 // runReady implements the `ready` subcommand: the ranked queue of
-// workable items, exactly as the shipped `ready` view computes it.
+// workable items, exactly as the `ready` view computes it.
 //
-// cmd/keep may not contain SQL or filtering/sorting logic -- runReady makes
+// cmd/keep contains no SQL or filtering/sorting logic: runReady makes
 // exactly one store.Ready call and renders its result unmodified. It does
 // not re-sort, does not drop raw items, does not check status: every
 // predicate lives in the view, and re-adding a filter in a caller "for
@@ -57,20 +57,19 @@ func runReady(args []string, stdout, stderr io.Writer) int {
 	}
 	defer s.Close()
 
-	// UNLIMITED, then filtered, then sliced. Applying --limit in SQL and
+	// Unlimited, then filtered, then sliced. Applying --limit in SQL and
 	// filtering afterwards would return fewer rows than asked for whenever
-	// Interlock held anything -- the same count-versus-rows rule runBoard
-	// and mcpInstructions each state at length, for the same reason.
+	// Interlock held anything, the same count-versus-rows rule runBoard and
+	// mcpInstructions each state.
 	ctx := context.Background()
 	items, err := s.Ready(ctx, 0)
 	if err != nil {
 		return exitFor(stderr, err)
 	}
 
-	// The second of the two joins both roadmaps describe: `ready`
-	// additionally excludes items whose paths collide with a lease
-	// Interlock currently holds. Absent Interlock, this is exactly what it
-	// was before -- Fetch reports unusable rather than failing.
+	// `ready` also excludes items whose paths collide with a lease
+	// Interlock currently holds. Absent Interlock, the queue is unchanged,
+	// because Fetch reports unusable rather than failing.
 	//
 	// The empty dir means "inherit this process's working directory", which
 	// is the right one: `interlock status` resolves its own repository root
@@ -88,10 +87,9 @@ func runReady(args []string, stdout, stderr io.Writer) int {
 
 	if *jsonFlag {
 		// A nil []model.Item marshals to `null`, and an agent doing
-		// `for item in $(jq '.[]')` breaks on null. An empty queue is
-		// exit 0, not an error, so the JSON shape must
-		// say so unambiguously: substitute an empty, non-nil slice
-		// before encoding.
+		// `for item in $(jq '.[]')` breaks on null. An empty queue is exit
+		// 0, not an error, so the JSON shape must say so unambiguously:
+		// substitute an empty, non-nil slice before encoding.
 		if items == nil {
 			items = []model.Item{}
 		}
@@ -102,7 +100,7 @@ func runReady(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 
-	// renderItems is a no-op on an empty slice -- an empty queue prints
+	// renderItems is a no-op on an empty slice, so an empty queue prints
 	// nothing and still exits 0.
 	renderItems(stdout, items, renderOpts{})
 	return 0
@@ -112,10 +110,10 @@ func runReady(args []string, stdout, stderr io.Writer) int {
 // top-level object mirrors board.go's {counts, items} precedent.
 //
 // Errors are a first-class field, not an omission: an agent consuming this
-// needs to know it saw a PARTIAL view. A silent partial result is the
-// failure mode this phase is shaped against, so both arrays are always
-// present and always non-nil -- an empty errors array is a positive
-// statement that every registered store was read.
+// needs to know it saw a partial view. A silent partial result is the
+// failure this design avoids, so both arrays are always present and always
+// non-nil, and an empty errors array is a positive statement that every
+// registered store was read.
 type readyAllJSON struct {
 	Items  []registry.MergedItem `json:"items"`
 	Errors []readyAllError       `json:"errors"`
@@ -129,20 +127,20 @@ type readyAllError struct {
 	Error      string `json:"error"`
 }
 
-// runReadyAll implements `ready --all`. It reads the registry, fans out read-only
-// through internal/registry, merges by score across every store, and
-// renders.
+// runReadyAll implements `ready --all`. It reads the registry, fans out
+// read-only through internal/registry, merges by score across every store,
+// and renders.
 //
-// It never opens a store itself and never re-implements the ready query: the
-// per-store rows come from store.Ready via registry.FetchReady, which is
-// what makes ready --all's view of a repository structurally unable to
-// disagree with that repository's own `keep ready`.
+// It never opens a store itself and never re-implements the ready query:
+// the per-store rows come from store.Ready via registry.FetchReady, so
+// ready --all's view of a repository cannot disagree with that repository's
+// own `keep ready`.
 //
-// --limit slices the MERGED result. Each store is fetched unlimited. A
+// --limit slices the merged result, and each store is fetched unlimited. A
 // per-store limit would let each store's own created_at tiebreak decide
-// which rows even reach the cross-store ranking, and created_at is exactly
-// the key that is not comparable across stores -- the same "one unlimited
-// call feeds everything" discipline board.go applies.
+// which rows even reach the cross-store ranking, and created_at is the key
+// that is not comparable across stores. board.go follows the same "one
+// unlimited call feeds everything" rule.
 func runReadyAll(limit int, asJSON bool, stdout, stderr io.Writer) int {
 	payload, err := readyAllPayload(context.Background(), stderr)
 	if err != nil {
@@ -189,15 +187,15 @@ func runReadyAll(limit int, asJSON bool, stdout, stderr io.Writer) int {
 	return 0
 }
 
-// renderMerged prints one line per merged item -- repository, id, score,
-// type, title -- with every column aligned to the widest value in THIS
-// result set, matching renderItems' conventions (space padding, no colour,
-// no box drawing, title truncated to the remaining budget via
+// renderMerged prints one line per merged item (repository, id, score,
+// type, title) with every column aligned to the widest value in this result
+// set, matching renderItems' conventions (space padding, no colour, no box
+// drawing, title truncated to the remaining budget via
 // truncateTitle/titleWidth).
 //
-// It does NOT reuse renderOpts's annotation mechanism, and the reason is not
-// stylistic: renderOpts.blockedBy is a map keyed by item id, and item ids
-// are NOT unique across stores. Two repositories can independently mint the
+// It does not reuse renderOpts's annotation mechanism, because
+// renderOpts.blockedBy is a map keyed by item id, and item ids are not
+// unique across stores. Two repositories can independently mint the
 // same rnc-<6 hex> id, so any id-keyed map would silently attribute one
 // repository's row to another. renderMerged works off the slice, index by
 // index, where the repository name travels with its own row.
@@ -243,16 +241,15 @@ func renderMerged(w io.Writer, items []registry.MergedItem) {
 // It exists so the `ready_all` MCP tool and the `--all` flag cannot answer
 // differently. internal/mcp holds one *store.Store and has no business
 // knowing about the registry, so cmd/keep injects this as
-// mcp.Options.ReadyAll -- which is the same shape the CLI has always had
-// here, just named and handed to something else as well.
+// mcp.Options.ReadyAll, and the CLI calls the same function.
 //
-// A malformed registry is never fatal: registry.Load hands back BOTH a
+// A malformed registry is never fatal: registry.Load hands back both a
 // usable empty envelope and the error, so this reports and continues.
 // Refusing the whole read because one line of JSON is wrong would be
 // worse than a warning.
 //
 // It is reported to warn rather than returned, because it is a warning about
-// the machine's configuration and not a property of the queue -- it does not
+// the machine's configuration and not a property of the queue, so it does not
 // belong in the payload a consumer reads rows out of. The CLI passes stderr;
 // `keep mcp` passes a writer onto its own logger, because there stdout is
 // protocol bytes and nothing else may touch it.

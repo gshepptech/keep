@@ -1,16 +1,15 @@
-{{/* item.html -- one item in full. Data: model.ItemDetail.
+{{/* item.html: one item in full. Data: model.ItemDetail.
 
      Field order follows show's own precedent (cmd/keep/show.go). The body
-     is rendered verbatim inside <pre> as plain text -- never
-     markdown-to-HTML, never template.HTML. A parent id and each dep's other
+     is rendered verbatim inside <pre> as plain text, never
+     markdown-to-HTML and never template.HTML. A parent id and each dep's other
      end are links built from the id field alone, never from title, body or
      why. */}}
 {{define "item"}}{{template "head" (titled . "Item" .Data.Title "")}}
 {{$p := .}}{{with .Data}}
 
-{{/* Arriving here is almost always a click from a list. Without this the
-     only route back is the rail, which is a different mental move from
-     "return to where I was". */}}
+{{/* Arriving here is almost always a click from a list, so the page offers
+     a direct "return to where I was" rather than only the bar. */}}
 <a class="backlink" href="{{$p.Prefix}}/">← Back to the board</a>
 
 <p class="lede">

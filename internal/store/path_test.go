@@ -132,7 +132,7 @@ func TestFindUpwardTerminatesAtRoot(t *testing.T) {
 		t.Fatalf("FindUpward(%q) = (%q, true); want (\"\", false)", start, path)
 	}
 
-	// /a/b/c/d ascends through /a/b/c, /a/b, /a, and finally / -- five
+	// /a/b/c/d ascends through /a/b/c, /a/b, /a, and finally /: five
 	// directories tested in total, including the root itself exactly once.
 	const wantCalls = 5
 	if calls != wantCalls {
@@ -140,11 +140,10 @@ func TestFindUpwardTerminatesAtRoot(t *testing.T) {
 	}
 }
 
-// TestOSExistsOnRealTempDir is the one non-table test in this file: it
-// checks the real OSExists implementation against a real t.TempDir(), so
-// the injected ExistsFunc used everywhere else is known to be trustworthy
-// at least once, not just assumed correct because the synthetic fake agrees
-// with itself.
+// TestOSExistsOnRealTempDir checks the real OSExists implementation against
+// a real t.TempDir(), so the injected ExistsFunc used everywhere else is
+// known to be trustworthy at least once, not just assumed correct because
+// the synthetic fake agrees with itself.
 func TestOSExistsOnRealTempDir(t *testing.T) {
 	dir := t.TempDir()
 

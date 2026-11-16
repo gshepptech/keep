@@ -33,7 +33,7 @@ func mcpSessionAs(t *testing.T, bin, dir string, environ []string, clientName st
 
 // addOverMCPAndReadActor files one item through an MCP session advertising
 // clientName, then reads the actor off its `add` event through an ordinary
-// CLI invocation -- never trusting the mutating path to report its own
+// CLI invocation, never trusting the mutating path to report its own
 // effect, the same rule TestCLIAndMCPWriteIdenticalEventRows follows.
 func addOverMCPAndReadActor(t *testing.T, bin, dir string, environ []string, clientName string, args map[string]any) string {
 	t.Helper()
@@ -56,10 +56,12 @@ func addOverMCPAndReadActor(t *testing.T, bin, dir string, environ []string, cli
 	return detail.Events[0].Actor
 }
 
-// TestMCPActorComesFromTheClientName is the whole point: the two plugin
-// manifests disagreed about KEEP_ACTOR and nothing caught it, because the
-// only place it surfaces is a mixed event log read after the fact. The
-// handshake already says who is calling, so neither manifest has to.
+// TestMCPActorComesFromTheClientName checks that the actor recorded for an
+// MCP call is the client's handshake name.
+//
+// An actor set per manifest drifts between agents and only shows up later
+// as a mixed event log. The handshake already says who is calling, so no
+// manifest has to.
 //
 // $USER is set to something distinctive so a fallback that quietly won
 // cannot pass by coincidence.
@@ -78,12 +80,12 @@ func TestMCPActorComesFromTheClientName(t *testing.T) {
 	}
 }
 
-// TestMCPActorEnvOverridesClientName: $KEEP_ACTOR is how you say "record
-// this as something other than the tool driving it" -- a named human, a CI
-// identity, an agent behind a proxy. A client name that overrode it would
-// make that unsayable, and would silently change the meaning of every
-// existing setup, including the Codex registration documented before the
-// client-name default existed.
+// TestMCPActorEnvOverridesClientName checks that $KEEP_ACTOR wins over the
+// client's handshake name. $KEEP_ACTOR is how you say "record this as
+// something other than the tool driving it": a named human, a CI identity,
+// an agent behind a proxy. A client name that overrode it would make that
+// unsayable and would change the meaning of every setup that sets it,
+// including the documented Codex registration.
 func TestMCPActorEnvOverridesClientName(t *testing.T) {
 	bin := buildKeep(t, "")
 	dir := tempDir(t)
@@ -98,9 +100,10 @@ func TestMCPActorEnvOverridesClientName(t *testing.T) {
 	}
 }
 
-// TestMCPActorFallsBackWhenClientIsAnonymous: a client that advertises no
-// name must not produce an empty actor. An event row whose actor is "" is
-// worse than one naming the wrong thing -- it reads as data loss.
+// TestMCPActorFallsBackWhenClientIsAnonymous checks that a client that
+// advertises no name gets the fallback actor, not an empty one. An event
+// row whose actor is "" is worse than one naming the wrong thing, because
+// it reads as data loss.
 func TestMCPActorFallsBackWhenClientIsAnonymous(t *testing.T) {
 	bin := buildKeep(t, "")
 	dir := tempDir(t)
@@ -116,7 +119,7 @@ func TestMCPActorFallsBackWhenClientIsAnonymous(t *testing.T) {
 	}
 }
 
-// TestMCPActorPerCallStillWins locks the per-call override: actor is an
+// TestMCPActorPerCallStillWins checks the per-call override: actor is an
 // optional argument on every mutating tool, defaulting to the server's own,
 // and an explicit argument always wins over the default.
 func TestMCPActorPerCallStillWins(t *testing.T) {

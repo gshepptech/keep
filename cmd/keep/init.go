@@ -19,9 +19,9 @@ import (
 // process exit code rather than calling os.Exit so it is callable from a
 // test in-process while still driving the real store.Init.
 //
-// cmd/keep must never import a database driver package, must never
-// contain a SQL string, and must never receive a raw DB handle or a row
-// -- only internal/store's exported API.
+// cmd/keep never imports a database driver package, never contains a SQL
+// string, and never receives a raw DB handle or a row; it uses only
+// internal/store's exported API.
 func runInit(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("init", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -91,12 +91,12 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 	}
 	defer s.Close()
 
-	// Nested-store warning:
-	// walk up starting one directory ABOVE the directory whose .rounce/ now
-	// holds the new store -- target is <dir>/.rounce/db.sqlite, so
-	// Dir(Dir(Dir(target))) is the parent of <dir>. Starting at <dir> itself
-	// would trivially rediscover the file init just wrote. Skipped for
-	// --global: the home store is the outermost store by definition.
+	// Nested-store warning: walk up starting one directory above the
+	// directory whose .rounce/ now holds the new store. target is
+	// <dir>/.rounce/db.sqlite, so Dir(Dir(Dir(target))) is the parent of
+	// <dir>. Starting at <dir> itself would trivially rediscover the file
+	// init just wrote. Skipped for --global: the home store is the outermost
+	// store by definition.
 	if !*globalFlag {
 		parent := filepath.Dir(filepath.Dir(filepath.Dir(target)))
 		if outer, ok := store.FindUpward(parent, store.OSExists); ok {
@@ -104,9 +104,9 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-	// KEEP_DB shadow warning: init never consults
-	// KEEP_DB to choose its target, so if it is set to somewhere else, the
-	// store just written is one no other command will read by default.
+	// KEEP_DB shadow warning: init never consults KEEP_DB to choose its
+	// target, so if it is set to somewhere else, the store just written is
+	// one no other command will read by default.
 	if envDB := store.Env("DB"); envDB != "" {
 		if absEnv, err := filepath.Abs(envDB); err == nil && absEnv != target {
 			fmt.Fprintf(stderr, "keep: warning: KEEP_DB=%s will take precedence over the store just created at %s\n", envDB, target)
@@ -115,17 +115,17 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 
 	// Register the store just created in ~/.rounce/repos.json.
 	//
-	// Best-effort by decision. The store this command
-	// was asked to create WAS created; a bookkeeping failure -- a read-only home,
-	// a full disk, a HOME that is not a directory -- warns on stderr and leaves
-	// the exit code at 0. Failing init over the registry would let a convenience
-	// feature break the core one. There is deliberately no `return` inside this
-	// block.
+	// Best-effort by decision. The store this command was asked to create was
+	// created; a bookkeeping failure (a read-only home, a full disk, a HOME
+	// that is not a directory) warns on stderr and leaves the exit code at 0.
+	// Failing init over the registry would let a convenience feature break
+	// the core one, so there is no `return` inside this block.
 	//
-	// registry.NameFor derives the label from the repository directory, never
-	// from the store's own filename, which is always "db.sqlite". --global is
-	// not special-cased: ~/.rounce/db.sqlite is registered like any other store,
-	// and lands in the same directory as the registry file itself.
+	// registry.NameFor derives the label from the repository directory,
+	// never from the store's own filename, which is always "db.sqlite".
+	// --global is not special-cased: ~/.rounce/db.sqlite is registered like
+	// any other store, and lands in the same directory as the registry file
+	// itself.
 	if home, err := os.UserHomeDir(); err != nil {
 		fmt.Fprintf(stderr, "keep: warning: could not locate a home directory to register %s: %v\n", target, err)
 	} else if err := registry.Register(home, target, registry.NameFor(target), model.Now()); err != nil {

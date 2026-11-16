@@ -1,8 +1,8 @@
-{{/* confirm.html -- the step between a destructive control and the thing it
+{{/* confirm.html: the step between a destructive control and the thing it
      destroys. Data: confirmData.
 
      A page rather than a dialog because this board ships no JavaScript, and
-     a page turns out to be the better shape: it can show what is about to
+     a page is also the better shape: it can show what is about to
      happen and take the reason at the same time, which a yes/no box cannot. */}}
 {{define "confirm"}}{{template "head" (titled . "Confirm" .Data.Heading "")}}
 {{$p := .}}{{with .Data}}

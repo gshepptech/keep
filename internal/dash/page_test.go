@@ -6,13 +6,14 @@ import (
 	"github.com/gshepptech/keep/internal/interlock"
 )
 
-// TestHoldCountIsWhatTheReleaseButtonAsks.
+// TestHoldCountIsWhatTheReleaseButtonAsks checks that holdCount counts only
+// the leases a session holds, so a fresh session with none is not offered a
+// release.
 //
-// Found on a real board: an agent that had only just started -- a session
-// registered, no file touched -- was offered "Release holds". Interlock
-// registers a session at SessionStart, so a session with no leases is the
-// normal state of every agent for its first few seconds, and the button
-// would have released nothing. The Agents panel branches on this count.
+// Interlock registers a session at SessionStart, so a session with no
+// leases is the normal state of every agent for its first few seconds, and
+// offering "Release holds" then would release nothing. The Agents panel
+// branches on this count.
 func TestHoldCountIsWhatTheReleaseButtonAsks(t *testing.T) {
 	st := &interlock.Status{
 		Sessions: []interlock.Session{{ID: "fresh"}, {ID: "busy"}},

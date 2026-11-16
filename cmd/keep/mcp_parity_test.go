@@ -11,9 +11,9 @@ import (
 	"github.com/gshepptech/keep/internal/model"
 )
 
-// showJSON runs `keep show <id> --json` (a third, ordinary, read-only CLI
-// invocation, legitimate against an item written by either surface) and
-// decodes its stdout into a model.ItemDetail.
+// showItemDetailJSON runs `keep show <id> --json` (a third, ordinary,
+// read-only CLI invocation, legitimate against an item written by either
+// surface) and decodes its stdout into a model.ItemDetail.
 func showItemDetailJSON(t *testing.T, bin, dir string, environ []string, id string) model.ItemDetail {
 	t.Helper()
 	stdout, stderr, code := run(t, bin, dir, environ, "show", id, "--json")
@@ -31,23 +31,21 @@ func showItemDetailJSON(t *testing.T, bin, dir string, environ []string, id stri
 // different surfaces (CLI vs MCP) for the same logical operation. wantKind
 // names the kind both are expected to be.
 //
-// id and at are deliberately excluded from the comparison, named here rather
-// than silently skipped:
+// id and at are excluded from the comparison, and named here rather than
+// silently skipped:
 //
 //   - id is INTEGER PRIMARY KEY AUTOINCREMENT (internal/store/schema.go) and
-//     is globally unique across the two writes -- both events land in the
-//     same events table, one write per surface -- so it cannot match, and
-//     its differing is correct, not a defect.
+//     is unique across the two writes, since both events land in the same
+//     events table, so it cannot match.
 //   - at is a wall-clock timestamp (model.Now(), written by
 //     internal/store/events.go's writeEvent at the moment of the write); the
-//     CLI path and the MCP path run at genuinely different real times, so it
-//     cannot match either.
+//     CLI path and the MCP path run at different real times, so it cannot
+//     match either.
 //
-// Every OTHER column MUST match, and payload in particular is NOT skipped:
+// Every other column must match, and payload in particular is not skipped:
 // closeDropEventPayload (internal/store/transitions.go) and addEventPayload
 // (internal/store/items.go) are both fixed structs, so identical inputs
-// marshal to byte-identical JSON deterministically -- the payload check is
-// real, not vacuous.
+// marshal to byte-identical JSON, and the payload check is real.
 func assertEventsMatchExceptIDAndAt(t *testing.T, wantKind string, cli, mcpEv model.Event) {
 	t.Helper()
 
@@ -65,11 +63,10 @@ func assertEventsMatchExceptIDAndAt(t *testing.T, wantKind string, cli, mcpEv mo
 		t.Errorf("%s event actor mismatch: CLI=%q MCP=%q", wantKind, cli.Actor, mcpEv.Actor)
 	}
 
-	// session_id: proven non-nil on BOTH sides BEFORE comparing values. An
+	// session_id: checked non-nil on both sides before comparing values. An
 	// empty KEEP_SESSION stores SQL NULL, not "" (internal/store/
-	// transitions.go's nullableString) -- comparing two nils would PASS
-	// while proving nothing about the session actually carrying through.
-	// This is exactly the vacuous-pass shape this test must not have.
+	// transitions.go's nullableString), and comparing two nils would pass
+	// while proving nothing about the session carrying through.
 	if cli.SessionID == nil {
 		t.Fatalf("CLI-path %s event session_id is nil, want non-nil (\"parity-session\")", wantKind)
 	}
@@ -96,15 +93,15 @@ func assertEventsMatchExceptIDAndAt(t *testing.T, wantKind string, cli, mcpEv mo
 // the same explicit actor and the same fixed session, writes `events` rows
 // that differ only in the two columns that cannot match (id, at).
 //
-// This is asserted by comparing rows, not by reading output -- two surfaces
-// can print identical
-// text while writing a different actor or a NULL session_id underneath, and
-// a rendered-output comparison would never catch that.
+// This is asserted by comparing rows, not by reading output: two surfaces
+// can print identical text while writing a different actor or a NULL
+// session_id underneath, and a rendered-output comparison would not catch
+// that.
 func TestCLIAndMCPWriteIdenticalEventRows(t *testing.T) {
 	bin := buildKeep(t, "")
 	dir := tempDir(t)
 
-	// One store, one HOME, one KEEP_SESSION, shared by BOTH paths -- so
+	// One store, one HOME, one KEEP_SESSION, shared by both paths, so
 	// nothing about the environment itself can differ between them.
 	environ := env(dir, "", "KEEP_SESSION=parity-session")
 
@@ -113,10 +110,8 @@ func TestCLIAndMCPWriteIdenticalEventRows(t *testing.T) {
 	}
 
 	// Path A: the CLI. Two real processes. --actor is explicit, not left to
-	// $USER/$KEEP_ACTOR fallback -- making actor explicit on both sides is
-	// what makes this precisely testable: two fallbacks agreeing would prove
-	// nothing about
-	// the mechanism, only that they happened to agree.
+	// $USER/$KEEP_ACTOR fallback, on both sides, because two fallbacks
+	// agreeing would prove nothing about the mechanism.
 	stdoutAdd, stderrAdd, code := run(t, bin, dir, environ, "add", "Parity A", "--actor", "parity-actor")
 	if code != 0 {
 		t.Fatalf("add (CLI path): exit %d, stderr=%s", code, stderrAdd)
@@ -139,8 +134,8 @@ func TestCLIAndMCPWriteIdenticalEventRows(t *testing.T) {
 
 	callTool(t, cs, "close", map[string]any{"id": idB, "reason": "finished", "actor": "parity-actor"})
 
-	// Read back through a third, ordinary CLI invocation -- neither
-	// mutating path is trusted to have reported its own effect honestly.
+	// Read back through a third, ordinary CLI invocation, so neither
+	// mutating path is trusted to report its own effect.
 	detailA := showItemDetailJSON(t, bin, dir, environ, idA)
 	detailB := showItemDetailJSON(t, bin, dir, environ, idB)
 
@@ -151,39 +146,37 @@ func TestCLIAndMCPWriteIdenticalEventRows(t *testing.T) {
 		t.Fatalf("item B (MCP path) has %d events, want at least 2 (add, close)", len(detailB.Events))
 	}
 
-	// The FIRST event of each (both "add") -- covers a creating mutation.
+	// The first event of each (both "add") covers a creating mutation.
 	assertEventsMatchExceptIDAndAt(t, "add", detailA.Events[0], detailB.Events[0])
-	// The LAST event of each (both "close") -- covers a terminal mutation.
+	// The last event of each (both "close") covers a terminal mutation.
 	assertEventsMatchExceptIDAndAt(t, "close", detailA.Events[len(detailA.Events)-1], detailB.Events[len(detailB.Events)-1])
 }
 
-// TestMCPMalformedArgumentsAreProtocolErrorsAndChangeNothing.
-// Three separate claims, and the third is the one that rots:
+// TestMCPMalformedArgumentsAreProtocolErrorsAndChangeNothing checks that a
+// tool call with malformed arguments fails as a protocol error and leaves the
+// store unchanged. It checks three separate things:
 //
-//  1. a protocol error, specifically -- NOT an isError tool result. This is
-//     the claim that forced the whole package onto the SDK's low-level
-//     Server.AddTool path (internal/mcp/server.go): the ergonomic generic
-//     mcp.AddTool[In,Out] routes a JSON
-//     type mismatch into isError:true, through a code path that never even
+//  1. a protocol error, specifically, not an isError tool result. This is
+//     why internal/mcp uses the SDK's low-level Server.AddTool path
+//     (internal/mcp/server.go): the generic mcp.AddTool[In,Out] routes a
+//     JSON type mismatch into isError:true, through a code path that never
 //     calls the tool handler.
-//  2. not a panic -- proven by the server still answering a normal call on
-//     the SAME session afterwards. A panicking handler would have taken the
-//     process down and that call would fail to connect/answer.
-//  3. the store unchanged -- proven by a byte-identical before/after
-//     snapshot of `show --json` (item row, both dependency directions, AND
-//     the complete event history) and `list --json` (the item set). A
-//     handler that writes and then fails to marshal would still look like a
-//     clean failure from the client's side; only the store snapshot catches
-//     that.
+//  2. not a panic, shown by the server still answering a normal call on
+//     the same session afterwards. A panicking handler would take the
+//     process down and that call would fail.
+//  3. the store unchanged, shown by a byte-identical before/after snapshot
+//     of `show --json` (item row, both dependency directions, and the
+//     complete event history) and `list --json` (the item set). A handler
+//     that writes and then fails to marshal would still look like a clean
+//     failure from the client's side; only the store snapshot catches that.
 //
-// Deliberately NOT asserted here: that the SDK rejects a *schema*-invalid
-// argument. It does not. mcp.Server.AddTool performs no argument validation
-// at all -- a published `enum` and `additionalProperties:false` are both
-// ignored on a real call. Enforcement
-// for the one closed vocabulary that matters here (dep's type) comes from
-// store.CreateDep's ErrInvalidDepType, which is why case 2 below exists and
-// why internal/mcp/errors.go's resultFor routes that sentinel to a protocol
-// error rather than to isError.
+// Not asserted here: that the SDK rejects a schema-invalid argument. It does
+// not. mcp.Server.AddTool performs no argument validation, and a published
+// `enum` and `additionalProperties:false` are both ignored on a call.
+// Enforcement for the one closed vocabulary that matters here (dep's type)
+// comes from store.CreateDep's ErrInvalidDepType, which is why case 2 below
+// exists and why internal/mcp/errors.go's resultFor routes that sentinel to a
+// protocol error rather than to isError.
 func TestMCPMalformedArgumentsAreProtocolErrorsAndChangeNothing(t *testing.T) {
 	bin := buildKeep(t, "")
 	dir := tempDir(t)
@@ -216,13 +209,12 @@ func TestMCPMalformedArgumentsAreProtocolErrorsAndChangeNothing(t *testing.T) {
 
 	cs := mcpSession(t, bin, dir, environ)
 
-	// Case 1: a JSON type mismatch -- title sent as a number, not a string.
-	// This is a genuine json.Unmarshal failure, the only malformed input the
-	// low-level path actually rejects (a bogus enum value or an unknown
+	// Case 1: a JSON type mismatch, with title sent as a number, not a
+	// string. This is a real json.Unmarshal failure, the only malformed
+	// input the low-level path rejects (a bogus enum value or an unknown
 	// field reaches the handler and unmarshals fine, since Server.AddTool
-	// performs no schema validation). CallTool directly, NOT the callTool
-	// helper -- that
-	// helper fails the test on error, the opposite of what is wanted here.
+	// performs no schema validation). It calls CallTool directly, not the
+	// callTool helper, which fails the test on error.
 	if _, err := cs.CallTool(context.Background(), &mcp.CallToolParams{
 		Name:      "add",
 		Arguments: map[string]any{"title": 123},
@@ -232,7 +224,7 @@ func TestMCPMalformedArgumentsAreProtocolErrorsAndChangeNothing(t *testing.T) {
 
 	// Case 2: a value outside dep's closed vocabulary. Correctly-typed
 	// JSON, but store.CreateDep's ErrInvalidDepType classifies it as a
-	// protocol error (internal/mcp/errors.go's resultFor) -- the store
+	// protocol error (internal/mcp/errors.go's resultFor). The store
 	// handles it, because the SDK does not enforce the schema `enum`.
 	if _, err := cs.CallTool(context.Background(), &mcp.CallToolParams{
 		Name:      "dep",
@@ -241,8 +233,8 @@ func TestMCPMalformedArgumentsAreProtocolErrorsAndChangeNothing(t *testing.T) {
 		t.Errorf(`dep {"type":"nonsense"}: CallTool returned a nil error, want a non-nil protocol error`)
 	}
 
-	// Case 3: an unknown tool name -- a protocol error from the SDK's own
-	// dispatch, free of any of this package's own code.
+	// Case 3: an unknown tool name, a protocol error from the SDK's own
+	// dispatch, free of any of this package's code.
 	if _, err := cs.CallTool(context.Background(), &mcp.CallToolParams{
 		Name:      "nope",
 		Arguments: map[string]any{},

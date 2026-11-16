@@ -11,9 +11,9 @@ import (
 	"testing"
 )
 
-// TestLoadMissingFileIsEmptyNotError proves Load(home) on a home whose
-// .rounce/repos.json does not exist returns an empty envelope and a NIL
-// error -- nothing registered yet is a normal state, not a fault.
+// TestLoadMissingFileIsEmptyNotError checks that Load(home) on a home whose
+// .rounce/repos.json does not exist returns an empty envelope and a nil
+// error, because nothing registered yet is a normal state, not a fault.
 func TestLoadMissingFileIsEmptyNotError(t *testing.T) {
 	home := t.TempDir()
 
@@ -29,10 +29,10 @@ func TestLoadMissingFileIsEmptyNotError(t *testing.T) {
 	}
 }
 
-// TestLoadMalformedJSONIsEmptyAndError proves Load on a file containing
-// invalid JSON returns BOTH an empty envelope AND a non-nil error -- a
-// caller that only checked the error would have nothing usable, and a
-// caller that only checked the envelope would never warn.
+// TestLoadMalformedJSONIsEmptyAndError checks that Load on a file
+// containing invalid JSON returns both an empty envelope and a non-nil
+// error. A caller that only checked the error would have nothing usable,
+// and a caller that only checked the envelope would never warn.
 func TestLoadMalformedJSONIsEmptyAndError(t *testing.T) {
 	home := t.TempDir()
 	mustWriteRegistryFile(t, home, []byte("not json at all"))
@@ -114,8 +114,8 @@ func TestSaveLoadRoundTrips(t *testing.T) {
 	}
 }
 
-// TestSaveLeavesNoTempFile proves that after Save, home/.rounce/ contains
-// exactly one file (repos.json) -- no leftover temp file.
+// TestSaveLeavesNoTempFile checks that after Save, home/.rounce/ contains
+// exactly one file (repos.json) and no leftover temp file.
 func TestSaveLeavesNoTempFile(t *testing.T) {
 	home := t.TempDir()
 
@@ -201,9 +201,9 @@ func TestRegisterAddsOneRowOnEmptyRegistry(t *testing.T) {
 
 // TestRegisterSamePathTwiceUpdatesNotAppends proves registering the SAME
 // path a second time with a later lastSeen leaves exactly ONE row, whose
-// LastSeen is the newer value. The row count is asserted explicitly -- an
-// append-instead-of-update bug leaves the newest value reachable and only
-// the count wrong.
+// LastSeen is the newer value. The row count is asserted explicitly,
+// because appending instead of updating leaves the newest value reachable
+// and only the count wrong.
 func TestRegisterSamePathTwiceUpdatesNotAppends(t *testing.T) {
 	home := t.TempDir()
 	path := "/a/repo/.rounce/db.sqlite"
@@ -292,9 +292,9 @@ func TestForgetRegisteredPathRemovesRowLeavesFileAlone(t *testing.T) {
 	}
 }
 
-// TestForgetUnregisteredPathReturnsFalseNotError proves Forget on an
-// unregistered path returns (false, nil) -- not an error -- and leaves the
-// registry unchanged.
+// TestForgetUnregisteredPathReturnsFalseNotError checks that Forget on an
+// unregistered path returns (false, nil) rather than an error, and leaves
+// the registry unchanged.
 func TestForgetUnregisteredPathReturnsFalseNotError(t *testing.T) {
 	home := t.TempDir()
 	if err := Register(home, "/a/repo/.rounce/db.sqlite", "repo", "2026-08-07T12:00:00.000000000Z"); err != nil {
@@ -318,17 +318,12 @@ func TestForgetUnregisteredPathReturnsFalseNotError(t *testing.T) {
 	}
 }
 
-// This package takes `home` as a parameter everywhere and never asks the OS
-// for it. That is not a style preference -- it is the single mechanism that
-// makes every test in this package hermetic. The stdlib home-directory
-// lookup this test forbids (see the AST check below) respects $HOME on
-// Darwin and Linux, so a package that
-// called it would still be testable by setting $HOME, but only as long as
-// every test remembered to. Making home a parameter removes the possibility
-// of forgetting: there is no code path here that could reach the
-// developer's real ~/.rounce/repos.json. cmd/keep is the one place that
-// lookup is used, and cmd/keep's tests run the real binary with an
-// explicit HOME (cli_test.go's env helper).
+// TestRegistryNeverCallsUserHomeDir checks that no non-test file in this
+// package calls os.UserHomeDir. The package takes `home` as a parameter
+// everywhere, so no code path here can reach the developer's real
+// ~/.rounce/repos.json and every test is hermetic without having to remember
+// to set $HOME. cmd/keep is the one place that lookup is used, and its tests
+// run the real binary with an explicit HOME (cli_test.go's env helper).
 func TestRegistryNeverCallsUserHomeDir(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
@@ -365,21 +360,20 @@ func TestRegistryNeverCallsUserHomeDir(t *testing.T) {
 				return true
 			}
 			if ident.Name == "os" && sel.Sel.Name == "UserHomeDir" {
-				t.Errorf("%s calls the os package's home-directory lookup -- internal/registry must take home as a parameter everywhere, or its tests are no longer hermetic", path)
+				t.Errorf("%s calls os.UserHomeDir; internal/registry must take home as a parameter everywhere, or its tests are no longer hermetic", path)
 			}
 			return true
 		})
 	}
 
 	if filesWalked == 0 {
-		t.Fatal("TestRegistryNeverCallsUserHomeDir walked zero non-test .go files -- the directory layout is broken; treat this as a failure, not a vacuous pass")
+		t.Fatal("TestRegistryNeverCallsUserHomeDir walked zero non-test .go files; the directory layout is broken, and an empty walk must fail rather than pass")
 	}
 }
 
 // mustWriteRegistryFile writes raw bytes directly to home's registry path,
-// creating the parent .rounce/ directory first -- used by tests that need
-// to construct a malformed or wrong-version file, which Save (a
-// well-formed writer) cannot produce.
+// creating the parent .rounce/ directory first. Tests use it to construct a
+// malformed or wrong-version file, which Save cannot produce.
 func mustWriteRegistryFile(t *testing.T, home string, data []byte) {
 	t.Helper()
 	dir := filepath.Dir(PathIn(home))

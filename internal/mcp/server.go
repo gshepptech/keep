@@ -19,43 +19,37 @@ import (
 // in. That is what makes "the CLI and MCP write identical events rows" a
 // property of shared code rather than of two implementations agreeing.
 type Options struct {
-	// Actor is the server's default actor -- resolved once at startup
+	// Actor is the server's default actor, resolved once at startup
 	// (KEEP_ACTOR, else $USER, via cmd/keep/flags.go's resolveActor). A
-	// caller may override it per call on any mutating tool: actor is an
-	// optional argument on every mutating tool, defaulting to the server's
-	// own actor. The pre-seed pattern in every
-	// handler below is what lets that override happen with zero
-	// conditionals.
+	// caller may override it per call: actor is an optional argument on
+	// every mutating tool, defaulting to the server's own actor. The
+	// pre-seed pattern in every handler below lets that override happen
+	// with zero conditionals.
 	Actor string
 
 	// ActorFor resolves the actor from the client's own initialize
 	// handshake. Every mutating handler calls it, per call, on its own
 	// session's params. It MUST be non-nil.
 	//
-	// Per call rather than captured once at `initialized`: that was the
-	// first attempt and a test caught it. Nothing orders the SDK's
-	// InitializedHandler before the first tools/call, so the first call
-	// raced and fell back to Actor -- reproducibly, through the SDK client,
-	// while a hand-driven stdio session happened to win the race and looked
-	// correct. Reading the session that is actually making the call has no
-	// ordering to get wrong and needs no atomic.
+	// It is resolved per call, not captured at `initialized`, because
+	// nothing orders the SDK's InitializedHandler before the first
+	// tools/call, so a captured value can race and fall back to Actor.
+	// Reading the session that is making the call has no ordering to get
+	// wrong and needs no atomic.
 	//
-	// It exists because the two plugin manifests disagreed and nothing
-	// caught it: plugin/.mcp.json shipped "env": {} while the Codex
-	// registration set KEEP_ACTOR=codex, so the same store recorded
-	// Claude Code's work under $USER and Codex's under "codex". A default
-	// that has to be spelled out per agent is a default that will drift
-	// per agent. The handshake already says who is calling.
+	// A default that has to be spelled out in each agent's manifest will
+	// drift between them, so one store ends up recording one agent under
+	// $USER and another under its own name. The handshake already says who
+	// is calling.
 	//
 	// The parameter is the raw *mcp.InitializeParams, nil and all, because
-	// deciding what to do with a nil ClientInfo needs conditionals and this
-	// package is not allowed any (structure_test.go permits *ast.IfStmt
-	// only in NewServer and resultFor). cmd/keep/mcp.go does that part,
-	// the same way it composes Instructions and resolves Session.
+	// deciding what to do with a nil ClientInfo needs conditionals, and this
+	// package keeps them to NewServer and resultFor. cmd/keep/mcp.go does
+	// that part, the same way it composes Instructions and resolves Session.
 	ActorFor func(*mcp.InitializeParams) string
 
-	// Session is fixed for the process lifetime -- one MCP server process
-	// serves one agent session. It is never a per-call argument: every
+	// Session is fixed for the process lifetime, because one MCP server
+	// process serves one agent session. It is never a per-call argument: every
 	// mutating *Input struct's SessionID field is json:"-", unreachable over
 	// the wire under any spelling, even an exact Go field name.
 	Session string
@@ -70,27 +64,24 @@ type Options struct {
 	// # Which clients actually show it to the model
 	//
 	// Sending it is one thing; a client putting it in the model's prompt is
-	// another, and they do not agree. As observed with current clients:
+	// another, and clients differ:
 	//
-	//   - Claude Code renders it under an "MCP Server Instructions" block.
-	//     A headless session with no tool calls quoted the first sentence
-	//     back verbatim.
-	//   - Codex does NOT. `codex debug prompt-input`
-	//     renders the model-visible prompt, and this text is absent from
-	//     it -- every occurrence of "keep" in those 26KB is a filesystem
-	//     path. Codex still calls `ready` unprompted, but from the tool's
-	//     name and description, not from this.
+	//   - Claude Code renders it under an "MCP Server Instructions" block,
+	//     so the model sees it.
+	//   - Codex does not. `codex debug prompt-input` renders the
+	//     model-visible prompt, and this text is absent from it. Codex
+	//     still calls `ready` unprompted, but from the tool's name and
+	//     description, not from this.
 	//
-	// So this field is the whole delivery mechanism on Claude Code and no
-	// delivery at all on Codex. Do not treat it as cross-client parity;
-	// Codex parity comes from the plugin-carried SessionStart hook.
+	// So this field is the only delivery on Claude Code and none at all on
+	// Codex, where the plugin-carried SessionStart hook delivers the queue
+	// instead.
 	//
-	// Built by the caller, never here. Rendering a queue needs loops and
-	// branches, and internal/mcp's structure_test.go permits neither
-	// outside NewServer's schema check and resultFor -- that is "no logic
-	// outside the store" enforced mechanically, and it holds for
-	// this field too. cmd/keep/mcpinstructions.go composes the text the
-	// same way it resolves Actor and Session.
+	// The caller builds it, never this package. Rendering a queue needs
+	// loops and branches, and this package has none outside NewServer's
+	// schema check and resultFor, which keeps logic in the store.
+	// cmd/keep/mcpinstructions.go composes the text the same way it resolves
+	// Actor and Session.
 	//
 	// Empty is the correct value for an empty or unreachable store: the
 	// SDK omits the field entirely (json:"instructions,omitempty"), which
@@ -98,16 +89,15 @@ type Options struct {
 	// does not use keep.
 	Instructions string
 
-	// ReadyAll answers the cross-repository queue -- the `ready_all` tool.
+	// ReadyAll answers the cross-repository queue for the `ready_all` tool.
 	//
 	// It is a function on Options rather than something this package
-	// computes, and that placement is the whole design. internal/mcp holds a
-	// *store.Store, which is ONE store; the cross-repository read needs the
-	// machine's registry, has to open every other store read-only, and has
-	// to report which of them it could not read. None of that is this
-	// package's business, and importing internal/registry here would make a
-	// package whose entire claim is "zero logic of its own" the place where
-	// a fan-out lives.
+	// computes. internal/mcp holds a *store.Store, which is one store; the
+	// cross-repository read needs the machine's registry, has to open every
+	// other store read-only, and has to report which of them it could not
+	// read. None of that is this package's business, and importing
+	// internal/registry here would put a fan-out in a package that has no
+	// logic of its own.
 	//
 	// cmd/keep supplies it, from the same code path `keep ready --all` uses,
 	// so the tool and the flag cannot answer differently.
@@ -118,37 +108,36 @@ type Options struct {
 	// exactly one call and carries no branch of its own.
 	ReadyAll func(ctx context.Context) (any, error)
 
-	// Logger MUST NOT write to stdout -- stdout carries protocol
-	// bytes only, and anything else on it is fatal to an MCP stdio session.
+	// Logger must not write to stdout. stdout carries protocol bytes only,
+	// and anything else on it is fatal to an MCP stdio session.
 	// A nil Logger is safe here: the SDK's own default is
 	// slog.New(slog.DiscardHandler), which writes nowhere.
 	Logger *slog.Logger
 }
 
 // NewServer builds the keep MCP server: every tool, wired to st,
-// registered through the low-level mcp.Server.AddTool -- never the SDK's
+// registered through the low-level mcp.Server.AddTool and never the SDK's
 // generic AddTool[In, Out].
 //
 // # Why not the generic AddTool[In, Out]
 //
-// It is the SDK's ergonomic generic API. It is what the SDK's own
-// documentation shows first. It is what "reuse the store's *Input structs as
-// typed tool inputs" naturally suggests. And it cannot turn a malformed
-// argument into a protocol error: it routes both a JSON type
-// mismatch and an entirely legitimate call that omitted an optional field
-// into an isError:true tool result -- reached through a code path
-// (toolForErr's generated handler) that never calls the handler at all,
-// because it does `errRes.SetError(...); return &errRes, nil` on any
-// validation or unmarshal failure. That nil Go error is why the dispatcher
-// would emit a normal successful response with no top-level "error" key.
+// The generic API is the SDK's ergonomic default, and reusing the store's
+// *Input structs as typed tool inputs suggests it. It cannot turn a
+// malformed argument into a protocol error, though. It routes both a JSON
+// type mismatch and a legitimate call that omitted an optional field into
+// an isError:true tool result, through a code path (toolForErr's generated
+// handler) that never calls the handler at all, because it does
+// `errRes.SetError(...); return &errRes, nil` on any validation or
+// unmarshal failure. That nil Go error makes the dispatcher emit a normal
+// successful response with no top-level "error" key.
 //
 // A malformed argument must produce a genuine JSON-RPC protocol error.
 // Only the low-level mcp.Server.AddTool(*Tool, ToolHandler), paired with a
 // manual json.Unmarshal and a plain (or *jsonrpc.Error) Go error return on
-// failure, produces one -- it emits exactly
-// {"jsonrpc":"2.0","id":N,"error":{"code":-32602,"message":"..."}}. Used
-// uniformly for every tool; mixing the two styles would make error
-// behaviour differ per tool for no benefit.
+// failure, produces one. It emits exactly
+// {"jsonrpc":"2.0","id":N,"error":{"code":-32602,"message":"..."}}. Every
+// tool uses it, because mixing the two styles would make error behaviour
+// differ per tool for no benefit.
 func NewServer(st *store.Store, opts Options) (*mcp.Server, error) {
 	sc, err := BuildSchemas()
 	if err != nil {
@@ -161,8 +150,8 @@ func NewServer(st *store.Store, opts Options) (*mcp.Server, error) {
 	)
 
 	// Registration order is the order tools/list returns and the order
-	// the tools/list test asserts. It opens with the core ten -- capture,
-	// add, ready, backlog, show, list, dep, start, close, drop -- and later
+	// the tools/list test asserts. It opens with the core ten (capture,
+	// add, ready, backlog, show, list, dep, start, close, drop), and later
 	// tools are appended rather than interleaved, so a client diffing two
 	// versions sees additions rather than a reshuffle.
 
@@ -336,9 +325,9 @@ func NewServer(st *store.Store, opts Options) (*mcp.Server, error) {
 
 	// readyAll is opts.ReadyAll with the nil case already decided, so the
 	// handler below is the same one-unmarshal-one-call shape as every other
-	// handler in this file. Deciding it here rather than in the handler is
-	// what keeps "no conditional in a handler" true -- NewServer is
-	// one of the two places this package is allowed a branch.
+	// handler in this file. Deciding it here rather than in the handler
+	// keeps handlers free of conditionals, and NewServer is one of the two
+	// places this package is allowed a branch.
 	readyAll := opts.ReadyAll
 	if readyAll == nil {
 		readyAll = func(context.Context) (any, error) {
@@ -432,8 +421,8 @@ func NewServer(st *store.Store, opts Options) (*mcp.Server, error) {
 //     else; taking work away from a live agent stays with the person at the
 //     terminal. See store.UnclaimItem for the full argument.
 //  3. `migrate`, `repos`, `board` and `codex` have no tool. Each is
-//     operator-facing -- rewriting a store's schema, editing the machine's
-//     registry, binding a port, granting hook trust -- and none of them is
+//     operator-facing (rewriting a store's schema, editing the machine's
+//     registry, binding a port, granting hook trust), and none of them is
 //     something an agent should reach for while doing the work.
 //  4. `add` cannot set `stage`. The CLI's `add --stage raw` has no MCP
 //     equivalent; `capture` is the verb for a raw item (input.go).

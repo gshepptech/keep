@@ -6,7 +6,8 @@ import (
 	"testing"
 )
 
-// TestAnItemCannotBeLeftWithNothingToCallItBy.
+// TestAnItemCannotBeLeftWithNothingToCallItBy checks that both add and update
+// refuse a blank title.
 //
 // An item with no title is not a partially-filled record; it is a hole in
 // the queue. `ready`, `list`, `search`, the board's rows and every MCP tool
@@ -14,10 +15,9 @@ import (
 // such a row is by an id the design deliberately made opaque.
 //
 // This is guarded in the store rather than in `add`, because five places
-// build an AddItemInput -- add, capture, two MCP tools and the board -- and
-// a rule enforced in one of them is a rule that holds until somebody uses a
-// different surface. It was found through the CLI (`keep add --help` filed
-// an item called "--help"), but the CLI was only the door it came through.
+// build an AddItemInput (add, capture, two MCP tools and the board), and a
+// rule enforced in one of them holds only until somebody uses a different
+// surface.
 //
 // Whitespace is empty. "   " renders as an unlabelled row exactly like ""
 // does, and a validator that can tell them apart is drawing a line no

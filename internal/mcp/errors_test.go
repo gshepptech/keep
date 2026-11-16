@@ -78,14 +78,11 @@ func TestResultFor(t *testing.T) {
 		}
 	})
 
-	// isErrorSentinels is the single source of truth for the sentinels
-	// resultFor classifies as isError:true tool results -- "the legitimate
-	// outcome of a well-formed call". If a new store
-	// sentinel is ever added and not added here, it is invisible to this
-	// test by construction (Go has no reflection-based way to enumerate a
-	// package's exported error vars) -- the same hand-maintained-table
-	// tradeoff internal/store/mutating_scan_test.go's wantMutating/
-	// wantReadOnly maps already accept, for the same reason.
+	// isErrorSentinels lists the sentinels resultFor classifies as
+	// isError:true tool results, the legitimate outcome of a well-formed
+	// call. Go has no reflection-based way to enumerate a package's exported
+	// error vars, so a new store sentinel missing from this table is
+	// invisible to this test.
 	isErrorSentinels := map[string]error{
 		"ErrNotFound":          store.ErrNotFound,
 		"ErrCycle":             store.ErrCycle,
@@ -115,21 +112,17 @@ func TestResultFor(t *testing.T) {
 		})
 	}
 
-	// ErrInvalidDepType (the eighth sentinel) is exercised above, separately,
-	// with its jsonrpc.Error assertion -- it does not belong in
-	// isErrorSentinels.
+	// ErrInvalidDepType is exercised above, separately, with its
+	// jsonrpc.Error assertion, so it does not belong in isErrorSentinels.
 	//
-	// ErrSchemaVersion is deliberately NOT exercised here: it is produced
-	// only by store.Open, never by any tool call resultFor wraps, so it
-	// structurally never reaches this function -- see resultFor's doc
-	// comment classification table.
+	// ErrSchemaVersion is not exercised here: it is produced only by
+	// store.Open, never by any tool call resultFor wraps, so it cannot reach
+	// this function (see the classification table in resultFor's doc
+	// comment).
 	//
-	// This count is the guard that caught ErrEmptyTitle. It was added to
-	// internal/store as the tenth sentinel and never classified here, so
-	// `add` and `capture` returned it as a raw protocol error instead of a
-	// tool error an agent could read and retry from. The table above says to
-	// add a row here first; that did not happen, and this assertion is what
-	// noticed.
+	// Every store sentinel must have a row in resultFor's table. Without
+	// one, it reaches the agent as a raw protocol error instead of a tool
+	// error it can retry from.
 	t.Run("every sentinel is named", func(t *testing.T) {
 		named := map[string]bool{
 			"ErrInvalidDepType": true, // protocol error, tested separately above
@@ -137,8 +130,10 @@ func TestResultFor(t *testing.T) {
 			"ErrNeedsMigration": true, // never reaches resultFor: store.Open fails first
 			"ErrInvalidType":    true, // protocol error, tested with ErrInvalidDepType above
 			"ErrInvalidStage":   true, // protocol error, tested with ErrInvalidDepType above
-			"ErrStoreNotEmpty":  true, // Import has no tool; a store-replacing verb is not an agent's to call
-			"ErrBadExport":      true, // as ErrStoreNotEmpty
+			// Import has no tool; a store-replacing verb is not an agent's
+			// to call.
+			"ErrStoreNotEmpty": true,
+			"ErrBadExport":     true, // as ErrStoreNotEmpty
 		}
 		for name := range isErrorSentinels {
 			named[name] = true

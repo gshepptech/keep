@@ -19,7 +19,7 @@ import (
 // its own add-then-close history, and a board started in the first.
 //
 // It is deliberately not twoProjects: the activity page's whole content is
-// the event log, and twoProjects' projects have exactly one event each --
+// the event log, and twoProjects' projects have exactly one event each,
 // which cannot tell "this project's history" apart from "the first event of
 // every project", nor rendering newest-first apart from rendering one row.
 // Every marker below is unique to its project and shares no substring with
@@ -65,7 +65,7 @@ func activityFixture(t *testing.T) (*Server, map[string]*store.Store) {
 	if err != nil {
 		t.Fatalf("NewServer: %v", err)
 	}
-	t.Cleanup(func() { s.Close() })
+	t.Cleanup(func() { s.ln.Close() })
 	return s, stores
 }
 
@@ -78,8 +78,7 @@ type renderedEvent struct{ kind, itemID string }
 // It parses rather than searching for substrings because both events in the
 // fixture belong to the same item, so an assertion that looks the item id up
 // with strings.Index finds the same first occurrence for every event and
-// cannot see a reordered feed at all. That was this test's first shape, and
-// it passed against a handler that rendered the log backwards.
+// cannot see a reordered feed at all.
 func activityRows(t *testing.T, body string) []renderedEvent {
 	t.Helper()
 	start := strings.Index(body, `<ol class="queue">`)
@@ -103,8 +102,8 @@ var qrow = regexp.MustCompile(`(?s)<b class="qkind">(.*?)</b>.*?<span class="id"
 //
 // The expectation comes from st.Feed rather than from a literal, because a
 // literal would have to be rewritten every time a verb starts writing an
-// extra event -- and would then assert the number a previous version of the
-// code produced, not the number of things that happened.
+// extra event, and would assert a fixed number rather than the number of
+// things that happened.
 func assertRendersFeedOf(t *testing.T, body string, st *store.Store, path string) {
 	t.Helper()
 	entries, err := st.Feed(context.Background(), store.FeedFilter{Limit: 200})
@@ -142,14 +141,14 @@ func assertRendersFeedOf(t *testing.T, body string, st *store.Store, path string
 	}
 }
 
-// TestActivityRendersWhatHappened. /activity is the page you open after
-// leaving agents running, and the only page whose entire content is the
-// event log -- so this asserts against the log itself rather than against a
-// fixture literal.
+// TestActivityRendersWhatHappened checks that /activity renders every event
+// in the store's own order. It is the page you open after leaving agents
+// running, and its entire content is the event log, so this asserts
+// against the log itself rather than against a fixture literal.
 func TestActivityRendersWhatHappened(t *testing.T) {
 	s, stores := activityFixture(t)
 
-	rec := get(t, s.Handler(), "/activity")
+	rec := get(t, s.srv.Handler, "/activity")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /activity: status = %d, want 200", rec.Code)
 	}
@@ -167,14 +166,15 @@ func TestActivityRendersWhatHappened(t *testing.T) {
 	}
 }
 
-// TestProjectScopedActivityServesThatProjectsHistory is the half more
-// likely to break: /activity reads the store the server was started in,
-// which is also the store a broken /p/{project}/activity falls back to --
-// so only a second project with its own history can tell them apart.
+// TestProjectScopedActivityServesThatProjectsHistory checks that
+// /p/{project}/activity renders that project's events. /activity reads the
+// store the server was started in, which is also the store a broken
+// /p/{project}/activity would fall back to, so only a second project with
+// its own history can tell them apart.
 func TestProjectScopedActivityServesThatProjectsHistory(t *testing.T) {
 	s, stores := activityFixture(t)
 
-	rec := get(t, s.Handler(), "/p/there/activity")
+	rec := get(t, s.srv.Handler, "/p/there/activity")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /p/there/activity: status = %d, want 200", rec.Code)
 	}
@@ -194,13 +194,13 @@ func TestProjectScopedActivityServesThatProjectsHistory(t *testing.T) {
 	}
 }
 
-// TestActivityForAnUnknownProjectIs404, rather than the board's own history
-// under another project's name -- the failure the fallback above would
-// produce if storeFor ever answered for a project it could not find.
+// TestActivityForAnUnknownProjectIs404 checks that an unknown project gets a
+// 404 rather than the board's own history under another project's name,
+// which is what a fallback in storeFor would produce.
 func TestActivityForAnUnknownProjectIs404(t *testing.T) {
 	s, _ := activityFixture(t)
 
-	if rec := get(t, s.Handler(), "/p/nope/activity"); rec.Code != http.StatusNotFound {
+	if rec := get(t, s.srv.Handler, "/p/nope/activity"); rec.Code != http.StatusNotFound {
 		t.Errorf("GET /p/nope/activity: status = %d, want 404", rec.Code)
 	}
 }

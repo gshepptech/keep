@@ -1,5 +1,5 @@
 ---
-description: Show the keep board — counts plus the top of the queue
+description: Show the keep board: counts plus the top of the queue
 ---
 
 Run `keep board`. If `$ARGUMENTS` contains `--web`, run `keep board --web`
@@ -10,5 +10,5 @@ backlog) followed by the top of the ranked queue. For the full list use
 `keep ready`.
 
 The web view is read-only, binds `127.0.0.1` only, ships no JavaScript, and
-fetches nothing off-host. It will not open a browser for you — print the URL and
+fetches nothing off-host. It will not open a browser for you. Print the URL and
 let the user click it.

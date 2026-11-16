@@ -95,11 +95,12 @@ func dumpStore(t *testing.T, s *Store) ([]model.Item, []model.Dep, []model.Event
 	return items, deps, events
 }
 
-// TestExportImportRoundTripsEveryRow is the whole contract. Anything less
-// than field-for-field equality means a store that came back from a backup
-// is quietly not the store that went into it -- and the fields most likely
-// to be dropped are exactly the ones nobody looks at until they matter:
-// why, acceptance, paths, external_ref, claimed_at.
+// TestExportImportRoundTripsEveryRow checks that an exported store imported
+// into an empty one holds the same rows, field for field. Anything less
+// means a store that came back from a backup is quietly not the store that
+// went into it, and the fields most likely to be dropped are the ones
+// nobody looks at until they matter: why, acceptance, paths, external_ref,
+// claimed_at.
 func TestExportImportRoundTripsEveryRow(t *testing.T) {
 	ctx := context.Background()
 	src := populatedStore(t)
@@ -141,9 +142,7 @@ func TestExportImportRoundTripsEveryRow(t *testing.T) {
 	}
 	// Compared as JSON, not with ==. model.Item has ten pointer fields, and
 	// == on a struct compares those pointers, so a struct-equality check
-	// here would fail on two identical rows and pass on nothing -- verified
-	// by writing it that way first and watching every row "differ" with
-	// byte-identical contents.
+	// here would fail on two identical rows.
 	for i := range wantItems {
 		if w, g := asJSON(t, wantItems[i]), asJSON(t, gotItems[i]); w != g {
 			t.Errorf("item %d differs.\nwant %s\ngot  %s", i, w, g)
@@ -161,7 +160,8 @@ func TestExportImportRoundTripsEveryRow(t *testing.T) {
 	}
 }
 
-// TestRestoredStoreAnswersTheSameQueries. Equal rows is necessary and not
+// TestRestoredStoreAnswersTheSameQueries checks that a restored store returns
+// the same ready queue as the original. Equal rows are necessary and not
 // sufficient: the ready view is computed from deps, and an import that wrote
 // items faithfully while dropping a parent-child edge would pass the row
 // comparison and hand back a store whose queue is wrong.
@@ -218,8 +218,8 @@ func TestRestoredStoreAnswersTheSameQueries(t *testing.T) {
 	}
 }
 
-// TestExportIsDeterministic: two exports of an unchanged store must be
-// byte-identical apart from the timestamp in the header, so a diff between
+// TestExportIsDeterministic checks that two exports of an unchanged store
+// are byte-identical apart from the timestamp in the header, so a diff between
 // two exports says something happened rather than that the rows came back
 // in a different order.
 func TestExportIsDeterministic(t *testing.T) {
@@ -242,9 +242,9 @@ func TestExportIsDeterministic(t *testing.T) {
 	}
 }
 
-// TestImportRefusesANonEmptyStore. Merging two stores means resolving id
+// TestImportRefusesANonEmptyStore checks that Import into a store holding
+// items fails with ErrStoreNotEmpty. Merging two stores means resolving id
 // collisions, and there is no answer to that which is not a sync product.
-// Refusing is the boundary, not a limitation waiting to be relaxed.
 func TestImportRefusesANonEmptyStore(t *testing.T) {
 	ctx := context.Background()
 	src := populatedStore(t)
@@ -333,10 +333,10 @@ func TestImportRejectsWhatItCannotFaithfullyRestore(t *testing.T) {
 	}
 }
 
-// TestImportIsAtomic: a file that is valid for a hundred lines and corrupt
-// on the hundred-and-first must leave the store empty, not holding the first
-// hundred. That store would open, answer queries, and be missing rows
-// nothing would ever tell you about.
+// TestImportIsAtomic checks that a file valid for a hundred lines and corrupt
+// on the hundred-and-first leaves the store empty, not holding the first
+// hundred. That store would open, answer queries, and be missing rows nothing
+// would ever tell you about.
 func TestImportIsAtomic(t *testing.T) {
 	ctx := context.Background()
 	src := populatedStore(t)

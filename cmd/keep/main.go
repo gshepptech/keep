@@ -11,11 +11,9 @@ import (
 	"runtime/debug"
 )
 
-// version is set at build time via -ldflags. It is deliberately NOT the only
-// source: the documented install is a plain `go install ./cmd/keep`, which
-// sets no ldflags, so relying on it alone meant every binary anyone actually
-// ran reported "dev" -- including at the v1.0 tag that already exists in this
-// repository. A version a bug report cannot cite is not a version.
+// version is set at build time via -ldflags. It is not the only source: the
+// documented install is a plain `go install ./cmd/keep`, which sets no
+// ldflags, and a binary that reports "dev" gives a bug report nothing to cite.
 var version = ""
 
 // resolveVersion answers what this binary is, preferring what the build was
@@ -24,12 +22,12 @@ var version = ""
 //  1. -ldflags -X main.version=… wins. Release builds and the CLI tests both
 //     set it, and an explicit answer beats an inferred one.
 //  2. Otherwise the module version Go stamps into every binary built from a
-//     versioned module — what `go install …@v1.0` records.
+//     versioned module, which is what `go install …@v1.0` records.
 //  3. Otherwise the VCS revision Go stamps into builds made inside a git
 //     work tree, shortened, with a +dirty marker when the tree had uncommitted
 //     changes. This is the case the documented install actually hits.
 //  4. Only if the build carries no information at all does it say "dev",
-//     which now means "genuinely unknown" rather than "nobody passed a flag".
+//     which then means "really unknown" rather than "nobody passed a flag".
 func resolveVersion() string {
 	if version != "" {
 		return version

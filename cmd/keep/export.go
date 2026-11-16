@@ -10,7 +10,7 @@ import (
 
 // runExport writes the whole store to stdout (or --out) as JSONL.
 //
-// This is a round-trip, not sync -- see store.Export. It covers three
+// This is a round-trip, not sync (see store.Export). It covers three
 // things people need: backing a store up, moving one to another machine,
 // and reading what is in one without this binary. None of those requires
 // merge resolution, and multi-machine sync stays out of scope.

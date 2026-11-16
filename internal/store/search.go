@@ -31,15 +31,15 @@ type SearchFilter struct {
 // reason, or a path, or the body.
 type SearchResult struct {
 	model.Item
-	// MatchedIn is one of searchFields -- the highest-ranked field that
+	// MatchedIn is one of searchFields: the highest-ranked field that
 	// contained the query.
 	MatchedIn string `json:"matched_in"`
 
 	// Snippet is the text around the match, when the match is somewhere you
-	// cannot already see. Found by using this against a real store: one
-	// captured document whose body is a whole roadmap matched almost every
-	// query, and "matched in body" gave no way to tell a real hit from a
-	// passing mention. A window of the actual text does.
+	// cannot already see. A captured document whose body is a whole plan
+	// matches almost every query, and "matched in body" alone gives no way
+	// to tell a real hit from a passing mention. A window of the actual text
+	// does.
 	Snippet string `json:"snippet,omitempty"`
 }
 
@@ -54,15 +54,14 @@ type SearchResult struct {
 var searchFields = []string{"title", "why", "acceptance", "paths", "body"}
 
 // SearchFieldRank returns where a SearchResult.MatchedIn value sits in the
-// field order that decides rank -- 0 for title, up to len(searchFields) for
-// a value this package does not recognise.
+// field order that decides rank: 0 for title, up to len(searchFields) for a
+// value this package does not recognise.
 //
 // It is exported for one caller: `keep search --all`, which merges results
 // from several stores and has to re-rank them together. That caller needs
-// the same order this file's CASE expression uses, and the alternative --
-// a copy of searchFields in cmd/keep -- is a second definition of "title
-// beats body" that would silently disagree the first time a field is added
-// here.
+// the same order this file's CASE expression uses. A copy of searchFields
+// in cmd/keep would be a second definition of "title beats body" that
+// would silently disagree as soon as a field is added here.
 func SearchFieldRank(matchedIn string) int {
 	for i, f := range searchFields {
 		if f == matchedIn {
@@ -77,44 +76,29 @@ func SearchFieldRank(matchedIn string) int {
 //
 // # FTS5, and why it is a prefilter rather than the search
 //
-// Plain LIKE '%x%' scans are tempting: a corpus of a few thousand rows
-// scans in under a millisecond, and FTS5's virtual table, triggers and
-// migration are three new ways for a work store to disagree with itself.
-// The measurement says otherwise. Searching a store of items with 120-word
-// bodies with scans alone:
+// LIKE '%x%' scans every row, which is fast on a small store and slow on a
+// store of tens of thousands of items, the size a store an agent files into
+// all day reaches. An index answers a term that narrows the store in a
+// fraction of a millisecond. A term matching nearly every item gains
+// nothing from the index and pays for the lookup on top of the scan.
+// search_bench_test.go measures both cases.
 //
-//	 1,000 items     14 ms
-//	10,000 items    178 ms
-//	50,000 items  1,008 ms
-//
-// A full second is not "under a millisecond", and a store an agent files
-// into all day reaches ten thousand items without anybody deciding to let
-// it. With the index, the same 50,000-item store answers a term that
-// actually narrows it in 0.2 ms.
-//
-// The cost, stated rather than buried: a term matching nearly every item
-// makes the index return nearly every row, so the lookup narrows nothing
-// and is paid for on top of the scan -- that case is about 55% slower than
-// scanning alone. search_bench_test.go carries the full table and the
-// reasoning for accepting it.
-//
-// So there is now an items_fts index (internal/store/schema.go, migrations
-// rung 2), and it is used as a CANDIDATE FILTER in front of the LIKE
+// So there is an items_fts index (internal/store/schema.go, migrations
+// rung 2), and it is used as a candidate filter in front of the LIKE
 // conditions rather than as a replacement for them. The LIKE clauses still
-// decide what matches and the CASE still decides the rank -- FTS5 only
-// narrows which rows they run over. Three reasons that shape, and not the
-// obvious one:
+// decide what matches and the CASE still decides the rank; FTS5 only
+// narrows which rows they run over. There are three reasons for that shape:
 //
 //  1. Semantics do not change. The index uses the trigram tokenizer, so
-//     MATCH is already an arbitrary case-insensitive substring search rather
-//     than a word search -- but "already" is not "provably", and leaving the
-//     LIKE in place means the answer is defined by the same expression it
-//     always was. TestSearchFTSAgreesWithAFullScan asserts the two agree.
-//  2. The index can only ever return a SUPERSET. Trigram folds ASCII case
-//     and LIKE does not fold non-ASCII case, so any row LIKE would match is
-//     a row MATCH returns. Narrowing by a superset cannot lose a result.
+//     MATCH is an arbitrary case-insensitive substring search rather than a
+//     word search, but keeping the LIKE means the answer is defined by one
+//     plain expression. TestSearchFTSAgreesWithAFullScan asserts the two
+//     agree.
+//  2. The index can only return a superset. Trigram folds ASCII case and
+//     LIKE does not fold non-ASCII case, so any row LIKE would match is a
+//     row MATCH returns. Narrowing by a superset cannot lose a result.
 //  3. Terms shorter than three characters have no trigram to look up. Those
-//     queries skip the prefilter and scan, exactly as before.
+//     queries skip the prefilter and scan.
 //
 // The ranking stays in SQL rather than moving to FTS5's bm25(), because the
 // rank here is "which column matched", which is a decision about what a
@@ -267,7 +251,7 @@ func snippetAround(field, query string) string {
 
 // fieldName turns the rank the query computed back into the field it came
 // from. A rank past the end means the CASE fell through, which the WHERE
-// clause makes impossible -- it is reported honestly rather than guessed at.
+// clause makes impossible, so it is reported as unknown rather than guessed.
 func fieldName(rank int) string {
 	if rank < 0 || rank >= len(searchFields) {
 		return "unknown"
@@ -278,7 +262,7 @@ func fieldName(rank int) string {
 // ftsMinTermLength is the trigram tokenizer's floor: it indexes every run of
 // three characters, so a term shorter than that has no trigram to look up
 // and MATCH returns nothing for it. Such a query skips the prefilter and
-// scans, which is what searching for "id" did before the index existed.
+// scans.
 const ftsMinTermLength = 3
 
 // ftsMatchQuery renders a user's query as an FTS5 phrase, and reports
@@ -287,8 +271,8 @@ const ftsMinTermLength = 3
 // The query is wrapped in double quotes so FTS5 reads it as a phrase rather
 // than as its query language: an unquoted "token OR expiry" would be parsed
 // as an operator expression, and SearchFilter.Query's contract is that there
-// is no query language -- those characters are what the person is looking
-// for. Internal double quotes are doubled, FTS5's own escape.
+// is no query language, so those characters are what the person is
+// looking for. Internal double quotes are doubled, FTS5's own escape.
 func ftsMatchQuery(query string) (string, bool) {
 	if len([]rune(query)) < ftsMinTermLength {
 		return "", false

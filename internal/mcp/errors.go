@@ -10,12 +10,18 @@ import (
 	"github.com/gshepptech/keep/internal/store"
 )
 
-// resultFor is the package's one permitted conditional. The rule is "no
-// tool handler contains a conditional on BUSINESS STATE" -- formatting a
-// known, closed sentinel set for the wire is not business logic. It lives in
-// exactly one shared helper, not one switch per handler, which is what makes
-// "the only branch in the package" mechanically checkable
-// (internal/mcp/structure_test.go).
+// errNoRegistry is what the `ready_all` tool reports when the server was
+// started without a cross-repository reader (Options.ReadyAll nil). It is a
+// plain error, so it falls to resultFor's default arm and becomes a
+// protocol error: the call was well-formed, and the answer is that this
+// server cannot serve it at all, which is not a fact about the work.
+var errNoRegistry = errors.New("this keep mcp server was started without registry access, so it cannot answer across repositories; use `ready` for this repository's queue")
+
+// resultFor is the package's one permitted conditional. The rule is that no
+// tool handler branches on business state, and formatting a known, closed
+// sentinel set for the wire is not business logic. It lives in one shared
+// helper, not one switch per handler, so the package has exactly one
+// branch to review.
 //
 // The signature is (v any, err error) on purpose: Go lets a two-value call
 // stand in for an entire argument list, so a handler's last line reads
@@ -27,66 +33,73 @@ import (
 //
 // # The classification of every store sentinel
 //
-// Write this table into the file as a comment (this comment) and implement
-// exactly it -- if a tenth sentinel is ever added to internal/store, add its
-// row here AND to errors_test.go's isErrorSentinels table before touching
-// anything else, per the same discipline internal/store/mutating_scan_test.go's
-// wantMutating/wantReadOnly maps already follow.
+// The switch below implements exactly this table. A new sentinel in
+// internal/store needs a row here and in errors_test.go's isErrorSentinels
+// table.
 //
-//	Sentinel               | Arm                              | Why
-//	------------------------|-----------------------------------|----
-//	ErrNotFound             | isError: true                     | Well-formed call, legitimate failure
-//	ErrCycle                | isError: true                     | Well-formed call, legitimate failure
-//	ErrInvalidTransition    | isError: true                     | `start` on a blocked item names the blocker -- useful to an agent
-//	ErrConflict             | isError: true                     | Names the holding session and claim time
-//	ErrParentChildViaDep    | isError: true                     | Its own message already says `keep add --parent <id>`
-//	ErrSelfEdge             | isError: true                     | Well-formed values, refused for a semantic reason
-//	ErrScoreOutOfRange      | isError: true                     | Same shape as ErrEmptyTitle: a well-formed integer refused for a semantic reason. The schema advertises the bounds but the SDK does not enforce them, so this is where an agent finds out -- and it needs to read the message to correct the number
-//	ErrEmptyTitle           | isError: true                     | Same shape as ErrSelfEdge: the argument is a well-formed string, refused because a titleless item is unreadable in every list. Reachable from `add`, `capture` and `update`, and an agent that gets it back as a tool error can retry with a title -- as a protocol error it could not
-//	ErrNoFieldsToUpdate     | isError: true                     | Reached by the `update` tool: a well-formed call that asks for nothing
-//	ErrEmptyReason          | isError: true                     | Same shape as ErrEmptyTitle: a well-formed call refused because a close, drop, unclaim or reopen with no stated why is the record the rule exists to prevent. An agent that gets this back can retry with a reason; as a protocol error it could not
-//	ErrInvalidType          | protocol error, CodeInvalidParams | A value outside the closed vocabulary IS a malformed argument -- the same row ErrInvalidDepType occupies, for the same reason
-//	ErrInvalidStage         | protocol error, CodeInvalidParams | As ErrInvalidType
-//	ErrTooDeep              | isError: true                     | Reached by `add` with a parent_id at the bottom of a MaxDepth chain. A well-formed call refused for a reason inherent to the data, and the message names the depth and the bound so an agent can pick a shallower parent
-//	ErrInvalidDepType       | protocol error, CodeInvalidParams | A value outside the closed vocabulary IS a malformed argument -- "schema validation failure -> protocol error", enforced by the store because the SDK will not (see note below)
-//	ErrSchemaVersion        | never reaches here                | Produced only by store.Open/Migrate, so cmd/keep/mcp.go fails at startup before Run -- not a per-call failure, the store is unusable
-//	ErrNeedsMigration       | never reaches here                | Same: store.Open refuses an out-of-date store at startup. It is not a per-call outcome, and an agent cannot fix it -- `keep migrate` is a person's command
+//	Sentinel             | Arm                     | Why
+//	---------------------|-------------------------|----
+//	ErrNotFound          | isError                 | well-formed call, legitimate failure
+//	ErrCycle             | isError                 | well-formed call, legitimate failure
+//	ErrInvalidTransition | isError                 | `start` on a blocked item names the blocker
+//	ErrConflict          | isError                 | names the holding session and claim time
+//	ErrParentChildViaDep | isError                 | the message says `keep add --parent <id>`
+//	ErrSelfEdge          | isError                 | well-formed values refused on semantics
+//	ErrScoreOutOfRange   | isError                 | see (a) below
+//	ErrEmptyTitle        | isError                 | see (b) below
+//	ErrNoFieldsToUpdate  | isError                 | an `update` call that asks for nothing
+//	ErrEmptyReason       | isError                 | see (c) below
+//	ErrInvalidType       | protocol, InvalidParams | outside the closed vocabulary: malformed
+//	ErrInvalidStage      | protocol, InvalidParams | as ErrInvalidType
+//	ErrTooDeep           | isError                 | see (d) below
+//	ErrInvalidDepType    | protocol, InvalidParams | as ErrInvalidType; see the note below
+//	ErrSchemaVersion     | never reaches here      | see (e) below
+//	ErrNeedsMigration    | never reaches here      | see (e) below
 //
-// Everything unclassified falls through to `default: return nil, err` -- a
+// (a) A well-formed integer refused for a semantic reason. The schema
+// advertises the bounds but the SDK does not enforce them, so this is where
+// an agent finds out, and it needs the message to correct the number.
+//
+// (b) A well-formed string, refused because a titleless item is unreadable
+// in every list. It is reachable from `add`, `capture` and `update`, and an
+// agent that gets it as a tool error can retry with a title.
+//
+// (c) A close, drop, unclaim or reopen with no stated reason is the record
+// the rule exists to prevent. As a tool error, the agent can retry with a
+// reason.
+//
+// (d) Reached by `add` with a parent_id at the bottom of a MaxDepth chain.
+// The message names the depth and the bound so an agent can pick a
+// shallower parent.
+//
+// (e) Produced only by store.Open/Migrate, so cmd/keep/mcp.go fails at
+// startup before Run. It is not a per-call outcome, and an agent cannot fix
+// it: `keep migrate` is a person's command.
+//
+// Everything unclassified falls through to `default: return nil, err`, a
 // protocol error with a generic code. Nothing a well-formed call can reach
 // should land there: closed vocabularies are validated in Go
 // (internal/store/validate.go) so a model never receives SQLite's own
 // "CHECK constraint failed" text and is left to work out what to send.
 //
-// # ErrInvalidDepType was going to be handled by the schema enum, and cannot be
+// # Why ErrInvalidDepType is enforced here and not by the schema enum
 //
-// It is natural to assume schema validation rejects an invalid dep type
-// before the handler runs. It does not: mcp.Server.AddTool (the low-level
-// path this package uses -- see server.go for why) performs NO argument
-// validation whatsoever. A
-// published `enum` and `additionalProperties:false` were both ignored on a
-// real call that supplied a value outside either. The enum stays (it steers
-// the model toward a legal value); the sentinel below is what actually
-// enforces, and it must therefore produce the protocol error the enum was
-// supposed to produce. The outcome is the same; only the mechanism is
-// "store sentinel, classified here" rather than "schema".
+// mcp.Server.AddTool, the low-level path this package uses (server.go
+// explains why), performs no argument validation. A published `enum` and
+// `additionalProperties:false` are both ignored on a call that supplies a
+// value outside either. The enum stays because it steers the model toward a
+// legal value; the store sentinel is what enforces, so it produces the
+// protocol error a schema check would have.
 //
 // # Classification is by errors.Is, never by message text
 //
-// The same rule internal/store/errors.go states for SQLite codes and
-// cmd/keep/flags.go's exitFor follows for CLI exit codes, for the same
-// reason: messages are not a contract.
+// internal/store/errors.go states the same rule for SQLite codes, and
+// cmd/keep/flags.go's exitFor follows it for CLI exit codes: messages are
+// not a contract.
 //
 // A json.Marshal failure on the success path is not a business outcome
-// either -- it is returned as the Go error it is (a protocol error), never
-// as an isError result; see the single `if err == nil` branch below.
-// errNoRegistry is what the `ready_all` tool reports when the server was
-// started without a cross-repository reader -- Options.ReadyAll nil. It is
-// deliberately a plain error, so it falls to resultFor's default arm and
-// becomes a protocol error: the call was well-formed, and the answer is that
-// this server cannot serve it at all, which is not a fact about the work.
-var errNoRegistry = errors.New("this keep mcp server was started without registry access, so it cannot answer across repositories; use `ready` for this repository's queue")
-
+// either. It is returned as the Go error it is (a protocol error), never as
+// an isError result; see the single `if err == nil` branch below.
 func resultFor(v any, err error) (*mcp.CallToolResult, error) {
 	if err == nil {
 		b, merr := json.Marshal(v)

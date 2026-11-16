@@ -21,10 +21,9 @@ type confirmData struct {
 	Warning string
 	Button  string
 	// AskReason puts a required reason field on the page. The CLI refuses to
-	// close or drop without one -- `--reason` is required and its absence is
-	// exit 2 -- and the board must not quietly hold a lower standard than the
-	// command line for the same operation, on the record that both of them
-	// write.
+	// close or drop without one (`--reason` is required and its absence is
+	// exit 2), and the board must not hold a lower standard than the command
+	// line for the same operation, on the record that both of them write.
 	AskReason bool
 	Item      *model.Item
 	Session   string
@@ -37,11 +36,11 @@ type confirmData struct {
 //
 // A GET, and a real page rather than a dialog, because this board ships no
 // JavaScript: window.confirm is not available and neither is anything that
-// would fake one. That turns out to be the better shape anyway -- a page can
-// show WHAT is about to happen and take the reason at the same time, which
-// a yes/no box cannot.
+// would fake one. A page is also the better shape: it can show what is
+// about to happen and take the reason at the same time, which a yes/no box
+// cannot.
 //
-// Only genuinely lossy actions come through here. Claim, close and promote
+// Only lossy actions come through here. Claim, close and promote
 // do not: they move an item along its normal path and the event trail says
 // who did it. Drop abandons work, and releasing a lease interrupts an agent
 // that is mid-edit; neither is undoable from this board.

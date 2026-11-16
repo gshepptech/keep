@@ -11,11 +11,8 @@ import (
 )
 
 // TestMCPUpdateLetsAnAgentCorrectItsOwnWork drives a real `keep mcp`
-// subprocess. Before `update` was a tool, an agent could file an item and
-// never fix one: a wrong title or score had to go back through `add`, which
-// produces a second item with a second id and leaves the first one standing.
-// docs/agents.md said outright that the omission was an artifact of the
-// original locked list rather than a decision.
+// subprocess and checks that an agent can correct an item in place over MCP,
+// keeping its id, rather than filing a second item.
 func TestMCPUpdateLetsAnAgentCorrectItsOwnWork(t *testing.T) {
 	bin := buildKeep(t, "")
 	dir := tempDir(t)
@@ -49,7 +46,8 @@ func TestMCPUpdateLetsAnAgentCorrectItsOwnWork(t *testing.T) {
 		t.Errorf("title = %q, want the corrected one", fixed.Title)
 	}
 
-	// Untouched fields stay untouched -- update is a patch, not a replace.
+	// Untouched fields stay untouched, because update is a patch, not a
+	// replace.
 	if fixed.Value == nil || *fixed.Value != 9 {
 		t.Errorf("value = %v, want 9 left alone", fixed.Value)
 	}
@@ -62,7 +60,7 @@ func TestMCPUpdateLetsAnAgentCorrectItsOwnWork(t *testing.T) {
 	}
 }
 
-// TestMCPUpdateRefusalsComeBackAsToolErrors pins that a refused update is
+// TestMCPUpdateRefusalsComeBackAsToolErrors checks that a refused update is
 // something the agent can read and retry from, not a protocol failure that
 // looks like the server broke.
 func TestMCPUpdateRefusalsComeBackAsToolErrors(t *testing.T) {
@@ -125,9 +123,9 @@ func TestMCPUpdateRefusalsComeBackAsToolErrors(t *testing.T) {
 	}
 }
 
-// TestMCPUpdateCannotChangeStatus pins the one field `update` must never
-// carry. open -> in_progress -> closed/dropped moves only through
-// start/close/drop so the log always records WHY a status changed; a status
+// TestMCPUpdateCannotChangeStatus checks that the `update` tool has no
+// status field. open -> in_progress -> closed/dropped moves only through
+// start/close/drop so the log always records why a status changed; a status
 // key here would let an agent close work while bypassing close's --reason.
 func TestMCPUpdateCannotChangeStatus(t *testing.T) {
 	bin := buildKeep(t, "")
@@ -165,16 +163,15 @@ func TestMCPUpdateCannotChangeStatus(t *testing.T) {
 	t.Fatal("no update tool in tools/list")
 }
 
-// TestMCPRefusesAnOutOfRangeScore covers the path the CLI's flag parser never
-// guarded. Until the store enforced the range, an agent could file effort=100
-// through `add` for a score of -89 -- below an unscored item's 0 -- and bury
-// the item beneath work nobody had even estimated.
+// TestMCPRefusesAnOutOfRangeScore checks that an out-of-range score sent
+// over MCP is refused. Accepted, effort=100 through `add` would give a score
+// of -89, below an unscored item's 0, and bury the item beneath work nobody
+// had even estimated.
 //
-// The schema now advertises minimum and maximum, but the SDK does not
-// validate arguments against InputSchema (internal/mcp/input.go records that
-// a published enum was ignored on a real call), so the schema steers and the
-// store refuses. This test drives the real subprocess to prove which one is
-// actually load-bearing.
+// The schema advertises minimum and maximum, but the SDK does not validate
+// arguments against InputSchema (see internal/mcp/input.go), so the schema
+// steers and the store refuses. This test drives the real subprocess to
+// prove that the store's refusal is what stops an out-of-range score.
 func TestMCPRefusesAnOutOfRangeScore(t *testing.T) {
 	bin := buildKeep(t, "")
 	dir := tempDir(t)

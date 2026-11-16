@@ -11,18 +11,18 @@ import (
 // MaxDepth is the deepest parent-child chain this store will hold: a root at
 // depth 0 through a descendant at depth MaxDepth, so MaxDepth+1 items.
 //
-// Every recursive CTE in this package stops extending at this bound --
-// the shipped ready view (schema.go), blockedTreeCTE (ready.go), treeCTE
-// (tree.go), and parentChildCycleCheckSQL (items.go). Those bounds exist
-// because the cost of being wrong is an unbounded loop inside a browser
-// request or a user's shell. But a bound in a read query does not error when
-// it is hit; it silently returns a SHORTER answer. A tree deeper than the
-// bound would make `ready` quietly stop propagating a block partway down --
-// the one guarantee the whole product rests on, failing without a word.
+// Every recursive CTE in this package stops extending at this bound: the
+// ready view (schema.go), blockedTreeCTE (ready.go), treeCTE (tree.go), and
+// parentChildCycleCheckSQL (items.go). Those bounds exist because the cost
+// of being wrong is an unbounded loop inside a browser request or a user's
+// shell. But a bound in a read query does not error when it is hit; it
+// silently returns a shorter answer. A tree deeper than the bound would
+// make `ready` quietly stop propagating a block partway down, which is the
+// guarantee the queue depends on.
 //
 // So the bound is enforced where the depth is created, not where it is read.
-// insertParentChildEdge -- the only writer of a parent-child row anywhere in
-// this package -- refuses an edge that would put any item past MaxDepth.
+// insertParentChildEdge, the only writer of a parent-child row anywhere in
+// this package, refuses an edge that would put any item past MaxDepth.
 // With that guard in place the read-side bounds are unreachable by
 // construction: they remain as backstops against a store some other program
 // corrupted, not as the thing keeping the recursion finite.
@@ -30,7 +30,7 @@ import (
 // Changing this constant changes the SQL text of the ready view. Existing
 // stores keep the view they were created with (CREATE VIEW IF NOT EXISTS
 // does not replace), so a change here needs a migration that drops and
-// recreates the view -- see migrations.go.
+// recreates the view (see migrations.go).
 const MaxDepth = 50
 
 // maxDepthSQL is MaxDepth as it appears inside the recursive CTEs, so the
@@ -76,26 +76,25 @@ type rowQuerier interface {
 
 // expandDepthSQL substitutes MaxDepth into a recursive CTE's bound. The
 // placeholder is $MAXDEPTH$ rather than a `?` because SQLite does not bind
-// parameters inside a recursive CTE's WHERE clause in every driver version,
-// and a literal is what the four bounds this replaces already were.
+// parameters inside a recursive CTE's WHERE clause in every driver version.
 func expandDepthSQL(q string) string {
 	return strings.ReplaceAll(q, "$MAXDEPTH$", maxDepthSQL)
 }
 
 // expandSchemaSQL is expandDepthSQL plus the schema version, for the one
 // string that has to carry both: schemaDDL writes the meta.schema_version
-// row a fresh store opens with, and typing the number there by hand is how
-// a binary ends up creating stores at a version its own ladder does not
-// agree with. schemaDDLv1 deliberately does NOT use this -- it is frozen at
-// 1 and must stay there however far the ladder climbs.
+// row a fresh store opens with, and a number typed there by hand could
+// create stores at a version the binary's own ladder does not agree with.
+// schemaDDLv1 does not use this, because it is frozen at version 1 however
+// far the ladder climbs.
 func expandSchemaSQL(q string) string {
 	return strings.ReplaceAll(expandDepthSQL(q), "$SCHEMAVERSION$", strconv.Itoa(schemaVersion))
 }
 
 // checkParentChildDepth refuses an edge that would put any item deeper than
-// MaxDepth. It measures both halves of the prospective chain -- how far
+// MaxDepth. It measures both halves of the prospective chain (how far
 // parentID already sits below its own root, and how far childID's own
-// subtree already reaches below it -- because insertParentChildEdge is
+// subtree already reaches below it) because insertParentChildEdge is
 // reachable with an existing child, not only a freshly created leaf. The
 // resulting deepest item sits at:
 //
@@ -119,29 +118,4 @@ func checkParentChildDepth(ctx context.Context, q rowQuerier, childID, parentID 
 			childID, parentID, deepest, MaxDepth, ErrTooDeep)
 	}
 	return nil
-}
-
-// DeepestChain reports the depth of the deepest parent-child chain in the
-// store. It exists so a store written by an older binary -- or by another
-// program -- can be audited against MaxDepth rather than trusted, and so
-// migrations.go can refuse to raise MaxDepth over data that already
-// violates the new bound.
-func (s *Store) DeepestChain(ctx context.Context) (int, error) {
-	const q = `
-WITH RECURSIVE chain(id, depth) AS (
-  SELECT i.id, 0 FROM items i
-  WHERE NOT EXISTS (SELECT 1 FROM deps d WHERE d.item_id = i.id AND d.type = 'parent-child')
-  UNION ALL
-  SELECT d.item_id, c.depth + 1
-  FROM chain c
-  JOIN deps d ON d.depends_on_id = c.id AND d.type = 'parent-child'
-  WHERE c.depth <= $MAXDEPTH$
-)
-SELECT COALESCE(MAX(depth), 0) FROM chain`
-
-	var depth int
-	if err := s.db.QueryRowContext(ctx, expandDepthSQL(q)).Scan(&depth); err != nil {
-		return 0, fmt.Errorf("DeepestChain: %w", err)
-	}
-	return depth, nil
 }

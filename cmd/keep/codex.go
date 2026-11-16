@@ -21,10 +21,8 @@ import (
 const codexAppServerTimeout = 20 * time.Second
 
 // codexBundledPath is where Codex lives once it has moved into the desktop
-// app. It is not on $PATH there -- `command -v codex` finds nothing on a
-// machine that has a perfectly working Codex -- which is exactly the
-// failure this fallback exists to prevent. Interlock hit the same thing and
-// its fix is commit cdf71b1, "Look for Codex where Codex actually is".
+// app. It is not on $PATH there: `command -v codex` finds nothing on a
+// machine that has a working Codex, so keep falls back to this path.
 const codexBundledPath = "/Applications/ChatGPT.app/Contents/Resources/codex"
 
 // codexHookMarker identifies keep's own hooks among everything else
@@ -59,8 +57,8 @@ type hooksListEntry struct {
 	} `json:"errors"`
 }
 
-// runCodex is `keep codex <subcommand>`. Same dispatch shape as runRepos
-// -- a literal string match, no CLI framework.
+// runCodex is `keep codex <subcommand>`. It has the same dispatch shape as
+// runRepos: a literal string match, no CLI framework.
 func runCodex(args []string, stdout, stderr io.Writer) int {
 	if len(args) > 0 {
 		switch args[0] {
@@ -81,22 +79,19 @@ func runCodex(args []string, stdout, stderr io.Writer) int {
 // # Why this command exists rather than a documented config snippet
 //
 // Codex will not run a hook it has not been told to trust, and installing
-// the plugin does not grant that: a freshly
-// installed keep plugin reports trustStatus "untrusted", and the hook
-// does not fire until the trust entry exists. That is a security control
-// working as designed, and this command grants it on purpose rather than
-// bypassing it. It is the same consent `claude plugin install` takes; Codex
-// just makes it a separate step.
+// the plugin does not grant that: a freshly installed keep plugin reports
+// trustStatus "untrusted", and the hook does not fire until the trust entry
+// exists. That is a security control working as designed, and this command
+// grants it on purpose rather than bypassing it. It is the same consent
+// `claude plugin install` takes; Codex just makes it a separate step.
 //
 // # Why it asks Codex for the hash instead of computing one
 //
-// This is the whole design. Computing the hash locally means
-// reimplementing how Codex records trust, and when a Codex release changes
-// that, the entries written stop being accepted and Codex skips the hooks
-// without saying anything -- while any local check keeps reporting the
-// trust as healthy because it is verifying its own bookkeeping. A
-// reimplementation of someone else's hash is a silent failure waiting for
-// their next release.
+// Computing the hash locally means reimplementing how Codex records trust,
+// and when a Codex release changes that, the entries written stop being
+// accepted and Codex skips the hooks without saying anything, while any
+// local check keeps reporting the trust as healthy because it is verifying
+// its own bookkeeping.
 //
 // hooks/list hands over `key` and `currentHash` directly. Writing back what
 // Codex just said cannot drift from what Codex expects.
@@ -141,8 +136,8 @@ func runCodexTrust(args []string, stdout, stderr io.Writer) int {
 
 	// Trusting a hook that is already trusted rewrites the same value, so
 	// skipping is about output being readable on a second run, not about
-	// correctness. Report it either way -- a command that prints nothing
-	// when it did nothing is indistinguishable from one that failed.
+	// correctness. It is reported either way, because a command that prints
+	// nothing when it did nothing looks the same as one that failed.
 	var pending []hookMetadata
 	for _, h := range ours {
 		fmt.Fprintf(stdout, "%-12s %s\n", h.TrustStatus, h.Key)
@@ -273,7 +268,7 @@ func codexHooks(bin, cwd string) ([]hookMetadata, error) {
 // parses TOML.
 //
 // The keyPath quotes the hook key because it contains dots, colons and an
-// @ -- unquoted it would be read as a nested path rather than one key.
+// @; unquoted it would be read as a nested path rather than one key.
 func codexTrustHooks(bin string, hooks []hookMetadata) error {
 	edits := make([]map[string]any, 0, len(hooks))
 	for _, h := range hooks {
@@ -299,8 +294,8 @@ func codexTrustHooks(bin string, hooks []hookMetadata) error {
 // result of the response whose id is wantID.
 //
 // Reading is line-by-line and filtered by id because the server interleaves
-// notifications with responses -- taking the next line after a request is a
-// race with whatever it decided to announce.
+// notifications with responses, so taking the next line after a request
+// would race with whatever it decided to announce.
 func codexRPC(bin string, msgs []any, wantID float64) (json.RawMessage, error) {
 	cmd := exec.Command(bin, "app-server")
 	cmd.Stderr = io.Discard

@@ -20,7 +20,7 @@ func idsOf(items []model.Item) []string {
 	return out
 }
 
-// equalIDs compares two ordered id slices exactly -- Ready's ordering
+// equalIDs compares two ordered id slices exactly, because Ready's ordering
 // guarantee (score DESC, created_at ASC) is a total order the tests assert
 // against precisely, not as a set.
 func equalIDs(got, want []string) bool {
@@ -39,11 +39,9 @@ func equalIDs(got, want []string) bool {
 // ties. Two items tie at score 23 (value 6, confidence 6, effort 0 ->
 // 6+6-0+11=23); their created_at is set explicitly via execSQL rather than
 // relying on wall-clock separation between two AddItem calls in the same
-// test process -- model.TimeFormat is fixed-width specifically so this is
-// deterministic on a TEXT column, but two AddItem calls landing in the same
-// nanosecond would still make an ordering assertion ambiguous if left to
-// wall-clock timing. Setting created_at explicitly for this one fixture
-// removes that flake risk entirely.
+// test process. model.TimeFormat is fixed-width so this is deterministic on
+// a TEXT column, but two AddItem calls landing in the same nanosecond would
+// still make an ordering assertion ambiguous if left to wall-clock timing.
 func TestReadyOrdering(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
@@ -54,7 +52,8 @@ func TestReadyOrdering(t *testing.T) {
 	late := mustAdd(t, s, AddItemInput{Title: "late-23", Actor: "tester", Value: intPtr(6), Confidence: intPtr(6), Effort: intPtr(0)})
 	execSQL(t, s, `UPDATE items SET created_at = ? WHERE id = ?`, "2020-01-02T00:00:00.000000000Z", late.ID)
 
-	seven := mustAdd(t, s, AddItemInput{Title: "seven", Actor: "tester", Value: intPtr(0), Confidence: intPtr(0), Effort: intPtr(4)}) // 0+0-4+11=7
+	// 0+0-4+11=7
+	seven := mustAdd(t, s, AddItemInput{Title: "seven", Actor: "tester", Value: intPtr(0), Confidence: intPtr(0), Effort: intPtr(4)})
 	unscored := mustAdd(t, s, AddItemInput{Title: "unscored", Actor: "tester"})
 
 	if early.Score != 23 || late.Score != 23 || seven.Score != 7 || unscored.Score != 0 {
@@ -73,17 +72,16 @@ func TestReadyOrdering(t *testing.T) {
 	}
 }
 
-// TestReadyUnscoredSortsLastNotExcluded asserts BOTH halves of the
-// unscored-item rule: the unscored ticket is present (never excluded) AND
-// its score is 0 AND it sorts last. Asserting only "score is 0" would miss
-// the actual point
-// entirely -- a store that silently dropped unscored tickets from ready
-// would still "pass" a presence-blind assertion.
+// TestReadyUnscoredSortsLastNotExcluded asserts both halves of the
+// unscored-item rule: the unscored ticket is present (never excluded), its
+// score is 0, and it sorts last. A store that silently dropped unscored
+// tickets from ready would pass an assertion on the score alone.
 func TestReadyUnscoredSortsLastNotExcluded(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
 
-	scored := mustAdd(t, s, AddItemInput{Title: "scored", Actor: "tester", Value: intPtr(0), Confidence: intPtr(0), Effort: intPtr(10)}) // 0+0-10+11=1
+	// 0+0-10+11=1
+	scored := mustAdd(t, s, AddItemInput{Title: "scored", Actor: "tester", Value: intPtr(0), Confidence: intPtr(0), Effort: intPtr(10)})
 	unscored := mustAdd(t, s, AddItemInput{Title: "unscored", Actor: "tester"})
 
 	if scored.Score < 1 {
@@ -115,10 +113,9 @@ func TestReadyUnscoredSortsLastNotExcluded(t *testing.T) {
 }
 
 // TestReadyExcludesRaw proves raw items are never workable, from the
-// caller's side: an item added
-// with Stage: "raw" never appears in Ready. This exercises the view's own
-// WHERE i.stage = 'ticket' predicate -- Ready itself adds no stage filter
-// (see ready.go's doc comment).
+// caller's side: an item added with Stage: "raw" never appears in Ready.
+// This exercises the view's own WHERE i.stage = 'ticket' predicate, since
+// Ready itself adds no stage filter (see ready.go's doc comment).
 func TestReadyExcludesRaw(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
@@ -140,8 +137,8 @@ func TestReadyExcludesRaw(t *testing.T) {
 }
 
 // TestReadyLimit proves Ready(ctx, 2) returns the first two of the view's
-// own order and Ready(ctx, 0) returns all of them -- limit <= 0 means no
-// limit.
+// own order and Ready(ctx, 0) returns all of them, because limit <= 0 means
+// no limit.
 func TestReadyLimit(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
@@ -169,8 +166,8 @@ func TestReadyLimit(t *testing.T) {
 	}
 }
 
-// openTicketIDs queries the raw universe of open tickets directly -- not
-// through Ready or Blocked -- so TestReadyAndBlockedPartitionOpenTickets has
+// openTicketIDs queries the raw universe of open tickets directly, not
+// through Ready or Blocked, so TestReadyAndBlockedPartitionOpenTickets has
 // an independently-derived reference set to check the partition claim
 // against.
 func openTicketIDs(t *testing.T, s *Store) []string {
@@ -196,17 +193,14 @@ func openTicketIDs(t *testing.T, s *Store) []string {
 
 // TestBlockingPropagatesThreeLevels builds epic -> child -> grandchild via
 // AddItem --parent (mustAdd's ParentID), then proves blocking propagation
-// at real depth
-// from BOTH sides of the ready/blocked pair: blocking the epic removes all
-// three from ready AND surfaces all three in Blocked, each naming epic as
-// the nearest blocked ancestor (child and grandchild) or blocker directly
-// (epic itself). Closing the blocker (via a raw UPDATE, independent of
-// CloseItem)
-// returns all three to ready and empties them out of Blocked. Asserting
-// through Blocked() here, not just readyIDs, is deliberate: readyIDs queries
-// the shipped `ready` view directly and is therefore blind to a bug confined
-// to blockedTreeCTE (Go-only) -- this is what makes this test, not just
-// TestBlockedNamesTheBlocker, sensitive to that constant.
+// at real depth from both sides of the ready/blocked pair: blocking the epic
+// removes all three from ready and surfaces all three in Blocked, each
+// naming epic as the nearest blocked ancestor (child and grandchild) or
+// blocker directly (epic itself). Closing the blocker (via a raw UPDATE,
+// independent of CloseItem) returns all three to ready and empties them out
+// of Blocked. It asserts through Blocked() as well as readyIDs because
+// readyIDs queries the `ready` view directly and cannot see a bug confined
+// to blockedTreeCTE (Go-only).
 func TestBlockingPropagatesThreeLevels(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
@@ -282,12 +276,11 @@ func TestBlockingPropagatesThreeLevels(t *testing.T) {
 
 // TestBlockedNamesTheBlocker builds a fixed fixture
 // (blocker; epic blocked by blocker; child1 under epic; grandchild
-// under child1; lonebug also blocked by blocker but NOT in the tree) and
-// asserts against the query's actual executed output verbatim, rather than
-// recomputing what it "should" be. lonebug is what proves a directly-blocked
-// item names its actual `blocks` target while a descendant names its
-// nearest blocked ancestor -- a fixture without it cannot tell the two
-// apart.
+// under child1; lonebug also blocked by blocker but not in the tree) and
+// asserts against the query's actual output exactly, rather than
+// recomputing what it should be. lonebug shows that a directly-blocked item
+// names its actual `blocks` target while a descendant names its nearest
+// blocked ancestor; a fixture without it cannot tell the two apart.
 func TestBlockedNamesTheBlocker(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
@@ -330,20 +323,20 @@ func TestBlockedNamesTheBlocker(t *testing.T) {
 	}
 }
 
-// TestReadyAndBlockedPartitionOpenTickets is the structural claim: for a
-// fixture containing scored, unscored, raw, directly-blocked,
-// transitively-blocked, in-progress, and closed items, every
-// stage='ticket' AND status='open' item appears in EXACTLY ONE of Ready and
-// Blocked -- asserted as a set property over an independently-queried
-// reference set (openTicketIDs), not as a hand-listed expectation, so it
-// keeps working as later plans add fixtures.
+// TestReadyAndBlockedPartitionOpenTickets checks that, for a fixture
+// containing scored, unscored, raw, directly-blocked, transitively-blocked,
+// in-progress, and closed items, every stage='ticket' AND status='open' item
+// appears in exactly one of Ready and Blocked. It is asserted as a set
+// property over an independently queried reference set (openTicketIDs),
+// not as a hand-listed expectation, so it keeps working as fixtures grow.
 func TestReadyAndBlockedPartitionOpenTickets(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
 
 	scored := mustAdd(t, s, AddItemInput{Title: "scored", Actor: "tester", Value: intPtr(5), Confidence: intPtr(5), Effort: intPtr(2)})
 	unscored := mustAdd(t, s, AddItemInput{Title: "unscored", Actor: "tester"})
-	mustAdd(t, s, AddItemInput{Title: "raw", Actor: "tester", Stage: model.StageRaw}) // not a ticket at all -- outside the universe
+	// Not a ticket, so outside the universe.
+	mustAdd(t, s, AddItemInput{Title: "raw", Actor: "tester", Stage: model.StageRaw})
 	blocker := mustAdd(t, s, AddItemInput{Title: "blocker", Actor: "tester"})
 	blockedDirect := mustAdd(t, s, AddItemInput{Title: "blocked-direct", Actor: "tester"})
 	blockedParent := mustAdd(t, s, AddItemInput{Title: "blocked-parent", Actor: "tester"})

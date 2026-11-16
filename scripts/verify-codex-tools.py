@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Verify keep's MCP tools load inside Codex and answer, without a turn.
 
-This checks the Codex MCP registration against a live binary. The obvious
-way -- run `codex exec` and watch it call a tool -- needs authentication and
-spends a model turn, and fails before any tool is exercised if the session
-is not authenticated.
+This checks the Codex MCP registration against a live binary. Running
+`codex exec` and watching it call a tool needs authentication and spends a
+model turn, and fails before any tool is exercised if the session is not
+authenticated.
 
 codex app-server sidesteps that entirely: mcpServerStatus/list reports what
 Codex thinks of each configured server, and mcpServer/tool/call invokes a
@@ -17,12 +17,6 @@ import shutil
 import subprocess
 import sys
 
-# BREAK CHECK: this script's own assertions were confirmed to fail
-# before being believed. Renaming one expected tool made "all tools are
-# loaded, by name" fail with the mismatched list; pointing the tool call at a
-# server name Codex does not have made it fail with a protocol error rather
-# than passing vacuously.
-#
 # Codex is not on $PATH once it has moved into the desktop app; $KEEP_CODEX
 # overrides, matching cmd/keep/codex.go's own findCodex order.
 CODEX = os.environ.get("KEEP_CODEX") or shutil.which("codex") \
@@ -77,7 +71,7 @@ def main() -> int:
         if not ok:
             failures.append(label)
 
-    # What the CLI says, read first and independently -- the MCP answer is
+    # What the CLI says, read first and independently. The MCP answer is
     # compared against this, never the other way round.
     cli = json.loads(subprocess.run(
         ["keep", "ready", "--json"], cwd=REPO,
@@ -98,7 +92,7 @@ def main() -> int:
         if keep is None:
             return 1
 
-        # Every tool, by name -- a count alone would pass if the server
+        # Every tool, by name. A count alone would pass if the server
         # advertised the right number of something else after a refactor.
         # Mirrors internal/mcp.ToolNames.
         want = sorted(["capture", "add", "ready", "backlog", "show", "list",

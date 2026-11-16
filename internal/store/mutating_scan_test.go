@@ -11,63 +11,46 @@ import (
 	"testing"
 )
 
-// mutatingStoreMethods walks every non-test .go file in this package's own
-// directory and returns the set of exported *Store methods that mutate the
-// database -- directly, or transitively through any same-package function or
-// method they call.
+// mutatingStoreMethods walks every non-test .go file in this package's
+// directory and returns the exported *Store methods that write to the
+// database, either directly or through any same-package function they call.
 //
-// Why name-based call matching, not go/types: this package is eight files
-// with no name collisions across receivers, and cmd/keep/boundary_test.go
-// already proves the same "match ast.Ident / ast.SelectorExpr.Sel.Name
-// against a keyword" idiom works in this codebase without a full type
-// checker. A fully type-checked call graph (go/types + x/tools/go/packages)
-// would correctly resolve calls through interfaces, which this package does
-// not have any of -- that precision would be unjustified weight for an
-// 8-file package with a single concrete receiver type. Do not "upgrade"
-// this later without a concrete
-// case name-based matching gets wrong.
+// Calls are matched by name rather than through go/types. This package has
+// one concrete receiver type, no interfaces and no name collisions across
+// receivers, so a type-checked call graph would add weight without changing
+// the answer.
 //
-// Why test files are excluded: _test.go files legitimately contain SQL
-// fixtures of their own (this file's own fixtureItem in events_test.go,
-// testhelp_test.go's execSQL) that call INSERT/UPDATE/DELETE directly for
-// test setup. Including them would make every test helper that happens to
-// write SQL look like a "mutating store method", which is not what the
-// one-event-per-mutation rule is about.
+// Test files are excluded because their fixtures and helpers run INSERT,
+// UPDATE and DELETE for setup, and the one-event-per-mutation rule is about
+// store methods, not test setup.
 //
-// Why transitive matters: a per-method (own-body-only) scan finds only 2 of
-// this package's 6 mutating methods -- StartItem and UpdateItem, whose
-// UPDATE items SET literals sit inside the closure passed to s.withTx, a
-// nested *ast.FuncLit within the same top-level FuncDecl that ast.Inspect
-// recurses into. It MISSES AddItem, CreateDep, CloseItem, and DropItem,
-// which delegate their SQL to shared helpers (insertItem, insertEdge,
-// insertParentChildEdge, writeEvent, closeOrDrop). A scan reporting 2 is
-// worse than one reporting 0: it is non-empty, passes any "did we find
-// anything" smoke check, and reads as though the audit-trail rule were
-// structurally enforced while actually covering a third of what it claims
-// to. This is why callers of this function must
-// additionally guard on "fewer than six", not "zero" or "non-empty" --
-// see TestMutatingScanClassifiesKnownMethods below.
+// The walk is transitive because most mutating methods delegate their SQL
+// to shared helpers (insertItem, insertEdge, insertParentChildEdge,
+// writeEvent, closeOrDrop). A scan of each method's own body would find
+// only StartItem and UpdateItem, whose UPDATE literals sit in the closure
+// passed to s.withTx. That result is non-empty, so a "found something"
+// check would pass it. TestMutatingScanClassifiesKnownMethods guards on the
+// full expected set instead.
 func mutatingStoreMethods(t *testing.T) map[string]bool {
 	t.Helper()
 
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
-		t.Fatal("runtime.Caller(0) failed -- cannot locate this test's own file to derive internal/store's directory")
+		t.Fatal("runtime.Caller(0) failed: cannot locate this test's own file to derive internal/store's directory")
 	}
 	dir := filepath.Dir(thisFile)
 
 	fset := token.NewFileSet()
 
-	// directMutating[funcName] = true if that function/method's own body
-	// (including nested function literals, e.g. the closure passed to
-	// s.withTx) contains a BasicLit STRING matching one of the three
-	// mutating SQL keyword fragments.
+	// directMutating[funcName] is true when that function's own body,
+	// including nested function literals such as the closure passed to
+	// s.withTx, holds a string literal with a mutating SQL fragment.
 	directMutating := map[string]bool{}
-	// callGraph[funcName] = set of same-package function/method names called
-	// from that function's body (transitively followed below).
+	// callGraph[funcName] is the set of same-package names called from that
+	// function's body, followed transitively below.
 	callGraph := map[string]map[string]bool{}
-	// methodReceiver[funcName] = the receiver type name, for funcs with a
-	// receiver -- used to filter to *Store methods only.
+	// methodReceiver[funcName] is the receiver type name, used to keep only
+	// *Store methods.
 	methodReceiver := map[string]string{}
 
 	filesWalked := 0
@@ -121,12 +104,12 @@ func mutatingStoreMethods(t *testing.T) map[string]bool {
 	}
 
 	if filesWalked == 0 {
-		t.Fatal("mutatingStoreMethods: walked zero .go files in internal/store -- the directory layout is broken; treat this as a failure, not a vacuous pass")
+		t.Fatal("mutatingStoreMethods: walked zero .go files in internal/store; the directory layout is broken, and an empty walk must fail rather than pass")
 	}
 
-	// reaches(name) = directMutating[name] || any(reaches(callee) for callee
-	// in callGraph[name]), memoized with a visiting-set cycle guard so a
-	// mutual-recursion cycle in the call graph cannot loop forever.
+	// reaches reports whether name, or anything it calls, writes. It is
+	// memoized, and the visiting set stops a recursive cycle in the call
+	// graph from looping forever.
 	memo := map[string]bool{}
 	visiting := map[string]bool{}
 	var reaches func(name string) bool
@@ -135,9 +118,8 @@ func mutatingStoreMethods(t *testing.T) map[string]bool {
 			return v
 		}
 		if visiting[name] {
-			// Already on the stack -- this call contributes nothing new;
-			// let the frame that started the cycle finish on its own
-			// direct/other-callee evidence.
+			// Already on the stack. This call adds nothing new; the frame
+			// that started the cycle decides on its own evidence.
 			return false
 		}
 		visiting[name] = true
@@ -171,9 +153,8 @@ func mutatingStoreMethods(t *testing.T) map[string]bool {
 	return mutating
 }
 
-// receiverTypeName extracts the bare type name from a receiver's type
-// expression, unwrapping the pointer if present -- func (s *Store) ... and
-// func (s Store) ... both yield "Store".
+// receiverTypeName returns the bare type name of a receiver, unwrapping a
+// pointer, so func (s *Store) and func (s Store) both yield "Store".
 func receiverTypeName(expr ast.Expr) string {
 	if star, ok := expr.(*ast.StarExpr); ok {
 		expr = star.X
@@ -184,11 +165,9 @@ func receiverTypeName(expr ast.Expr) string {
 	return ""
 }
 
-// mutatingSQLFragments are the same three keyword fragments
-// cmd/keep/boundary_test.go's forbiddenSQLLiterals uses for SELECT/INSERT/
-// UPDATE/DELETE/CREATE/PRAGMA -- narrowed here to the three that indicate a
-// WRITE, since SELECT/CREATE TABLE/PRAGMA appear in this package's read
-// paths and schema setup without indicating a mutating *Store method.
+// mutatingSQLFragments is the subset of cmd/keep/boundary_test.go's
+// forbiddenSQLLiterals that indicates a write. SELECT, CREATE TABLE and
+// PRAGMA appear in read paths and schema setup, so they are left out.
 var mutatingSQLFragments = []string{
 	"INSERT INTO",
 	"UPDATE ",
@@ -204,12 +183,10 @@ func containsMutatingSQL(literal string) bool {
 	return false
 }
 
-// wantMutating and wantReadOnly are today's known classification,
-// confirmed here on every run. Listed both directions deliberately: an
-// over-broad scan that returned every method would satisfy the one-event
-// set-equality guard (events_test.go) only by demanding rows for read-only
-// methods too, and that would be noticed here as unexpected noise rather
-// than silently passing that guard.
+// wantMutating and wantReadOnly are the expected classification. Both
+// directions are listed so that an over-broad scan, one that reported every
+// method as mutating, fails here by name instead of only surfacing as extra
+// rows demanded by events_test.go's one-event table.
 var (
 	wantMutating = map[string]bool{
 		"AddItem":     true,
@@ -234,26 +211,21 @@ var (
 		"Tree":         true,
 		"LastActivity": true,
 		"WhyNot":       true,
-		"DeepestChain": true,
 		"Export":       true,
 	}
 )
 
-// TestMutatingScanClassifiesKnownMethods is this scan's self-check: it must
-// reproduce today's exact 6/6 split against the real, unmodified package,
-// and it must fail loudly rather than silently passing if the scan came back
-// broken.
+// TestMutatingScanClassifiesKnownMethods checks that the scan reproduces the
+// expected classification of every exported *Store method against the real
+// package.
 func TestMutatingScanClassifiesKnownMethods(t *testing.T) {
 	got := mutatingStoreMethods(t)
 
-	// The fewer-than-six guard, as its own explicit failure: a scan
-	// reporting FEWER than six mutating methods against the unmodified
-	// package is the signature of the non-transitive bug, which reports
-	// 2 -- not 0. A "found nothing" / "found
-	// something" check would NOT catch a scan stuck at 2, so the guard here
-	// is explicitly a count threshold, not an emptiness check.
+	// A count threshold rather than an emptiness check: a scan that stops
+	// following calls still finds StartItem and UpdateItem, so it is never
+	// empty, only short.
 	if len(got) < len(wantMutating) {
-		t.Fatalf("mutatingStoreMethods found only %d mutating methods (%v), want at least %d -- this is the non-transitive-scan bug: a shallow per-method scan finds StartItem and UpdateItem (literal sits in their own withTx closure) but misses AddItem, CreateDep, CloseItem, and DropItem (SQL delegated to a helper) -- it reports 2, not 0, so this is a code change, not an unmodified-package fluke", len(got), setKeys(got), len(wantMutating))
+		t.Fatalf("mutatingStoreMethods found only %d mutating methods (%v), want at least %d; the scan is no longer following calls into the helpers that hold the SQL", len(got), setKeys(got), len(wantMutating))
 	}
 
 	for name := range wantMutating {
@@ -268,7 +240,7 @@ func TestMutatingScanClassifiesKnownMethods(t *testing.T) {
 	}
 
 	if len(got) != len(wantMutating) {
-		t.Errorf("mutatingStoreMethods returned %d methods %v, want exactly the %d in wantMutating %v -- scan found an unexpected extra method", len(got), setKeys(got), len(wantMutating), setKeys(wantMutating))
+		t.Errorf("mutatingStoreMethods returned %d methods %v, want exactly the %d in wantMutating %v; the scan found an unexpected extra method", len(got), setKeys(got), len(wantMutating), setKeys(wantMutating))
 	}
 }
 

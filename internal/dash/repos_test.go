@@ -15,13 +15,13 @@ import (
 
 // crossRepoFixture builds a registry home with two real, separate stores
 // and returns a Server pointed at it. Two stores rather than one because
-// the claim under test is a merge ACROSS them: a single store would rank
+// the claim under test is a merge across them: a single store would rank
 // correctly by accident, since store.Ready already does that.
 //
 // The scores are chosen so the correct cross-repo order interleaves the two
 // repositories. A merge that concatenated per-repository lists instead of
 // ranking across them would still put every item on the page, and would
-// still look plausible -- interleaving is what makes it fail.
+// still look plausible; interleaving is what makes it fail.
 func crossRepoFixture(t *testing.T) (*Server, string) {
 	t.Helper()
 	home := t.TempDir()
@@ -64,26 +64,24 @@ func crossRepoFixture(t *testing.T) (*Server, string) {
 	if err != nil {
 		t.Fatalf("NewServer: %v", err)
 	}
-	t.Cleanup(func() { s.Close() })
+	t.Cleanup(func() { s.ln.Close() })
 	return s, home
 }
 
-// TestAllRanksAcrossRepositories is `ready --all` on the board: one queue over
-// every registered store, ranked across all of them rather than grouped by
-// repository.
+// TestAllRanksAcrossRepositories checks that /all, the board's `ready --all`,
+// renders one queue over every registered store, ranked across all of them
+// rather than grouped by repository.
 func TestAllRanksAcrossRepositories(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is keep's, not the
-	// shell's, but there is no honest way to assert it here without a
-	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: keep's Interlock integration is unverified on
-	// Windows.
+	// Windows cannot execute. Without a Windows stub the test is skipped
+	// there rather than passing on nothing, so keep's Interlock
+	// integration is unverified on Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
 	}
 	s, _ := crossRepoFixture(t)
 
-	rec := get(t, s.Handler(), "/all")
+	rec := get(t, s.srv.Handler, "/all")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /all: status = %d, want 200", rec.Code)
 	}
@@ -113,17 +111,15 @@ func TestAllRanksAcrossRepositories(t *testing.T) {
 	}
 }
 
-// TestAllReportsUnreadableRepositoryAsARowNotAPage: a store that has been
-// deleted must cost you one row and not
-// the page -- and must never be fabricated as an empty repository, which
-// would read as "nothing to do here" rather than "this is broken".
+// TestAllReportsUnreadableRepositoryAsARowNotAPage checks that a deleted
+// store costs one error row, not the page, and is never shown as an empty
+// repository, which would read as "nothing to do here" rather than "this
+// is broken".
 func TestAllReportsUnreadableRepositoryAsARowNotAPage(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is keep's, not the
-	// shell's, but there is no honest way to assert it here without a
-	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: keep's Interlock integration is unverified on
-	// Windows.
+	// Windows cannot execute. Without a Windows stub the test is skipped
+	// there rather than passing on nothing, so keep's Interlock
+	// integration is unverified on Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
 	}
@@ -135,7 +131,7 @@ func TestAllReportsUnreadableRepositoryAsARowNotAPage(t *testing.T) {
 		t.Fatalf("remove beta store: %v", err)
 	}
 
-	rec := get(t, s.Handler(), "/all")
+	rec := get(t, s.srv.Handler, "/all")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /all with one unreadable store: status = %d, want 200 -- one broken repository must not cost the page", rec.Code)
 	}
@@ -164,22 +160,21 @@ func TestAllReportsUnreadableRepositoryAsARowNotAPage(t *testing.T) {
 	}
 }
 
-// TestAllWithNoRegistryIsAnEmptyPageNotAnError: a Server built without a
-// registry home still answers /all, because the nav link is unconditional.
+// TestAllWithNoRegistryIsAnEmptyPageNotAnError checks that a Server built
+// without a registry home still answers /all, because the nav link is
+// unconditional.
 // A 404 on a link the page itself renders is worse than an empty table.
 func TestAllWithNoRegistryIsAnEmptyPageNotAnError(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is keep's, not the
-	// shell's, but there is no honest way to assert it here without a
-	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: keep's Interlock integration is unverified on
-	// Windows.
+	// Windows cannot execute. Without a Windows stub the test is skipped
+	// there rather than passing on nothing, so keep's Interlock
+	// integration is unverified on Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
 	}
 	s, _ := newHandlerFixture(t) // built with home ""
 
-	rec := get(t, s.Handler(), "/all")
+	rec := get(t, s.srv.Handler, "/all")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /all with no registry: status = %d, want 200", rec.Code)
 	}
@@ -188,24 +183,22 @@ func TestAllWithNoRegistryIsAnEmptyPageNotAnError(t *testing.T) {
 	}
 }
 
-// TestAllNavLinkIsOnEveryView: the cross-repo queue is only reachable if
-// every page offers it. Asserting it on each view rather than on the layout
-// template is what catches a view that stops going through the shared head
-// block.
+// TestAllNavLinkIsOnEveryView checks that every view links to /all, since
+// the cross-repo queue is only reachable if every page offers it. Asserting
+// it on each view rather than on the layout template catches a view that
+// stops going through the shared head block.
 func TestAllNavLinkIsOnEveryView(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is keep's, not the
-	// shell's, but there is no honest way to assert it here without a
-	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: keep's Interlock integration is unverified on
-	// Windows.
+	// Windows cannot execute. Without a Windows stub the test is skipped
+	// there rather than passing on nothing, so keep's Interlock
+	// integration is unverified on Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
 	}
 	s, ids := newHandlerFixture(t)
 
 	for _, path := range []string{"/", "/backlog", "/item/" + ids.ready, "/tree/" + ids.epic} {
-		rec := get(t, s.Handler(), path)
+		rec := get(t, s.srv.Handler, path)
 		if rec.Code != http.StatusOK {
 			t.Fatalf("GET %s: status = %d", path, rec.Code)
 		}
@@ -215,8 +208,9 @@ func TestAllNavLinkIsOnEveryView(t *testing.T) {
 	}
 }
 
-// TestNoExternalReferencesInCrossRepoView extends the off-host proof
-// to /all, which the four-view scan in offhost_test.go predates.
+// TestNoExternalReferencesInCrossRepoView checks that /all contains no
+// off-host reference, which the four-view scan in offhost_test.go does not
+// cover.
 //
 // This view renders two things none of the other four do, and both are
 // attacker-reachable in their own way:
@@ -226,18 +220,16 @@ func TestAllNavLinkIsOnEveryView(t *testing.T) {
 //     opens in another.
 //   - an error string built from a filesystem path, when a registered store
 //     cannot be read. That text comes from os and from internal/registry
-//     rather than from an item, so a scan that only ever considered item
-//     fields would not have been looking at it.
+//     rather than from an item, so a scan that only considered item fields
+//     would miss it.
 //
 // Both cases are forced here: alpha's title carries hostile text, and beta
 // is deleted so its error row renders in the same response.
 func TestNoExternalReferencesInCrossRepoView(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is keep's, not the
-	// shell's, but there is no honest way to assert it here without a
-	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: keep's Interlock integration is unverified on
-	// Windows.
+	// Windows cannot execute. Without a Windows stub the test is skipped
+	// there rather than passing on nothing, so keep's Interlock
+	// integration is unverified on Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
 	}
@@ -270,7 +262,7 @@ func TestNoExternalReferencesInCrossRepoView(t *testing.T) {
 	// percent-encodes the spaces, so "queue http://evil..." becomes the
 	// relative path "queue%20http://evil..." and is correctly not off-host.
 	// A test built only from that shape passes even if a title is rendered
-	// into src= -- verified by breaking it exactly that way.
+	// into src=.
 	//
 	// The bare URL is the probe with teeth: nothing about it stops
 	// resolving off-host in any attribute context.
@@ -279,7 +271,7 @@ func TestNoExternalReferencesInCrossRepoView(t *testing.T) {
 	betaPath := mk("beta", "beta item")
 
 	// Break beta so the error table renders in the same response as the
-	// hostile title -- one scan over both.
+	// hostile title, and one scan covers both.
 	if err := os.Remove(betaPath); err != nil {
 		t.Fatalf("remove beta store: %v", err)
 	}
@@ -288,17 +280,17 @@ func TestNoExternalReferencesInCrossRepoView(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewServer: %v", err)
 	}
-	t.Cleanup(func() { s.Close() })
+	t.Cleanup(func() { s.ln.Close() })
 
-	rec := get(t, s.Handler(), "/all")
+	rec := get(t, s.srv.Handler, "/all")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /all: status = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
 
 	// Confirm the hostile text is actually present, escaped and inert,
-	// BEFORE trusting a clean scan -- a view that dropped the title would
-	// pass vacuously, which is the trap offhost_test.go names.
+	// before trusting a clean scan, because a view that dropped the title
+	// would pass vacuously (offhost_test.go explains this).
 	for _, want := range []string{hostileHTTP, hostileProtoRelative} {
 		if !strings.Contains(body, want) {
 			t.Errorf("hostile text %q not present in /all -- scan would pass vacuously:\n%s", want, body)
@@ -316,28 +308,25 @@ func TestNoExternalReferencesInCrossRepoView(t *testing.T) {
 	}
 }
 
-// TestInterlockPageSaysSoWhenInterlockIsAbsent: an empty table would read as
-// "nobody is working", which is the same lie an empty cross-repo queue would
-// tell about a deleted store. The test environment has no Interlock on PATH,
+// TestInterlockPageSaysSoWhenInterlockIsAbsent checks that /who says
+// Interlock is absent rather than showing an empty table, which would read
+// as "nobody is working". The test environment has no Interlock on PATH,
 // which is also the common case for a keep user.
 func TestInterlockPageSaysSoWhenInterlockIsAbsent(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is keep's, not the
-	// shell's, but there is no honest way to assert it here without a
-	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: keep's Interlock integration is unverified on
-	// Windows.
+	// Windows cannot execute. Without a Windows stub the test is skipped
+	// there rather than passing on nothing, so keep's Interlock
+	// integration is unverified on Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
 	}
 	// Explicitly off, not merely absent from PATH: whether this test saw a
 	// filtered queue would otherwise depend on whether the developer
-	// running it has Interlock installed. It caught exactly that on the
-	// machine it was written on.
+	// running it has Interlock installed.
 	t.Setenv(interlock.EnvBinary, "off")
 	s, _ := newHandlerFixture(t)
 
-	rec := get(t, s.Handler(), "/")
+	rec := get(t, s.srv.Handler, "/")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /: status = %d, want 200", rec.Code)
 	}
@@ -351,26 +340,23 @@ func TestInterlockPageSaysSoWhenInterlockIsAbsent(t *testing.T) {
 	}
 }
 
-// TestBoardIsOnePage is the shape the redesign committed to: the queue and
-// the agents holding it up are on ONE page. There is no separate view to
-// switch to, which is the whole reason the old /who is gone.
+// TestBoardIsOnePage checks that the queue and the agents holding it up are
+// on one page, with no separate view to switch to.
 func TestBoardIsOnePage(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is keep's, not the
-	// shell's, but there is no honest way to assert it here without a
-	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: keep's Interlock integration is unverified on
-	// Windows.
+	// Windows cannot execute. Without a Windows stub the test is skipped
+	// there rather than passing on nothing, so keep's Interlock
+	// integration is unverified on Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
 	}
 	t.Setenv(interlock.EnvBinary, "off")
 	s, _ := newHandlerFixture(t)
 
-	if rec := get(t, s.Handler(), "/who"); rec.Code != http.StatusNotFound {
+	if rec := get(t, s.srv.Handler, "/who"); rec.Code != http.StatusNotFound {
 		t.Errorf("GET /who returned %d; the separate Interlock view was folded into the board", rec.Code)
 	}
-	body := get(t, s.Handler(), "/").Body.String()
+	body := get(t, s.srv.Handler, "/").Body.String()
 	for _, want := range []string{"Workable now", "Agents"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the board is missing its %q section:\n%s", want, body)
@@ -390,21 +376,19 @@ func stubInterlock(t *testing.T, statusJSON string) string {
 	return path
 }
 
-// TestQueueAndInterlockViewAgree is the agreement rule applied to the second
-// join. The board's queue and /who both answer "is this held", and if they
-// answered it separately they would drift -- producing a board that omits an
-// item while the page meant to explain the omission does not mention it.
-// They share one Exclude call through readyItemsFrom; this is what proves it.
+// TestQueueAndInterlockViewAgree checks that the board's queue and /who give
+// the same answer to "is this held". If they answered it separately they
+// would drift, producing a board that omits an item while the page meant to
+// explain the omission does not mention it. They share one Exclude call
+// through readyItemsFrom.
 //
 // Changing handleReady to call s.st.Ready directly leaves every other test
 // in this package passing; this one catches it.
 func TestQueueAndInterlockViewAgree(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is keep's, not the
-	// shell's, but there is no honest way to assert it here without a
-	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: keep's Interlock integration is unverified on
-	// Windows.
+	// Windows cannot execute. Without a Windows stub the test is skipped
+	// there rather than passing on nothing, so keep's Interlock
+	// integration is unverified on Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
 	}
@@ -427,9 +411,9 @@ func TestQueueAndInterlockViewAgree(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewServer: %v", err)
 	}
-	t.Cleanup(func() { s.Close() })
+	t.Cleanup(func() { s.ln.Close() })
 
-	body := get(t, s.Handler(), "/").Body.String()
+	body := get(t, s.srv.Handler, "/").Body.String()
 
 	// One page now, so the two claims have to be read out of two sections
 	// of it. Splitting on the heading is what keeps "absent from the queue"
@@ -450,7 +434,7 @@ func TestQueueAndInterlockViewAgree(t *testing.T) {
 	}
 
 	// The page that exists to explain the omission must name the item the
-	// queue omitted -- that agreement is the whole point.
+	// queue omitted.
 	if !strings.Contains(who, held.ID) {
 		t.Errorf("the held-back section does not name %s, which the queue omitted:\n%s", held.ID, who)
 	}

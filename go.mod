@@ -25,13 +25,9 @@ require (
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	golang.org/x/sys v0.47.0 // indirect
-	// modernc.org/sqlite v1.56.0's own go.mod requires exactly this version of
-	// modernc.org/libc. A version mismatch between the two corrupts data
-	// silently (gitlab.com/cznic/sqlite/-/issues/177) -- modernc.org/sqlite's
-	// own retraction list (v1.33.0, v1.34.3) is evidence of two prior, failed
-	// attempts to fix this exact class of pairing bug. Never hand-edit this
-	// line; bump it only as a side effect of
-	// `go get modernc.org/sqlite@<new-version>` and let MVS resolve it.
+	// modernc.org/sqlite v1.56.0 requires exactly this libc version; a
+	// mismatch corrupts data (gitlab.com/cznic/sqlite/-/issues/177). It
+	// changes only through go get modernc.org/sqlite@<version>.
 	modernc.org/libc v1.74.4 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect

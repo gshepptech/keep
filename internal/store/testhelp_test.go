@@ -73,9 +73,8 @@ func eventsFor(t *testing.T, s *Store, id string) []model.Event {
 	return out
 }
 
-// readyIDs selects only id from the ready view, in view order -- never
-// SELECT *, since the view's own i.* is not
-// frozen at CREATE VIEW time.
+// readyIDs selects only id from the ready view, in view order, never
+// SELECT *, since the view's own i.* is not frozen at CREATE VIEW time.
 func readyIDs(t *testing.T, s *Store) []string {
 	t.Helper()
 	rows, err := s.db.QueryContext(context.Background(), "SELECT id FROM ready")

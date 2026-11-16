@@ -5,10 +5,10 @@ import (
 	"testing"
 )
 
-// mustCapture runs `keep capture <title> --body -` (the canonical
-// invocation order: title first, flags after, proving permuteArgs handles
-// it) with stdin as the body, and fails
-// the test immediately if it does not succeed, returning the trimmed id.
+// mustCapture runs `keep capture <title> --body -` (the canonical invocation
+// order: title first, flags after, proving permuteArgs handles it) with
+// stdin as the body, and fails the test immediately if it does not succeed,
+// returning the trimmed id.
 func mustCapture(t *testing.T, bin, repo string, e []string, stdin, title string) string {
 	t.Helper()
 	stdout, stderr, code := runStdin(t, bin, repo, e, stdin, "capture", title, "--body", "-")
@@ -20,7 +20,7 @@ func mustCapture(t *testing.T, bin, repo string, e []string, stdin, title string
 
 // firstDiffOffset returns the byte offset of the first difference between a
 // and b, or the length of the shorter string when one is a prefix of the
-// other (the append/truncation point). Used only to report a mismatch --
+// other (the append/truncation point). Used only to report a mismatch,
 // dumping a full 1MB document into a test log is unreadable, and length plus
 // offset is what actually identifies a trailing-newline or CRLF bug.
 func firstDiffOffset(a, b string) int {
@@ -51,10 +51,10 @@ func buildLargeMarkdownDoc() string {
 	return b.String()
 }
 
-// TestCaptureShowBodyRoundTripsByteIdentical: a real document, piped into
-// `capture --body -`, must come back out of `show --body` byte-identical --
-// no normalisation in either direction. Every document shape that
-// round-trips at the storage layer is exercised here again at the
+// TestCaptureShowBodyRoundTripsByteIdentical checks that a real document,
+// piped into `capture --body -`, comes back out of `show --body`
+// byte-identical, with no normalisation in either direction. Every document
+// shape that round-trips at the storage layer is exercised here again at the
 // CLI/process boundary, through a real pipe and the real binary.
 func TestCaptureShowBodyRoundTripsByteIdentical(t *testing.T) {
 	bin := buildKeep(t, "")
@@ -78,11 +78,10 @@ func TestCaptureShowBodyRoundTripsByteIdentical(t *testing.T) {
 		"Final paragraph.\n"
 	withoutTrailingNewline := strings.TrimSuffix(markdown, "\n")
 	crlf := strings.ReplaceAll(markdown, "\n", "\r\n")
-	// The NUL/invalid-UTF-8 case is a regression lock, not an open
-	// question: it round-trips with zero transform through TEXT NOT NULL on
-	// the pinned driver. It exists to
-	// catch someone later adding "defensive" encoding, not to discover new
-	// behavior.
+	// The NUL/invalid-UTF-8 case is a regression lock, not an open question:
+	// it round-trips with zero transform through TEXT NOT NULL on the pinned
+	// driver. It exists to catch someone later adding "defensive" encoding,
+	// not to discover new behavior.
 	nulAndInvalidUTF8 := "before\x00after " + string([]byte{0xff, 0xfe, 0xfd}) + " end\x00"
 	large := buildLargeMarkdownDoc()
 
@@ -110,7 +109,7 @@ func TestCaptureShowBodyRoundTripsByteIdentical(t *testing.T) {
 				t.Fatalf("show --body: stderr = %q, want empty", stderr)
 			}
 
-			// No trimming or normalising on either side of this comparison --
+			// No trimming or normalising on either side of this comparison:
 			// that would hide precisely the class of bug (an added or
 			// stripped trailing newline, mangled CRLF) this test exists to
 			// catch. A raw string != is deliberately stricter than a
@@ -145,8 +144,8 @@ func TestShowBodyAndJSONAreMutuallyExclusive(t *testing.T) {
 }
 
 // TestShowBodyEmptyBodyPrintsNothing proves an item added with no body
-// prints exactly zero bytes under --body and still exits 0 -- the empty
-// case is success, not an error.
+// prints exactly zero bytes under --body and still exits 0, because the
+// empty case is success, not an error.
 func TestShowBodyEmptyBodyPrintsNothing(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)

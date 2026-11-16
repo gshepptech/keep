@@ -88,7 +88,7 @@ func TestExcludeDropsOnlyItemsWhosePathIsHeld(t *testing.T) {
 }
 
 // TestExcludeKeepsItemsWithNoPaths states the failure direction this must
-// take. An item that declares no paths is one keep knows nothing about --
+// take. An item that declares no paths is one keep knows nothing about:
 // treating unknown as collided would hide workable work, and a queue that
 // hides work is worse than a queue that occasionally offers work someone
 // else is already doing. Interlock's own hook blocks that write anyway.
@@ -102,9 +102,9 @@ func TestExcludeKeepsItemsWithNoPaths(t *testing.T) {
 	}
 }
 
-// TestExcludeWithNoLeasesChangesNothing: the no-Interlock path is the common
-// one -- most repositories do not use it -- and it must leave the queue
-// exactly as the store returned it.
+// TestExcludeWithNoLeasesChangesNothing checks that with no leases Exclude
+// leaves the queue exactly as the store returned it. That is the common
+// path, since most repositories do not use Interlock.
 func TestExcludeWithNoLeasesChangesNothing(t *testing.T) {
 	items := []model.Item{item("a", "x.go"), item("b", "y.go")}
 	kept, collisions := Exclude(items, Status{Version: SupportedVersion})
@@ -113,10 +113,11 @@ func TestExcludeWithNoLeasesChangesNothing(t *testing.T) {
 	}
 }
 
-// TestExcludeReturnsEmptyNotNil: `ready --json` substitutes an empty slice
-// for nil so an agent doing `jq '.[]'` does not break on null. That
-// substitution happens in cmd/keep, but a filter that turned a non-nil
-// slice into nil would reintroduce the case just upstream of it.
+// TestExcludeReturnsEmptyNotNil checks that Exclude returns an empty slice
+// rather than nil. `ready --json` substitutes an empty slice for nil so an
+// agent doing `jq '.[]'` does not break on null. That substitution happens in
+// cmd/keep, but a filter that turned a non-nil slice into nil would
+// reintroduce the case just upstream of it.
 func TestExcludeReturnsEmptyNotNil(t *testing.T) {
 	kept, _ := Exclude([]model.Item{item("only", "x.go")}, held("x.go"))
 	if kept == nil {

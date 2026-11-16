@@ -21,11 +21,11 @@ import (
 //
 // mcpSession (mcp.CommandTransport + mcp.NewClient, cmd/keep/mcp_test.go)
 // is the right tool for correctness assertions and is NOT replaced by
-// this. This exists for the two properties the SDK's client structurally
-// cannot prove:
+// this. This exists for the two properties the SDK's client cannot
+// prove:
 //
 //   - pipelined calls not racing needs both requests WRITTEN before either
-//     response is READ, which a request/response client will not do --
+//     response is READ, which a request/response client will not do:
 //     mcp.ClientSession's CallTool blocks until its own response arrives.
 //   - "stdout is protocol bytes only" needs the raw stdout bytes, captured
 //     independently of the
@@ -33,16 +33,16 @@ import (
 //     pollution before a test ever saw it.
 //
 // rawOut is a tee'd copy of every byte read from the child's stdout,
-// accumulated for exactly that assertion. It and stderr are only read by
-// this file's tests AFTER the subprocess has fully exited (i.e. after
-// closeAndWait, or after the t.Cleanup kill-and-Wait fallback below) --
-// os/exec's own documented guarantee is that Wait does not return until
-// the goroutines copying into a plain io.Writer (stderr here) or draining a
-// Std*Pipe (stdout here, via this file's own read loop) have finished, so
-// reading either buffer only after Wait has returned is race-free without
-// an additional mutex. Reading either buffer WHILE the process might still
-// be writing would be a genuine data race on *bytes.Buffer, not just a
-// -race false positive, so no test in this file does that.
+// accumulated for exactly that assertion. It and stderr are only read by this
+// file's tests AFTER the subprocess has fully exited (i.e. after closeAndWait,
+// or after the t.Cleanup kill-and-Wait fallback below). os/exec documents that
+// Wait does not return until the goroutines copying into a plain io.Writer
+// (stderr here) or draining a Std*Pipe (stdout here, via this file's own read
+// loop) have finished, so reading either buffer only after Wait has returned
+// is race-free without an additional mutex. Reading either buffer WHILE the
+// process might still be writing would be a genuine data race on
+// *bytes.Buffer, not just a -race false positive, so no test in this file does
+// that.
 type rawMCPConn struct {
 	cmd    *exec.Cmd
 	stdin  io.WriteCloser
@@ -51,8 +51,7 @@ type rawMCPConn struct {
 	stderr *bytes.Buffer
 
 	// done is set once closeAndWait (or the t.Cleanup fallback) has called
-	// cmd.Wait -- the signal that rawOut/stderr are now stable and safe to
-	// read.
+	// cmd.Wait, which signals that rawOut/stderr are stable and safe to read.
 	done bool
 }
 
@@ -103,16 +102,16 @@ func startRawMCP(t *testing.T, bin, dir string, environ []string) *rawMCPConn {
 	}
 
 	// rawOut accumulates every byte read from stdoutPipe, independently of
-	// whatever this file's own read loop (awaitID/readLine) does with it --
-	// this is the load-bearing property: the byte-level assertion in
-	// TestMCPStdoutIsProtocolBytesOnly reads rawOut directly, never a value
-	// that passed through readLine/awaitID's own parsing first.
+	// whatever this file's own read loop (awaitID) does with it. The
+	// byte-level assertion in TestMCPStdoutIsProtocolBytesOnly reads rawOut
+	// directly, never a value that passed through awaitID's own parsing
+	// first.
 	var raw bytes.Buffer
 	tee := io.TeeReader(stdoutPipe, &raw)
 
 	// A plain io.Writer (not a *os.File pipe), so os/exec's own internal
-	// copying goroutine finishes -- and stderrBuf becomes safe to read --
-	// before cmd.Wait returns. See the rawMCPConn doc comment above.
+	// copying goroutine finishes, and stderrBuf becomes safe to read, before
+	// cmd.Wait returns. See the rawMCPConn doc comment above.
 	var stderrBuf bytes.Buffer
 	cmd.Stderr = &stderrBuf
 
@@ -145,7 +144,7 @@ func startRawMCP(t *testing.T, bin, dir string, environ []string) *rawMCPConn {
 }
 
 // send marshals msg and writes it to the child's stdin, terminated with a
-// single '\n' -- the exact framing mcp.StdioTransport's write side uses
+// single '\n', the framing mcp.StdioTransport's write side uses
 // (newline delimited, one complete JSON-RPC message per line, never LSP's
 // Content-Length framing).
 func (c *rawMCPConn) send(t *testing.T, msg any) {
@@ -159,35 +158,21 @@ func (c *rawMCPConn) send(t *testing.T, msg any) {
 	}
 }
 
-// readLine reads one newline-terminated message from the child's stdout,
-// trimmed of its trailing newline. Every read here also lands in rawOut via
-// the TeeReader startRawMCP installed.
-func (c *rawMCPConn) readLine(t *testing.T) string {
-	t.Helper()
-	line, err := c.stdout.ReadString('\n')
-	if err != nil {
-		t.Fatalf("readLine: read from keep mcp stdout: %v", err)
-	}
-	return strings.TrimRight(line, "\r\n")
-}
-
 // awaitID reads lines from stdout until every id in ids has been seen,
-// filing each decoded response by its own id -- never assuming the next
-// line answers the most recently sent request. This is the load-bearing
-// helper: responses arrive out of order (six pipelined requests can be
-// answered 1, 2, 4, 5, 3, 6), so
-// matching by id rather than arrival order is not a defensive nicety, it is
-// the only correct way to read a pipelined session.
+// filing each decoded response by its own id, never assuming the next line
+// answers the most recently sent request. Responses arrive out of
+// order (six pipelined requests can be answered 1, 2, 4, 5, 3, 6), so
+// matching by id is the only correct way to read a pipelined session.
 //
 // Each read attempt runs in its own goroutine with a single in-flight read
 // at a time (the next attempt is only started after the previous one has
 // completed and been consumed), so there is never more than one goroutine
-// touching c.stdout concurrently -- this keeps the harness -race-clean
-// without needing a mutex around the bufio.Reader. A bounded 15s deadline
-// (not an unbounded wait) makes a genuine hang fail loudly instead of
-// blocking the suite -- internal/store's own known deadlock class
-// (isBlockedTx's doc comment, transitions.go) is why unbounded waits are
-// not trusted here.
+// touching c.stdout concurrently, which keeps the harness -race-clean
+// without a mutex around the bufio.Reader. A bounded 15s deadline (not an
+// unbounded wait) makes a hang fail loudly instead of blocking the suite;
+// the deadlock class described in isBlockedTx's doc comment
+// (internal/store/transitions.go) is why unbounded waits are not trusted
+// here.
 func (c *rawMCPConn) awaitID(t *testing.T, ids ...int) map[int]rawResponse {
 	t.Helper()
 
@@ -239,7 +224,7 @@ func (c *rawMCPConn) awaitID(t *testing.T, ids ...int) map[int]rawResponse {
 	return got
 }
 
-// sortedIntKeys is a small logging helper for awaitID's failure messages --
+// sortedIntKeys is a small logging helper for awaitID's failure messages;
 // deterministic output makes a flaky-looking failure easier to read twice
 // and compare.
 func sortedIntKeys(m map[int]rawResponse) []int {
@@ -251,13 +236,11 @@ func sortedIntKeys(m map[int]rawResponse) []int {
 	return keys
 }
 
-// handshake sends `initialize` with protocolVersion "2025-11-25" -- the
-// version the classic initialize handshake negotiates to regardless of what
-// is requested (the classic initialize method caps the negotiated version
-// at 2025-11-25 even if the client requests a newer one), so asking for
-// the newer value here would be pointless --
-// awaits its response (id 1), then sends the `notifications/initialized`
-// notification, which carries no id and gets no response.
+// handshake sends `initialize` with protocolVersion "2025-11-25", awaits its
+// response (id 1), then sends the `notifications/initialized` notification,
+// which carries no id and gets no response. 2025-11-25 is the version the
+// classic initialize method negotiates to even if the client requests a
+// newer one, so asking for a newer value would change nothing.
 func (c *rawMCPConn) handshake(t *testing.T) {
 	t.Helper()
 
@@ -282,8 +265,8 @@ func (c *rawMCPConn) handshake(t *testing.T) {
 	})
 }
 
-// closeAndWait closes stdin (signalling the client is done -- with no
-// request left in flight, the server returns nil and exits 0) and waits for
+// closeAndWait closes stdin (signalling the client is done; with no request
+// left in flight, the server returns nil and exits 0) and waits for
 // the process to exit, returning its exit code.
 func (c *rawMCPConn) closeAndWait(t *testing.T) int {
 	t.Helper()
@@ -333,23 +316,20 @@ func TestRawMCPHandshake(t *testing.T) {
 //
 // Why one process and not several: the other concurrency tests spawn
 // several real binaries because OS-level fcntl/flock locking is invisible
-// to in-process tests. That rationale is about INTER-process contention --
-// two keep processes, two *Store values, two *sql.DB pools, arbitrated by
-// SQLite's file locks. This is the opposite hazard: INTRA-process, one
-// *Store, one connection pool, one *sql.DB, with the SDK dispatching
-// handlers concurrently. Two `keep mcp` processes would not share a *Store
-// and so would not exercise it at all. What carries over is "against the
-// real compiled binary, never a goroutine simulation": one real spawned
-// `keep mcp`, requests written before any response is read, over its real
-// stdio pipes -- not the SDK's in-memory-transports constructor, which is
-// an in-process net.Pipe and would prove nothing. The multi-process form
-// is covered by TestConcurrentAddChildrenNoOrdinalCollision
-// (cmd/keep/concurrent_test.go). This test
-// spawns ONE real `keep mcp` binary and writes FOUR requests before
-// reading any response -- four rather than two, because two pipelined
-// requests can pass by accident on a machine that happens to serialize
-// them, and the ordinal invariant this test asserts only bites with real
-// contention.
+// to in-process tests. That is about inter-process contention: two keep
+// processes, two *Store values, two *sql.DB pools, arbitrated by SQLite's
+// file locks. This is the opposite hazard: intra-process, one *Store, one
+// connection pool, one *sql.DB, with the SDK dispatching handlers
+// concurrently. Two `keep mcp` processes would not share a *Store and so
+// would not exercise it. It still runs against the real compiled binary:
+// one spawned `keep mcp`, requests written before any response is read,
+// over its real stdio pipes, not the SDK's in-memory-transports
+// constructor, which is an in-process net.Pipe. The multi-process form is
+// covered by TestConcurrentAddChildrenNoOrdinalCollision
+// (cmd/keep/concurrent_test.go). This test writes four requests before
+// reading any response rather than two, because two pipelined requests can
+// pass by accident on a machine that happens to serialize them, and the
+// ordinal invariant this test asserts only bites with real contention.
 func TestMCPPipelinedCallsDoNotRace(t *testing.T) {
 	bin := buildKeep(t, "")
 	dir := tempDir(t)
@@ -369,23 +349,19 @@ func TestMCPPipelinedCallsDoNotRace(t *testing.T) {
 	conn.handshake(t)
 
 	// Serialization here is SetMaxOpenConns(1) (internal/store/schema.go's
-	// open()), and nothing else -- no package-level mutex anywhere in this
-	// codebase. A package-level mutex would add nothing the pool does not
-	// already guarantee, and would be a second, weaker place someone could
-	// later "optimise" the guarantee away. This test is what makes that a
-	// TESTED decision rather than an assumption.
+	// open()) and nothing else; there is no package-level mutex in this
+	// codebase. One would add nothing the pool does not already guarantee,
+	// and this test checks that the pool is enough.
 	//
-	// The hazard is not hypothetical: the SDK dispatches every tools/call
-	// concurrently (jsonrpc2.Async, called on every request). Six pipelined
-	// requests can be answered in the order 1, 2, 4, 5, 3, 6
-	// -- which is also why awaitID (above) files responses by id instead
-	// of assuming arrival order.
+	// The SDK dispatches every tools/call concurrently (jsonrpc2.Async,
+	// called on every request). Six pipelined requests can be answered in
+	// the order 1, 2, 4, 5, 3, 6, which is also why awaitID (above) files
+	// responses by id instead of assuming arrival order.
 
-	// Write all four requests to stdin with NO read between them. This
-	// loop is the whole point of the test: inserting a readLine/awaitID
-	// call between these four sends would silently turn this into four
-	// SEQUENTIAL calls and prove nothing about concurrent dispatch, and the
-	// test would still pass.
+	// Write all four requests to stdin with NO read between them. Inserting
+	// an awaitID call between these four sends would silently turn this into
+	// four SEQUENTIAL calls and prove nothing about concurrent dispatch, and
+	// the test would still pass.
 	for i, id := range []int{10, 11, 12, 13} {
 		conn.send(t, map[string]any{
 			"jsonrpc": "2.0",
@@ -427,10 +403,10 @@ func TestMCPPipelinedCallsDoNotRace(t *testing.T) {
 		if item.Ordinal == nil {
 			t.Fatalf("raw id %d: item %s has a nil ordinal, want one of 1..4", reqID, item.ID)
 		}
-		// Assert as SETS (map[int]bool, map[string]bool), not as a count or
-		// a maximum -- the same reason as TestConcurrentAddChildrenNoOrdinalCollision
-		// (cmd/keep/concurrent_test.go): a count of 4 also passes if two children
-		// share an ordinal and a third is missing entirely.
+		// Assert as sets (map[int]bool, map[string]bool), not as a count or
+		// a maximum, for the same reason as
+		// TestConcurrentAddChildrenNoOrdinalCollision: a count of 4 also
+		// passes if two children share an ordinal and a third is missing.
 		ordinals[*item.Ordinal] = true
 		ids[item.ID] = true
 	}
@@ -476,21 +452,19 @@ func TestMCPPipelinedCallsDoNotRace(t *testing.T) {
 
 // TestMCPStdoutIsProtocolBytesOnly proves every byte the
 // `keep mcp` process writes to stdout is a complete JSON-RPC 2.0 message
-// on its own line, and every diagnostic lands on stderr instead --
+// on its own line, and every diagnostic lands on stderr instead. It is
 // asserted at the byte level, over conn.rawOut (the tee'd copy of every
-// byte actually read from stdout), never through readLine's already-parsed
-// return value and never through the SDK client. The point is to see what
-// the process actually wrote, before anything tolerant had a chance to
-// normalise it.
+// byte read from stdout), never through awaitID's already-parsed return
+// value or the SDK client, so it sees what the process wrote before
+// anything tolerant could normalise it.
 //
-// What else in this process could write to stdout, so a future reader does
-// not need to re-derive it: the SDK's mcp package references os.Stdout in
-// exactly one place (StdioTransport.Connect's own wiring); the pinned
-// modernc.org/sqlite v1.56.0 references it nowhere; the pinned
-// modernc.org/libc v1.74.4's four references are C-library emulation
-// unreachable for this project's usage; Go's log package defaults to
-// os.Stderr. The one plausible accidental vector is a bare fmt.Println in
-// code this project writes -- which is precisely what this test catches.
+// Other code in this process that could write to stdout: the SDK's mcp
+// package references os.Stdout in one place (StdioTransport.Connect's own
+// wiring); the pinned modernc.org/sqlite references it nowhere; the pinned
+// modernc.org/libc's references are C-library emulation unreachable for
+// this project's usage; Go's log package defaults to os.Stderr. The likely
+// accidental source is a bare fmt.Println in this project's code, which is
+// what this test catches.
 func TestMCPStdoutIsProtocolBytesOnly(t *testing.T) {
 	bin := buildKeep(t, "")
 	dir := tempDir(t)
@@ -514,7 +488,7 @@ func TestMCPStdoutIsProtocolBytesOnly(t *testing.T) {
 		return nextID
 	}
 
-	// tools/list -- exercises the handler-free SDK dispatch path.
+	// tools/list exercises the handler-free SDK dispatch path.
 	listID := send("tools/list", nil)
 	if resp := conn.awaitID(t, listID)[listID]; resp.Error != nil {
 		t.Fatalf("tools/list: protocol error: code=%d message=%s", resp.Error.Code, resp.Error.Message)
@@ -620,9 +594,9 @@ func TestMCPStdoutIsProtocolBytesOnly(t *testing.T) {
 			// empty line would itself be pollution (an actually-blank
 			// line is not a valid JSON-RPC message), but strings.Split
 			// cannot distinguish "trailing newline" from "blank line in
-			// the middle" by position alone here -- so this loop counts
+			// the middle" by position alone here, so this loop counts
 			// non-empty lines only, and separately below asserts the
-			// EXACT expected id-bearing count, which a spurious blank
+			// exact expected id-bearing count, which a spurious blank
 			// line in the middle would silently violate by making the
 			// message-count-vs-response-count arithmetic not line up
 			// with what was actually sent.
@@ -642,7 +616,7 @@ func TestMCPStdoutIsProtocolBytesOnly(t *testing.T) {
 			t.Fatalf("stdout line %d is valid JSON but jsonrpc = %q, want \"2.0\": %q", i, probe.JSONRPC, line)
 		}
 		if probe.ID == nil {
-			// A notification from the server -- none expected in this
+			// A notification from the server: none expected in this
 			// session, but not itself a violation of the "protocol
 			// bytes only" claim if one arrived; only a non-JSON or
 			// non-jsonrpc-2.0 line is pollution.
@@ -661,16 +635,16 @@ func TestMCPStdoutIsProtocolBytesOnly(t *testing.T) {
 		t.Fatalf("stdout carried %d id-bearing responses, want %d (one per id-bearing request sent: %v) -- a silently dropped or duplicated response is as much a protocol failure as an extra line", parsedResponseCount, len(sentIDs), sentIDs)
 	}
 
-	// stderr is only read now, after closeAndWait's cmd.Wait has returned
-	// -- see the rawMCPConn doc comment for why this ordering is what
-	// makes the read race-free.
+	// stderr is only read now, after closeAndWait's cmd.Wait has returned;
+	// the rawMCPConn doc comment explains why this ordering makes the read
+	// race-free.
 	stderrText := conn.stderr.String()
 	if stderrText == "" {
 		t.Fatalf("stderr is empty -- the server's diagnostics never landed anywhere, so the \"diagnostics go to stderr\" half is unproven")
 	}
 	// slog.NewTextHandler's own output format (cmd/keep/mcp.go's runMCP
-	// sets one explicitly, pointed at stderr) -- a distinctive substring,
-	// not the whole buffer, since the whole buffer also contains
+	// sets one explicitly, pointed at stderr). It checks a distinctive
+	// substring, not the whole buffer, since the whole buffer also contains
 	// timestamps that would never appear verbatim anyway.
 	const slogMarker = "level=INFO"
 	if !strings.Contains(stderrText, slogMarker) {

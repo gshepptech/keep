@@ -11,8 +11,8 @@ import (
 // TestTimeFormat_FixedWidthAndOrdered proves the property TimeFormat exists
 // for: formatting two instants one nanosecond apart always produces two
 // strings of equal length, and the earlier one sorts lexically before the
-// later one -- the property the ready view's created_at ASC tiebreak relies
-// on (see TimeFormat's doc comment).
+// later one. The ready view's created_at ASC tiebreak relies on that (see
+// TimeFormat's doc comment).
 func TestTimeFormat_FixedWidthAndOrdered(t *testing.T) {
 	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	earlier := FormatTime(base)
@@ -117,12 +117,12 @@ func keysOf(m map[string]json.RawMessage) []string {
 	return keys
 }
 
-// TestOrderedVocabulariesMatchTheirMaps is the guard that matters: a new
-// value added to a Valid* map but not its matching
-// *Ordered slice would otherwise silently vanish from every enum and every
-// ordering built on it. For each of the four pairs, this asserts set
-// equality in both directions plus equal length, AND the literal expected
-// order -- so a reordering is a test failure, not a silent behaviour change.
+// TestOrderedVocabulariesMatchTheirMaps checks that each Valid* map and its
+// *Ordered slice hold the same values in the expected order. A value added
+// to the map but not the slice would otherwise vanish from every enum and
+// every ordering built on it. For each of the four pairs, this asserts set
+// equality in both directions, equal length, and the literal expected
+// order, so a reordering fails the test instead of changing behaviour.
 func TestOrderedVocabulariesMatchTheirMaps(t *testing.T) {
 	cases := []struct {
 		name      string

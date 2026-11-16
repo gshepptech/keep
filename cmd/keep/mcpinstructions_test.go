@@ -10,16 +10,16 @@ import (
 // initializeResult is the initialize response's Result payload, narrowed to
 // the one field these tests are about. `instructions` is
 // json:"instructions,omitempty" on the wire, so an empty string is not
-// serialised at all -- decoding into *string rather than string is what
-// distinguishes "absent" from "present and empty", which is the whole
-// distinction TestMCPInstructionsAbsentOnEmptyStore asserts.
+// serialised at all. Decoding into *string rather than string distinguishes
+// "absent" from "present and empty", which is what
+// TestMCPInstructionsAbsentOnEmptyStore asserts.
 type initializeResult struct {
 	Instructions *string `json:"instructions"`
 }
 
 // initializeInstructions runs one real `keep mcp` subprocess against dir,
 // performs the initialize handshake, and returns the `instructions` field
-// from the response -- nil when the field was absent.
+// from the response, or nil when the field was absent.
 //
 // It spawns the binary rather than calling mcpInstructions directly on
 // purpose: the claim under test is that the field reaches an MCP client
@@ -56,11 +56,10 @@ func initializeInstructions(t *testing.T, bin, dir string, environ []string) *st
 	return got.Instructions
 }
 
-// TestMCPInstructionsCarryTheQueue is the whole point of the field: an MCP
-// client learns what is workable from the handshake alone, with no hook, no
-// plugin, and no per-agent instruction file -- which is what makes this
-// channel reach Codex and every other MCP client on equal terms with Claude
-// Code.
+// TestMCPInstructionsCarryTheQueue checks that the handshake instructions
+// carry the ready queue, so an MCP client that shows them to the model
+// learns what is workable from the handshake alone, with no hook, no plugin,
+// and no per-agent instruction file.
 func TestMCPInstructionsCarryTheQueue(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)
@@ -80,13 +79,13 @@ func TestMCPInstructionsCarryTheQueue(t *testing.T) {
 
 	// The highest-scoring ticket's id must be present. Asserting the id
 	// rather than the title is deliberate: an agent that acts on this text
-	// must call `start <id>`, so the id is the load-bearing part.
+	// must call `start <id>`, so the id is the part it needs.
 	if !strings.Contains(ins, top) {
 		t.Errorf("instructions do not name the top ticket %s:\n%s", top, ins)
 	}
 
-	// Counts must be exact. "ready 2" specifically -- the raw note must not
-	// be counted as ready: raw is never workable, restated at this boundary.
+	// Counts must be exact. "ready 2" specifically, because the raw note
+	// must not be counted as ready: raw is never workable.
 	if !strings.Contains(ins, "ready 2,") {
 		t.Errorf("instructions do not report exactly 2 ready (the raw note must not count):\n%s", ins)
 	}
@@ -101,12 +100,11 @@ func TestMCPInstructionsCarryTheQueue(t *testing.T) {
 	}
 }
 
-// TestMCPInstructionsTruncateRowsNotCounts locks the same rule runBoard
-// states at length and for the same reason: the count is over the whole
-// queue, the rows are a prefix of it. A second Ready call with a limit, or
-// one call limited for both, is how a count silently stops matching its own
-// list -- and here it would be invisible, because nothing renders these two
-// numbers side by side except an agent reading them.
+// TestMCPInstructionsTruncateRowsNotCounts checks the rule runBoard states,
+// for the same reason: the count is over the whole queue, and the rows are
+// a prefix of it. A second Ready call with a limit, or one call limited for
+// both, would let the count silently stop matching its own list, and here
+// nothing but an agent reading them renders the two numbers side by side.
 func TestMCPInstructionsTruncateRowsNotCounts(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)
@@ -147,11 +145,10 @@ func TestMCPInstructionsTruncateRowsNotCounts(t *testing.T) {
 	}
 }
 
-// TestMCPInstructionsAbsentOnEmptyStore is the same silence
-// plugin/scripts/session-queue.py keeps, at the other channel: an
-// initialised but empty store has nothing to say, and announcing an empty
-// queue every session trains a reader to skip the block -- which costs the
-// field its only job.
+// TestMCPInstructionsAbsentOnEmptyStore checks that an initialised but empty
+// store sends no instructions, the same silence
+// plugin/scripts/session-queue.py keeps. Announcing an empty queue every
+// session trains a reader to skip the block.
 //
 // The assertion is on absence of the JSON key, not on an empty string,
 // because `omitempty` is what makes those two the same thing on the wire.

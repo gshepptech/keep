@@ -52,26 +52,24 @@ func twoProjects(t *testing.T) (*Server, string) {
 	if err != nil {
 		t.Fatalf("NewServer: %v", err)
 	}
-	t.Cleanup(func() { s.Close() })
+	t.Cleanup(func() { s.ln.Close() })
 	return s, home
 }
 
-// TestBoardNamesItsProject is the complaint that prompted all of this: a
-// board that does not say which project it is serving is one you can act on
-// by mistake, and with several open in tabs that is a matter of when.
+// TestBoardNamesItsProject checks that the board names the project it is
+// serving. One that does not can be acted on by mistake, and with several
+// open in tabs that is only a matter of time.
 func TestBoardNamesItsProject(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is keep's, not the
-	// shell's, but there is no honest way to assert it here without a
-	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: keep's Interlock integration is unverified on
-	// Windows.
+	// Windows cannot execute. Without a Windows stub the test is skipped
+	// there rather than passing on nothing, so keep's Interlock
+	// integration is unverified on Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
 	}
 	s, home := twoProjects(t)
 
-	body := get(t, s.Handler(), "/").Body.String()
+	body := get(t, s.srv.Handler, "/").Body.String()
 	if !strings.Contains(body, "here") {
 		t.Errorf("the board does not name its project:\n%s", body)
 	}
@@ -81,22 +79,20 @@ func TestBoardNamesItsProject(t *testing.T) {
 	}
 }
 
-// TestEachProjectHasItsOwnBoard: /p/<name> serves that project's store, not
-// the one the server was started in.
+// TestEachProjectHasItsOwnBoard checks that /p/<name> serves that project's
+// store, not the one the server was started in.
 func TestEachProjectHasItsOwnBoard(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is keep's, not the
-	// shell's, but there is no honest way to assert it here without a
-	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: keep's Interlock integration is unverified on
-	// Windows.
+	// Windows cannot execute. Without a Windows stub the test is skipped
+	// there rather than passing on nothing, so keep's Interlock
+	// integration is unverified on Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
 	}
 	s, _ := twoProjects(t)
 
-	here := get(t, s.Handler(), "/").Body.String()
-	there := get(t, s.Handler(), "/p/there").Body.String()
+	here := get(t, s.srv.Handler, "/").Body.String()
+	there := get(t, s.srv.Handler, "/p/there").Body.String()
 
 	if !strings.Contains(here, "work in here") || strings.Contains(here, "work in there") {
 		t.Errorf("the default board is not showing only its own project's work:\n%s", here)
@@ -111,22 +107,21 @@ func TestEachProjectHasItsOwnBoard(t *testing.T) {
 	}
 }
 
-// TestOtherProjectLinksStayInThatProject. Without a prefix on every link, a
-// click on another project's board silently navigates back to the default
-// one -- which looks like the data changed under you.
+// TestOtherProjectLinksStayInThatProject checks that every link on another
+// project's board carries that project's prefix. Without it, a click
+// silently navigates back to the default board, which looks like the data
+// changed under you.
 func TestOtherProjectLinksStayInThatProject(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is keep's, not the
-	// shell's, but there is no honest way to assert it here without a
-	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: keep's Interlock integration is unverified on
-	// Windows.
+	// Windows cannot execute. Without a Windows stub the test is skipped
+	// there rather than passing on nothing, so keep's Interlock
+	// integration is unverified on Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
 	}
 	s, _ := twoProjects(t)
 
-	body := get(t, s.Handler(), "/p/there").Body.String()
+	body := get(t, s.srv.Handler, "/p/there").Body.String()
 	if !strings.Contains(body, `href="/p/there/item/`) {
 		t.Errorf("item links on /p/there do not stay in that project:\n%s", body)
 	}
@@ -135,40 +130,38 @@ func TestOtherProjectLinksStayInThatProject(t *testing.T) {
 	}
 }
 
-// TestUnknownProjectIs404: a mistyped name is an ordinary miss. Reporting
-// it as a server failure sends a person looking for a bug that is not there.
+// TestUnknownProjectIs404 checks that an unknown project name is a 404. A
+// mistyped name is an ordinary miss, and reporting it as a server failure
+// sends a person looking for a bug that is not there.
 func TestUnknownProjectIs404(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is keep's, not the
-	// shell's, but there is no honest way to assert it here without a
-	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: keep's Interlock integration is unverified on
-	// Windows.
+	// Windows cannot execute. Without a Windows stub the test is skipped
+	// there rather than passing on nothing, so keep's Interlock
+	// integration is unverified on Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
 	}
 	s, _ := twoProjects(t)
 
-	if rec := get(t, s.Handler(), "/p/nope"); rec.Code != http.StatusNotFound {
+	if rec := get(t, s.srv.Handler, "/p/nope"); rec.Code != http.StatusNotFound {
 		t.Errorf("GET /p/nope returned %d, want 404", rec.Code)
 	}
 }
 
-// TestProjectsPageListsEveryProject with the two facts a person needs to
-// tell them apart.
+// TestProjectsPageListsEveryProject checks that the projects page lists
+// every registered project with the two facts a person needs to tell them
+// apart.
 func TestProjectsPageListsEveryProject(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is keep's, not the
-	// shell's, but there is no honest way to assert it here without a
-	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: keep's Interlock integration is unverified on
-	// Windows.
+	// Windows cannot execute. Without a Windows stub the test is skipped
+	// there rather than passing on nothing, so keep's Interlock
+	// integration is unverified on Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
 	}
 	s, home := twoProjects(t)
 
-	body := get(t, s.Handler(), "/projects").Body.String()
+	body := get(t, s.srv.Handler, "/projects").Body.String()
 	for _, want := range []string{"here", "there", filepath.Join(home, "here"), filepath.Join(home, "there")} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the projects page is missing %q:\n%s", want, body)
@@ -176,16 +169,15 @@ func TestProjectsPageListsEveryProject(t *testing.T) {
 	}
 }
 
-// TestAddingAProjectRequiresAStore. Registering is not creating: a board
-// that quietly ran init would be deciding on a person's behalf that a
-// directory should become a project.
+// TestAddingAProjectRequiresAStore checks that adding a directory with no
+// store is refused. Registering is not creating: a board that quietly ran
+// init would be deciding on a person's behalf that a directory should
+// become a project.
 func TestAddingAProjectRequiresAStore(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is keep's, not the
-	// shell's, but there is no honest way to assert it here without a
-	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: keep's Interlock integration is unverified on
-	// Windows.
+	// Windows cannot execute. Without a Windows stub the test is skipped
+	// there rather than passing on nothing, so keep's Interlock
+	// integration is unverified on Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
 	}
@@ -199,19 +191,18 @@ func TestAddingAProjectRequiresAStore(t *testing.T) {
 	if loc := rec.Header().Get("Location"); !strings.Contains(loc, "keep+init") && !strings.Contains(loc, "keep%20init") {
 		t.Errorf("the refusal does not say how to make it a project: %s", loc)
 	}
-	if strings.Contains(get(t, s.Handler(), "/projects").Body.String(), empty) {
+	if strings.Contains(get(t, s.srv.Handler, "/projects").Body.String(), empty) {
 		t.Error("a directory with no store was registered anyway")
 	}
 }
 
-// TestAddingAProjectRegistersIt, given a directory that does have one.
+// TestAddingAProjectRegistersIt checks that adding a directory that has a
+// store registers it.
 func TestAddingAProjectRegistersIt(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is keep's, not the
-	// shell's, but there is no honest way to assert it here without a
-	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: keep's Interlock integration is unverified on
-	// Windows.
+	// Windows cannot execute. Without a Windows stub the test is skipped
+	// there rather than passing on nothing, so keep's Interlock
+	// integration is unverified on Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
 	}
@@ -231,22 +222,20 @@ func TestAddingAProjectRegistersIt(t *testing.T) {
 	if rec := post(t, s, "/do/project-add", url.Values{"dir": {dir}}); rec.Code != http.StatusSeeOther {
 		t.Fatalf("status %d, want 303: %s", rec.Code, rec.Body.String())
 	}
-	if !strings.Contains(get(t, s.Handler(), "/projects").Body.String(), dir) {
+	if !strings.Contains(get(t, s.srv.Handler, "/projects").Body.String(), dir) {
 		t.Error("the added project is not listed")
 	}
 }
 
-// TestAddingAProjectCreatesAStoreOnlyWhenAsked. Creating writes a file into
-// someone's repository, which is not a thing to do because a form was
-// submitted -- so the checkbox is the consent, and without it the refusal
-// names both ways out.
+// TestAddingAProjectCreatesAStoreOnlyWhenAsked checks that a store is
+// created only when the create checkbox is ticked. Creating writes a file
+// into someone's repository, so the checkbox is the consent, and without it
+// the refusal names both ways out.
 func TestAddingAProjectCreatesAStoreOnlyWhenAsked(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is keep's, not the
-	// shell's, but there is no honest way to assert it here without a
-	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: keep's Interlock integration is unverified on
-	// Windows.
+	// Windows cannot execute. Without a Windows stub the test is skipped
+	// there rather than passing on nothing, so keep's Interlock
+	// integration is unverified on Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
 	}
@@ -267,20 +256,19 @@ func TestAddingAProjectCreatesAStoreOnlyWhenAsked(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, ".rounce", "db.sqlite")); err != nil {
 		t.Errorf("asked to create the store and it did not: %v", err)
 	}
-	if !strings.Contains(get(t, s.Handler(), "/projects").Body.String(), dir) {
+	if !strings.Contains(get(t, s.srv.Handler, "/projects").Body.String(), dir) {
 		t.Error("the created project is not listed")
 	}
 }
 
-// TestCreateRefusesAMissingDirectory: creating a store is one thing,
-// creating the repository around it is another nobody asked for.
+// TestCreateRefusesAMissingDirectory checks that creating a store in a
+// directory that does not exist is refused, because creating the
+// repository around it is something nobody asked for.
 func TestCreateRefusesAMissingDirectory(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is keep's, not the
-	// shell's, but there is no honest way to assert it here without a
-	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: keep's Interlock integration is unverified on
-	// Windows.
+	// Windows cannot execute. Without a Windows stub the test is skipped
+	// there rather than passing on nothing, so keep's Interlock
+	// integration is unverified on Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
 	}
@@ -298,16 +286,14 @@ func TestCreateRefusesAMissingDirectory(t *testing.T) {
 
 // TestActionsWriteToTheProjectTheyCameFrom proves every mutating action
 // resolves the store from the form, not from startup. Otherwise filing an
-// item while looking at one project's board would put it in another's --
+// item while looking at one project's board would put it in another's,
 // silently, since the item lands somewhere real, just not where the person
 // was looking.
 func TestActionsWriteToTheProjectTheyCameFrom(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is keep's, not the
-	// shell's, but there is no honest way to assert it here without a
-	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: keep's Interlock integration is unverified on
-	// Windows.
+	// Windows cannot execute. Without a Windows stub the test is skipped
+	// there rather than passing on nothing, so keep's Interlock
+	// integration is unverified on Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
 	}
@@ -322,34 +308,32 @@ func TestActionsWriteToTheProjectTheyCameFrom(t *testing.T) {
 		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
 	}
 
-	there := get(t, s.Handler(), "/p/there").Body.String()
+	there := get(t, s.srv.Handler, "/p/there").Body.String()
 	if !strings.Contains(there, "filed from the other board") {
 		t.Errorf("the item did not land in the project it was filed from:\n%s", there)
 	}
-	here := get(t, s.Handler(), "/").Body.String()
+	here := get(t, s.srv.Handler, "/").Body.String()
 	if strings.Contains(here, "filed from the other board") {
 		t.Errorf("the item landed in the started-in project instead:\n%s", here)
 	}
 	_ = home
 }
 
-// TestEveryActionFormCarriesItsProject. The fix above is only real if the
-// forms actually send the field -- one that omits it writes to the wrong
-// store and says nothing.
+// TestEveryActionFormCarriesItsProject checks that every action form sends
+// its project field, because a form that leaves it out writes to the wrong
+// store without saying so.
 func TestEveryActionFormCarriesItsProject(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is keep's, not the
-	// shell's, but there is no honest way to assert it here without a
-	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: keep's Interlock integration is unverified on
-	// Windows.
+	// Windows cannot execute. Without a Windows stub the test is skipped
+	// there rather than passing on nothing, so keep's Interlock
+	// integration is unverified on Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
 	}
 	s, _ := twoProjects(t)
 
 	for _, path := range []string{"/p/there", "/p/there/new", "/p/there/backlog"} {
-		body := get(t, s.Handler(), path).Body.String()
+		body := get(t, s.srv.Handler, path).Body.String()
 		forms := strings.Count(body, `action="/do/`)
 		if forms == 0 {
 			continue
@@ -360,16 +344,15 @@ func TestEveryActionFormCarriesItsProject(t *testing.T) {
 	}
 }
 
-// TestActionRedirectsStayInTheProject: sending someone back to "/" after
-// they acted on another project's board moves them somewhere else and makes
-// their own change look like it did not happen.
+// TestActionRedirectsStayInTheProject checks that an action on another
+// project's board redirects back into that project. Sending someone to "/"
+// would move them somewhere else and make their own change look like it did
+// not happen.
 func TestActionRedirectsStayInTheProject(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is keep's, not the
-	// shell's, but there is no honest way to assert it here without a
-	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: keep's Interlock integration is unverified on
-	// Windows.
+	// Windows cannot execute. Without a Windows stub the test is skipped
+	// there rather than passing on nothing, so keep's Interlock
+	// integration is unverified on Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
 	}
@@ -385,21 +368,20 @@ func TestActionRedirectsStayInTheProject(t *testing.T) {
 	}
 }
 
-// TestAgentControlsFollowTheProject.
+// TestAgentControlsFollowTheProject checks that the launch control appears
+// only on a project where coordination is set up.
 //
 // The launch control must not be gated on whether the interlock binary
 // answers from the *server's* directory, which is two wrong questions at
 // once: it asks about the wrong repository, and "is Interlock installed"
 // is not "is Interlock set up here". The binary answers status from any
-// directory, including one it has never been initialised in -- so the
-// button would appear on projects where pressing it would do nothing.
+// directory, including one it has never been initialised in, so the button
+// would appear on projects where pressing it would do nothing.
 func TestAgentControlsFollowTheProject(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is keep's, not the
-	// shell's, but there is no honest way to assert it here without a
-	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: keep's Interlock integration is unverified on
-	// Windows.
+	// Windows cannot execute. Without a Windows stub the test is skipped
+	// there rather than passing on nothing, so keep's Interlock
+	// integration is unverified on Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
 	}
@@ -407,7 +389,7 @@ func TestAgentControlsFollowTheProject(t *testing.T) {
 
 	// Neither project is set up, so neither offers to launch.
 	for _, path := range []string{"/", "/p/there"} {
-		body := get(t, s.Handler(), path).Body.String()
+		body := get(t, s.srv.Handler, path).Body.String()
 		if strings.Contains(body, `action="/do/launch"`) {
 			t.Errorf("%s offers to start an agent with no coordination set up:\n%s", path, body)
 		}
@@ -420,10 +402,10 @@ func TestAgentControlsFollowTheProject(t *testing.T) {
 	// that directory, which is the question Watches actually asks.
 	t.Setenv(interlock.EnvBinary, doctorStub(t, filepath.Join(home, "there")))
 
-	if body := get(t, s.Handler(), "/p/there").Body.String(); !strings.Contains(body, `action="/do/launch"`) {
+	if body := get(t, s.srv.Handler, "/p/there").Body.String(); !strings.Contains(body, `action="/do/launch"`) {
 		t.Errorf("/p/there does not offer to start an agent although it is set up:\n%s", body)
 	}
-	if body := get(t, s.Handler(), "/").Body.String(); strings.Contains(body, `action="/do/launch"`) {
+	if body := get(t, s.srv.Handler, "/").Body.String(); strings.Contains(body, `action="/do/launch"`) {
 		t.Error("the other project offers to start an agent although only /p/there is set up")
 	}
 }
@@ -432,7 +414,7 @@ func TestAgentControlsFollowTheProject(t *testing.T) {
 // directory, and whose `status` answers everywhere.
 //
 // It stubs doctor rather than a marker file because that is what Watches
-// asks -- and the two cheaper signals both proved wrong in use: a present
+// asks. The two cheaper signals both give the wrong answer: a present
 // binary answers for repositories it has never touched, and .interlock
 // appears when the first lease is recorded rather than when init runs.
 func doctorStub(t *testing.T, wired string) string {
@@ -454,19 +436,17 @@ func doctorStub(t *testing.T, wired string) string {
 // strconvQuote is shell-quoting for one path.
 func strconvQuote(s string) string { return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'" }
 
-// TestTurningOnCoordinationConfirmsItWorked.
+// TestTurningOnCoordinationConfirmsItWorked checks that turning on
+// coordination reports success only after doctor confirms it took.
 //
-// The first version reported success on init's exit code alone. It had run
-// against a check that tested for something init does not create, so the
-// board announced coordination was on while still showing it as off --
-// which is worse than failing, because it stops you looking.
+// An exit code from init is not proof that coordination is on. Only doctor
+// confirms the hooks are wired, and a success message without that check
+// would leave the board saying on while it shows off.
 func TestTurningOnCoordinationConfirmsItWorked(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is keep's, not the
-	// shell's, but there is no honest way to assert it here without a
-	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: keep's Interlock integration is unverified on
-	// Windows.
+	// Windows cannot execute. Without a Windows stub the test is skipped
+	// there rather than passing on nothing, so keep's Interlock
+	// integration is unverified on Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
 	}

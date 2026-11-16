@@ -10,9 +10,9 @@ import (
 	"github.com/gshepptech/keep/internal/store"
 )
 
-// Version is the registry envelope's schema version. It exists so a future
-// field does not require guessing at an unversioned array -- Load refuses a
-// version it does not understand rather than silently misreading it.
+// Version is the registry envelope's schema version, so a future field
+// does not require guessing at an unversioned array. Load refuses a version
+// it does not understand rather than silently misreading it.
 const Version = 1
 
 // FileName is the registry's basename inside the home store directory
@@ -55,8 +55,7 @@ func PathIn(home string) string {
 // `keep init --db /tmp/scratch/x.sqlite`, where two levels up is "/tmp".
 // Checking for the .rounce/ component first gives the repository
 // directory's base name in both layouts. The store file's own name is never
-// used: it is always
-// "db.sqlite" and useless as a label.
+// used: it is always "db.sqlite" and useless as a label.
 func NameFor(storePath string) string {
 	dir := filepath.Dir(storePath)
 	if filepath.Base(dir) == store.StoreDirName {
@@ -67,10 +66,10 @@ func NameFor(storePath string) string {
 
 // Load reads home's registry.
 //
-// It returns BOTH an empty, usable envelope AND a non-nil error whenever the
-// file is present but unusable -- malformed JSON, an unreadable file, an
-// unrecognised version. That double return is deliberate, not sloppy:
-// a broken registry is never fatal, so every caller reports err on stderr
+// It returns both an empty, usable envelope and a non-nil error whenever
+// the file is present but unusable: malformed JSON, an unreadable file, or
+// an unrecognised version. The double return is deliberate because a
+// broken registry is never fatal, so every caller reports err on stderr
 // and proceeds with the envelope it was also handed. A caller that returned
 // early on err would stop `keep ready` from working in the repository the
 // user is standing in.
@@ -105,14 +104,14 @@ func Load(home string) (Envelope, error) {
 // os.Rename fails with EXDEV across filesystems, and ~/.rounce and /tmp are
 // not guaranteed to be the same mount. POSIX rename(2) guarantees a
 // concurrent reader observes either the old file or the new file, never a
-// partial write -- which is what makes two racing `keep init` runs unable
-// to leave behind a registry that breaks every future `repos` call.
+// partial write, so two racing `keep init` runs cannot leave behind a
+// registry that breaks every future `repos` call.
 //
 // What this does NOT guarantee, and must not be claimed: isolation of the
 // read-modify-write sequence AROUND the rename. Two processes registering
 // two DIFFERENT new repos concurrently, each having read the registry before
 // the other's rename landed, will have one rename completely replace the
-// other's addition -- a lost update, not a corrupt file. A half-written
+// other's addition. That is a lost update, not a corrupt file. A half-written
 // registry that breaks every future `repos` call is a much worse failure
 // than a lost registration. Isolation comes from withLock (lock.go), not
 // from Save.
@@ -158,11 +157,10 @@ func Save(home string, env Envelope) error {
 }
 
 // Register adds storePath to home's registry, or updates its last_seen if it
-// is already there. It is idempotent: re-registering never appends a
-// second row, so `keep init` run twice
-// in one repository leaves one entry, not two.
+// is already there. It is idempotent: re-registering never appends a second
+// row, so `keep init` run twice in one repository leaves one entry, not two.
 //
-// storePath is stored exactly as given. Register does not absolutize it --
+// storePath is stored exactly as given. Register does not absolutize it:
 // filepath.Abs consults the process's working directory, which is a property
 // of the caller, not of the registry. Every caller in cmd/keep passes an
 // already-absolute path; matching here is plain string equality on that
@@ -204,8 +202,8 @@ func register(home, storePath, name, lastSeen string) error {
 }
 
 // Forget removes storePath from home's registry and reports whether a row
-// was actually there. It never touches the store itself -- forgetting is not
-// deleting, and the CLI's message says so.
+// was actually there. It never touches the store itself, because
+// forgetting is not deleting, and the CLI's message says so.
 func Forget(home, storePath string) (bool, error) {
 	// Locked for the same reason Register is: a concurrent forget and
 	// register would otherwise lose whichever one read first.

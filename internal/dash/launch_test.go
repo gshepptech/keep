@@ -13,17 +13,12 @@ import (
 	"github.com/gshepptech/keep/internal/store"
 )
 
-// The four board actions that reach Interlock had no handler test at all.
+// These tests cover the four board actions that reach Interlock: doRelease,
+// doAssign, doLaunch and doPrompt. /do/launch and /do/prompt start a real
+// agent process in a repository directory from an HTTP form, which is the
+// highest-consequence thing the board does.
 //
-// /do/launch and /do/prompt start a real agent process in a repository
-// directory from an HTTP form -- the highest-consequence thing the board
-// does -- and go tool cover put doRelease, doAssign, doLaunch and doPrompt
-// all at 0.0%. projects_test.go does mention /do/launch, but only to assert
-// that the FORM renders; nothing posted to the handler behind it. A test
-// that reads as coverage and exercises nothing is the same defect this
-// codebase has now found six times.
-//
-// These drive the real path down to exec, against a fake interlock on
+// They drive the real path down to exec, against a fake interlock on
 // KEEP_INTERLOCK, so what the board would actually run is asserted rather
 // than assumed.
 
@@ -39,7 +34,7 @@ func fakeInterlock(t *testing.T, exitCode int) string {
 	bin := filepath.Join(dir, "interlock")
 
 	// One line per argument, so an argument containing spaces cannot be
-	// mistaken for two. pwd is recorded because doLaunch's whole point is
+	// mistaken for two. pwd is recorded because doLaunch must make sure
 	// that the agent starts in the project's directory, not the board's.
 	script := "#!/bin/sh\n" +
 		"echo \"pwd=$(pwd)\" >> " + log + "\n" +
@@ -100,7 +95,7 @@ func interlockFixture(t *testing.T, exitCode int) (*Server, string, string) {
 	if err != nil {
 		t.Fatalf("NewServer: %v", err)
 	}
-	t.Cleanup(func() { s.Close() })
+	t.Cleanup(func() { s.ln.Close() })
 	return s, dbPath, log
 }
 
@@ -125,8 +120,9 @@ func TestBoardReleasesHolds(t *testing.T) {
 	}
 }
 
-// A failing Interlock must land the person back on the board with the reason,
-// not on a 500. The board is the thing they are watching; losing it because a
+// TestBoardReportsAFailedReleaseWithoutBreaking checks that a failing
+// Interlock lands the person back on the board with the reason, not on a
+// 500. The board is the thing they are watching; losing it because a
 // peer tool exited non-zero is the wrong trade.
 func TestBoardReportsAFailedReleaseWithoutBreaking(t *testing.T) {
 	s, _, _ := interlockFixture(t, 1)
@@ -201,10 +197,11 @@ func TestBoardRefusesAnUnknownAgent(t *testing.T) {
 	}
 }
 
-// The sentinel is a real defence, not a formality: without it a prompt
-// beginning with a dash is parsed as flags, so --env and --model become
-// injectable and the prompt itself is discarded. The text comes from a web
-// form, so this is the one argument on the board that is not trusted.
+// TestBoardPromptKeepsAHostileFirstCharacterOutOfTheFlags checks that a
+// prompt starting with a dash goes after the sentinel. Without the sentinel
+// a prompt beginning with a dash is parsed as flags, so --env and --model
+// become injectable and the prompt itself is discarded. The text comes from
+// a web form, so this is the one argument on the board that is not trusted.
 func TestBoardPromptKeepsAHostileFirstCharacterOutOfTheFlags(t *testing.T) {
 	s, _, log := interlockFixture(t, 0)
 
@@ -252,9 +249,10 @@ func TestBoardRefusesAnEmptyPrompt(t *testing.T) {
 	}
 }
 
-// Every one of these starts a process or releases another agent's holds, so
-// each has to be behind the guard. A missing token must stop the request
-// before anything is executed -- not merely fail to persist afterwards.
+// TestTheAgentStartingRoutesAreAllGuarded checks that every route that
+// starts a process or releases another agent's holds is behind the guard.
+// A missing token must stop the request before anything is executed, not
+// merely fail to persist afterwards.
 func TestTheAgentStartingRoutesAreAllGuarded(t *testing.T) {
 	for _, route := range []struct {
 		path string

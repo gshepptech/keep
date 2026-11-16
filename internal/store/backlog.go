@@ -10,13 +10,12 @@ import (
 // Backlog returns every raw, non-discarded item in canonical backlog order,
 // optionally narrowed to one type ("" means every type).
 //
-// The ordering lives HERE, in SQL, and not in a caller. `ready`'s ordering
-// has always lived in the store (inside the view's own ORDER BY);
-// backlog's living in cmd/keep was the anomaly. Two surfaces render this
-// list -- `keep backlog` and the MCP `backlog` tool -- and the only way
-// they cannot disagree is if they walk ONE order by construction rather
-// than two implementations agreeing. Two orderings drifting apart is easy
-// to miss: it only shows once items of two types interleave in time.
+// The ordering lives here, in SQL, and not in a caller, just as `ready`'s
+// ordering lives in the view's own ORDER BY. Two surfaces render this list,
+// `keep backlog` and the MCP `backlog` tool, and they can only be sure to
+// agree if they walk one order rather than two implementations of it. Two
+// orderings drifting apart is easy to miss: it only shows once items of
+// two types interleave in time.
 //
 // typeFilter follows this package's existing optional-string-filter
 // convention (ListFilter's fields): "" means no filter, never a bound ”.

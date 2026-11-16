@@ -17,27 +17,26 @@ const touchMinimum = 44
 const touchGuard = "@media (pointer: coarse), (max-width: 720px)"
 
 // cssComment strips /* ... */ so a sentence inside one cannot be mistaken
-// for a selector. The first draft of this test reported
-// `"exactly -- not a minimum"` as a rule pinning a height.
+// for a selector that pins a height.
 var cssComment = regexp.MustCompile(`(?s)/\*.*?\*/`)
 
-// heightRule captures a selector list and an exact pixel height. Only
-// `height:` -- a `min-height` is a floor and cannot defeat a larger floor
-// set elsewhere, which is the entire distinction this test exists for.
+// heightRule captures a selector list and an exact pixel height. It matches
+// only `height:`, because a `min-height` is a floor and cannot defeat a
+// larger floor set elsewhere.
 var heightRule = regexp.MustCompile(`(?s)([^{}]+)\{([^{}]*?)\bheight:\s*(\d+)px`)
 
 // clickable reports whether a selector targets something a person aims at.
 //
 // Pseudo-elements are excluded because they cannot be clicked at all: the
 // select's caret and the checkbox's tick are both drawn as ::after boxes a
-// few pixels across, and neither has a target size to meet -- the control
+// few pixels across, and neither has a target size to meet; the control
 // underneath does.
 //
 // A bare checkbox is excluded for a different and less obvious reason: on
 // every page that has one it is wrapped in a <label class="inline">, so the
-// target is the label and its text, not the 16px box. That is a real
-// exemption resting on real markup, so it is asserted rather than assumed --
-// see TestEveryCheckboxIsInsideItsLabel below.
+// target is the label and its text, not the 16px box. That exemption rests
+// on markup, so it is asserted rather than assumed (see
+// TestEveryCheckboxIsInsideItsLabel below).
 func clickable(sel string) bool {
 	if strings.Contains(sel, "::") {
 		return false
@@ -78,38 +77,36 @@ func blockAt(css string, start int) string {
 	return ""
 }
 
-// TestNoControlPinsItselfBelowTheTouchMinimum.
+// TestNoControlPinsItselfBelowTheTouchMinimum checks that no stylesheet rule
+// fixes a control's size below the touch-target minimum.
 //
-// A structural test over the stylesheet rather than a layout test, because
-// there is no layout engine in a Go test -- and it is the right shape
-// anyway, because the defect is structural rather than visual.
+// It is a structural test over the stylesheet rather than a layout test,
+// because there is no layout engine in a Go test, and the defect is
+// structural rather than visual.
 //
-// Three separate times a rule has equalised a row of controls to an exact
-// height so they line up, and in doing so silently cancelled the touch
-// target minimum promised at the top of the sheet:
+// A rule that equalises a row of controls to an exact height so they line
+// up can silently cancel the touch-target minimum set at the top of the
+// sheet. These rows do that:
 //
 //	.qacts .btn / select      32px
 //	.acts .btn / select       32px
 //	.prompt-side .btn/select  40px
 //
-// Every time, both rules read as correct in review. `height` beats a
-// `min-height` from a less specific selector, and `.qacts .btn` is more
-// specific than `.btn`, so the promise was cancelled by a rule that never
-// mentions it. Two of the three were found by redpen's render pass reading
-// computed heights off a real page; none was ever found by reading the CSS.
+// `height` beats a `min-height` from a less specific selector, and
+// `.qacts .btn` is more specific than `.btn`, so the minimum is cancelled by
+// a rule that never mentions it, and both rules read as correct on their
+// own.
 //
 // So the invariant is: a control may pin its height, but if it pins it below
 // the minimum it must also appear in the block that lifts it back. A new row
-// of controls with a shared height fails this the moment it is written.
+// of controls with a shared height fails this as soon as it is written.
 func TestNoControlPinsItselfBelowTheTouchMinimum(t *testing.T) {
 	css := cssComment.ReplaceAllString(string(styleInline), " ")
 
-	// EVERY block with this query, not the first. The sheet has two: one
-	// early that sets min-height on the generic controls, and one late that
-	// restores the pinned heights. Reading only the first is how the first
-	// draft of this test reported the very rules it had just been written to
-	// approve -- a test that fails for a reason that is not the defect is
-	// worse than no test, because the next person deletes it.
+	// Every block with this query, not only the first. The sheet has two:
+	// one early that sets min-height on the generic controls, and one late
+	// that restores the pinned heights. Reading only the first would report
+	// the pinned rules the second block already lifts.
 	var blocks []string
 	for from := 0; ; {
 		at := strings.Index(css[from:], touchGuard)
@@ -172,11 +169,11 @@ func TestNoControlPinsItselfBelowTheTouchMinimum(t *testing.T) {
 	}
 }
 
-// TestEveryCheckboxIsInsideItsLabel holds up the exemption the test above
-// takes. A 16px checkbox is under any target-size floor worth having; it is
-// allowed here only because the label wraps it, which makes the target the
-// whole labelled row rather than the box. If a checkbox is ever written
-// outside a label, that reasoning evaporates and this fails.
+// TestEveryCheckboxIsInsideItsLabel checks that every checkbox is wrapped in
+// its label, the exemption the test above relies on. A 16px checkbox is
+// under any target-size floor worth having; it is allowed only because the
+// label wraps it, which makes the target the whole labelled row rather than
+// the box.
 func TestEveryCheckboxIsInsideItsLabel(t *testing.T) {
 	entries, err := templateFS.ReadDir("templates")
 	if err != nil {

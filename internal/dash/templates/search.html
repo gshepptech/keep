@@ -1,4 +1,4 @@
-{{/* search.html -- find an item by a word you remember. Data: searchData.
+{{/* search.html: find an item by a word you remember. Data: searchData.
 
      The one page on this board that reads a query string. A search is a
      read: it belongs in a URL you can bookmark and reload, which is why
@@ -35,10 +35,9 @@
         {{if .Paths}}<span class="path">{{.Paths}}</span>{{end}}
         <span class="id">{{.ID}}</span>
       </span>
-      {{/* No "and (ne .MatchedIn "title")" here any more: the handler
-           blanks a snippet that only repeats what this row already shows,
-           which covers the title, the paths, and a body that happens to
-           restate either. */}}
+      {{/* No MatchedIn check is needed here: the handler blanks a snippet
+           that only repeats what this row already shows, which covers the
+           title, the paths, and a body that happens to restate either. */}}
       {{if .Snippet}}<span class="qsnip">{{.Snippet}}</span>{{end}}
     </span>
   </li>

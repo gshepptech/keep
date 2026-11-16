@@ -17,11 +17,11 @@ import (
 //
 // The same property RepoResult was built for holds here and is the reason
 // there is no error return: FetchEach returns []Fanout[T] and NO error, so a
-// caller structurally cannot propagate one repository's failure as a crash
+// caller cannot propagate one repository's failure as a crash
 // or a blank render. A store that will not open reports on its own row and
 // the others are read anyway.
 type Fanout[T any] struct {
-	Repo string // the registry's name field -- NOT items.repo
+	Repo string // the registry's name field, not items.repo
 	Path string
 	Rows []T
 	Err  error
@@ -42,7 +42,7 @@ type Fanout[T any] struct {
 // check, not a combined database.
 //
 // query is a store method, never a reimplementation of one. That is what
-// makes a cross-repository view structurally unable to disagree with the
+// makes a cross-repository view unable to disagree with the
 // single-store command it aggregates.
 func FetchEach[T any](ctx context.Context, repos []Repo, query func(context.Context, *store.Store) ([]T, error)) []Fanout[T] {
 	out := make([]Fanout[T], 0, len(repos))
@@ -65,12 +65,11 @@ func FetchEach[T any](ctx context.Context, repos []Repo, query func(context.Cont
 // from.
 //
 // The json tag is "repository", NOT "repo", for the reason MergedItem's own
-// comment sets out at length: a row type that embeds model.Item already has
-// a promoted field tagged "repo", and encoding/json resolves that collision
-// silently by depth -- the shallower field wins and the item's own repo
-// value vanishes from the output with no error. That is a real bug this
-// codebase already has a permanent test against; do not rename this for
-// symmetry.
+// comment sets out: a row type that embeds model.Item already has a
+// promoted field tagged "repo", and encoding/json resolves that collision
+// silently by depth. The shallower field wins and the item's own repo value
+// vanishes from the output with no error, so this tag must stay
+// "repository".
 type Tagged[T any] struct {
 	Row        T      `json:"row"`
 	Repository string `json:"repository"`
@@ -79,14 +78,13 @@ type Tagged[T any] struct {
 // Flatten collects every successful fan-out's rows into one slice, tagging
 // each with its repository, and orders them with less.
 //
-// Errored results contribute nothing -- they have no rows to contribute.
-// The caller surfaces them separately, because a silent partial result is
-// the failure mode the whole cross-repository surface is shaped against.
+// Errored results contribute nothing, because they have no rows. The
+// caller surfaces them separately, since a silent partial result is the
+// failure the cross-repository commands are designed to prevent.
 //
-// less must impose a TOTAL order. sort.Slice is documented as unstable, so
+// less must impose a total order. sort.Slice is documented as unstable, so
 // a comparison that returns false in both directions for two distinct rows
-// produces output that varies between runs -- a trap this codebase hit once
-// already (see Merge).
+// produces output that varies between runs (see Merge).
 func Flatten[T any](results []Fanout[T], less func(a, b Tagged[T]) bool) []Tagged[T] {
 	out := make([]Tagged[T], 0)
 	for _, r := range results {

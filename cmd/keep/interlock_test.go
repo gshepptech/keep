@@ -12,12 +12,7 @@ import (
 // `status --json` with the given envelope.
 //
 // A stub rather than the real binary because keep must build and test on a
-// machine that has never heard of Interlock -- which is the whole point of
-// shelling out instead of importing it. The join was also verified against
-// the real binary by hand (a lease taken through `interlock hook PreToolUse
-// claude`, the top-scoring item vanishing from `ready`, and returning after
-// `interlock lease release`); what these tests lock is keep's half, which
-// is the half that can regress here.
+// machine without Interlock.
 func fakeInterlock(t *testing.T, statusJSON string) string {
 	t.Helper()
 	dir := tempDir(t)
@@ -69,17 +64,15 @@ func readyWith(t *testing.T, bin, repo string, e []string) (string, string) {
 	return stdout, stderr
 }
 
-// TestReadyExcludesItemsWhosePathsInterlockHolds is the join, driven across
-// two real processes -- the right choice here: the whole
-// design is that keep shells out rather than importing, so an in-process
-// test would prove nothing about the thing that can break.
+// TestReadyExcludesItemsWhosePathsInterlockHolds checks that `keep ready`
+// omits items whose paths a fake Interlock reports as held, across two real
+// processes. keep shells out rather than importing Interlock, so an
+// in-process test would prove nothing about the part that can break.
 func TestReadyExcludesItemsWhosePathsInterlockHolds(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is keep's, not the
-	// shell's, but there is no honest way to assert it here without a
-	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: keep's Interlock integration is unverified on
-	// Windows.
+	// Windows cannot execute. Without a Windows stub the test is skipped
+	// there rather than passing on nothing, so keep's Interlock
+	// integration is unverified on Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
 	}
@@ -120,21 +113,18 @@ func TestReadyExcludesItemsWhosePathsInterlockHolds(t *testing.T) {
 	}
 }
 
-// TestReadyIsUnchangedWithoutInterlock is the common case -- most
-// repositories do not use Interlock -- and the one that must not regress.
+// TestReadyIsUnchangedWithoutInterlock checks that `keep ready` is unchanged
+// when Interlock is switched off, which is the common case, since most
+// repositories do not use Interlock.
 //
 // KEEP_INTERLOCK=off rather than merely leaving the stub off PATH: env()
 // already pins PATH, but a developer with Interlock installed somewhere
 // env() happens to include would silently turn this into a different test.
-// The dashboard's equivalent caught exactly that on the machine this was
-// written on.
 func TestReadyIsUnchangedWithoutInterlock(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is keep's, not the
-	// shell's, but there is no honest way to assert it here without a
-	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: keep's Interlock integration is unverified on
-	// Windows.
+	// Windows cannot execute. Without a Windows stub the test is skipped
+	// there rather than passing on nothing, so keep's Interlock
+	// integration is unverified on Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
 	}
@@ -155,17 +145,16 @@ func TestReadyIsUnchangedWithoutInterlock(t *testing.T) {
 	}
 }
 
-// TestReadyIgnoresAnUnsupportedStatusVersion: a field that changed meaning
-// would produce a queue that hides workable items, and hiding work is the
-// failure direction this integration must never take. Refusing to parse an
-// envelope it does not recognise is the only safe reading.
+// TestReadyIgnoresAnUnsupportedStatusVersion checks that a status envelope
+// with an unknown version is ignored. A field that changed meaning would
+// produce a queue that hides workable items, which this integration must
+// never do, so refusing to parse an envelope it does not recognise is the
+// only safe reading.
 func TestReadyIgnoresAnUnsupportedStatusVersion(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is keep's, not the
-	// shell's, but there is no honest way to assert it here without a
-	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: keep's Interlock integration is unverified on
-	// Windows.
+	// Windows cannot execute. Without a Windows stub the test is skipped
+	// there rather than passing on nothing, so keep's Interlock
+	// integration is unverified on Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
 	}
@@ -184,18 +173,17 @@ func TestReadyIgnoresAnUnsupportedStatusVersion(t *testing.T) {
 	}
 }
 
-// TestReadyLimitAppliesAfterTheInterlockFilter. Applying --limit in SQL and
+// TestReadyLimitAppliesAfterTheInterlockFilter checks that --limit counts
+// workable rows after held items are removed. Applying --limit in SQL and
 // filtering afterwards returns fewer rows than asked for whenever anything
-// is held -- the same count-versus-rows rule runBoard and mcpInstructions
-// each state, and the one that is invisible here because nothing renders
-// both numbers side by side.
+// is held. runBoard and mcpInstructions follow the same count-versus-rows
+// rule, which is easy to miss here because nothing renders both numbers
+// side by side.
 func TestReadyLimitAppliesAfterTheInterlockFilter(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
-	// Windows cannot execute. The behaviour under test is keep's, not the
-	// shell's, but there is no honest way to assert it here without a
-	// Windows stub -- so this is skipped rather than quietly passing, and
-	// the gap is real: keep's Interlock integration is unverified on
-	// Windows.
+	// Windows cannot execute. Without a Windows stub the test is skipped
+	// there rather than passing on nothing, so keep's Interlock
+	// integration is unverified on Windows.
 	if runtime.GOOS == "windows" {
 		t.Skip("the interlock stub is a shell script; see the comment above")
 	}

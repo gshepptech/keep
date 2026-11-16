@@ -15,11 +15,11 @@ import (
 //
 // runClose and runDrop are two small files rather than one shared
 // runCloseOrDrop: they are two commands with two help texts and two usage
-// lines, and the shared logic that actually must never drift
+// lines, and the shared logic that must never drift
 // (store.closeOrDrop, internal/store/transitions.go) already lives in the
 // store, reachable identically by this CLI and the MCP surface. Collapsing
 // the two into one Go function here would buy nothing this package needs
-// and would work against close and drop staying genuinely distinct.
+// and would work against close and drop staying distinct.
 func runClose(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("close", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -38,8 +38,8 @@ func runClose(args []string, stdout, stderr io.Writer) int {
 	id := fs.Arg(0)
 
 	// An absent --reason and an explicit --reason "" are indistinguishable
-	// through flag's *string default (both leave *reasonFlag == "") --
-	// both must exit 2. The command records WHY; a blank
+	// through flag's *string default (both leave *reasonFlag == ""),
+	// so both must exit 2. The command records WHY; a blank
 	// reason is an audit trail that records that something happened and
 	// nothing else.
 	if *reasonFlag == "" {

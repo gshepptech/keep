@@ -12,7 +12,7 @@ import (
 )
 
 // handlerFixtureIDs names every id newHandlerFixture's fixture produces, so
-// each test asserts against a real, captured id -- never a hard-coded rnc-
+// each test asserts against a real, captured id, never a hard-coded rnc-
 // literal (ids are hash-derived from title plus wall-clock creation time
 // and differ on every run).
 type handlerFixtureIDs struct {
@@ -45,7 +45,7 @@ func newHandlerFixture(t *testing.T) (*Server, handlerFixtureIDs) {
 	if err != nil {
 		t.Fatalf("NewServer: %v", err)
 	}
-	t.Cleanup(func() { s.Close() })
+	t.Cleanup(func() { s.ln.Close() })
 
 	if strings.Count(grandchild.ID, ".") < 2 {
 		t.Fatalf("fixture bug: grandchild id %q does not contain two dots", grandchild.ID)
@@ -57,7 +57,7 @@ func newHandlerFixture(t *testing.T) (*Server, handlerFixtureIDs) {
 	}
 }
 
-// get drives s's route table through httptest -- no port binding needed.
+// get drives s's route table through httptest, with no port binding.
 func get(t *testing.T, h http.Handler, path string) *httptest.ResponseRecorder {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodGet, path, nil)
@@ -68,7 +68,7 @@ func get(t *testing.T, h http.Handler, path string) *httptest.ResponseRecorder {
 
 func TestHandlerReadyRendersQueue(t *testing.T) {
 	s, ids := newHandlerFixture(t)
-	rec := get(t, s.Handler(), "/")
+	rec := get(t, s.srv.Handler, "/")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /: status = %d, want 200", rec.Code)
 	}
@@ -82,7 +82,7 @@ func TestHandlerReadyRendersQueue(t *testing.T) {
 
 func TestHandlerBacklogRendersGroupedByType(t *testing.T) {
 	s, ids := newHandlerFixture(t)
-	rec := get(t, s.Handler(), "/backlog")
+	rec := get(t, s.srv.Handler, "/backlog")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /backlog: status = %d, want 200", rec.Code)
 	}
@@ -103,7 +103,7 @@ func TestHandlerBacklogRendersGroupedByType(t *testing.T) {
 
 func TestHandlerItemRendersOneItem(t *testing.T) {
 	s, ids := newHandlerFixture(t)
-	rec := get(t, s.Handler(), "/item/"+ids.grandchild)
+	rec := get(t, s.srv.Handler, "/item/"+ids.grandchild)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /item/%s: status = %d, want 200", ids.grandchild, rec.Code)
 	}
@@ -121,7 +121,7 @@ func TestHandlerItemRendersOneItem(t *testing.T) {
 // child, not its ancestor.
 func TestHandlerItemDotContainingIDRoutesToTheRightChild(t *testing.T) {
 	s, ids := newHandlerFixture(t)
-	rec := get(t, s.Handler(), "/item/"+ids.grandchild)
+	rec := get(t, s.srv.Handler, "/item/"+ids.grandchild)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /item/%s (two-dot id): status = %d, want 200", ids.grandchild, rec.Code)
 	}
@@ -136,7 +136,7 @@ func TestHandlerItemDotContainingIDRoutesToTheRightChild(t *testing.T) {
 
 func TestHandlerTreeRendersSubtreeWithBlockedWord(t *testing.T) {
 	s, ids := newHandlerFixture(t)
-	rec := get(t, s.Handler(), "/tree/"+ids.epic)
+	rec := get(t, s.srv.Handler, "/tree/"+ids.epic)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /tree/%s: status = %d, want 200", ids.epic, rec.Code)
 	}
@@ -153,7 +153,7 @@ func TestHandlerTreeRendersSubtreeWithBlockedWord(t *testing.T) {
 
 func TestHandlerItemUnknownIDIs404(t *testing.T) {
 	s, _ := newHandlerFixture(t)
-	rec := get(t, s.Handler(), "/item/rnc-nope")
+	rec := get(t, s.srv.Handler, "/item/rnc-nope")
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("GET /item/rnc-nope: status = %d, want 404", rec.Code)
 	}
@@ -161,7 +161,7 @@ func TestHandlerItemUnknownIDIs404(t *testing.T) {
 
 func TestHandlerTreeUnknownIDIs404(t *testing.T) {
 	s, _ := newHandlerFixture(t)
-	rec := get(t, s.Handler(), "/tree/rnc-nope")
+	rec := get(t, s.srv.Handler, "/tree/rnc-nope")
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("GET /tree/rnc-nope: status = %d, want 404", rec.Code)
 	}
@@ -171,27 +171,26 @@ func TestHandlerRootRefusesPOST(t *testing.T) {
 	s, _ := newHandlerFixture(t)
 	req := httptest.NewRequest(http.MethodPost, "/", nil)
 	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, req)
+	s.srv.Handler.ServeHTTP(rec, req)
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Errorf("POST /: status = %d, want 405", rec.Code)
 	}
 }
 
-// TestAMissingIdGetsAPageNotBareText.
+// TestAMissingIdGetsAPageNotBareText checks that a request for an unknown id
+// renders a full 404 page with navigation.
 //
 // http.Error writes an unstyled sentence with no nav and no way back. A
 // board whose URLs carry ids is a board people edit URLs on, so this is
-// reached by ordinary use, and it was a dead end.
+// reached by ordinary use and must not be a dead end.
 //
-// It regressed once while being written: execute() wraps whatever it is
-// given in a fresh page, so handing it an already-built page buried that
-// page inside its own Data and the template silently fell back to the bare
-// text it was meant to replace. The status assertion alone would have
-// passed against that.
+// A page nested inside another page's Data makes the template fall back to
+// bare text. The body assertion catches that; the status code alone would
+// not.
 func TestAMissingIdGetsAPageNotBareText(t *testing.T) {
 	s, _ := writableFixture(t)
 
-	rec := get(t, s.Handler(), "/item/rnc-nothing")
+	rec := get(t, s.srv.Handler, "/item/rnc-nothing")
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("status = %d, want 404", rec.Code)
 	}
@@ -203,17 +202,17 @@ func TestAMissingIdGetsAPageNotBareText(t *testing.T) {
 	}
 }
 
-// TestTheActiveNavSaysSoOutLoud. aria-current is what tells a screen reader
-// which page it is on; the highlight alone says it only to people who can
-// see it.
+// TestTheActiveNavSaysSoOutLoud checks that the current page's nav link
+// carries aria-current. That is what tells a screen reader which page it is
+// on; the highlight alone says it only to people who can see it.
 func TestTheActiveNavSaysSoOutLoud(t *testing.T) {
 	s, _ := writableFixture(t)
 
 	// The stylesheet is inlined into every page and contains the selector
 	// `.nav-item[aria-current="page"]`, so a naive Contains matches the CSS
-	// and passes even when no element carries the attribute. It did exactly
-	// that when first written. Strip the style block before looking.
-	body := get(t, s.Handler(), "/").Body.String()
+	// and passes even when no element carries the attribute. Strip the style
+	// block before looking.
+	body := get(t, s.srv.Handler, "/").Body.String()
 	if i := strings.Index(body, "<style>"); i >= 0 {
 		if j := strings.Index(body[i:], "</style>"); j >= 0 {
 			body = body[:i] + body[i+j:]

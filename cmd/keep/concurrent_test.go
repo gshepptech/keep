@@ -16,18 +16,17 @@ import (
 	"github.com/gshepptech/keep/internal/store"
 )
 
-// TestConcurrentInitSameDirectory is the cross-process proof: four real OS
-// processes, all Start()-ed before any of them is Wait()-ed on, contending
-// over `keep init` against one empty shared directory.
+// TestConcurrentInitSameDirectory checks that four real OS processes, all
+// started before any is waited on, can run `keep init` against one empty
+// shared directory without failing.
 //
-// This is deliberately not a goroutine-based simulation. SQLite's own
-// locking (which busy_timeout=3000 and _txlock=immediate arbitrate) is
-// enforced at the OS level via fcntl/flock on the file descriptor -- that
-// mechanism is structurally invisible to goroutines sharing a process,
-// even four separate *sql.DB handles inside one process never exercise a
-// real fcntl lock conflict the way four distinct OS processes do. If this
-// test is ever "simplified" into a sync.WaitGroup over in-process calls, it
-// stops proving anything about cross-process concurrency at all.
+// It is deliberately not a goroutine-based simulation. SQLite's own locking
+// (which busy_timeout=3000 and _txlock=immediate arbitrate) is enforced at
+// the OS level via fcntl/flock on the file descriptor, which goroutines
+// sharing a process never exercise; even four separate *sql.DB handles
+// inside one process do not produce a real fcntl lock conflict the way four
+// distinct OS processes do. An in-process version would prove nothing about
+// cross-process concurrency.
 func TestConcurrentInitSameDirectory(t *testing.T) {
 	bin := buildKeep(t, "concurrent-test")
 	dir := tempDir(t)
@@ -45,8 +44,8 @@ func TestConcurrentInitSameDirectory(t *testing.T) {
 	procs := make([]*proc, n)
 
 	// Start all four before waiting on any of them. Starting and waiting
-	// one at a time would serialize them and make the rest of this test
-	// vacuous -- there would be no real contention to prove anything about.
+	// one at a time would serialize them, leaving no real contention to
+	// test.
 	for i := 0; i < n; i++ {
 		p := &proc{}
 		cmd := exec.Command(bin, "init")
@@ -69,8 +68,8 @@ func TestConcurrentInitSameDirectory(t *testing.T) {
 	}
 
 	// busy_timeout=3000 plus a single IMMEDIATE DDL transaction should make
-	// contention wait, not fail -- so no process's stderr should mention
-	// lock contention at all.
+	// contention wait, not fail, so no process's stderr should mention lock
+	// contention at all.
 	for i, p := range procs {
 		stderr := p.stderr.String()
 		if strings.Contains(stderr, "SQLITE_BUSY") || strings.Contains(stderr, "database is locked") {
@@ -92,7 +91,8 @@ func TestConcurrentInitSameDirectory(t *testing.T) {
 	}
 	s.Close()
 
-	// Every process closed cleanly and checkpointed -- no WAL/SHM residue.
+	// Every process closed cleanly and checkpointed, leaving no WAL/SHM
+	// residue.
 	if store.OSExists(target + "-wal") {
 		t.Fatalf("%s-wal still exists after all four processes exited", target)
 	}
@@ -101,8 +101,8 @@ func TestConcurrentInitSameDirectory(t *testing.T) {
 	}
 
 	// Exactly one of the four stdout lines should report a newly created
-	// store and the other three unchanged -- or, if they genuinely raced
-	// before any file existed, all four could report created. Assert the
+	// store and the other three unchanged, or, if they raced before any file
+	// existed, all four could report created. Assert the
 	// weaker, true property only: every stdout is exactly one line and
 	// every line names the same absolute path. Asserting a specific
 	// created/unchanged split would be asserting a race outcome by design,
@@ -132,32 +132,25 @@ func TestConcurrentInitSameDirectory(t *testing.T) {
 	}
 }
 
-// TestConcurrentAddChildrenNoOrdinalCollision is the cross-process proof for
-// child ids:
-// eight real `keep add --parent <epic>` processes, all Start()-ed before
-// any of them is Wait()-ed on, contending over one parent's ordinal
-// allocation.
+// TestConcurrentAddChildrenNoOrdinalCollision checks that eight real
+// `keep add --parent <epic>` processes, all started before any is waited
+// on, each get a distinct child ordinal under one parent.
 //
-// Deliberately not a goroutine simulation, for the same structural reason
-// TestConcurrentInitSameDirectory above is not one: SQLite's write lock is
-// arbitrated by the OS via fcntl/flock on the file descriptor, a mechanism
-// eight goroutines sharing one process -- and therefore one *sql.DB, one
-// connection pool, one address space -- can never actually exercise, no
-// matter how a sync.WaitGroup is arranged around them. An in-process race
-// test can stay green while a real cross-process bug is live, and the
-// WAL-bootstrap race documented in internal/store/schema.go is one no
-// goroutine test could see. If this test is ever "simplified" into a
-// WaitGroup over in-process calls, it stops proving anything about the
-// ordinal allocator at all.
+// It is not a goroutine simulation, for the same reason
+// TestConcurrentInitSameDirectory above is not: SQLite's write lock is
+// arbitrated by the OS via fcntl/flock on the file descriptor, which eight
+// goroutines sharing one process (and so one *sql.DB, one connection pool,
+// one address space) never exercise, however a sync.WaitGroup is arranged
+// around them. An in-process race test can stay green while a real
+// cross-process bug is live; the WAL-bootstrap race documented in
+// internal/store/schema.go is one no goroutine test could see.
 //
 // BEGIN IMMEDIATE blocks a second process's own BeginTx call until the
 // first commits, so the two transactions are never concurrently in flight
-// from the application's point of view. This test is a regression lock on
-// that, not an investigation -- it is expected to pass cleanly, with zero retries
-// observed, on every run; its job is to keep that true as AddItem evolves,
-// not to manufacture contention this DSN structurally prevents. No
-// time.Sleep anywhere: contention comes from starting all eight processes
-// together, nothing else.
+// from the application's point of view. The test is expected to pass with
+// zero retries on every run, and keeps that true as AddItem changes. There
+// is no time.Sleep: contention comes only from starting all eight processes
+// together.
 func TestConcurrentAddChildrenNoOrdinalCollision(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)
@@ -168,9 +161,8 @@ func TestConcurrentAddChildrenNoOrdinalCollision(t *testing.T) {
 		t.Fatalf("init: exit code = %d, want 0 (stderr=%q)", code, stderr)
 	}
 
-	// `add [flags] <title>`, flags before the title -- the same stdlib
-	// flag.Parse stopping-point constraint every CLI test in this package
-	// follows.
+	// `add [flags] <title>`, flags before the title, as every CLI test in
+	// this package writes it.
 	epicOut, epicErr, epicCode := run(t, bin, repo, e, "add", "--type", "epic", "epic")
 	if epicCode != 0 {
 		t.Fatalf("add epic: exit code = %d, want 0 (stderr=%q)", epicCode, epicErr)
@@ -190,9 +182,8 @@ func TestConcurrentAddChildrenNoOrdinalCollision(t *testing.T) {
 	procs := make([]*proc, n)
 
 	// Start() all eight before Wait()-ing on any of them. Starting and
-	// waiting one at a time would serialize them and make the rest of this
-	// test vacuous -- there would be no real contention for the ordinal
-	// allocator to survive.
+	// waiting one at a time would serialize them, leaving no real contention
+	// for the ordinal allocator to survive.
 	for i := 0; i < n; i++ {
 		p := &proc{}
 		cmd := exec.Command(bin, "add", "--parent", epicID, fmt.Sprintf("child-%d", i))
@@ -215,9 +206,8 @@ func TestConcurrentAddChildrenNoOrdinalCollision(t *testing.T) {
 	}
 
 	// busy_timeout=3000 plus BEGIN IMMEDIATE should make contention wait,
-	// not fail -- so no process's stderr should mention lock contention at
-	// all, matching TestConcurrentInitSameDirectory's identical assertion
-	// above.
+	// not fail, so no process's stderr should mention lock contention at
+	// all, as TestConcurrentInitSameDirectory also asserts.
 	for i, p := range procs {
 		stderr := p.stderr.String()
 		if strings.Contains(stderr, "SQLITE_BUSY") || strings.Contains(stderr, "database is locked") {
@@ -241,7 +231,7 @@ func TestConcurrentAddChildrenNoOrdinalCollision(t *testing.T) {
 
 	// Set equality, not a count and not a maximum: two processes both
 	// landing on ordinal 3 while nobody ever gets 5 would still pass a
-	// "count is 8" or "max ordinal is 8" assertion -- exactly the collision
+	// "count is 8" or "max ordinal is 8" assertion, and that is the collision
 	// this test exists to catch.
 	gotOrdinals := make(map[int]bool, n)
 	gotIDs := make(map[string]bool, n)
@@ -271,23 +261,22 @@ func TestConcurrentAddChildrenNoOrdinalCollision(t *testing.T) {
 	}
 }
 
-// TestConcurrentInitDifferentRepositoriesLeavesRegistryValid: six real
-// `keep init` processes, in six different directories,
-// sharing one HOME, all Start()-ed before any is Wait()-ed on, contending
-// over one ~/.rounce/repos.json.
+// TestConcurrentInitDifferentRepositoriesLeavesRegistryValid checks that six
+// real `keep init` processes, in six different directories sharing one
+// HOME, all started before any is waited on, leave a valid
+// ~/.rounce/repos.json that lists all six.
 //
-// WHAT THIS ASSERTS, AND WHY IT STOPS THERE. registry.Save writes a temp
-// file in the destination directory and renames it over repos.json. POSIX
-// rename(2) guarantees any concurrent reader sees either the old file or the
-// new file, never a partial write -- so the registry is never torn, never
-// half-written, and never left in a state that breaks every future `keep
-// repos` call. That is the first guarantee this test checks.
+// registry.Save writes a temp file in the destination directory and renames
+// it over repos.json. POSIX rename(2) guarantees any concurrent reader sees
+// either the old file or the new file, never a partial write, so the
+// registry is never torn and never left in a state that breaks every later
+// `keep repos` call. That is the first guarantee this test checks.
 //
-// IT ALSO ASSERTS THAT ALL SIX SURVIVE. Atomicity of the WRITE does not
+// It also asserts that all six survive. Atomicity of the write does not
 // imply isolation of the read-modify-write sequence around it: without a
-// lock, two processes registering two DIFFERENT repositories -- each
-// having read before the other's rename landed -- would have one rename
-// discard the other's addition. internal/registry/lock.go closes that
+// lock, two processes registering two different repositories, each having
+// read before the other's rename landed, would have one rename discard the
+// other's addition. internal/registry/lock.go closes that
 // window: Register and Forget hold an exclusive lock file across Load AND
 // Save, and no lock file is left behind.
 //
@@ -314,10 +303,10 @@ func TestConcurrentInitDifferentRepositoriesLeavesRegistryValid(t *testing.T) {
 	procs := make([]*proc, n)
 	wantPaths := make(map[string]bool, n)
 
-	// Start() all six before Wait()-ing on any of them -- the same discipline
-	// as TestConcurrentInitSameDirectory and
-	// TestConcurrentAddChildrenNoOrdinalCollision above. A goroutine
-	// simulation would not exercise cross-process contention.
+	// Start() all six before Wait()-ing on any of them, as
+	// TestConcurrentInitSameDirectory and
+	// TestConcurrentAddChildrenNoOrdinalCollision do. A goroutine simulation
+	// would not exercise cross-process contention.
 	for i := 0; i < n; i++ {
 		dir := filepath.Join(base, fmt.Sprintf("repo-%d", i))
 		if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -369,14 +358,14 @@ func TestConcurrentInitDifferentRepositoriesLeavesRegistryValid(t *testing.T) {
 		}
 	}
 
-	// Report the observed survivor count on every run, pass or fail -- it is
-	// the only visibility into how wide the read-modify-write window
-	// actually is on this machine.
+	// Report the observed survivor count on every run, pass or fail, because
+	// it is the only visibility into how wide the read-modify-write window is
+	// on this machine.
 	t.Logf("TestConcurrentInitDifferentRepositoriesLeavesRegistryValid: %d/%d registrations survived", len(envelope.Repos), n)
 
-	// Every one of the six must survive. Before the lock this was 1-of-6,
-	// reproducibly, so a regression here is not a flake to retry -- it is
-	// the read-modify-write window reopening.
+	// Every one of the six must survive. Without the lock typically only one
+	// does, so a failure here is not a flake to retry; it means the
+	// read-modify-write window is open.
 	if len(envelope.Repos) != n {
 		var got []string
 		for _, r := range envelope.Repos {

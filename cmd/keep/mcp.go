@@ -21,7 +21,7 @@ import (
 
 // codeServerClosing is jsonrpc2.ErrServerClosing's code. The SDK does not
 // export it (only the five standard JSON-RPC codes are in the public
-// jsonrpc package), so it is named here rather than string-matched -- the
+// jsonrpc package), so it is named here rather than string-matched, by the
 // same classify-by-code-never-by-message rule internal/store/errors.go
 // states for SQLite and cmd/keep/flags.go's exitFor follows for exit
 // codes.
@@ -38,13 +38,13 @@ const codeServerClosing = -32004
 
 // runMCP serves the MCP protocol over stdio against the store the same
 // four-rule resolver every other command uses. It blocks until the client
-// disconnects -- the one runX that does not return promptly -- but keeps
-// every other runX's (args, stdout, stderr) int shape.
+// disconnects, the one runX that does not return promptly, but keeps every
+// other runX's (args, stdout, stderr) int shape.
 //
-// No --json: the protocol IS the output format. No --actor: actor is a
-// per-call tool argument with a server default: a
-// --actor flag here would be a third place the default could come from,
-// alongside $KEEP_ACTOR and $USER.
+// No --json: the protocol is the output format. No --actor: actor is a
+// per-call tool argument with a server default, and an --actor flag here
+// would be a third place the default could come from, alongside
+// $KEEP_ACTOR and $USER.
 func runMCP(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("mcp", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -75,7 +75,7 @@ func runMCP(args []string, stdout, stderr io.Writer) int {
 	}
 	defer s.Close()
 
-	// The SDK's default Logger is slog.New(slog.DiscardHandler) -- it
+	// The SDK's default Logger is slog.New(slog.DiscardHandler), which
 	// writes nowhere. Set one explicitly, pointed at stderr (never
 	// os.Stdout, never the stdout parameter): stdout carries protocol
 	// bytes only, and an MCP server with no diagnostics at all is
@@ -84,7 +84,7 @@ func runMCP(args []string, stdout, stderr io.Writer) int {
 
 	// $KEEP_ACTOR is read here rather than inside mcpActor so the
 	// "explicit wins" rule is decided once, at startup, from the process
-	// environment -- not re-read per session from whatever the client's
+	// environment, not re-read per session from whatever the client's
 	// handshake happens to contain.
 	envActor := store.Env("ACTOR")
 
@@ -130,20 +130,19 @@ func runMCP(args []string, stdout, stderr io.Writer) int {
 // resolveMCPSession returns the session id this server's tools claim under.
 //
 // $KEEP_SESSION wins, as everywhere else. Absent it, this derives a
-// PER-PROCESS id -- which is the opposite of resolveClaimSession's stable
-// one, and correct for the opposite reason. One MCP server process serves
-// one agent session (Options.Session says so), so two agents on this machine
-// are two processes and must not share an identity; a stable per-user id
-// would put them both under the same session and re-open the collapse this
-// exists to close: each would be handed the other's claim as its own retry,
-// and either could release the other's through the own-claim-only path.
+// per-process id, the opposite of resolveClaimSession's stable one, and
+// correct for the opposite reason. One MCP server process serves one agent
+// session (Options.Session says so), so two agents on this machine are two
+// processes and must not share an identity. A stable per-user id would put
+// them both under the same session: each would be handed the other's claim
+// as its own retry, and either could release the other's through the
+// own-claim-only path.
 //
 // The pid alone is not enough. Pids are reused, and a stale claim left by a
-// dead server could collide with a new one that happened to inherit its
-// number -- rare, silent, and exactly the class of thing that only shows up
-// under the concurrency this is meant to make safe. The random half removes
-// it; crypto/rand rather than math/rand because a guessable session id is a
-// session id another process can impersonate.
+// dead server could collide with a new one that inherited its number,
+// rarely and silently, under the concurrency this is meant to make safe.
+// The random half removes that; crypto/rand rather than math/rand because a
+// guessable session id is one another process can impersonate.
 func resolveMCPSession() string {
 	if s := store.Env("SESSION"); s != "" {
 		return s
@@ -151,8 +150,8 @@ func resolveMCPSession() string {
 	var b [6]byte
 	if _, err := rand.Read(b[:]); err != nil {
 		// Cannot happen on any supported platform, and if it somehow does,
-		// a pid-only id is still non-empty and still unique among LIVE
-		// processes -- which is better than refusing to start.
+		// a pid-only id is still non-empty and still unique among live
+		// processes, which is better than refusing to start.
 		return fmt.Sprintf("mcp:%d", os.Getpid())
 	}
 	return fmt.Sprintf("mcp:%d:%s", os.Getpid(), hex.EncodeToString(b[:]))

@@ -1,7 +1,7 @@
-{{/* backlog.html -- what has been noticed but is not workable yet.
+{{/* backlog.html: what has been noticed but is not workable yet.
      Data: []backlogRow, already grouped-then-sorted by store.Backlog; a
      group header is emitted whenever a row's NewGroup is true. This
-     template does not sort or re-group -- it only reads the boundary
+     template does not sort or re-group; it only reads the boundary
      render.go already detected. */}}
 {{define "backlog"}}{{template "head" (titled . "Parked" "Parked" "Worth remembering, not ready to work on. Promote one when its title stands on its own.")}}
 {{$p := .}}{{with .Data}}

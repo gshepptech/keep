@@ -26,7 +26,7 @@ func writableFixture(t *testing.T) (*Server, string) {
 	if err != nil {
 		t.Fatalf("NewServer: %v", err)
 	}
-	t.Cleanup(func() { s.Close() })
+	t.Cleanup(func() { s.ln.Close() })
 	return s, dir
 }
 
@@ -39,12 +39,12 @@ func post(t *testing.T, s *Server, path string, form url.Values) *httptest.Respo
 	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, req)
+	s.srv.Handler.ServeHTTP(rec, req)
 	return rec
 }
 
-// TestBoardFilesAnItem is the whole point of making the board writable: a
-// person watching a queue can add to it without leaving the page.
+// TestBoardFilesAnItem checks that a person watching a queue can add to it
+// from the board without leaving the page.
 func TestBoardFilesAnItem(t *testing.T) {
 	s, _ := writableFixture(t)
 
@@ -56,7 +56,7 @@ func TestBoardFilesAnItem(t *testing.T) {
 		t.Fatalf("add: status %d, want 303: %s", rec.Code, rec.Body.String())
 	}
 
-	body := get(t, s.Handler(), "/").Body.String()
+	body := get(t, s.srv.Handler, "/").Body.String()
 	if !strings.Contains(body, "Filed from the board") {
 		t.Errorf("the new item is not on the board:\n%s", body)
 	}
@@ -67,7 +67,8 @@ func TestBoardFilesAnItem(t *testing.T) {
 	}
 }
 
-// TestBoardRefusesAForeignToken. The server is loopback-only, but loopback
+// TestBoardRefusesAForeignToken checks that a POST with the wrong token is
+// refused. The server is loopback-only, but loopback
 // includes every other program on the machine and every page the browser
 // has open. Without this, any site could POST here.
 func TestBoardRefusesAForeignToken(t *testing.T) {
@@ -79,14 +80,15 @@ func TestBoardRefusesAForeignToken(t *testing.T) {
 	if rec.Code != http.StatusForbidden {
 		t.Errorf("a wrong token got %d, want 403", rec.Code)
 	}
-	if body := get(t, s.Handler(), "/").Body.String(); strings.Contains(body, "Should not exist") {
+	if body := get(t, s.srv.Handler, "/").Body.String(); strings.Contains(body, "Should not exist") {
 		t.Error("an item was filed with a wrong token")
 	}
 }
 
-// TestBoardRefusesAForeignOrigin is the second, independent check. A
-// browser that sends neither header is still covered by the token; one that
-// sends a foreign Origin is refused before the token is even read.
+// TestBoardRefusesAForeignOrigin checks that a POST with a foreign Origin is
+// refused, independently of the token. A browser that sends neither header
+// is still covered by the token; one that sends a foreign Origin is refused
+// before the token is even read.
 func TestBoardRefusesAForeignOrigin(t *testing.T) {
 	s, _ := writableFixture(t)
 
@@ -95,32 +97,34 @@ func TestBoardRefusesAForeignOrigin(t *testing.T) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Origin", "http://evil.example")
 	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, req)
+	s.srv.Handler.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusForbidden {
 		t.Errorf("a foreign Origin got %d, want 403", rec.Code)
 	}
 }
 
-// TestBoardGetCannotMutate: every mutation is POST, so no link, prefetch,
-// or reload can change the store.
+// TestBoardGetCannotMutate checks that a GET to an action route changes
+// nothing. Every mutation is POST, so no link, prefetch, or reload can
+// change the store.
 func TestBoardGetCannotMutate(t *testing.T) {
 	s, _ := writableFixture(t)
 
 	for _, verb := range []string{"add", "start", "close", "drop", "update", "promote"} {
-		if rec := get(t, s.Handler(), "/do/"+verb); rec.Code != http.StatusMethodNotAllowed {
+		if rec := get(t, s.srv.Handler, "/do/"+verb); rec.Code != http.StatusMethodNotAllowed {
 			t.Errorf("GET /do/%s returned %d, want 405", verb, rec.Code)
 		}
 	}
 }
 
-// TestBoardWithoutWritableRendersNoActions. A button that is going to say
-// no is worse than no button, so a read-only board does not render them.
+// TestBoardWithoutWritableRendersNoActions checks that a read-only board
+// renders no action buttons, because a button that is going to say no is
+// worse than no button.
 func TestBoardWithoutWritableRendersNoActions(t *testing.T) {
 	t.Setenv(interlock.EnvBinary, "off")
 	s, _ := newHandlerFixture(t) // built without Writable
 
-	body := get(t, s.Handler(), "/").Body.String()
+	body := get(t, s.srv.Handler, "/").Body.String()
 	if strings.Contains(body, "/do/start") {
 		t.Errorf("a read-only board rendered an action form:\n%s", body)
 	}
@@ -141,31 +145,32 @@ func TestBoardStartsAndClosesAnItem(t *testing.T) {
 	if rec := post(t, s, "/do/start", url.Values{"id": {id}}); rec.Code != http.StatusSeeOther {
 		t.Fatalf("start: %d %s", rec.Code, rec.Body.String())
 	}
-	if body := get(t, s.Handler(), "/").Body.String(); !strings.Contains(body, "Being worked on") {
+	if body := get(t, s.srv.Handler, "/").Body.String(); !strings.Contains(body, "Being worked on") {
 		t.Errorf("a started item is not in the being-worked-on section:\n%s", body)
 	}
 
 	if rec := post(t, s, "/do/close", url.Values{"id": {id}, "reason": {"done"}}); rec.Code != http.StatusSeeOther {
 		t.Fatalf("close: %d", rec.Code)
 	}
-	if body := get(t, s.Handler(), "/").Body.String(); strings.Contains(body, "Walk the transitions") {
+	if body := get(t, s.srv.Handler, "/").Body.String(); strings.Contains(body, "Walk the transitions") {
 		t.Errorf("a closed item is still on the board:\n%s", body)
 	}
 }
 
-// TestBoardPromotesAParkedItem: parking and promoting is the one decision
-// the backlog exists for, so it has to be doable from the page.
+// TestBoardPromotesAParkedItem checks that a raw item can be promoted to a
+// ticket from the page, because that is the decision the backlog exists
+// for.
 func TestBoardPromotesAParkedItem(t *testing.T) {
 	s, _ := writableFixture(t)
 
 	post(t, s, "/do/add", url.Values{
 		"title": {"Noticed in passing"}, "type": {"note"}, "park": {"1"},
 	})
-	if body := get(t, s.Handler(), "/").Body.String(); strings.Contains(body, "Noticed in passing") {
+	if body := get(t, s.srv.Handler, "/").Body.String(); strings.Contains(body, "Noticed in passing") {
 		t.Errorf("a parked item went straight onto the board:\n%s", body)
 	}
 
-	backlog := get(t, s.Handler(), "/backlog").Body.String()
+	backlog := get(t, s.srv.Handler, "/backlog").Body.String()
 	if !strings.Contains(backlog, "Noticed in passing") {
 		t.Fatalf("the parked item is not in the backlog:\n%s", backlog)
 	}
@@ -174,7 +179,7 @@ func TestBoardPromotesAParkedItem(t *testing.T) {
 	if rec := post(t, s, "/do/promote", url.Values{"id": {id}}); rec.Code != http.StatusSeeOther {
 		t.Fatalf("promote: %d %s", rec.Code, rec.Body.String())
 	}
-	if body := get(t, s.Handler(), "/").Body.String(); !strings.Contains(body, "Noticed in passing") {
+	if body := get(t, s.srv.Handler, "/").Body.String(); !strings.Contains(body, "Noticed in passing") {
 		t.Errorf("a promoted item did not reach the queue:\n%s", body)
 	}
 }
@@ -193,7 +198,7 @@ func TestBoardEditsAnItem(t *testing.T) {
 		t.Fatalf("update: %d %s", rec.Code, rec.Body.String())
 	}
 
-	item := get(t, s.Handler(), "/item/"+id).Body.String()
+	item := get(t, s.srv.Handler, "/item/"+id).Body.String()
 	if !strings.Contains(item, "After") {
 		t.Errorf("the title did not change:\n%s", item)
 	}
@@ -204,7 +209,7 @@ func TestBoardEditsAnItem(t *testing.T) {
 
 func firstIDOnBoard(t *testing.T, s *Server) string {
 	t.Helper()
-	return idFromBody(t, get(t, s.Handler(), "/").Body.String())
+	return idFromBody(t, get(t, s.srv.Handler, "/").Body.String())
 }
 
 func idFromBody(t *testing.T, body string) string {
@@ -217,11 +222,12 @@ func idFromBody(t *testing.T, body string) string {
 	return rest[:strings.IndexAny(rest, `"`)]
 }
 
-// TestRedirectPrefixCannotLeaveTheHost.
+// TestRedirectPrefixCannotLeaveTheHost checks that the redirect after a board
+// action always stays on this host.
 //
 // If the prefix came straight off the form and were concatenated into
 // the redirect, a posted "//evil.example" would make a protocol-relative
-// URL, which browsers follow off-host -- an open redirect, reachable by
+// URL, which browsers follow off-host: an open redirect, reachable by
 // anyone who can get a token-bearing form submitted. The prefix is derived
 // from the project name, which is checked against the registry, so the only
 // value it can ever take is "/p/<a project that exists>".
@@ -268,7 +274,8 @@ func TestRedirectPrefixCannotLeaveTheHost(t *testing.T) {
 	})
 }
 
-// TestDropRefusesWithoutAReason.
+// TestDropRefusesWithoutAReason checks that the board refuses a drop that
+// carries no reason.
 //
 // `keep drop` requires --reason and exits 2 without one. The board must not
 // hold a lower standard than the command line for the same operation, on
@@ -290,7 +297,8 @@ func TestDropRefusesWithoutAReason(t *testing.T) {
 	}
 }
 
-// TestConfirmPageNamesWhatItWillDestroyAndActsOnNothing.
+// TestConfirmPageNamesWhatItWillDestroyAndActsOnNothing checks that the
+// confirm page names its item and that loading it changes nothing.
 //
 // A confirmation that does not show its subject is one you answer from
 // memory of what you clicked. And it is a GET: viewing it must change
@@ -302,7 +310,7 @@ func TestConfirmPageNamesWhatItWillDestroyAndActsOnNothing(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/confirm?verb=drop&id="+id, nil)
 	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, req)
+	s.srv.Handler.ServeHTTP(rec, req)
 	body := rec.Body.String()
 
 	// The TITLE is the property here: an id is what you clicked, a title is
@@ -317,7 +325,7 @@ func TestConfirmPageNamesWhatItWillDestroyAndActsOnNothing(t *testing.T) {
 	// Viewing it must not have dropped anything.
 	after := httptest.NewRequest(http.MethodGet, "/", nil)
 	arec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(arec, after)
+	s.srv.Handler.ServeHTTP(arec, after)
 	if !strings.Contains(arec.Body.String(), id) {
 		t.Error("the item left the board after merely viewing the confirm page")
 	}

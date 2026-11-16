@@ -14,20 +14,14 @@ import (
 // except status on an existing item. Score is recomputed on any write that
 // changes one of its inputs, and this is the write that can.
 //
-// --status is deliberately NOT a registered flag. open -> in_progress ->
+// --status is deliberately not a registered flag. open -> in_progress ->
 // closed/dropped moves only through start/close/drop, so the event log
-// always records WHY a status changed; an --status flag here would let a
-// caller close work while bypassing close's own --reason, making the audit
-// trail lie by omission (the same reasoning that keeps close and drop
-// separate). A caller who types --status gets flag's own "flag provided but
-// not defined: -status" on stderr and exit 2 from fs.Parse's own
-// ContinueOnError failure -- unambiguous that the flag does not exist,
-// which is a better outcome than a custom message pretending to explain a
-// flag that was never there.
-//
-// cmd/keep may not contain SQL -- every flag's help text below
-// says "change fields on an existing item", never a fragment resembling a
-// SQL statement, so TestNoSQLAboveStore's literal scan does not trip on it.
+// always records why a status changed; an --status flag here would let a
+// caller close work while bypassing close's own --reason, leaving a gap in
+// the audit trail (the same reasoning that keeps close and drop separate).
+// A caller who types --status gets flag's own "flag provided but not
+// defined: -status" on stderr and exit 2 from fs.Parse's ContinueOnError
+// failure, which says plainly that the flag does not exist.
 func runUpdate(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("update", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -61,10 +55,10 @@ func runUpdate(args []string, stdout, stderr io.Writer) int {
 	}
 	id := fs.Arg(0)
 
-	// fs.Visit distinguishes "supplied" (even --title "" -- clear the
-	// title) from "left at its zero value" -- reading *titleFlag directly
-	// could never tell the two apart, which is the whole point of
-	// UpdateItemInput's pointer fields (internal/store/transitions.go).
+	// fs.Visit distinguishes "supplied" (even --title "", which clears the
+	// title) from "left at its zero value". Reading *titleFlag directly
+	// could not tell the two apart, which is why UpdateItemInput has pointer
+	// fields (internal/store/transitions.go).
 	visited := map[string]bool{}
 	fs.Visit(func(f *flag.Flag) { visited[f.Name] = true })
 
@@ -130,13 +124,12 @@ func runUpdate(args []string, stdout, stderr io.Writer) int {
 		Effort:     effort,
 	}
 
-	// No fields supplied is a usage error (exit 2), not a silent no-op
-	// -- checked, and returned, BEFORE opening
-	// the store: opening a database to discover the caller asked for
-	// nothing is wasted work and a worse error message. Checking the built
-	// UpdateItemInput's own fields (rather than counting fs.NFlag()) is the
-	// robust form -- --db/--actor/--json also count
-	// toward NFlag but are not field flags.
+	// No fields supplied is a usage error (exit 2), not a silent no-op, and
+	// it is returned before opening the store: opening a database to
+	// discover the caller asked for nothing is wasted work and a worse error
+	// message. It checks the built UpdateItemInput's own fields rather than
+	// counting fs.NFlag(), because --db/--actor/--json also count toward
+	// NFlag but are not field flags.
 	anyFieldSet := in.Title != nil || in.Body != nil || in.Acceptance != nil || in.Why != nil ||
 		in.Type != nil || in.Stage != nil || in.Repo != nil || in.Paths != nil || in.Assignee != nil ||
 		in.Value != nil || in.Confidence != nil || in.Effort != nil

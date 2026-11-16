@@ -9,8 +9,8 @@ import (
 
 // searchData is what the search page renders: the box, and whatever the box
 // found. Query is echoed back so the field still holds what was typed after
-// the round trip -- a search box that empties itself on submit makes you
-// retype to refine.
+// the round trip, because a search box that empties itself on submit makes
+// you retype to refine.
 type searchData struct {
 	Query   string
 	Results []store.SearchResult
@@ -53,23 +53,22 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 // row already displays the text it would show.
 //
 // The snippet exists to answer "why is this in my results?" when the answer
-// is somewhere you cannot see -- a match in the reason, the acceptance
+// is somewhere you cannot see: a match in the reason, the acceptance
 // criteria, or the body. A row already shows its title and its paths, so a
-// match in either produces a snippet that repeats a line an inch above it.
-// The rendered result was:
+// match in either would produce a snippet that repeats a line an inch above
+// it:
 //
 //	Replace the hand-rolled retry loop with a backoff library
 //	open · matched in paths · internal/payments/refund.go · rnc-616bf0
 //	internal/payments/refund.go
 //
 // Substring containment states the rule once instead of once per field,
-// and it also
-// catches the case a field list cannot: a short body whose entire text is
-// the title again.
+// and it also catches the case a field list cannot: a short body whose
+// entire text is the title again.
 //
 // It runs here rather than in store.Search because it is a fact about what
 // this page draws, not about the search. The CLI prints no paths column, so
-// the same snippet is load-bearing there.
+// it still needs the same snippet.
 func withoutRedundantSnippets(results []store.SearchResult) []store.SearchResult {
 	for i, r := range results {
 		if r.Snippet == "" {

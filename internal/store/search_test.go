@@ -6,8 +6,8 @@ import (
 	"testing"
 )
 
-// TestSearchFindsAnItemByAnyOfItsText. The whole point: you remember a word,
-// not an id.
+// TestSearchFindsAnItemByAnyOfItsText checks that a word from any of an
+// item's text fields finds it, because people remember a word, not an id.
 func TestSearchFindsAnItemByAnyOfItsText(t *testing.T) {
 	st, ctx := openTestStore(t), context.Background()
 	// The title match scores LOWEST on purpose. Rank by field is the only
@@ -33,7 +33,8 @@ func TestSearchFindsAnItemByAnyOfItsText(t *testing.T) {
 	}
 }
 
-// TestSearchIsCaseInsensitive. Nobody remembers the capitalisation.
+// TestSearchIsCaseInsensitive checks that a query matches regardless of
+// case, because nobody remembers the capitalisation.
 func TestSearchIsCaseInsensitive(t *testing.T) {
 	st, ctx := openTestStore(t), context.Background()
 	mustAdd(t, st, AddItemInput{Title: "Expire Refresh TOKENS", Actor: "a"})
@@ -47,7 +48,8 @@ func TestSearchIsCaseInsensitive(t *testing.T) {
 	}
 }
 
-// TestSearchTreatsWildcardsAsLiteralText.
+// TestSearchTreatsWildcardsAsLiteralText checks that % and _ in a query match
+// only themselves.
 //
 // LIKE gives % and _ meaning. A person searching for "100%" means those
 // four characters; unescaped, the % matches everything and the search
@@ -76,8 +78,9 @@ func TestSearchTreatsWildcardsAsLiteralText(t *testing.T) {
 	}
 }
 
-// TestSearchLeavesClosedWorkOutUnlessAsked. The common search is for live
-// work; a store's whole history buries it.
+// TestSearchLeavesClosedWorkOutUnlessAsked checks that closed and dropped
+// items are excluded unless the filter includes them. The common search is
+// for live work, and a store's full history would bury it.
 func TestSearchLeavesClosedWorkOutUnlessAsked(t *testing.T) {
 	st, ctx := openTestStore(t), context.Background()
 	live := mustAdd(t, st, AddItemInput{Title: "token work, live", Actor: "a"})
@@ -103,9 +106,10 @@ func TestSearchLeavesClosedWorkOutUnlessAsked(t *testing.T) {
 	}
 }
 
-// TestSearchRefusesAnEmptyQuery. An empty search is a request for the whole
-// store, which `list` already answers; answering it here would make an
-// accidental empty box look like a working search.
+// TestSearchRefusesAnEmptyQuery checks that an empty query is an error. An
+// empty search is a request for the whole store, which `list` already
+// answers; answering it here would make an accidental empty box look like a
+// working search.
 func TestSearchRefusesAnEmptyQuery(t *testing.T) {
 	st, ctx := openTestStore(t), context.Background()
 	mustAdd(t, st, AddItemInput{Title: "anything", Actor: "a"})
@@ -117,12 +121,12 @@ func TestSearchRefusesAnEmptyQuery(t *testing.T) {
 	}
 }
 
-// TestSearchSaysWhereTheMatchCameFrom.
+// TestSearchSaysWhereTheMatchCameFrom checks that each search result names
+// the field it matched in.
 //
 // A result whose title does not contain the word you searched for reads as
 // a mistake until it can tell you it matched the reason, or a path, or the
-// body. Found by looking at the rendered page: the one hit was an item
-// whose title had nothing to do with the query.
+// body.
 func TestSearchSaysWhereTheMatchCameFrom(t *testing.T) {
 	st, ctx := openTestStore(t), context.Background()
 	mustAdd(t, st, AddItemInput{Title: "token expiry", Actor: "a"})
@@ -148,13 +152,13 @@ func TestSearchSaysWhereTheMatchCameFrom(t *testing.T) {
 	}
 }
 
-// TestSearchShowsTheTextAroundAMatch.
+// TestSearchShowsTheTextAroundAMatch checks that a search result carries the
+// text around the match.
 //
-// Found by running search against a real store: one captured document whose
-// body was an entire roadmap matched almost every query, and "matched in
-// body" gave no way at all to tell a real hit from a passing mention. The
-// window of surrounding text is what makes a result judgeable without
-// opening it.
+// A captured document whose body is an entire plan matches almost every
+// query, and "matched in body" alone gives no way to tell a real hit from a
+// passing mention. The window of surrounding text makes a result judgeable
+// without opening it.
 func TestSearchShowsTheTextAroundAMatch(t *testing.T) {
 	st, ctx := openTestStore(t), context.Background()
 	long := strings.Repeat("padding text that is not interesting. ", 12) +
@@ -181,8 +185,8 @@ func TestSearchShowsTheTextAroundAMatch(t *testing.T) {
 	}
 }
 
-// TestSearchDoesNotEllipsiseWhatItShowedWhole. A short field is returned
-// whole; decorating it with ellipses would claim text was hidden when none
+// TestSearchDoesNotEllipsiseWhatItShowedWhole checks that a short field's
+// snippet carries no ellipses, which would claim text was hidden when none
 // was.
 func TestSearchDoesNotEllipsiseWhatItShowedWhole(t *testing.T) {
 	st, ctx := openTestStore(t), context.Background()

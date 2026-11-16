@@ -95,7 +95,7 @@ func TestGetItemBothDependencyDirections(t *testing.T) {
 		t.Fatalf("parent.DependedOnBy = %+v, want it to contain child's parent-child edge", parentDetail.DependedOnBy)
 	}
 	// The negative assertion: the parent-child edge is item_id=child,
-	// depends_on_id=parent -- it must NOT also appear in the parent's OWN
+	// depends_on_id=parent, so it must not also appear in the parent's own
 	// DependsOn (that would mean the two directions were populated from the
 	// same query, or the direction predicate got swapped).
 	if containsDep(parentDetail.DependsOn, child.ID, parent.ID, model.DepParentChild) {
@@ -107,7 +107,7 @@ func TestGetItemBothDependencyDirections(t *testing.T) {
 }
 
 // TestGetItemEventHistoryOldestFirst proves three mutations against one item
-// produce three events in the order they happened -- oldest first, by id.
+// produce three events in the order they happened: oldest first, by id.
 func TestGetItemEventHistoryOldestFirst(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
@@ -175,9 +175,10 @@ func TestGetItemBodyVerbatim(t *testing.T) {
 // listFiltersFixture is the shared five-item fixture TestListItemsFilters'
 // table runs against, built once.
 type listFiltersFixture struct {
-	raw          model.Item // stage=raw, type=task, status=open (AddItem always inserts status='open')
+	// stage=raw, type=task, status=open (AddItem always inserts status='open')
+	raw          model.Item
 	epic         model.Item // stage=ticket, type=epic, status=open
-	closedTicket model.Item // stage=ticket, type=task, status=closed (via execSQL -- StartItem/CloseItem don't exist yet)
+	closedTicket model.Item // stage=ticket, type=task, status=closed, written with execSQL
 	child        model.Item // stage=ticket, type=task, parent=epic, status=open
 	repoTicket   model.Item // stage=ticket, type=bug, repo="myrepo", status=open
 }
@@ -195,7 +196,7 @@ func buildListFiltersFixture(t *testing.T, s *Store) listFiltersFixture {
 }
 
 // TestListItemsFilters is a table test over each single filter and at least
-// two AND combinations, asserting exact sorted id sets -- a count assertion
+// two AND combinations, asserting exact sorted id sets. A count assertion
 // alone would pass when a filter returns the wrong three of five rows.
 func TestListItemsFilters(t *testing.T) {
 	ctx := context.Background()
@@ -271,8 +272,8 @@ func TestListItemsExcludeClosed(t *testing.T) {
 		t.Fatalf("ListItems(Stage: raw, ExcludeClosed: true) ids = %v, want %v", gotIDs, wantIDs)
 	}
 
-	// The zero value (ExcludeClosed unset) must change nothing for every
-	// existing caller -- all four raw items still come back.
+	// The zero value (ExcludeClosed unset) applies no filter: all four raw
+	// items still come back.
 	allGot, err := s.ListItems(ctx, ListFilter{Stage: model.StageRaw})
 	if err != nil {
 		t.Fatalf("ListItems(Stage: raw): %v", err)
@@ -296,7 +297,7 @@ func TestListItemsExcludeClosed(t *testing.T) {
 }
 
 // TestListItemsUnfilteredIncludesRaw proves a raw item is present with no
-// filter, and absent when Stage: "ticket" is applied -- ListItems must query
+// filter, and absent when Stage: "ticket" is applied. ListItems must query
 // items directly, never the ready view, or a raw item would silently never
 // appear regardless of filter.
 func TestListItemsUnfilteredIncludesRaw(t *testing.T) {

@@ -11,10 +11,10 @@ import (
 	"github.com/gshepptech/keep/internal/store"
 )
 
-// runList implements the `list` subcommand: six flags mapping
-// straight onto store.ListFilter, composing as AND, over items directly --
-// never the ready view -- so raw items and closed/dropped items show up
-// alongside open tickets, which ready/blocked deliberately exclude.
+// runList implements the `list` subcommand: six flags mapping straight onto
+// store.ListFilter, composing as AND, over items directly (never the ready
+// view), so raw items and closed/dropped items show up alongside open
+// tickets, which ready/blocked exclude.
 //
 // --stage, --status, and --type are validated against the model package's
 // closed vocabularies at the CLI boundary before the store is opened; an
@@ -92,7 +92,7 @@ func runList(args []string, stdout, stderr io.Writer) int {
 }
 
 // validStatusesList renders model.StatusesOrdered as a stable, human-
-// readable list -- same reasoning as add.go's validTypesList/
+// readable list, for the same reason as add.go's validTypesList/
 // validStagesList: ranging over the ValidStatuses map itself would produce a
 // different order on every process.
 func validStatusesList() string {
