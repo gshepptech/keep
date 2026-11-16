@@ -82,8 +82,8 @@ type Event struct {
 type ItemDetail struct {
 	Item
 
-	// DependsOn holds the deps rows where this item is item_id -- the edges
-	// this item points FROM, i.e. what this item depends on.
+	// DependsOn holds the deps rows where this item is item_id: the edges
+	// this item points from, which are what it depends on.
 	DependsOn []Dep `json:"depends_on"`
 
 	// DependedOnBy holds the deps rows where this item is depends_on_id --
@@ -94,8 +94,8 @@ type ItemDetail struct {
 }
 
 // BlockedItem is a ready-eligible-shape item annotated with the id of the
-// nearest item blocking it -- either the item itself, if it is
-// directly blocked, or the nearest blocked ancestor in its parent-child tree.
+// nearest item blocking it. That is the item itself when it is directly
+// blocked, or else the nearest blocked ancestor in its parent-child tree.
 type BlockedItem struct {
 	Item
 	BlockedBy string `json:"blocked_by"`
@@ -177,9 +177,8 @@ const (
 // (internal/store/backlog.go's CASE expression) and the MCP tools' JSON
 // Schema `enum` decoration (internal/mcp). Ranging over ValidTypes to build
 // either would emit a different order on every process, which makes a demo
-// transcript and a tools/list assertion flaky -- the same reason
-// cmd/keep/add.go's validTypesList() has always spelled the order out by
-// hand. This is now the ONE place it is spelled out.
+// transcript and a tools/list assertion flaky. This is the one place the
+// order is spelled out.
 var TypesOrdered = []string{TypeRoadmap, TypeEpic, TypeTask, TypeBug, TypeNote}
 
 // Item statuses.

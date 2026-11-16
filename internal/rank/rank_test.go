@@ -2,12 +2,12 @@ package rank
 
 import "testing"
 
-// TestScore_UnscoredAlwaysSortsLast enumerates the FULL input space rather
-// than sampling it: each of value/confidence/effort is either nil or one of
-// 0..10 -- 12 possibilities per input, 12^3 = 1,728 combinations total. This
-// completes in well under a second, so there is no reason to reach for
-// property-based/fuzz testing here; exhaustive enumeration is strictly
-// stronger and just as fast.
+// TestScore_UnscoredAlwaysSortsLast checks that an unscored item sorts
+// after every scored one, across the full input space. Each of
+// value/confidence/effort is either nil or one of 0..10, which is 12
+// possibilities per input and 1,728 combinations in total. That runs in
+// well under a second, and exhaustive enumeration is stronger than
+// property-based sampling.
 func TestScore_UnscoredAlwaysSortsLast(t *testing.T) {
 	opts := func() []*int {
 		vals := []*int{nil}
@@ -36,7 +36,7 @@ func TestScore_UnscoredAlwaysSortsLast(t *testing.T) {
 			}
 		}
 	}
-	const wantCases = 12 * 12 * 12 // 1,728 -- nil plus 0..10 for each of value/confidence/effort
+	const wantCases = 12 * 12 * 12 // nil plus 0..10 for each of value/confidence/effort
 	if cases != wantCases {
 		t.Fatalf("enumerated %d combinations, want %d -- the full space did not run", cases, wantCases)
 	}
