@@ -46,9 +46,9 @@ def main() -> int:
     if not binary:
         return 0
 
-    # `board --json` is one process for counts *and* the top of the queue --
-    # deliberately, because this runs on every session start and three separate
-    # invocations would be three times the cost for the same answer.
+    # `board --json` is one process for counts *and* the top of the queue,
+    # because this runs on every session start and three separate invocations
+    # would be three times the cost for the same answer.
     try:
         proc = subprocess.run(
             [binary, "board", "--json", "--limit", str(MAX_ROWS)],
@@ -78,7 +78,7 @@ def main() -> int:
     backlog = counts.get("backlog", 0)
 
     # An initialised but empty store has nothing to say. Saying it anyway would
-    # train the reader to skip this block, which defeats the point.
+    # train the reader to skip this block.
     if not any((ready, in_progress, blocked, backlog)):
         return 0
 
