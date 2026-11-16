@@ -12,7 +12,7 @@ import (
 )
 
 // handlerFixtureIDs names every id newHandlerFixture's fixture produces, so
-// each test asserts against a real, captured id -- never a hard-coded rnc-
+// each test asserts against a real, captured id, never a hard-coded rnc-
 // literal (ids are hash-derived from title plus wall-clock creation time
 // and differ on every run).
 type handlerFixtureIDs struct {
@@ -57,7 +57,7 @@ func newHandlerFixture(t *testing.T) (*Server, handlerFixtureIDs) {
 	}
 }
 
-// get drives s's route table through httptest -- no port binding needed.
+// get drives s's route table through httptest, with no port binding.
 func get(t *testing.T, h http.Handler, path string) *httptest.ResponseRecorder {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodGet, path, nil)
@@ -202,9 +202,9 @@ func TestAMissingIdGetsAPageNotBareText(t *testing.T) {
 	}
 }
 
-// TestTheActiveNavSaysSoOutLoud. aria-current is what tells a screen reader
-// which page it is on; the highlight alone says it only to people who can
-// see it.
+// TestTheActiveNavSaysSoOutLoud checks that the current page's nav link
+// carries aria-current. That is what tells a screen reader which page it is
+// on; the highlight alone says it only to people who can see it.
 func TestTheActiveNavSaysSoOutLoud(t *testing.T) {
 	s, _ := writableFixture(t)
 

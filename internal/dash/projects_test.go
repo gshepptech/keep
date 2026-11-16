@@ -56,9 +56,9 @@ func twoProjects(t *testing.T) (*Server, string) {
 	return s, home
 }
 
-// TestBoardNamesItsProject is the complaint that prompted all of this: a
-// board that does not say which project it is serving is one you can act on
-// by mistake, and with several open in tabs that is a matter of when.
+// TestBoardNamesItsProject checks that the board names the project it is
+// serving. One that does not can be acted on by mistake, and with several
+// open in tabs that is only a matter of time.
 func TestBoardNamesItsProject(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
 	// Windows cannot execute. Without a Windows stub the test is skipped
@@ -79,8 +79,8 @@ func TestBoardNamesItsProject(t *testing.T) {
 	}
 }
 
-// TestEachProjectHasItsOwnBoard: /p/<name> serves that project's store, not
-// the one the server was started in.
+// TestEachProjectHasItsOwnBoard checks that /p/<name> serves that project's
+// store, not the one the server was started in.
 func TestEachProjectHasItsOwnBoard(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
 	// Windows cannot execute. Without a Windows stub the test is skipped
@@ -107,9 +107,10 @@ func TestEachProjectHasItsOwnBoard(t *testing.T) {
 	}
 }
 
-// TestOtherProjectLinksStayInThatProject. Without a prefix on every link, a
-// click on another project's board silently navigates back to the default
-// one -- which looks like the data changed under you.
+// TestOtherProjectLinksStayInThatProject checks that every link on another
+// project's board carries that project's prefix. Without it, a click
+// silently navigates back to the default board, which looks like the data
+// changed under you.
 func TestOtherProjectLinksStayInThatProject(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
 	// Windows cannot execute. Without a Windows stub the test is skipped
@@ -129,8 +130,9 @@ func TestOtherProjectLinksStayInThatProject(t *testing.T) {
 	}
 }
 
-// TestUnknownProjectIs404: a mistyped name is an ordinary miss. Reporting
-// it as a server failure sends a person looking for a bug that is not there.
+// TestUnknownProjectIs404 checks that an unknown project name is a 404. A
+// mistyped name is an ordinary miss, and reporting it as a server failure
+// sends a person looking for a bug that is not there.
 func TestUnknownProjectIs404(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
 	// Windows cannot execute. Without a Windows stub the test is skipped
@@ -146,8 +148,9 @@ func TestUnknownProjectIs404(t *testing.T) {
 	}
 }
 
-// TestProjectsPageListsEveryProject with the two facts a person needs to
-// tell them apart.
+// TestProjectsPageListsEveryProject checks that the projects page lists
+// every registered project with the two facts a person needs to tell them
+// apart.
 func TestProjectsPageListsEveryProject(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
 	// Windows cannot execute. Without a Windows stub the test is skipped
@@ -166,9 +169,10 @@ func TestProjectsPageListsEveryProject(t *testing.T) {
 	}
 }
 
-// TestAddingAProjectRequiresAStore. Registering is not creating: a board
-// that quietly ran init would be deciding on a person's behalf that a
-// directory should become a project.
+// TestAddingAProjectRequiresAStore checks that adding a directory with no
+// store is refused. Registering is not creating: a board that quietly ran
+// init would be deciding on a person's behalf that a directory should
+// become a project.
 func TestAddingAProjectRequiresAStore(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
 	// Windows cannot execute. Without a Windows stub the test is skipped
@@ -192,7 +196,8 @@ func TestAddingAProjectRequiresAStore(t *testing.T) {
 	}
 }
 
-// TestAddingAProjectRegistersIt, given a directory that does have one.
+// TestAddingAProjectRegistersIt checks that adding a directory that has a
+// store registers it.
 func TestAddingAProjectRegistersIt(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
 	// Windows cannot execute. Without a Windows stub the test is skipped
@@ -222,10 +227,10 @@ func TestAddingAProjectRegistersIt(t *testing.T) {
 	}
 }
 
-// TestAddingAProjectCreatesAStoreOnlyWhenAsked. Creating writes a file into
-// someone's repository, which is not a thing to do because a form was
-// submitted -- so the checkbox is the consent, and without it the refusal
-// names both ways out.
+// TestAddingAProjectCreatesAStoreOnlyWhenAsked checks that a store is
+// created only when the create checkbox is ticked. Creating writes a file
+// into someone's repository, so the checkbox is the consent, and without it
+// the refusal names both ways out.
 func TestAddingAProjectCreatesAStoreOnlyWhenAsked(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
 	// Windows cannot execute. Without a Windows stub the test is skipped
@@ -256,8 +261,9 @@ func TestAddingAProjectCreatesAStoreOnlyWhenAsked(t *testing.T) {
 	}
 }
 
-// TestCreateRefusesAMissingDirectory: creating a store is one thing,
-// creating the repository around it is another nobody asked for.
+// TestCreateRefusesAMissingDirectory checks that creating a store in a
+// directory that does not exist is refused, because creating the
+// repository around it is something nobody asked for.
 func TestCreateRefusesAMissingDirectory(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
 	// Windows cannot execute. Without a Windows stub the test is skipped
@@ -338,9 +344,10 @@ func TestEveryActionFormCarriesItsProject(t *testing.T) {
 	}
 }
 
-// TestActionRedirectsStayInTheProject: sending someone back to "/" after
-// they acted on another project's board moves them somewhere else and makes
-// their own change look like it did not happen.
+// TestActionRedirectsStayInTheProject checks that an action on another
+// project's board redirects back into that project. Sending someone to "/"
+// would move them somewhere else and make their own change look like it did
+// not happen.
 func TestActionRedirectsStayInTheProject(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
 	// Windows cannot execute. Without a Windows stub the test is skipped
@@ -368,8 +375,8 @@ func TestActionRedirectsStayInTheProject(t *testing.T) {
 // answers from the *server's* directory, which is two wrong questions at
 // once: it asks about the wrong repository, and "is Interlock installed"
 // is not "is Interlock set up here". The binary answers status from any
-// directory, including one it has never been initialised in -- so the
-// button would appear on projects where pressing it would do nothing.
+// directory, including one it has never been initialised in, so the button
+// would appear on projects where pressing it would do nothing.
 func TestAgentControlsFollowTheProject(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
 	// Windows cannot execute. Without a Windows stub the test is skipped
@@ -407,7 +414,7 @@ func TestAgentControlsFollowTheProject(t *testing.T) {
 // directory, and whose `status` answers everywhere.
 //
 // It stubs doctor rather than a marker file because that is what Watches
-// asks -- and the two cheaper signals both proved wrong in use: a present
+// asks. The two cheaper signals both give the wrong answer: a present
 // binary answers for repositories it has never touched, and .interlock
 // appears when the first lease is recorded rather than when init runs.
 func doctorStub(t *testing.T, wired string) string {

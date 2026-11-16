@@ -25,14 +25,13 @@ var forbiddenTemplateTrustCalls = map[string]bool{
 	"JS":       true,
 }
 
-// allowedCSSFile is the one file documented as template.CSS's exception:
-// templates.go's own comment on styleInline explains why --
-// styleCSS is a compile-time go:embed of a static stylesheet living in this
-// repository, not agent data, and cannot become agent data (no code in this
-// package ever writes to it), so it is reviewable once by a human rather
-// than scanned per render. If the CSS is ever inlined differently,
-// this constant (and the "at most 1" assertion below) is what a reader
-// updates -- not a wider exception.
+// allowedCSSFile is the one file documented as template.CSS's exception, for
+// the reason templates.go's comment on styleInline gives: styleCSS is a
+// compile-time go:embed of a static stylesheet living in this repository,
+// not agent data, and cannot become agent data (no code in this package
+// ever writes to it), so it is reviewable once by a human rather than
+// scanned per render. Inlining the CSS differently means updating this
+// constant and the "at most 1" assertion below, not widening the exception.
 const allowedCSSFile = "templates.go"
 
 // forbiddenDashImports mirrors cmd/keep/boundary_test.go's own list for
@@ -43,13 +42,13 @@ const allowedCSSFile = "templates.go"
 // the module-wide walk's reach has not silently shrunk.
 var forbiddenDashImports = []string{"database/sql", "modernc.org/sqlite", "modernc.org/sqlite/lib"}
 
-// TestDashHasNoStoreBehaviour is the AST proof that internal/dash carries no
-// behaviour and no trust types of its own: internal/dash is a thin caller
-// of internal/store. It follows internal/mcp/structure_test.go's own
-// technique (TestNoConditionalInToolHandlers): parse the package's non-test
-// .go files with go/parser, walk with ast.Inspect, and assert on AST shapes
-// -- never on grep output, which flags a doc-comment mention of a forbidden
-// pattern exactly as readily as a real one.
+// TestDashHasNoStoreBehaviour checks on the AST that internal/dash carries
+// no behaviour and no trust types of its own, so it stays a thin caller of
+// internal/store. It follows internal/mcp/structure_test.go's technique
+// (TestNoConditionalInToolHandlers): parse the package's non-test .go files
+// with go/parser, walk with ast.Inspect, and assert on AST shapes rather
+// than grep output, which flags a doc-comment mention of a forbidden
+// pattern as readily as a real one.
 func TestDashHasNoStoreBehaviour(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
@@ -75,10 +74,9 @@ func TestDashHasNoStoreBehaviour(t *testing.T) {
 			files = append(files, fileEntry{filepath.Base(name), f})
 		}
 	}
-	// A walk that finds nothing must fail -- the same discipline
-	// TestNoSQLAboveStore and internal/mcp's TestNoConditionalInToolHandlers
-	// already follow, so a repository-scanning test cannot rot into a
-	// vacuous pass.
+	// A walk that finds nothing must fail, as in TestNoSQLAboveStore and
+	// internal/mcp's TestNoConditionalInToolHandlers, so a
+	// repository-scanning test cannot become a vacuous pass.
 	if len(files) == 0 {
 		t.Fatal("walked zero non-test .go files in internal/dash -- the walk is broken; treat this as a failure, not a vacuous pass")
 	}
@@ -128,9 +126,9 @@ func TestDashHasNoStoreBehaviour(t *testing.T) {
 	// template.CSS is the one documented exception (styleInline,
 	// templates.go): a compile-time go:embed of a static file, not agent
 	// data. Assert the count is at most 1 and name the file it is allowed
-	// in, rather than a blanket zero -- if a future plan inlines the
-	// stylesheet differently (0 occurrences), this assertion still holds,
-	// since "at most 1" permits zero.
+	// in, rather than a blanket zero. If the stylesheet is inlined
+	// differently (0 occurrences), this assertion still holds, since "at
+	// most 1" permits zero.
 	if cssCount > 1 {
 		t.Errorf("template.CSS(...) called %d times across %v, want at most 1 -- the one documented exception is templates.go's styleInline", cssCount, cssFiles)
 	}

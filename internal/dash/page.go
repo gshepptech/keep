@@ -35,7 +35,7 @@ type page struct {
 
 	// Writable is false when the board was started without a path to write
 	// to. Actions are then not rendered at all rather than rendered and
-	// refused -- a button that is going to say no is worse than no button.
+	// refused, because a button that is going to say no is worse than none.
 	Writable bool
 
 	// Counts feed the sidebar pips, so every page shows the same two
@@ -74,8 +74,8 @@ func (s *Server) newPage(r *http.Request, nav string, data any) page {
 
 // pageFor builds the wrapper for one request against one project. The
 // project's name and directory come from the request rather than from
-// startup, so a board looking at another project says so everywhere --
-// sidebar, links and all -- instead of naming the one it was launched in.
+// startup, so a board looking at another project says so everywhere
+// (sidebar, links and all) instead of naming the one it was launched in.
 func (s *Server) pageFor(r *http.Request, nav, project string, data any) page {
 	p := page{
 		Nav:          nav,
@@ -133,7 +133,7 @@ type boardData struct {
 	// agents, rather than showing an empty agents table.
 	Interlock *interlock.Status
 
-	// FirstRun is a store nothing has ever happened in -- no items, no
+	// FirstRun is a store nothing has ever happened in: no items, no
 	// events, day one. It is worth its own screen: the ordinary empty
 	// state says "nothing is workable", which is true and useless to
 	// someone who has not yet learned what this holds or how work gets
@@ -187,9 +187,9 @@ func (s *Server) boardDataFrom(r *http.Request, st *store.Store, path string) (b
 	// Scoped to this project's directory and gated on it being set up.
 	// Fetch alone answers from any directory, including one Interlock has
 	// never been initialised in, so asking it "is there coordination here"
-	// gets a confident yes about a repository it is not watching -- which
-	// is how the board came to show an empty agents table on a project
-	// that had no coordination at all.
+	// gets a confident yes about a repository it is not watching, and the
+	// board would show an empty agents table on a project that has no
+	// coordination at all.
 	if dir := repoDirOf(path); interlock.Watches(dir) {
 		if st, ok := interlock.Fetch(ctx, dir); ok {
 			d.Interlock = &st
@@ -208,8 +208,8 @@ func (s *Server) boardDataFrom(r *http.Request, st *store.Store, path string) (b
 
 	// The events table is the complete record of every mutation, so "has
 	// anything ever happened here" is one query against it rather than a
-	// count of four separate lists -- and unlike those, it stays correct
-	// for a repository whose work has all been closed.
+	// count of four separate lists, and unlike those, it stays correct for
+	// a repository whose work has all been closed.
 	_, everUsed, err := st.LastActivity(ctx)
 	if err != nil {
 		return d, err
@@ -229,7 +229,7 @@ func storeInProgress() store.ListFilter {
 }
 
 // typeNames is the type vocabulary the add form offers, in the order
-// model declares it -- so the dropdown cannot drift from what the store
+// model declares it, so the dropdown cannot drift from what the store
 // accepts.
 func typeNames() []string {
 	out := make([]string, 0, len(model.TypesOrdered))
@@ -244,8 +244,8 @@ type titledPage struct {
 	Page page
 
 	// Title is the browser tab. Heading is the page's own <h1>, and Lede is
-	// the one line under it -- separate because the tab wants "Board" while
-	// the page wants to say what a board is for.
+	// the one line under it. They are separate because the tab wants
+	// "Board" while the page wants to say what a board is for.
 	Title, Heading, Lede string
 
 	Data any

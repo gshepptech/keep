@@ -16,10 +16,9 @@ import (
 //
 // The registry's own field is Repo, because that is what a directory with a
 // .git in it is called. The board says project instead: what a person is
-// switching between here is
-// a body of work, and the git repository is where it happens to live. The
-// registry keeps its own vocabulary -- renaming a stored field to match a
-// page would be the tail wagging the dog.
+// switching between here is a body of work, and the git repository is where
+// it happens to live. The registry keeps its own vocabulary, because a
+// stored field should not be renamed to match a page.
 type project struct {
 	Name string
 	Path string // the store file
@@ -34,8 +33,8 @@ type project struct {
 }
 
 // projects lists every registered project, plus the one the board was
-// started in if it is somehow not registered -- which happens when a store
-// was created before the registry existed, or when a registration was lost.
+// started in if it is not registered, which happens when a store was
+// created before the registry existed, or when a registration was lost.
 // A board that hid its own project because of a bookkeeping gap would be
 // wrong in the most confusing possible way.
 func (s *Server) projects(ctx context.Context, active string) []project {
@@ -107,7 +106,7 @@ func (s *Server) activeName() string {
 // It registers rather than creating: `keep init` is what makes a store,
 // and a board that quietly created one would be deciding on a person's
 // behalf that a directory should become a project. So the failure here is
-// specific -- it says the directory has no store and how to give it one --
+// specific (it says the directory has no store and how to give it one)
 // rather than silently succeeding with an empty board.
 func (s *Server) doProjectAdd(w http.ResponseWriter, r *http.Request) {
 	if err := s.guard(r); err != nil {
@@ -147,10 +146,9 @@ func (s *Server) doProjectAdd(w http.ResponseWriter, r *http.Request) {
 				fmt.Sprintf("There is no directory at %s.", abs)), http.StatusSeeOther)
 			return
 		}
-		// The .rounce directory is the CLI's job in runInit (init.go:75);
+		// The CLI creates the .rounce directory in runInit (cmd/keep/init.go);
 		// store.Init opens a path and does not make the directory around
-		// it. Missing that is why the first version of this created
-		// nothing and reported success.
+		// it, so this handler has to.
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			http.Redirect(w, r, s.flashURL(r, "/projects", "problem", err.Error()), http.StatusSeeOther)
 			return

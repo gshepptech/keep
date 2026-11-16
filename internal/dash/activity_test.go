@@ -103,8 +103,8 @@ var qrow = regexp.MustCompile(`(?s)<b class="qkind">(.*?)</b>.*?<span class="id"
 //
 // The expectation comes from st.Feed rather than from a literal, because a
 // literal would have to be rewritten every time a verb starts writing an
-// extra event -- and would then assert the number a previous version of the
-// code produced, not the number of things that happened.
+// extra event, and would assert a fixed number rather than the number of
+// things that happened.
 func assertRendersFeedOf(t *testing.T, body string, st *store.Store, path string) {
 	t.Helper()
 	entries, err := st.Feed(context.Background(), store.FeedFilter{Limit: 200})
@@ -142,10 +142,10 @@ func assertRendersFeedOf(t *testing.T, body string, st *store.Store, path string
 	}
 }
 
-// TestActivityRendersWhatHappened. /activity is the page you open after
-// leaving agents running, and the only page whose entire content is the
-// event log -- so this asserts against the log itself rather than against a
-// fixture literal.
+// TestActivityRendersWhatHappened checks that /activity renders every event
+// in the store's own order. It is the page you open after leaving agents
+// running, and its entire content is the event log, so this asserts
+// against the log itself rather than against a fixture literal.
 func TestActivityRendersWhatHappened(t *testing.T) {
 	s, stores := activityFixture(t)
 
@@ -167,10 +167,11 @@ func TestActivityRendersWhatHappened(t *testing.T) {
 	}
 }
 
-// TestProjectScopedActivityServesThatProjectsHistory is the half more
-// likely to break: /activity reads the store the server was started in,
-// which is also the store a broken /p/{project}/activity falls back to --
-// so only a second project with its own history can tell them apart.
+// TestProjectScopedActivityServesThatProjectsHistory checks that
+// /p/{project}/activity renders that project's events. /activity reads the
+// store the server was started in, which is also the store a broken
+// /p/{project}/activity would fall back to, so only a second project with
+// its own history can tell them apart.
 func TestProjectScopedActivityServesThatProjectsHistory(t *testing.T) {
 	s, stores := activityFixture(t)
 
@@ -194,9 +195,9 @@ func TestProjectScopedActivityServesThatProjectsHistory(t *testing.T) {
 	}
 }
 
-// TestActivityForAnUnknownProjectIs404, rather than the board's own history
-// under another project's name -- the failure the fallback above would
-// produce if storeFor ever answered for a project it could not find.
+// TestActivityForAnUnknownProjectIs404 checks that an unknown project gets a
+// 404 rather than the board's own history under another project's name,
+// which is what a fallback in storeFor would produce.
 func TestActivityForAnUnknownProjectIs404(t *testing.T) {
 	s, _ := activityFixture(t)
 

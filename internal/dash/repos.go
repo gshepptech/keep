@@ -48,9 +48,9 @@ type repoError struct {
 // It is the one handler that does not make exactly one store call, because
 // it makes none: it never opens this repository's store at all. The fan-out
 // opens each registered store read-only through internal/registry, which is
-// where the read-only open and failure classification already live -- duplicating
-// any of that here would be a second implementation of the rule that a
-// missing store must not be fabricated as an empty one.
+// where the read-only open and failure classification already live.
+// Duplicating any of that here would be a second implementation of the
+// rule that a missing store must not be fabricated as an empty one.
 func (s *Server) handleAll(w http.ResponseWriter, r *http.Request) {
 	data, err := s.allData(r.Context())
 	if err != nil {

@@ -67,7 +67,8 @@ func TestBoardFilesAnItem(t *testing.T) {
 	}
 }
 
-// TestBoardRefusesAForeignToken. The server is loopback-only, but loopback
+// TestBoardRefusesAForeignToken checks that a POST with the wrong token is
+// refused. The server is loopback-only, but loopback
 // includes every other program on the machine and every page the browser
 // has open. Without this, any site could POST here.
 func TestBoardRefusesAForeignToken(t *testing.T) {
@@ -84,8 +85,9 @@ func TestBoardRefusesAForeignToken(t *testing.T) {
 	}
 }
 
-// TestBoardRefusesAForeignOrigin is the second, independent check. A
-// browser that sends neither header is still covered by the token; one that
+// TestBoardRefusesAForeignOrigin checks that a POST with a foreign Origin is
+// refused, independently of the token. A browser that sends neither header
+// is still covered by the token; one that
 // sends a foreign Origin is refused before the token is even read.
 func TestBoardRefusesAForeignOrigin(t *testing.T) {
 	s, _ := writableFixture(t)
@@ -102,8 +104,9 @@ func TestBoardRefusesAForeignOrigin(t *testing.T) {
 	}
 }
 
-// TestBoardGetCannotMutate: every mutation is POST, so no link, prefetch,
-// or reload can change the store.
+// TestBoardGetCannotMutate checks that a GET to an action route changes
+// nothing. Every mutation is POST, so no link, prefetch, or reload can
+// change the store.
 func TestBoardGetCannotMutate(t *testing.T) {
 	s, _ := writableFixture(t)
 
@@ -114,8 +117,9 @@ func TestBoardGetCannotMutate(t *testing.T) {
 	}
 }
 
-// TestBoardWithoutWritableRendersNoActions. A button that is going to say
-// no is worse than no button, so a read-only board does not render them.
+// TestBoardWithoutWritableRendersNoActions checks that a read-only board
+// renders no action buttons, because a button that is going to say no is
+// worse than no button.
 func TestBoardWithoutWritableRendersNoActions(t *testing.T) {
 	t.Setenv(interlock.EnvBinary, "off")
 	s, _ := newHandlerFixture(t) // built without Writable
@@ -153,8 +157,9 @@ func TestBoardStartsAndClosesAnItem(t *testing.T) {
 	}
 }
 
-// TestBoardPromotesAParkedItem: parking and promoting is the one decision
-// the backlog exists for, so it has to be doable from the page.
+// TestBoardPromotesAParkedItem checks that a raw item can be promoted to a
+// ticket from the page, because that is the decision the backlog exists
+// for.
 func TestBoardPromotesAParkedItem(t *testing.T) {
 	s, _ := writableFixture(t)
 
@@ -222,7 +227,7 @@ func idFromBody(t *testing.T, body string) string {
 //
 // If the prefix came straight off the form and were concatenated into
 // the redirect, a posted "//evil.example" would make a protocol-relative
-// URL, which browsers follow off-host -- an open redirect, reachable by
+// URL, which browsers follow off-host: an open redirect, reachable by
 // anyone who can get a token-bearing form submitted. The prefix is derived
 // from the project name, which is checked against the registry, so the only
 // value it can ever take is "/p/<a project that exists>".

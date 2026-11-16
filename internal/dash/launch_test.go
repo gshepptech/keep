@@ -13,17 +13,12 @@ import (
 	"github.com/gshepptech/keep/internal/store"
 )
 
-// The four board actions that reach Interlock had no handler test at all.
+// These tests cover the four board actions that reach Interlock: doRelease,
+// doAssign, doLaunch and doPrompt. /do/launch and /do/prompt start a real
+// agent process in a repository directory from an HTTP form, which is the
+// highest-consequence thing the board does.
 //
-// /do/launch and /do/prompt start a real agent process in a repository
-// directory from an HTTP form -- the highest-consequence thing the board
-// does -- and go tool cover put doRelease, doAssign, doLaunch and doPrompt
-// all at 0.0%. projects_test.go does mention /do/launch, but only to assert
-// that the FORM renders; nothing posted to the handler behind it. A test
-// that reads as coverage and exercises nothing is the same defect this
-// codebase has now found six times.
-//
-// These drive the real path down to exec, against a fake interlock on
+// They drive the real path down to exec, against a fake interlock on
 // KEEP_INTERLOCK, so what the board would actually run is asserted rather
 // than assumed.
 
@@ -254,7 +249,7 @@ func TestBoardRefusesAnEmptyPrompt(t *testing.T) {
 
 // Every one of these starts a process or releases another agent's holds, so
 // each has to be behind the guard. A missing token must stop the request
-// before anything is executed -- not merely fail to persist afterwards.
+// before anything is executed, not merely fail to persist afterwards.
 func TestTheAgentStartingRoutesAreAllGuarded(t *testing.T) {
 	for _, route := range []struct {
 		path string

@@ -89,15 +89,13 @@ func TestASnippetThatRepeatsTheRowIsNotShown(t *testing.T) {
 	}
 }
 
-// TestTheRenderedSearchPageDoesNotRepeatThePath drives the real handler,
-// because the unit test above proves a function and the bug was visible on
-// a page. It catches the handler not calling the filter at all.
+// TestTheRenderedSearchPageDoesNotRepeatThePath checks through the real
+// handler that a match in paths renders no snippet. The unit test above
+// covers the function; this catches the handler not calling it at all.
 //
-// What it does NOT pin, checked rather than assumed: removing the
-// template's `{{if .Snippet}}` guard leaves this passing, because a blanked
-// snippet renders as an empty <span> either way. That guard is cosmetic
-// once the handler has done its work, and nothing here should be read as
-// holding it up.
+// It does not cover the template's `{{if .Snippet}}` guard: a blanked
+// snippet renders as an empty <span> either way, so that guard is cosmetic
+// once the handler has done its work.
 func TestTheRenderedSearchPageDoesNotRepeatThePath(t *testing.T) {
 	s, _ := writableFixture(t)
 
@@ -107,11 +105,11 @@ func TestTheRenderedSearchPageDoesNotRepeatThePath(t *testing.T) {
 	for _, form := range []url.Values{
 		{"title": {"Replace the hand-rolled retry loop"}, "type": {"task"},
 			"paths": {"internal/payments/refund.go"}},
-		// The title deliberately does NOT contain the query. Title outranks
+		// The title deliberately does not contain the query. Title outranks
 		// why in store.Search, so a title that also said "refund" would
 		// make this a title match, its snippet would be the title, and
-		// blanking it would be correct -- the test would then be asserting
-		// the opposite of what it claims to. First draft got this wrong.
+		// blanking it would be correct, so the test would assert the
+		// opposite of what it claims to.
 		{"title": {"Double-charging on gateway retry"}, "type": {"bug"},
 			"why": {"the refund handler is not idempotent under retry"}},
 	} {
@@ -188,9 +186,10 @@ func TestBeingWorkedOnOffersAllThreeExits(t *testing.T) {
 	}
 }
 
-// TestPuttingWorkBackNeedsAReason. Same line drop learned to hold: the board
-// must not supply a reason on the user's behalf, because a rescue with no
-// reason records that a claim vanished and nothing about why.
+// TestPuttingWorkBackNeedsAReason checks that releasing a claim from the
+// board requires a typed reason, as drop does. The board must not supply
+// one on the user's behalf, because a rescue with no reason records that a
+// claim vanished and nothing about why.
 func TestPuttingWorkBackNeedsAReason(t *testing.T) {
 	s, _ := writableFixture(t)
 	post(t, s, "/do/add", url.Values{"title": {"A thing"}, "type": {"task"}})

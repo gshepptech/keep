@@ -14,14 +14,14 @@ import (
 // validateLoopback resolves hostport and refuses anything that is not a
 // loopback address. This is the whole loopback-only mechanism, and it lives
 // in the constructor rather than the flag parser on purpose: the CLI exposes
-// no --host flag at all, so there is no way to ASK for a non-loopback bind
-// -- but the refusal must be asserted by attempting one and requiring an
+// no --host flag at all, so there is no way to ask for a non-loopback bind,
+// but the refusal must be asserted by attempting one and requiring an
 // error, so the guard must exist somewhere a Go test can call directly.
 //
-// It checks the RESOLVED address, never the input string. That is what
-// makes it correct for "localhost" regardless of how a given machine's
-// /etc/hosts resolves it, and it is why a future --host flag would be safe
-// to add without touching this function.
+// It checks the resolved address, never the input string. That makes it
+// correct for "localhost" regardless of how a given machine's /etc/hosts
+// resolves it, and means a --host flag could be added without touching this
+// function.
 func validateLoopback(hostport string) (*net.TCPAddr, error) {
 	addr, err := net.ResolveTCPAddr("tcp", hostport)
 	if err != nil {
@@ -29,10 +29,10 @@ func validateLoopback(hostport string) (*net.TCPAddr, error) {
 	}
 	if addr.IP == nil {
 		// ":0" and "" resolve with a nil IP, which net.Listen treats as the
-		// unspecified address -- all interfaces. IsLoopback() on a nil IP
-		// returns false, so the refusal below would happen anyway, but
-		// silently and with a misleading message; naming it explicitly here
-		// is what makes the failure legible.
+		// unspecified address, meaning all interfaces. IsLoopback() on a nil
+		// IP returns false, so the refusal below would happen anyway, but
+		// with a misleading message; naming it explicitly here makes the
+		// failure legible.
 		return nil, fmt.Errorf("refusing to bind %q: empty host is not loopback", hostport)
 	}
 	if !addr.IP.IsLoopback() {
@@ -56,7 +56,7 @@ type Server struct {
 	// session is who the board's claims are held by. It is fixed for the
 	// process and derived at startup, never empty: store.StartItem refuses
 	// an anonymous claim (store.ErrNoSession), because an empty session id
-	// makes every anonymous worker the same worker -- the second one to
+	// makes every anonymous worker the same worker: the second one to
 	// claim an item is handed it as its own retry, and either can release
 	// the other's hold.
 	//
@@ -65,22 +65,21 @@ type Server struct {
 	// indistinguishable.
 	//
 	// Per-process rather than stable: two boards are two people at two
-	// terminals, and the id exists to tell them apart. A
-	// person's own repeat click is idempotent anyway, because the same
-	// board serves it.
+	// terminals, and the id exists to tell them apart. A person's own
+	// repeat click is idempotent anyway, because the same board serves
+	// it.
 	session string
 
-	// dbPath is what writableAt reopens. The read path keeps its read-only
-	// handle -- true by construction for every GET; only a POST opens for
-	// writing, and only for
-	// the length of the action.
+	// dbPath is what writableAt reopens. The read path keeps its
+	// read-only handle for every GET; only a POST opens for writing, and
+	// only for the length of the action.
 	dbPath string
 
 	// home is the directory holding the cross-repo registry
 	// (~/.rounce/repos.json). Empty means no registry was supplied, which
-	// leaves /all rendering its own empty state rather than 404ing -- the
-	// nav link is unconditional, so a route that vanished would be a dead
-	// link that only some builds have.
+	// leaves /all rendering its own empty state rather than 404ing. The
+	// nav link is unconditional, so a route that vanished would leave a
+	// dead link.
 	home string
 
 	ln  net.Listener
@@ -88,12 +87,13 @@ type Server struct {
 }
 
 // NewServer validates hostport, binds it, and returns a Server whose URL is
-// already known -- the listener is opened HERE, not in Serve, because
-// `--web` binds port 0 and must print the OS-assigned port before it starts
-// serving. Validation runs before net.Listen, so a refused
-// address never opens a socket at all.
-// NewServer builds the board. dbPath and actor are what make it writable:
-// pass an empty dbPath and every mutating route reports that the board is
+// already known. The listener is opened here, not in Serve, because `--web`
+// binds port 0 and must print the OS-assigned port before it starts
+// serving. Validation runs before net.Listen, so a refused address never
+// opens a socket at all.
+//
+// The Writable and ActingAs options are what make the board writable.
+// Without Writable, every mutating route reports that the board is
 // read-only, which is what a caller that has not opted in should get.
 func NewServer(st *store.Store, hostport, home string, opts ...Option) (*Server, error) {
 	if _, err := validateLoopback(hostport); err != nil {
@@ -122,7 +122,7 @@ func NewServer(st *store.Store, hostport, home string, opts ...Option) (*Server,
 }
 
 // URL reports the server's base URL, built from the listener's own bound
-// address -- never hand-assembled from a host string and a port number, so
+// address, never hand-assembled from a host string and a port number, so
 // an IPv6 loopback bind (whose net.TCPAddr.String() is already correctly
 // bracketed, e.g. "[::1]:54321") comes out as a valid URL unmodified.
 func (s *Server) URL() string {
@@ -183,8 +183,8 @@ var errNoProject = errors.New("no project by that name is registered here")
 // A board serves every project keep knows, not only the directory it was
 // started in: switching should not mean restarting a server. The project
 // comes from the URL, so two tabs can hold two different boards without a
-// shared "current project" for them to fight over -- which is exactly the
-// bug a server-side selection would have.
+// shared "current project" for them to fight over, as a server-side
+// selection would have.
 //
 // The returned closer is nil for the started-in store, whose handle is
 // long-lived and must not be closed per request.

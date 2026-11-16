@@ -15,13 +15,13 @@ import (
 
 // crossRepoFixture builds a registry home with two real, separate stores
 // and returns a Server pointed at it. Two stores rather than one because
-// the claim under test is a merge ACROSS them: a single store would rank
+// the claim under test is a merge across them: a single store would rank
 // correctly by accident, since store.Ready already does that.
 //
 // The scores are chosen so the correct cross-repo order interleaves the two
 // repositories. A merge that concatenated per-repository lists instead of
 // ranking across them would still put every item on the page, and would
-// still look plausible -- interleaving is what makes it fail.
+// still look plausible; interleaving is what makes it fail.
 func crossRepoFixture(t *testing.T) (*Server, string) {
 	t.Helper()
 	home := t.TempDir()
@@ -68,9 +68,9 @@ func crossRepoFixture(t *testing.T) (*Server, string) {
 	return s, home
 }
 
-// TestAllRanksAcrossRepositories is `ready --all` on the board: one queue over
-// every registered store, ranked across all of them rather than grouped by
-// repository.
+// TestAllRanksAcrossRepositories checks that /all, the board's `ready --all`,
+// renders one queue over every registered store, ranked across all of them
+// rather than grouped by repository.
 func TestAllRanksAcrossRepositories(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
 	// Windows cannot execute. Without a Windows stub the test is skipped
@@ -111,10 +111,10 @@ func TestAllRanksAcrossRepositories(t *testing.T) {
 	}
 }
 
-// TestAllReportsUnreadableRepositoryAsARowNotAPage: a store that has been
-// deleted must cost you one row and not
-// the page -- and must never be fabricated as an empty repository, which
-// would read as "nothing to do here" rather than "this is broken".
+// TestAllReportsUnreadableRepositoryAsARowNotAPage checks that a deleted
+// store costs one error row, not the page, and is never shown as an empty
+// repository, which would read as "nothing to do here" rather than "this
+// is broken".
 func TestAllReportsUnreadableRepositoryAsARowNotAPage(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
 	// Windows cannot execute. Without a Windows stub the test is skipped
@@ -160,8 +160,9 @@ func TestAllReportsUnreadableRepositoryAsARowNotAPage(t *testing.T) {
 	}
 }
 
-// TestAllWithNoRegistryIsAnEmptyPageNotAnError: a Server built without a
-// registry home still answers /all, because the nav link is unconditional.
+// TestAllWithNoRegistryIsAnEmptyPageNotAnError checks that a Server built
+// without a registry home still answers /all, because the nav link is
+// unconditional.
 // A 404 on a link the page itself renders is worse than an empty table.
 func TestAllWithNoRegistryIsAnEmptyPageNotAnError(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
@@ -182,10 +183,10 @@ func TestAllWithNoRegistryIsAnEmptyPageNotAnError(t *testing.T) {
 	}
 }
 
-// TestAllNavLinkIsOnEveryView: the cross-repo queue is only reachable if
-// every page offers it. Asserting it on each view rather than on the layout
-// template is what catches a view that stops going through the shared head
-// block.
+// TestAllNavLinkIsOnEveryView checks that every view links to /all, since
+// the cross-repo queue is only reachable if every page offers it. Asserting
+// it on each view rather than on the layout template catches a view that
+// stops going through the shared head block.
 func TestAllNavLinkIsOnEveryView(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
 	// Windows cannot execute. Without a Windows stub the test is skipped
@@ -207,8 +208,9 @@ func TestAllNavLinkIsOnEveryView(t *testing.T) {
 	}
 }
 
-// TestNoExternalReferencesInCrossRepoView extends the off-host proof
-// to /all, which the four-view scan in offhost_test.go predates.
+// TestNoExternalReferencesInCrossRepoView checks that /all contains no
+// off-host reference, which the four-view scan in offhost_test.go does not
+// cover.
 //
 // This view renders two things none of the other four do, and both are
 // attacker-reachable in their own way:
@@ -218,8 +220,8 @@ func TestAllNavLinkIsOnEveryView(t *testing.T) {
 //     opens in another.
 //   - an error string built from a filesystem path, when a registered store
 //     cannot be read. That text comes from os and from internal/registry
-//     rather than from an item, so a scan that only ever considered item
-//     fields would not have been looking at it.
+//     rather than from an item, so a scan that only considered item fields
+//     would miss it.
 //
 // Both cases are forced here: alpha's title carries hostile text, and beta
 // is deleted so its error row renders in the same response.
@@ -260,7 +262,7 @@ func TestNoExternalReferencesInCrossRepoView(t *testing.T) {
 	// percent-encodes the spaces, so "queue http://evil..." becomes the
 	// relative path "queue%20http://evil..." and is correctly not off-host.
 	// A test built only from that shape passes even if a title is rendered
-	// into src= -- verified by breaking it exactly that way.
+	// into src=.
 	//
 	// The bare URL is the probe with teeth: nothing about it stops
 	// resolving off-host in any attribute context.
@@ -269,7 +271,7 @@ func TestNoExternalReferencesInCrossRepoView(t *testing.T) {
 	betaPath := mk("beta", "beta item")
 
 	// Break beta so the error table renders in the same response as the
-	// hostile title -- one scan over both.
+	// hostile title, and one scan covers both.
 	if err := os.Remove(betaPath); err != nil {
 		t.Fatalf("remove beta store: %v", err)
 	}
@@ -287,8 +289,8 @@ func TestNoExternalReferencesInCrossRepoView(t *testing.T) {
 	body := rec.Body.String()
 
 	// Confirm the hostile text is actually present, escaped and inert,
-	// BEFORE trusting a clean scan -- a view that dropped the title would
-	// pass vacuously, which is the trap offhost_test.go names.
+	// before trusting a clean scan, because a view that dropped the title
+	// would pass vacuously (offhost_test.go explains this).
 	for _, want := range []string{hostileHTTP, hostileProtoRelative} {
 		if !strings.Contains(body, want) {
 			t.Errorf("hostile text %q not present in /all -- scan would pass vacuously:\n%s", want, body)
@@ -306,9 +308,9 @@ func TestNoExternalReferencesInCrossRepoView(t *testing.T) {
 	}
 }
 
-// TestInterlockPageSaysSoWhenInterlockIsAbsent: an empty table would read as
-// "nobody is working", which is the same lie an empty cross-repo queue would
-// tell about a deleted store. The test environment has no Interlock on PATH,
+// TestInterlockPageSaysSoWhenInterlockIsAbsent checks that /who says
+// Interlock is absent rather than showing an empty table, which would read
+// as "nobody is working". The test environment has no Interlock on PATH,
 // which is also the common case for a keep user.
 func TestInterlockPageSaysSoWhenInterlockIsAbsent(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
@@ -374,11 +376,11 @@ func stubInterlock(t *testing.T, statusJSON string) string {
 	return path
 }
 
-// TestQueueAndInterlockViewAgree is the agreement rule applied to the second
-// join. The board's queue and /who both answer "is this held", and if they
-// answered it separately they would drift -- producing a board that omits an
-// item while the page meant to explain the omission does not mention it.
-// They share one Exclude call through readyItemsFrom; this is what proves it.
+// TestQueueAndInterlockViewAgree checks that the board's queue and /who give
+// the same answer to "is this held". If they answered it separately they
+// would drift, producing a board that omits an item while the page meant to
+// explain the omission does not mention it. They share one Exclude call
+// through readyItemsFrom.
 //
 // Changing handleReady to call s.st.Ready directly leaves every other test
 // in this package passing; this one catches it.

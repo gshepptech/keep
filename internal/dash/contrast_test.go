@@ -93,22 +93,17 @@ func TestEveryTextTokenClearsContrastOnBothGrounds(t *testing.T) {
 	}
 }
 
-// TestTextOnAFilledColourClearsContrast covers the case the test above is
-// blind to by construction: it measures text tokens against --bg and
-// --panel, the two grounds a *page* provides. A filled button is a third
-// ground, and nothing was checking it.
+// TestTextOnAFilledColourClearsContrast checks that text on a filled colour
+// meets the contrast threshold in both themes. The test above measures text
+// tokens against --bg and --panel, the two grounds a page provides; a
+// filled button is a third ground.
 //
-// --on-danger fell straight through that gap. It was defined once for the
-// light theme, where the danger red is dark and near-white text on it
-// measures 6.15:1, and then copied verbatim into the dark block -- where
-// the danger red is LIGHTER, because it has to be visible on a near-black
-// canvas, and the same near-white text measures 3.14:1. Found by redpen's
-// render pass, which reads computed colours off the real page and so was
-// never fooled by the token being "already decided".
-//
-// An on-colour is a function of the colour it sits on. The two themes' reds
-// are on opposite sides of the luminance where that function flips, so the
-// one value that looked like a constant could not be one.
+// An on-colour is a function of the colour it sits on. The dark theme's
+// danger red is lighter than the light theme's, because it has to be
+// visible on a near-black canvas, so near-white text that clears 6:1 on the
+// light theme's red falls near 3:1 on the dark one. The two reds sit on
+// opposite sides of the luminance where the right on-colour flips, so
+// --on-danger cannot be one value for both themes.
 func TestTextOnAFilledColourClearsContrast(t *testing.T) {
 	css := string(styleInline)
 	cut := strings.Index(css, "@media (prefers-color-scheme: dark)")
@@ -121,8 +116,8 @@ func TestTextOnAFilledColourClearsContrast(t *testing.T) {
 	}
 
 	// Every place the board sets text on a filled colour rather than on the
-	// page. Extend this when a second filled control appears -- a new
-	// --on-* token with no row here is the same hole reopened.
+	// page. A new --on-* token needs a row here, or its contrast goes
+	// unchecked.
 	filled := []struct{ text, fill string }{
 		{"on-danger", "blocked"}, // .btn-danger.btn-solid, the confirm page
 		{"bg", "fg"},             // .btn-primary, New item / Save changes
@@ -152,9 +147,10 @@ func TestTextOnAFilledColourClearsContrast(t *testing.T) {
 	}
 }
 
-// TestContrastMathMatchesAKnownPair guards the measurement itself. Black on
-// white is exactly 21:1 by definition; a helper that cannot reproduce that
-// would pass the test above by being wrong in a convenient direction.
+// TestContrastMathMatchesAKnownPair checks that the contrast helper measures
+// black on white at exactly 21:1, as defined. A helper that cannot
+// reproduce that could pass the tests above by being wrong in a convenient
+// direction.
 func TestContrastMathMatchesAKnownPair(t *testing.T) {
 	if got := contrast("000000", "ffffff"); math.Abs(got-21) > 0.01 {
 		t.Errorf("contrast(black, white) = %v, want 21", got)

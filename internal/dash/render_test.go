@@ -15,8 +15,8 @@ import (
 // -update`) to (re)generate the golden file, then READ IT and confirm by
 // eye that it contains the three depth levels, the word "blocked" on each
 // blocked row, the "dimmed" class on the dropped row, and no rnc- id other
-// than the five literals below -- a golden file is only as good as the one
-// human read of it that happens at creation time.
+// than the five literals below. A golden file is only as good as the human
+// read it gets when it is generated.
 var update = flag.Bool("update", false, "rewrite golden files")
 
 // fixedTime is the one timestamp string every fixture in this file uses.
@@ -24,9 +24,8 @@ var update = flag.Bool("update", false, "rewrite golden files")
 // sha256(title, createdAt, attempt)-derived from wall-clock time, so a
 // fixture built through a live store produces a different id on every run.
 // Every id below (rnc-epic, rnc-epic.1, rnc-epic.1.1, rnc-epic.2,
-// rnc-blocker) is a hand-picked literal, not a real store id, and is not
-// supposed to be -- that is what makes the golden comparison stable on every
-// machine, forever.
+// rnc-blocker) is a hand-picked literal, not a real store id, which keeps
+// the golden comparison stable on every machine.
 const fixedTime = "2026-01-01T00:00:00.000000000Z"
 
 // treeFixture is a three-level blocked subtree: the root
@@ -58,8 +57,8 @@ func treeFixture() []model.TreeNode {
 
 const treeGoldenPath = "testdata/tree.golden.html"
 
-// TestRenderTreeGolden is the byte-for-byte proof: renderTree on the
-// fixture above must equal testdata/tree.golden.html exactly. See -update's
+// TestRenderTreeGolden checks that renderTree on the fixture above equals
+// testdata/tree.golden.html byte for byte. See -update's
 // doc comment above for how to (re)generate the golden file.
 func TestRenderTreeGolden(t *testing.T) {
 	got, err := renderTree(treeFixture())
@@ -86,9 +85,8 @@ func TestRenderTreeGolden(t *testing.T) {
 }
 
 // diffSummary reports len(got)/len(want) and the first differing byte
-// offset plus a short window around it -- never the whole document --
-// matching cmd/keep/roundtrip_test.go's existing discipline for a golden
-// comparison failure.
+// offset plus a short window around it, never the whole document, as
+// cmd/keep/roundtrip_test.go does for a golden comparison failure.
 func diffSummary(got, want []byte) string {
 	n := min(len(got), len(want))
 	off := -1
@@ -119,8 +117,8 @@ func diffSummary(got, want []byte) string {
 }
 
 // TestRenderReadySmoke proves renderReady returns non-empty output and a nil
-// error both on a populated fixture and on an empty queue -- an empty queue
-// is a page that says so, not a 500.
+// error both on a populated fixture and on an empty queue, because an empty
+// queue is a page that says so, not a 500.
 func TestRenderReadySmoke(t *testing.T) {
 	items := []model.Item{
 		{ID: "rnc-a", Stage: model.StageTicket, Type: model.TypeTask, Title: "A", Status: model.StatusOpen, Score: 7, CreatedAt: fixedTime, UpdatedAt: fixedTime},
@@ -150,8 +148,8 @@ func TestRenderBacklogSmoke(t *testing.T) {
 
 // TestRenderItemSmoke proves renderItem returns non-empty output and a nil
 // error both on a populated ItemDetail (parent, repo, deps both directions,
-// events, a multi-line body) and on one with no deps/events -- the common
-// case for a freshly captured item, not an error state.
+// events, a multi-line body) and on one with no deps/events, which is the
+// common case for a freshly captured item, not an error state.
 func TestRenderItemSmoke(t *testing.T) {
 	repo := "example/repo"
 	parent := "rnc-parent"
