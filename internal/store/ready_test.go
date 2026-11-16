@@ -52,7 +52,8 @@ func TestReadyOrdering(t *testing.T) {
 	late := mustAdd(t, s, AddItemInput{Title: "late-23", Actor: "tester", Value: intPtr(6), Confidence: intPtr(6), Effort: intPtr(0)})
 	execSQL(t, s, `UPDATE items SET created_at = ? WHERE id = ?`, "2020-01-02T00:00:00.000000000Z", late.ID)
 
-	seven := mustAdd(t, s, AddItemInput{Title: "seven", Actor: "tester", Value: intPtr(0), Confidence: intPtr(0), Effort: intPtr(4)}) // 0+0-4+11=7
+	// 0+0-4+11=7
+	seven := mustAdd(t, s, AddItemInput{Title: "seven", Actor: "tester", Value: intPtr(0), Confidence: intPtr(0), Effort: intPtr(4)})
 	unscored := mustAdd(t, s, AddItemInput{Title: "unscored", Actor: "tester"})
 
 	if early.Score != 23 || late.Score != 23 || seven.Score != 7 || unscored.Score != 0 {
@@ -79,7 +80,8 @@ func TestReadyUnscoredSortsLastNotExcluded(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
 
-	scored := mustAdd(t, s, AddItemInput{Title: "scored", Actor: "tester", Value: intPtr(0), Confidence: intPtr(0), Effort: intPtr(10)}) // 0+0-10+11=1
+	// 0+0-10+11=1
+	scored := mustAdd(t, s, AddItemInput{Title: "scored", Actor: "tester", Value: intPtr(0), Confidence: intPtr(0), Effort: intPtr(10)})
 	unscored := mustAdd(t, s, AddItemInput{Title: "unscored", Actor: "tester"})
 
 	if scored.Score < 1 {
@@ -333,7 +335,8 @@ func TestReadyAndBlockedPartitionOpenTickets(t *testing.T) {
 
 	scored := mustAdd(t, s, AddItemInput{Title: "scored", Actor: "tester", Value: intPtr(5), Confidence: intPtr(5), Effort: intPtr(2)})
 	unscored := mustAdd(t, s, AddItemInput{Title: "unscored", Actor: "tester"})
-	mustAdd(t, s, AddItemInput{Title: "raw", Actor: "tester", Stage: model.StageRaw}) // not a ticket, so outside the universe
+	// Not a ticket, so outside the universe.
+	mustAdd(t, s, AddItemInput{Title: "raw", Actor: "tester", Stage: model.StageRaw})
 	blocker := mustAdd(t, s, AddItemInput{Title: "blocker", Actor: "tester"})
 	blockedDirect := mustAdd(t, s, AddItemInput{Title: "blocked-direct", Actor: "tester"})
 	blockedParent := mustAdd(t, s, AddItemInput{Title: "blocked-parent", Actor: "tester"})

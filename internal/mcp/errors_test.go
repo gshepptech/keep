@@ -130,8 +130,9 @@ func TestResultFor(t *testing.T) {
 			"ErrNeedsMigration": true, // never reaches resultFor: store.Open fails first
 			"ErrInvalidType":    true, // protocol error, tested with ErrInvalidDepType above
 			"ErrInvalidStage":   true, // protocol error, tested with ErrInvalidDepType above
-			"ErrStoreNotEmpty":  true, // Import has no tool; a store-replacing verb is not an agent's to call
-			"ErrBadExport":      true, // as ErrStoreNotEmpty
+			// Import has no tool; a store-replacing verb is not an agent's to call.
+			"ErrStoreNotEmpty": true,
+			"ErrBadExport":     true, // as ErrStoreNotEmpty
 		}
 		for name := range isErrorSentinels {
 			named[name] = true

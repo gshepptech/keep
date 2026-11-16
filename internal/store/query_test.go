@@ -175,7 +175,8 @@ func TestGetItemBodyVerbatim(t *testing.T) {
 // listFiltersFixture is the shared five-item fixture TestListItemsFilters'
 // table runs against, built once.
 type listFiltersFixture struct {
-	raw          model.Item // stage=raw, type=task, status=open (AddItem always inserts status='open')
+	// stage=raw, type=task, status=open (AddItem always inserts status='open')
+	raw          model.Item
 	epic         model.Item // stage=ticket, type=epic, status=open
 	closedTicket model.Item // stage=ticket, type=task, status=closed, written with execSQL
 	child        model.Item // stage=ticket, type=task, parent=epic, status=open
