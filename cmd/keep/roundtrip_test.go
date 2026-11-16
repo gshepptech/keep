@@ -51,10 +51,10 @@ func buildLargeMarkdownDoc() string {
 	return b.String()
 }
 
-// TestCaptureShowBodyRoundTripsByteIdentical: a real document, piped into
-// `capture --body -`, must come back out of `show --body` byte-identical --
-// no normalisation in either direction. Every document shape that
-// round-trips at the storage layer is exercised here again at the
+// TestCaptureShowBodyRoundTripsByteIdentical checks that a real document,
+// piped into `capture --body -`, comes back out of `show --body`
+// byte-identical, with no normalisation in either direction. Every document
+// shape that round-trips at the storage layer is exercised here again at the
 // CLI/process boundary, through a real pipe and the real binary.
 func TestCaptureShowBodyRoundTripsByteIdentical(t *testing.T) {
 	bin := buildKeep(t, "")
@@ -145,8 +145,8 @@ func TestShowBodyAndJSONAreMutuallyExclusive(t *testing.T) {
 }
 
 // TestShowBodyEmptyBodyPrintsNothing proves an item added with no body
-// prints exactly zero bytes under --body and still exits 0 -- the empty
-// case is success, not an error.
+// prints exactly zero bytes under --body and still exits 0, because the
+// empty case is success, not an error.
 func TestShowBodyEmptyBodyPrintsNothing(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)

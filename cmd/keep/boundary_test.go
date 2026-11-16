@@ -13,9 +13,9 @@ import (
 )
 
 // forbiddenImports are import paths that would give a package above
-// internal/store direct access to a SQL driver -- exactly what the store
-// boundary forbids: nothing above internal/store ever sees a *sql.DB, a
-// row, or a query string.
+// internal/store direct access to a SQL driver, which the store boundary
+// forbids: nothing above internal/store ever sees a *sql.DB, a row, or a
+// query string.
 var forbiddenImports = []string{
 	"database/sql",
 	"modernc.org/sqlite",
@@ -40,9 +40,9 @@ var forbiddenSQLLiterals = []string{
 // internal/store2.
 var storeDirPrefix = "internal" + string(filepath.Separator) + "store" + string(filepath.Separator)
 
-// TestNoSQLAboveStore mechanically enforces "internal/store is the only
-// package containing SQL" rather than relying on doc.go comments
-// and code review. It parses every non-vendored .go file in the module and
+// TestNoSQLAboveStore checks that internal/store is the only package
+// containing SQL, mechanically rather than by review. It parses every
+// non-vendored .go file in the module and
 // fails if any file outside internal/store imports a SQL driver package or
 // contains a SQL keyword string literal.
 func TestNoSQLAboveStore(t *testing.T) {
@@ -52,10 +52,9 @@ func TestNoSQLAboveStore(t *testing.T) {
 	}
 
 	// This file lives at <module root>/cmd/keep/boundary_test.go, so two
-	// levels up is the module root -- resilient to the package being run
-	// from a different working directory, and it fails loudly (via the
-	// zero-file guard below) if the module layout ever changes rather than
-	// silently scanning nothing.
+	// levels up is the module root. That holds whatever working directory
+	// the package runs from, and the zero-file guard below fails loudly if
+	// the module layout changes, rather than silently scanning nothing.
 	moduleRoot, err := filepath.Abs(filepath.Join(filepath.Dir(thisFile), "..", ".."))
 	if err != nil {
 		t.Fatalf("resolve module root: %v", err)
@@ -68,10 +67,10 @@ func TestNoSQLAboveStore(t *testing.T) {
 	walkErr := filepath.WalkDir(moduleRoot, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			// A broken walk root (e.g. moduleRoot itself does not exist)
-			// surfaces here with a nil DirEntry. Do not propagate that as a
-			// hard failure -- let the walk finish having found nothing, so
-			// the filesWalked == 0 guard below is the mechanism that turns
-			// "found nothing" into a failure, not an incidental I/O error.
+			// surfaces here with a nil DirEntry. It is not propagated as a
+			// hard failure: the walk finishes having found nothing, and the
+			// filesWalked == 0 guard below turns "found nothing" into a
+			// failure, rather than an incidental I/O error doing it.
 			return nil
 		}
 		if d.IsDir() {
@@ -93,18 +92,18 @@ func TestNoSQLAboveStore(t *testing.T) {
 		coveredPkgs[filepath.Dir(rel)]++
 
 		// internal/store is *supposed* to contain all of this, including
-		// its own test files (which legitimately contain SQL) -- skip the
-		// whole package for both checks.
+		// its own test files (which legitimately contain SQL), so the whole
+		// package is skipped for both checks.
 		if strings.HasPrefix(rel, storeDirPrefix) {
 			return nil
 		}
 
 		// This file's own forbiddenSQLLiterals slice literally spells out
-		// every keyword fragment below as a Go string constant -- an
+		// every keyword fragment below as a Go string constant, so an
 		// unconditional scan would flag its own definition list. Excluding
-		// this one file (not the whole cmd/keep package -- init.go and
-		// main.go are still fully scanned) is the only way to define the
-		// rule without the rule tripping on its own definition.
+		// this one file (not the whole cmd/keep package; init.go and main.go
+		// are still fully scanned) keeps the rule from tripping on its own
+		// definition.
 		if path == thisFile {
 			return checkImports(t, fset, path, rel)
 		}
@@ -118,19 +117,18 @@ func TestNoSQLAboveStore(t *testing.T) {
 		t.Fatalf("walking module tree: %v", walkErr)
 	}
 
-	// A walk that finds nothing must fail -- this is the single most common
-	// way a repository-scanning test rots into a permanent pass.
+	// A walk that finds nothing must fail, or a repository-scanning test can
+	// quietly become a permanent pass.
 	if filesWalked == 0 {
 		t.Fatal("walked zero .go files -- the walk root is broken; treat this as a failure, not a vacuous pass")
 	}
 
 	// The walk root reaches every package by construction, so this loop
-	// should never fire -- which is exactly why it is here. A walk that
-	// silently stops reaching a package would pass forever. Every package
-	// falls inside the walk automatically the moment its directory exists;
-	// naming them explicitly is what turns "it happens to be covered" into
-	// "it is required to be covered", so a walk whose reach shrinks fails by
-	// name rather than by accident.
+	// should never fire, which is why it is here: a walk that silently stops
+	// reaching a package would pass forever. Every package falls inside the
+	// walk as soon as its directory exists; naming them explicitly turns "it
+	// happens to be covered" into "it is required to be covered", so a walk
+	// whose reach shrinks fails by name.
 	for _, pkg := range []string{"cmd/keep", "internal/mcp", "internal/model", "internal/dash", "internal/registry"} {
 		if coveredPkgs[filepath.FromSlash(pkg)] == 0 {
 			t.Errorf("SQL-boundary walk visited zero .go files in %s -- the walk's reach has shrunk", pkg)

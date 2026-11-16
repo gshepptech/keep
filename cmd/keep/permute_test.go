@@ -21,8 +21,8 @@ func showJSON(t *testing.T, bin, repo string, e []string, id string) map[string]
 		t.Fatalf("show %s --json: json.Unmarshal(%q): %v", id, stdout, err)
 	}
 	// id/timestamps are unique per item by construction, and events carries
-	// each event's own id/at/item_id -- none of that is expected to match
-	// between two SEPARATE items even when they were created identically,
+	// each event's own id/at/item_id. None of that is expected to match
+	// between two separate items even when they were created identically,
 	// so all are stripped before a result-equality comparison.
 	for _, volatile := range []string{"id", "created_at", "updated_at", "claimed_at", "closed_at", "claimed_by_session", "events"} {
 		delete(got, volatile)
@@ -45,9 +45,8 @@ func mapsEqual(t *testing.T, a, b map[string]any) bool {
 
 // TestFlagsAfterPositionalShow proves `show <id> --json` and
 // `show --json <id>` produce identical results, not just identical exit
-// codes -- an exit-0 that silently dropped a flag would pass a code-only
-// check, the same failure shape the naive permuter's silent corruption
-// would have produced.
+// codes, because an exit 0 that silently dropped a flag would pass a
+// code-only check.
 func TestFlagsAfterPositionalShow(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)
@@ -228,12 +227,11 @@ func TestPermuteDashDashWeirdTitle(t *testing.T) {
 }
 
 // TestPermuteMissingValueDoesNotCorrupt proves `add "title" --body` (a
-// value-taking flag with nothing after it, a genuine user error) exits 0
-// and stores a body that is empty -- specifically NOT "--" -- with --body
-// folded into the title, exactly as flag.Parse alone would treat it.
-// permuteArgs's contract is "never silently wrong", not "accepts
-// everything" -- this test deliberately asserts flag.Parse's native
-// behaviour for a malformed invocation.
+// value-taking flag with nothing after it, a user error) exits 0 and stores
+// a body that is empty, specifically not "--", with --body folded into the
+// title, as flag.Parse alone would treat it. permuteArgs's contract is
+// "never silently wrong", not "accepts everything", so this test asserts
+// flag.Parse's native behaviour for a malformed invocation.
 func TestPermuteMissingValueDoesNotCorrupt(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)

@@ -139,11 +139,11 @@ func renderFeed(w io.Writer, entries []store.FeedEntry) {
 
 	// Titles and reasons are both truncated for the same reason the rest of
 	// this CLI truncates titles: a close reason in a real store is often
-	// several paragraphs -- agents write down what they did -- and printing
-	// one in full turns a twenty-line log into a wall nobody reads. The
-	// whole text is one `keep show <id>` away, and --json never truncates.
-	// The title is what you scan for, so it keeps the larger share; the
-	// reason is context you read only on the row you stopped at.
+	// several paragraphs, because agents write down what they did, and
+	// printing one in full turns a twenty-line log into a wall nobody reads.
+	// The whole text is one `keep show <id>` away, and --json never truncates.
+	// The title is what you scan for, so it keeps the larger share; the reason
+	// is context you read only on the row you stopped at.
 	budget := titleWidth(w)
 	titleBudget := max(budget/2, minTitleBudget)
 	reasonBudget := max(budget/2, minTitleBudget)
@@ -196,13 +196,12 @@ type logAllJSON struct {
 
 // runLogAll merges every registered store's activity into one feed.
 //
-// This is the cross-repository read with the clearest reason to exist and
-// the one that was hardest to fake: "what did the agents do this morning"
-// spans every repository they were let loose in, and answering it meant
-// running `keep log` once per repository and interleaving the output by eye.
+// "What did the agents do this morning" spans every repository they
+// worked in, and without this the answer means running `keep log` once per
+// repository and interleaving the output by eye.
 //
-// Ordering is by timestamp, newest first, which merge.go's own comment warns
-// against for ranked work and which is exactly right here -- see byNewest.
+// Ordering is by timestamp, newest first, which merge.go's comment warns
+// against for ranked work and which is right here (see byNewest).
 // Every registered store is a file on this machine, stamped by this
 // machine's clock, and time is the question being asked.
 //

@@ -13,8 +13,8 @@ import (
 // runNext implements the `next` subcommand: take the top of the queue and
 // claim it, in one call.
 //
-// The two-call sequence it replaces -- `ready`, then `start` on the top row
-// -- has a window between the read and the write in which another agent can
+// The two-call sequence of `ready`, then `start` on the top row, has a
+// window between the read and the write in which another agent can
 // take the same item. store.NextItem closes it by doing both inside one
 // transaction; see its doc comment. This function does no choosing of its
 // own: the ranking lives in the ready view, as every other read here does.
@@ -57,10 +57,10 @@ func runNext(args []string, stdout, stderr io.Writer) int {
 	session := resolveClaimSession()
 
 	// The join, applied where it matters most. `ready` already omits items
-	// whose files another agent holds; `next` CLAIMS one, so offering a held
-	// item here would hand an agent exactly the collision the queue exists
-	// to prevent -- and it would do it to the agent that trusted the tool
-	// most, the one that stopped reading the queue and just asked for work.
+	// whose files another agent holds; `next` claims one, so offering a held
+	// item here would hand an agent the collision the queue exists to
+	// prevent, and to the agent that trusted the tool most, the one that
+	// stopped reading the queue and asked for work.
 	//
 	// The queue is read unlimited, filtered, and the survivors' ids are what
 	// NextItem is told to avoid. Reading it first costs one extra query and

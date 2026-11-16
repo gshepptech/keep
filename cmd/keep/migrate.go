@@ -14,9 +14,9 @@ import (
 //
 // Migration is a command a person runs, not something that happens quietly
 // when a store is opened. The store is often the only record of why a piece
-// of work exists -- a captured roadmap lives in items.body and nowhere else
-// -- and rewriting that on someone's behalf because they happened to run
-// `keep ready` is not a trade this tool gets to make for them. Every other
+// of work exists (a captured plan lives in items.body and nowhere else), and
+// rewriting it on someone's behalf because they happened to run
+// `keep ready` is not this tool's decision to make. Every other
 // command refuses an out-of-date store and names this one.
 //
 // --check reports the plan and changes nothing, exiting 0 when the store is

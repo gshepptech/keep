@@ -10,9 +10,9 @@ import (
 )
 
 // newTestFlagSet registers the three flag shapes permuteArgs must handle:
-// a string flag (--type), a bool flag
-// (--json), and a repeatable stringSlice (--blocks). Every subtest below
-// gets a fresh FlagSet -- flag state must not leak between table rows.
+// a string flag (--type), a bool flag (--json), and a repeatable
+// stringSlice (--blocks). Every subtest below gets a fresh FlagSet, so flag
+// state cannot leak between table rows.
 func newTestFlagSet() (*flag.FlagSet, *string, *bool, *stringSlice) {
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
 	typeFlag := fs.String("type", "", "item type")
@@ -89,11 +89,9 @@ func TestPermuteArgs(t *testing.T) {
 		}
 	})
 
-	// This is the silent-corruption regression lock: a naive pre-pass that
-	// unconditionally inserts "--" ahead of positionals sets a missing value
-	// to the literal string "--", silently, with exit 0. Do not "tidy this
-	// up" as a weird edge case later -- it is the exact defect permuteArgs
-	// is written to avoid.
+	// A pre-pass that unconditionally inserts "--" ahead of positionals sets
+	// a missing value to the literal string "--", silently, with exit 0.
+	// permuteArgs is written to avoid that, and this case checks it does.
 	t.Run("missing value regression lock -- value-taking flag with nothing after it", func(t *testing.T) {
 		fs, typeFlag, _, _ := newTestFlagSet()
 		if err := fs.Parse(permuteArgs(fs, []string{"title", "--type"})); err != nil {
@@ -127,12 +125,11 @@ func TestPermuteArgs(t *testing.T) {
 	})
 }
 
-// TestResolveBody exercises resolveBody as a pure function against a real
-// os.Stdin swap -- the process-level proof that a real pipe round-trips
-// through the real binary lives in capture_test.go's
-// TestAddBodyDashReadsStdin, but this table proves resolveBody's own gating
-// logic directly and fast, including the "never touches stdin unless the
-// flag is literally -" contract.
+// TestResolveBody checks resolveBody's gating logic as a pure function
+// against a real os.Stdin swap, including the "never touches stdin unless
+// the flag is literally -" contract. The process-level check that a real
+// pipe round-trips through the real binary is capture_test.go's
+// TestAddBodyDashReadsStdin.
 func TestResolveBody(t *testing.T) {
 	t.Run(`"-" reads everything from stdin, byte for byte`, func(t *testing.T) {
 		r, w, err := os.Pipe()
@@ -267,11 +264,11 @@ func TestResolveActor(t *testing.T) {
 	}
 }
 
-// TestResolveActorReadsKEEP_ACTORCrossProcess drives the real compiled
-// binary -- an in-process table test can prove resolveActor's own logic but
-// cannot prove the real binary actually reads the variable end to end. It
-// sets KEEP_ACTOR=mcp-actor (USER is "keep-test", per env()'s base set)
-// and asserts the add event's actor field is "mcp-actor", not "keep-test".
+// TestResolveActorReadsKEEP_ACTORCrossProcess drives the real compiled binary,
+// because an in-process table test can prove resolveActor's own logic but
+// cannot prove the real binary actually reads the variable end to end. It sets
+// KEEP_ACTOR=mcp-actor (USER is "keep-test", per env()'s base set) and asserts
+// the add event's actor field is "mcp-actor", not "keep-test".
 func TestResolveActorReadsKEEP_ACTORCrossProcess(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)

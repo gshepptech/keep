@@ -8,8 +8,8 @@ import (
 )
 
 // mustInit runs `keep init` in repo via bin and fails the test immediately
-// if it does not succeed -- every add/dep test needs a store in place before
-// it can do anything else.
+// if it does not succeed, because every add/dep test needs a store in place
+// before it can do anything else.
 func mustInit(t *testing.T, bin, repo string, e []string) {
 	t.Helper()
 	_, stderr, code := run(t, bin, repo, e, "init")
@@ -60,7 +60,7 @@ func TestAddChildIDs(t *testing.T) {
 		// Flags must precede the title: stdlib flag.Parse stops consuming
 		// flags at the first non-flag argument, and runAdd deliberately
 		// joins everything left in fs.Args() into the (possibly
-		// multi-word, unquoted) title -- see add.go's runAdd doc comment.
+		// multi-word, unquoted) title (see add.go's runAdd doc comment).
 		out, stderr, code := run(t, bin, repo, e, "add", "--parent", epicID, "child")
 		if code != 0 {
 			t.Fatalf("add child %d: exit %d, stderr=%q", i, code, stderr)

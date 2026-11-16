@@ -17,9 +17,8 @@ import (
 )
 
 // boardFixture builds a store with several ready tickets (well above
-// defaultBoardLimit, so a hard-coded --limit-shaped break is caught
-// immediately rather than growing stale), one
-// claimed (in-progress) item, one blocked epic with a child (transitively
+// defaultBoardLimit, so a hard-coded limit fails the tests), one claimed
+// (in-progress) item, one blocked epic with a child (transitively
 // blocked), and one raw note (backlog, never ready).
 type boardFixture struct {
 	readyIDs []string // in `ready`'s own score-descending order
@@ -34,13 +33,12 @@ func buildBoardFixture(t *testing.T, bin, repo string, e []string) boardFixture 
 	t.Helper()
 	var f boardFixture
 
-	// 12 ready tickets, deliberately more than defaultBoardLimit (10) -- the
-	// exact fixture size this test's own TestBoardLimitTruncatesRowsNotCounts
-	// and TestBoardJSONShape rely on to catch a hard-coded-limit break.
-	// value/confidence/effort are each clamped
-	// to the CLI's 0-10 range; the actual expected order is derived from a
-	// live `ready` call in each test, never asserted by construction here,
-	// so exact score values (and any ties) do not matter.
+	// 12 ready tickets, deliberately more than defaultBoardLimit (10), which
+	// TestBoardLimitTruncatesRowsNotCounts and TestBoardJSONShape rely on to
+	// catch a hard-coded limit. value/confidence/effort are each clamped to
+	// the CLI's 0-10 range; the expected order is derived from a live
+	// `ready` call in each test, never asserted by construction here, so
+	// exact score values (and any ties) do not matter.
 	for i := 0; i < 12; i++ {
 		value := 10 - (i % 11)
 		id := mustAdd(t, bin, repo, e, "--score", strconv.Itoa(value)+"/5/5", "ready item "+strconv.Itoa(i))
@@ -88,12 +86,11 @@ func boardCountsLine(t *testing.T, line string) (ready, inProgress, blocked, bac
 }
 
 // jsonArrayLen runs args (which must end in --json and produce a flat JSON
-// array) and returns its length -- the ground truth every count in
-// TestBoardTerminalCountsAndQueue is checked against, so the test does not
-// need to hand-derive an expected count from the fixture's own construction
-// (e.g. the fixture's "blocker" item is itself an ordinary open ticket, so
-// it is ALSO ready -- a hand-counted expectation is exactly the kind of
-// assumption that silently drifts as a fixture grows).
+// array) and returns its length. Every count in
+// TestBoardTerminalCountsAndQueue is checked against it, so the test does
+// not hand-derive an expected count from the fixture's construction (the
+// fixture's "blocker" item is itself an ordinary open ticket, so it is also
+// ready, and a hand-counted expectation would drift as the fixture grows).
 func jsonArrayLen(t *testing.T, bin, repo string, e []string, args ...string) int {
 	t.Helper()
 	stdout, stderr, code := run(t, bin, repo, e, args...)
@@ -214,9 +211,9 @@ func TestBoardLimitTruncatesRowsNotCounts(t *testing.T) {
 	}
 }
 
-// boardJSONOut mirrors board.go's boardJSON, kept independent (not imported
-// -- this is a separate binary) so the test proves the WIRE shape, not a
-// shared Go type.
+// boardJSONOut mirrors board.go's boardJSON, kept independent (the test
+// drives a separate binary) so the test proves the wire shape, not a shared
+// Go type.
 type boardJSONOut struct {
 	Counts struct {
 		Ready      int `json:"ready"`
@@ -293,12 +290,11 @@ func TestBoardJSONShape(t *testing.T) {
 }
 
 // freePort binds 127.0.0.1:0, reads the OS-assigned port, and closes the
-// listener before returning -- the standard "obtain a free port" technique.
-// This is inherently racy on a busy machine (another process could grab the
-// same port between Close and the subprocess's own bind); that is a known,
-// accepted tradeoff, and the strictly worse alternative is a hard-coded
-// port that collides the moment two test runs (or two repos' `board --web`
-// sessions) overlap.
+// listener before returning, the standard "obtain a free port" technique.
+// It is racy on a busy machine (another process could grab the same port
+// between Close and the subprocess's own bind), which is accepted because
+// a hard-coded port collides as soon as two test runs (or two repos'
+// `board --web` sessions) overlap.
 func freePort(t *testing.T) int {
 	t.Helper()
 	l, err := net.Listen("tcp", "127.0.0.1:0")
@@ -313,11 +309,10 @@ func freePort(t *testing.T) int {
 }
 
 // webProc wraps a real `board --web` subprocess. cmd.Wait() must be called
-// AT MOST ONCE (calling it twice concurrently -- e.g. once from a
-// background goroutine and once from the test -- is itself a data race per
-// os/exec's own documentation), so wait() is the single sanctioned way to
-// reap it; waited tracks whether that has happened so t.Cleanup's guard
-// never races with it either.
+// at most once (calling it twice concurrently, say from a background
+// goroutine and from the test, is a data race per os/exec's documentation),
+// so wait() is the one way to reap it; waited tracks whether that has
+// happened so t.Cleanup's guard never races with it either.
 type webProc struct {
 	cmd    *exec.Cmd
 	waited atomic.Bool
@@ -333,7 +328,7 @@ func (p *webProc) wait() error {
 // startBoardWeb starts `keep board --web [args...]` as a real subprocess,
 // reads its first stdout line, and returns the parsed URL and the running
 // process. t.Cleanup's Process.Kill() guard only fires if wait() has not
-// already been called -- never a raw kill of an uncertain PID (never
+// already been called, never as a raw kill of an uncertain PID (and never
 // kill(0), which would signal this test binary's own process group).
 func startBoardWeb(t *testing.T, bin, repo string, e []string, extraArgs ...string) (*url.URL, *webProc, *bufio.Reader) {
 	t.Helper()
@@ -420,8 +415,9 @@ func TestBoardWebPrintsURLThenServes(t *testing.T) {
 	}
 }
 
-// TestBoardWebCtrlCExitsZero is the dedicated SIGINT exit-0 proof: after a
-// real 200, send os.Interrupt and require cmd.Wait() to return nil.
+// TestBoardWebCtrlCExitsZero checks that `board --web` exits 0 on SIGINT:
+// after a real 200, it sends os.Interrupt and requires cmd.Wait() to return
+// nil.
 func TestBoardWebCtrlCExitsZero(t *testing.T) {
 	// Windows has no SIGINT to send a process, so "Ctrl-C exits cleanly"
 	// is not a statement that can be made there. The board's own shutdown

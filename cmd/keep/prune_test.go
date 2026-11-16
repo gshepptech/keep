@@ -10,9 +10,9 @@ import (
 // `init` registers a store automatically, so without `repos forget --gone`
 // the registry would only grow: a few days of scratch repositories under
 // /tmp is enough to bury the real rows, and every dead one prints an error
-// on each `ready --all` -- the command someone working across repositories
-// runs most. The registry is most useful to exactly the person who
-// accumulates dead entries fastest.
+// on each `ready --all`, the command someone working across repositories
+// runs most. The registry is most useful to the person who accumulates dead
+// entries fastest.
 func TestReposForgetGoneDropsOnlyWhatIsGone(t *testing.T) {
 	bin := buildKeep(t, "")
 	home := tempDir(t)
@@ -40,9 +40,9 @@ func TestReposForgetGoneDropsOnlyWhatIsGone(t *testing.T) {
 	}
 
 	// The other is corrupted but present. It will not open, and it must be
-	// KEPT: forgetting a registration because a file was briefly unreadable
-	// -- a permission, a half-written copy, an unmounted disk about to come
-	// back -- loses the only record that the repository was ever known.
+	// kept: forgetting a registration because a file was briefly unreadable
+	// (a permission, a half-written copy, an unmounted disk about to come
+	// back) loses the only record that the repository was ever known.
 	corrupt := filepath.Join(unreadable, ".rounce", "db.sqlite")
 	if err := os.WriteFile(corrupt, []byte("this is not a database"), 0o644); err != nil {
 		t.Fatalf("corrupting the store: %v", err)
@@ -106,9 +106,9 @@ func TestReposForgetGoneTakesNoPath(t *testing.T) {
 	e := env(home, "", "KEEP_SESSION=prune")
 	run(t, bin, dir, e, "init")
 
-	// --gone finds them itself. A path alongside it is ambiguous -- forget
-	// that one, or forget all the gone ones? -- so it is a usage error
-	// rather than a guess.
+	// --gone finds them itself. A path alongside it is ambiguous (forget
+	// that one, or forget all the gone ones?), so it is a usage error rather
+	// than a guess.
 	if _, _, code := run(t, bin, dir, e, "repos", "forget", "--gone", "/some/path"); code != 2 {
 		t.Errorf("forget --gone with a path exited %d, want 2", code)
 	}

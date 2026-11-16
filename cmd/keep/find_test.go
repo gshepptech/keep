@@ -57,7 +57,8 @@ func TestSearchFindsAndSeparatesItsStreams(t *testing.T) {
 	}
 }
 
-// TestLogReportsWhatHappened. The question the tool could not answer before.
+// TestLogReportsWhatHappened checks that `keep log` lists the events a store
+// recorded.
 func TestLogReportsWhatHappened(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)
@@ -89,8 +90,9 @@ func TestLogReportsWhatHappened(t *testing.T) {
 	}
 }
 
-// TestLogRejectsATimeItCannotRead. Guessing at "--since lastweek" would
-// silently answer a different question than the one asked.
+// TestLogRejectsATimeItCannotRead checks that an unparseable --since is a
+// usage error. Guessing at "--since lastweek" would silently answer a
+// different question than the one asked.
 func TestLogRejectsATimeItCannotRead(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)

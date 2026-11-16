@@ -31,9 +31,8 @@ func showFields(t *testing.T, bin, dir string, e []string, id string) captureFie
 }
 
 // docFixture is a multi-section markdown document with headings, a fenced
-// code block, and a blank line -- deliberately more structure than a bare
-// string, so a naive line-trimming bug in a later change has something to
-// fail on. No trailing
+// code block, and a blank line: more structure than a bare string, so a
+// naive line-trimming bug has something to fail on. It has no trailing
 // newline, so the byte-identical contract is exercised in both directions.
 const docFixture = `# Q3 roadmap
 
@@ -49,10 +48,10 @@ func main() {}
 ` + "```" + `
 Last line, no trailing newline`
 
-// TestCaptureCanonicalInvocation proves the canonical invocation -- title
-// FIRST, flags after, a document piped in --
-// exits 0, prints one id, and show --json reports stage=raw, the given
-// type, and a body equal to the piped bytes.
+// TestCaptureCanonicalInvocation proves the canonical invocation (title
+// first, flags after, a document piped in) exits 0, prints one id, and
+// show --json reports stage=raw, the given type, and a body equal to the
+// piped bytes.
 func TestCaptureCanonicalInvocation(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)
@@ -131,7 +130,7 @@ func TestCaptureRefusesStageFlag(t *testing.T) {
 		t.Fatalf("capture --stage ticket x: stderr = %q, want it to contain %q", stderr, "not defined")
 	}
 
-	// No item was created -- list --stage raw must be empty.
+	// No item was created, so list --stage raw must be empty.
 	listOut, listErr, listCode := run(t, bin, repo, e, "list", "--stage", "raw")
 	if listCode != 0 {
 		t.Fatalf("list --stage raw: exit %d, stderr=%q", listCode, listErr)
@@ -142,7 +141,7 @@ func TestCaptureRefusesStageFlag(t *testing.T) {
 }
 
 // TestCaptureEmptyStdinIsNotAnError proves --body - with an empty pipe
-// exits 0 and stores an empty body -- io.ReadAll on an immediately-EOF
+// exits 0 and stores an empty body, because io.ReadAll on an immediately-EOF
 // reader is ("", nil), not an error.
 func TestCaptureEmptyStdinIsNotAnError(t *testing.T) {
 	bin := buildKeep(t, "")
@@ -164,8 +163,8 @@ func TestCaptureEmptyStdinIsNotAnError(t *testing.T) {
 }
 
 // TestAddBodyDashReadsStdin proves add --body - stores the piped bytes
-// through the same resolveBody implementation capture uses -- one shared
-// implementation, not a capture-only path.
+// through the same resolveBody implementation capture uses, not a
+// capture-only path.
 func TestAddBodyDashReadsStdin(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)
@@ -184,7 +183,7 @@ func TestAddBodyDashReadsStdin(t *testing.T) {
 	if got.Body != docFixture {
 		t.Fatalf("body = %q, want %q (the exact piped document)", got.Body, docFixture)
 	}
-	// add's own default stage is "ticket" -- confirms this path is genuinely
+	// add's own default stage is "ticket", which confirms this path is
 	// add's, not capture's, sharing only resolveBody.
 	if got.Stage != "ticket" {
 		t.Fatalf("stage = %q, want %q", got.Stage, "ticket")

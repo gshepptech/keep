@@ -12,9 +12,9 @@ import (
 )
 
 // initRepo creates dir and runs a real `keep init` in it, registering it
-// in home's registry exactly the way production does -- unlike
-// makeRepo (repos_test.go), it adds no tickets, so callers can add scored
-// items themselves with mustAdd.
+// in home's registry the way production does. Unlike makeRepo
+// (repos_test.go), it adds no tickets, so callers can add scored items
+// themselves with mustAdd.
 func initRepo(t *testing.T, bin, dir string, e []string) {
 	t.Helper()
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -27,15 +27,14 @@ func initRepo(t *testing.T, bin, dir string, e []string) {
 
 // TestReadyAllRanksAcrossStores proves `ready --all`'s core claim: three real
 // repos, each holding items with explicitly-set --score values chosen so
-// the correct global order INTERLEAVES the repositories (alpha holds ranks
+// the correct global order interleaves the repositories (alpha holds ranks
 // 1 and 4, beta ranks 2 and 5, gamma rank 3). An order that merely
 // concatenated per-repo results would fail this; a fixture that did not
 // interleave would let it pass.
 //
 // internal/rank.Score is value + confidence - effort + 11, a pure function
 // with no store-specific state, so the same triple yields the same score in
-// every repository -- this is what makes cross-store score comparison
-// meaningful at all.
+// every repository, which makes cross-store score comparison meaningful.
 func TestReadyAllRanksAcrossStores(t *testing.T) {
 	bin := buildKeep(t, "")
 	root := tempDir(t)
@@ -124,8 +123,8 @@ func TestReadyAllCarriesPerRepoErrors(t *testing.T) {
 }
 
 // TestReadyAllLimitAppliesToTheMergedRanking proves --limit 2 over an
-// interleaved fixture returns exactly the global top two -- which come from
-// two DIFFERENT repositories, so a per-store limit could not produce the
+// interleaved fixture returns exactly the global top two, which come from
+// two different repositories, so a per-store limit could not produce the
 // same answer by accident.
 func TestReadyAllLimitAppliesToTheMergedRanking(t *testing.T) {
 	bin := buildKeep(t, "")
@@ -179,11 +178,10 @@ func TestReadyAllRejectsDBFlag(t *testing.T) {
 	}
 }
 
-// TestReadyWithoutAllResolvesExactlyOneStore is the positive proof:
-// with three repos registered, keep ready --json run inside repo A
-// returns exactly repo A's ids and none of B's or C's, and its output is a
-// flat ARRAY (not the --all envelope object) -- decoded as []model.Item to
-// prove the shape is unchanged.
+// TestReadyWithoutAllResolvesExactlyOneStore checks that, with three repos
+// registered, keep ready --json run inside repo A returns exactly repo A's
+// ids and none of B's or C's, and that its output is a flat array (not the
+// --all envelope object), decoded as []model.Item.
 func TestReadyWithoutAllResolvesExactlyOneStore(t *testing.T) {
 	bin := buildKeep(t, "")
 	root := tempDir(t)
@@ -214,11 +212,11 @@ func TestReadyWithoutAllResolvesExactlyOneStore(t *testing.T) {
 	}
 }
 
-// TestReadyWithoutAllSurvivesAMalformedRegistry is the negative proof:
-// with $HOME/.rounce/repos.json set to `{ not json`, plain keep ready
-// inside a real repo exits 0 with its items and writes nothing to stderr --
-// ready without --all never reads the registry at all -- while ready --all
-// warns and returns an empty items array, also at exit 0.
+// TestReadyWithoutAllSurvivesAMalformedRegistry checks that, with
+// $HOME/.rounce/repos.json set to `{ not json`, plain keep ready inside a
+// real repo exits 0 with its items and writes nothing to stderr (ready
+// without --all never reads the registry), while ready --all warns and
+// returns an empty items array, also at exit 0.
 func TestReadyWithoutAllSurvivesAMalformedRegistry(t *testing.T) {
 	bin := buildKeep(t, "")
 	root := tempDir(t)
@@ -252,9 +250,9 @@ func TestReadyWithoutAllSurvivesAMalformedRegistry(t *testing.T) {
 	}
 
 	// Plain ready must be entirely unaffected: init/add/ready in a real
-	// repository still work, and ready itself -- unlike init's own
-	// best-effort registration -- never touches the registry, so its own
-	// invocation writes nothing to stderr regardless of the registry's state.
+	// repository still work, and ready itself, unlike init's best-effort
+	// registration, never touches the registry, so its own invocation
+	// writes nothing to stderr regardless of the registry's state.
 	repoDir := tempDir(t)
 	if _, stderr, code := run(t, bin, repoDir, e, "init"); code != 0 {
 		t.Fatalf("init despite a malformed home registry: exit %d, stderr=%q", code, stderr)

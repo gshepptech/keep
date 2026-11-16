@@ -27,14 +27,14 @@ func sortedCopy(s []string) []string {
 // own client to it over its real stdin/stdout pipes.
 //
 // mcp.CommandTransport wraps an *exec.Cmd and calls Start() on it
-// (mcp/cmd.go), so this is a genuine subprocess of the compiled binary --
-// not the SDK's in-memory-transports constructor, which is an in-process
+// (mcp/cmd.go), so this is a real subprocess of the compiled binary, not
+// the SDK's in-memory-transports constructor, which is an in-process
 // net.Pipe and would prove nothing about `keep mcp`.
 //
-// This is the harness for CORRECTNESS assertions. It is deliberately NOT
-// used for pipelining or stdout-purity tests, which need literal control
+// This is the harness for correctness assertions. It is not used for
+// pipelining or stdout-purity tests, which need literal control
 // over write timing and over the raw stdout bytes before the SDK's own
-// decoder touches them -- mcp_raw_test.go is the raw harness for those.
+// decoder touches them; mcp_raw_test.go is the raw harness for those.
 func mcpSession(t *testing.T, bin, dir string, environ []string) *mcp.ClientSession {
 	t.Helper()
 
@@ -108,19 +108,18 @@ func TestMCPToolsListReturnsCommandSurface(t *testing.T) {
 		t.Fatalf("tools/list: %v", err)
 	}
 
-	// It grows only when the CLI grows -- a new tool arriving here is a
+	// It grows only when the CLI grows: a new tool arriving here is a
 	// design decision, not a test to update.
 	//
-	// NOTE: this is NOT registration order. The SDK (go-sdk mcp/features.go)
-	// holds tools in a featureSet keyed by name, and featureSet.all() always
-	// iterates a lexically-sorted key slice, so tools/list is unconditionally
-	// alphabetical by tool name -- registration order is not observable on
-	// the wire at all. This is deterministic SDK behavior, not a race.
-	// Sorted copy of internal/mcp.ToolNames -- the registration order lives
-	// there, and this asserts the same set arrives over a real stdio
-	// session. Reading it back off the wire is what makes this independent
-	// of the Go slice: a tool present in ToolNames but never registered
-	// fails here.
+	// This is not registration order. The SDK (go-sdk mcp/features.go) holds
+	// tools in a featureSet keyed by name, and featureSet.all() iterates a
+	// lexically sorted key slice, so tools/list is always alphabetical by
+	// tool name and registration order is not observable on the wire.
+	//
+	// So the expectation is a sorted copy of internal/mcp.ToolNames, and this
+	// asserts the same set arrives over a real stdio session. Reading it back
+	// off the wire makes this independent of the Go slice: a tool present in
+	// ToolNames but never registered fails here.
 	want := sortedCopy(mcpsrv.ToolNames)
 
 	if len(res.Tools) != len(want) {
@@ -279,10 +278,10 @@ sentence so this is a realistic document body rather than a one-liner.
 		t.Errorf("added ticket score = %d, want %d (value+confidence-effort+11)", ticket.Score, wantScore)
 	}
 
-	// Step 3: show the document -- depended_on_by must contain BOTH a
+	// Step 3: show the document. depended_on_by must contain both a
 	// parent-child and a derived-from edge naming the ticket, asserted by
-	// edge TYPE, never by counting to 2 (03-06 hit exactly this: a count of
-	// 2 also passes if both edges are the same type).
+	// edge type, never by counting to 2, because a count of 2 also passes if
+	// both edges are the same type.
 	text = callTool(t, cs, "show", map[string]any{"id": doc.ID})
 	var detail model.ItemDetail
 	decodeInto(t, text, &detail)
@@ -327,7 +326,7 @@ sentence so this is a realistic document body rather than a one-liner.
 		t.Errorf("ready contains raw document %s, which must never appear until refined", doc.ID)
 	}
 
-	// Step 5: start the ticket -- status becomes in_progress and
+	// Step 5: start the ticket. Status becomes in_progress and
 	// claimed_by_session is the server's fixed session, the value runMCP
 	// read once from $KEEP_SESSION. This is the only assertion that
 	// proves the fixed-session rule end to end.
@@ -352,7 +351,7 @@ sentence so this is a realistic document body rather than a one-liner.
 		t.Errorf("closed ticket closed_at is nil, want non-null")
 	}
 
-	// Step 7: ready again -- the ticket is gone.
+	// Step 7: ready again; the ticket is gone.
 	text = callTool(t, cs, "ready", map[string]any{})
 	var readyAfterClose []model.Item
 	decodeInto(t, text, &readyAfterClose)

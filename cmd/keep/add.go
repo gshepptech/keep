@@ -12,28 +12,24 @@ import (
 	"github.com/gshepptech/keep/internal/store"
 )
 
-// runAdd implements the `add` subcommand: create a new item and
-// print its id. Mirrors runInit's shape (cmd/keep/init.go) exactly --
+// runAdd implements the `add` subcommand: create a new item and print its
+// id. It has runInit's shape (cmd/keep/init.go):
 // flag.NewFlagSet(..., flag.ContinueOnError), fs.SetOutput(stderr), return 2
 // on parse failure.
 //
 // Invocation shape is `keep add [flags] <title>`, and flags are also
-// accepted AFTER the title -- stdlib
-// flag.Parse itself still stops consuming flags at the first non-flag
-// argument, unchanged, and that is still what lets a multi-word unquoted
-// title work: everything left in fs.Args() after flags are consumed is
-// joined with a space into the title, so a title needs no quoting even
-// when it has multiple words, as long as it comes last.
-// fs.Parse(permuteArgs(fs, args)) runs on a pre-pass that moves every
-// well-formed flag ahead of the title first, so both orders reach
-// flag.Parse identically -- see permuteArgs's doc comment
-// (cmd/keep/flags.go) for the mechanism and the silent-corruption failure
-// mode it avoids.
+// accepted after the title. Stdlib flag.Parse stops consuming flags at the
+// first non-flag argument, which is what lets a multi-word unquoted title
+// work: everything left in fs.Args() after flags are consumed is joined
+// with a space into the title, so a title needs no quoting even when it has
+// multiple words. fs.Parse(permuteArgs(fs, args)) first moves every
+// well-formed flag ahead of the title, so both orders reach flag.Parse
+// identically; permuteArgs's doc comment (cmd/keep/flags.go) describes the
+// mechanism and the silent-corruption failure mode it avoids.
 //
-// cmd/keep must never import a database driver package, must never
-// contain a SQL string, and must never receive a raw DB handle or a row
-// -- runAdd builds exactly one store.AddItemInput and makes
-// exactly one store.AddItem call.
+// cmd/keep never imports a database driver package, never contains a SQL
+// string, and never receives a raw DB handle or a row: runAdd builds
+// exactly one store.AddItemInput and makes exactly one store.AddItem call.
 func runAdd(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("add", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -46,13 +42,12 @@ func runAdd(args []string, stdout, stderr io.Writer) int {
 	typeFlag := fs.String("type", "", "item type, default task ("+validTypesList()+")")
 	stageFlag := fs.String("stage", "", "item stage, default ticket ("+validStagesList()+")")
 
-	// --blocks names the id that blocks the NEW item: the new item this
-	// call creates is blocked UNTIL <id> closes. Verified against the
-	// shipped ready view's own SQL (internal/store/items.go's
-	// insertEdge doc comment): a deps row (item_id=A, depends_on_id=B,
-	// type='blocks') means "A is blocked until B closes". This reading is
-	// genuinely easy to invert -- this help text is where a user resolves
-	// it.
+	// --blocks names the id that blocks the new item: the new item this
+	// call creates is blocked until <id> closes. That follows the ready
+	// view's SQL (internal/store/items.go's insertEdge doc comment): a deps
+	// row (item_id=A, depends_on_id=B, type='blocks') means "A is blocked
+	// until B closes". The direction is easy to invert, so the help text
+	// spells it out.
 	var blocksFlag stringSlice
 	fs.Var(&blocksFlag, "blocks", "id that blocks this new item -- the NEW item is blocked until <id> closes; repeatable")
 
@@ -148,15 +143,14 @@ func runAdd(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 
-	// One bare line of id, nothing else -- what makes
-	// `id=$(keep add ...)` work in the demo script and in every agent's
-	// shell pipeline.
+	// One bare line of id, nothing else, so `id=$(keep add ...)` works in
+	// the demo script and in every agent's shell pipeline.
 	fmt.Fprintln(stdout, item.ID)
 	return 0
 }
 
 // validTypesList and validStagesList render model.TypesOrdered/StagesOrdered
-// as a stable, human-readable list for usage/error text -- ranging over
+// as a stable, human-readable list for usage/error text. Ranging over
 // ValidTypes/ValidStages (maps) would produce a different order on every
 // process, which would make a captured test assertion or a demo transcript
 // flaky. model.TypesOrdered/StagesOrdered are the one place this order is

@@ -7,9 +7,9 @@ import (
 )
 
 // idsOfJSONItems extracts each item map's "id" field, in order, from a
-// board/ready --json items array unmarshalled generically (never into a
-// shared Go struct -- this proves the WIRE shape agrees, not that two call
-// sites happen to share a type).
+// board/ready --json items array unmarshalled generically, never into a
+// shared Go struct, so this proves the wire shape agrees, not that two call
+// sites happen to share a type.
 func idsOfJSONItems(t *testing.T, items []map[string]any) []string {
 	t.Helper()
 	ids := make([]string, len(items))
@@ -23,13 +23,12 @@ func idsOfJSONItems(t *testing.T, items []map[string]any) []string {
 	return ids
 }
 
-// TestBoardAgreesWithReady is the cross-process same-call proof:
-// `board --json --limit 0`'s items and `ready --json`'s items must be the
-// exact same ids, in the exact same order, against the same store.
-// board.go's own comment names why this holds: one unlimited
+// TestBoardAgreesWithReady checks that `board --json --limit 0`'s items and
+// `ready --json`'s items are the same ids, in the same order, against the
+// same store. board.go's comment says why this holds: one unlimited
 // store.Ready(ctx, 0) call feeds both the printed count and the (Go-sliced)
-// queue rows -- never two independently-limited calls that could "agree"
-// only because one happens to be a superset of the other today.
+// queue rows, never two independently limited calls that could agree only
+// because one happens to be a superset of the other.
 func TestBoardAgreesWithReady(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)
@@ -68,11 +67,11 @@ func TestBoardAgreesWithReady(t *testing.T) {
 }
 
 // TestBoardCountMatchesReady proves counts.ready equals len(ready --json)
-// while the DEFAULT --limit (10) is in effect -- the only arrangement that
+// while the default --limit (10) is in effect, the only arrangement that
 // distinguishes "the count came from the unlimited call" from "the count
 // came from len(rows)". The fixture (buildBoardFixture, 12 ready tickets)
-// stays above defaultBoardLimit so a limit leaking into the count is caught
-// immediately rather than only once the queue grows past 10 in production.
+// stays above defaultBoardLimit so a limit leaking into the count fails
+// here rather than only once a real queue grows past 10.
 func TestBoardCountMatchesReady(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)
@@ -109,9 +108,9 @@ func TestBoardCountMatchesReady(t *testing.T) {
 
 // TestBoardDefaultLimitTruncatesRowsOnly proves --limit's default (10)
 // truncates board --json's items to length 10 while counts.ready stays the
-// full number -- the companion assertion to TestBoardCountMatchesReady,
-// naming the specific shape a limit-leaks-into-the-count bug produces
-// (items and counts.ready both truncated to 10, instead of only items).
+// full number. It complements TestBoardCountMatchesReady by naming the
+// shape a limit leaking into the count produces (items and counts.ready
+// both truncated to 10, instead of only items).
 func TestBoardDefaultLimitTruncatesRowsOnly(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)

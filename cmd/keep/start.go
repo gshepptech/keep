@@ -12,24 +12,23 @@ import (
 
 // runStart implements the `start` subcommand: claim an item for
 // the calling session. Session id comes from $KEEP_SESSION via
-// resolveSession, NEVER from a flag -- Interlock already sets that variable
-// for hook invocations, which is how the two line up without either side
+// resolveClaimSession, never from a flag. Interlock sets that variable for
+// hook invocations, which is how the two line up without either side
 // knowing about the other.
 //
 // Exit codes follow StartItem's six-row state table exactly, and
-// store.StartItem's own doc comment (internal/store/
-// transitions.go) enumerates the checks in the order the store performs
-// them: same-session repeat exits 0 (idempotent no-op -- the store
-// writes NO second event); every other refusal (different session, raw
-// stage, blocked, closed/dropped) exits 1, NOT 2 -- these are operational
-// failures, not usage errors. exitFor
-// passes the store's own message through unmodified: it already names the
-// holding session and claimed_at (ErrConflict) or the blocker
-// (ErrInvalidTransition), and restating any of that here would only risk
-// drifting from what the store actually decided.
+// store.StartItem's doc comment (internal/store/transitions.go) enumerates
+// the checks in the order the store performs them: a same-session repeat
+// exits 0 (an idempotent no-op; the store writes no second event); every
+// other refusal (different session, raw stage, blocked, closed/dropped)
+// exits 1, not 2, because these are operational failures, not usage
+// errors. exitFor passes the store's own message through unmodified: it
+// already names the holding session and claimed_at (ErrConflict) or the
+// blocker (ErrInvalidTransition), and restating any of that here could
+// drift from what the store decided.
 //
-// There is deliberately no flag to steal an existing claim: that belongs to
-// Interlock's lease work, not here. Do not add one "for testing".
+// There is no flag to steal an existing claim: taking work away from a
+// session belongs to Interlock's lease handling and to `keep unclaim`.
 func runStart(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("start", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -63,10 +62,10 @@ func runStart(args []string, stdout, stderr io.Writer) int {
 
 	ctx := context.Background()
 
-	// The join, at the point of claiming. `ready` has always omitted items
-	// whose declared files another agent holds, but nothing stopped an
-	// agent claiming one by id -- and an agent that already knows the id it
-	// wants is exactly the one that never sees the queue's omission. The
+	// The join, at the point of claiming. `ready` omits items whose
+	// declared files another agent holds, but that would not stop an agent
+	// claiming one by id, and an agent that already knows the id it wants
+	// is the one that never sees the queue's omission. The
 	// check is here rather than in internal/store because it means running
 	// another program, which the store does not do, and must never do from
 	// inside the transaction that holds the write lock.

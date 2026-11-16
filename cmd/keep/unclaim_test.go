@@ -53,9 +53,9 @@ func TestUnclaimReturnsWorkToTheQueue(t *testing.T) {
 	}
 }
 
-// TestUnclaimRefusesWithoutAReason holds the same line close and drop hold.
-// A rescue with no reason records that a claim vanished and nothing about
-// why, which is the audit hole this verb was added to avoid.
+// TestUnclaimRefusesWithoutAReason checks that unclaim, like close and drop,
+// requires a reason. A rescue with no reason records that a claim vanished
+// and nothing about why.
 func TestUnclaimRefusesWithoutAReason(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)
@@ -90,11 +90,10 @@ func TestUnclaimRefusesWithoutAReason(t *testing.T) {
 	}
 }
 
-// TestStaleOffersUnclaimRatherThanDrop. `stale` must not tell the reader to
-// "hand it back with keep drop", which is the exact false record unclaim
-// exists to prevent: drop says the work was not worth doing, and a claim
-// going quiet says nothing of the sort. The wording is the whole finding, so
-// the wording is what is asserted.
+// TestStaleOffersUnclaimRatherThanDrop checks that `stale` suggests
+// unclaim, not drop, for handing work back. Drop says the work was not worth
+// doing, and a claim going quiet says nothing of the sort, so the wording is
+// what is asserted.
 func TestStaleOffersUnclaimRatherThanDrop(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)

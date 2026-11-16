@@ -7,11 +7,11 @@ import (
 )
 
 // depsInSection parses the text block writeDepSection (show.go) writes under
-// the given EXACT header line ("depends on" or "depended on by"), returning
+// the given exact header line ("depends on" or "depended on by"), returning
 // a map from dep type to every id listed under that type. The section runs
-// from the header line to the next blank line -- writeDepSection's own
-// shape is: blank line, header, one "<type>  <id>" line per dep, nothing
-// else -- so a blank line unambiguously ends the section being scanned.
+// from the header line to the next blank line: writeDepSection's shape is a
+// blank line, a header, and one "<type>  <id>" line per dep, so a blank line
+// ends the section being scanned.
 func depsInSection(output, header string) map[string][]string {
 	deps := map[string][]string{}
 	inSection := false
@@ -35,9 +35,9 @@ func depsInSection(output, header string) map[string][]string {
 }
 
 // blockedRowFor returns the full rendered line whose exact first field is
-// id, from `blocked`'s plain-text output -- the same exact-first-field
-// discipline idsFromLines/lineIndexOfID already use in this package, never a
-// substring match (an id is a literal prefix of its own children's ids).
+// id, from `blocked`'s plain-text output. It matches the exact first field,
+// as idsFromLines/lineIndexOfID do, never a substring (an id is a literal
+// prefix of its own children's ids).
 func blockedRowFor(output, id string) (string, bool) {
 	for _, l := range strings.Split(strings.TrimRight(output, "\n"), "\n") {
 		fields := strings.Fields(l)
@@ -73,8 +73,8 @@ func TestRefineFromCapturedRoadmap(t *testing.T) {
 		"## Phase B\n\n" +
 		"Add integration coverage for it.\n"
 
-	// The canonical invocation: title first, flags after -- permuteArgs is
-	// what makes this parse.
+	// The canonical invocation: title first, flags after, which permuteArgs
+	// makes parse.
 	docOut, stderr, code := runStdin(t, bin, repo, e, doc, "capture", "Q3 roadmap", "--type", "roadmap", "--body", "-")
 	if code != 0 {
 		t.Fatalf("capture: exit %d, stderr=%q", code, stderr)
@@ -86,10 +86,10 @@ func TestRefineFromCapturedRoadmap(t *testing.T) {
 	t1 := mustAdd(t, bin, repo, e, "--parent", docID, "--derived-from", docID, "--score", "8/7/3", "Extract the shared config loader")
 	t2 := mustAdd(t, bin, repo, e, "--parent", docID, "--derived-from", docID, "--score", "6/6/2", "Add integration tests for the loader")
 
-	// Each ticket's show names BOTH a parent-child and a
-	// derived-from edge to the document -- two SEPARATE edges, asserted by
-	// type rather than by counting deps, since a count of 2 would also pass
-	// if both edges happened to be the same type.
+	// Each ticket's show names both a parent-child and a derived-from edge
+	// to the document: two separate edges, asserted by type rather than by
+	// counting deps, since a count of 2 would also pass if both edges were
+	// the same type.
 	for _, tk := range []string{t1, t2} {
 		out, stderr, code := run(t, bin, repo, e, "show", tk)
 		if code != 0 {
@@ -104,8 +104,8 @@ func TestRefineFromCapturedRoadmap(t *testing.T) {
 		}
 	}
 
-	// The document's own show names both tickets under "depended on
-	// by" -- provenance resolves in both directions.
+	// The document's own show names both tickets under "depended on by", so
+	// provenance resolves in both directions.
 	docShowOut, stderr, code := run(t, bin, repo, e, "show", docID)
 	if code != 0 {
 		t.Fatalf("show %s: exit %d, stderr=%q", docID, code, stderr)
@@ -137,13 +137,12 @@ func TestRefineFromCapturedRoadmap(t *testing.T) {
 	}
 
 	// Blocking the document removes both refined tickets from
-	// ready, and `blocked` names the DOCUMENT for each (not the underlying
-	// blocker task) -- ticket1/ticket2 are not blocked directly, they are
-	// blocked because their nearest ancestor (the document) is, which is
-	// what proves the parent-child tree walk reaches items created through
-	// capture. Absence from ready alone would also pass if blocking had
-	// deleted them, so presence in `blocked` naming the document is checked
-	// too.
+	// ready, and `blocked` names the document for each (not the underlying
+	// blocker task). ticket1/ticket2 are not blocked directly; they are
+	// blocked because their nearest ancestor (the document) is, which proves
+	// the parent-child tree walk reaches items created through capture.
+	// Absence from ready alone would also pass if blocking had deleted them,
+	// so presence in `blocked` naming the document is checked too.
 	blocker := mustAdd(t, bin, repo, e, "--type", "task", "--score", "3/3/1", "Blocker for the roadmap")
 	mustDep(t, bin, repo, e, docID, "blocks", blocker)
 
@@ -172,8 +171,8 @@ func TestRefineFromCapturedRoadmap(t *testing.T) {
 		}
 	}
 
-	// Closing the underlying blocker returns both tickets -- a one-way
-	// propagation bug is a real failure mode for blockedTreeCTE.
+	// Closing the underlying blocker returns both tickets, which catches a
+	// blockedTreeCTE that propagates blocking but never releases it.
 	if _, stderr, code := run(t, bin, repo, e, "close", "--reason", "shipped", blocker); code != 0 {
 		t.Fatalf("close %s: exit %d, stderr=%q", blocker, code, stderr)
 	}
@@ -194,7 +193,7 @@ func TestRefineFromCapturedRoadmap(t *testing.T) {
 }
 
 // TestPromotedRawNoteLeavesBacklogEntersReady proves a raw note captured
-// through `capture` (no --parent, no --derived-from -- unlike the roadmap
+// through `capture` (no --parent and no --derived-from, unlike the roadmap
 // case above) leaves `backlog` and enters `ready` the moment it is promoted
 // with `update --stage ticket`, and not before.
 func TestPromotedRawNoteLeavesBacklogEntersReady(t *testing.T) {

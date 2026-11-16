@@ -19,9 +19,9 @@ import (
 // process exit code rather than calling os.Exit so it is callable from a
 // test in-process while still driving the real store.Init.
 //
-// cmd/keep must never import a database driver package, must never
-// contain a SQL string, and must never receive a raw DB handle or a row
-// -- only internal/store's exported API.
+// cmd/keep never imports a database driver package, never contains a SQL
+// string, and never receives a raw DB handle or a row; it uses only
+// internal/store's exported API.
 func runInit(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("init", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -91,10 +91,10 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 	}
 	defer s.Close()
 
-	// Nested-store warning:
-	// walk up starting one directory ABOVE the directory whose .rounce/ now
-	// holds the new store -- target is <dir>/.rounce/db.sqlite, so
-	// Dir(Dir(Dir(target))) is the parent of <dir>. Starting at <dir> itself
+	// Nested-store warning: walk up starting one directory above the
+	// directory whose .rounce/ now holds the new store. target is
+	// <dir>/.rounce/db.sqlite, so Dir(Dir(Dir(target))) is the parent of
+	// <dir>. Starting at <dir> itself
 	// would trivially rediscover the file init just wrote. Skipped for
 	// --global: the home store is the outermost store by definition.
 	if !*globalFlag {
@@ -115,12 +115,11 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 
 	// Register the store just created in ~/.rounce/repos.json.
 	//
-	// Best-effort by decision. The store this command
-	// was asked to create WAS created; a bookkeeping failure -- a read-only home,
-	// a full disk, a HOME that is not a directory -- warns on stderr and leaves
-	// the exit code at 0. Failing init over the registry would let a convenience
-	// feature break the core one. There is deliberately no `return` inside this
-	// block.
+	// Best-effort by decision. The store this command was asked to create was
+	// created; a bookkeeping failure (a read-only home, a full disk, a HOME
+	// that is not a directory) warns on stderr and leaves the exit code at 0.
+	// Failing init over the registry would let a convenience feature break
+	// the core one, so there is no `return` inside this block.
 	//
 	// registry.NameFor derives the label from the repository directory, never
 	// from the store's own filename, which is always "db.sqlite". --global is

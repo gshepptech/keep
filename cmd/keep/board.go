@@ -37,10 +37,9 @@ type boardJSON struct {
 	Items  []model.Item `json:"items"`
 }
 
-// runBoard implements `keep board`: a terminal status
-// glance -- counts, then the top of the ready queue -- or, with --web, the
-// loopback dashboard server. It mutates nothing, so it registers no --actor
-// and writes no events row.
+// runBoard implements `keep board`: a terminal status glance (counts, then
+// the top of the ready queue) or, with --web, the loopback dashboard
+// server. The terminal glance mutates nothing, so it writes no events row.
 func runBoard(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("board", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -104,13 +103,12 @@ func runBoard(args []string, stdout, stderr io.Writer) int {
 
 	ctx := context.Background()
 
-	// ONE unlimited store.Ready call feeds both the count and the printed
-	// rows -- --limit slices the already-fetched slice in Go, so the count
-	// stays exact whatever --limit is and the rows are a prefix of the same
-	// list. Calling Ready twice with different limits, or calling it once
-	// with *limitFlag for both, would each be a way for the count to
-	// silently disagree with the queue -- do not "optimise" this into two
-	// calls.
+	// One unlimited store.Ready call feeds both the count and the printed
+	// rows. --limit slices the already-fetched slice in Go, so the count
+	// stays exact whatever --limit is and the rows are a prefix of the
+	// same list. Calling Ready twice with different limits, or once with
+	// *limitFlag for both, would let the count silently disagree with the
+	// queue.
 	ready, err := s.Ready(ctx, 0)
 	if err != nil {
 		return exitFor(stderr, err)
@@ -168,9 +166,8 @@ func runBoard(args []string, stdout, stderr io.Writer) int {
 // serveWeb binds hostport 127.0.0.1:port (port 0 means OS-assigned) via
 // dash.NewServer, prints the URL as stdout's FIRST line, then serves until
 // SIGINT/SIGTERM. The host is the literal string "127.0.0.1" here and
-// nowhere else -- there is no flag between the user and this constant;
-// dash.NewServer's loopback validation is the backstop for a future flag,
-// not the primary gate today.
+// nowhere else, with no flag between the user and this constant;
+// dash.NewServer's loopback validation is a backstop, not the primary gate.
 func serveWeb(st *store.Store, port int, dbFlag string, stdout, stderr io.Writer) int {
 	// A registry that cannot be located is not fatal to the board: the
 	// per-repository views still work, and /all renders its own empty
@@ -182,7 +179,7 @@ func serveWeb(st *store.Store, port int, dbFlag string, stdout, stderr io.Writer
 
 	// The board acts on the store, so it needs the path to reopen for
 	// writing. resolveStorePath is the same four-rule resolver every other
-	// command uses -- the board must not invent a fifth.
+	// command uses, so the board resolves the same store.
 	dbPath, pathErr := store.Resolve(dbFlag)
 	if pathErr != nil {
 		fmt.Fprintf(stderr, "keep board: %v\n", pathErr)
@@ -196,10 +193,11 @@ func serveWeb(st *store.Store, port int, dbFlag string, stdout, stderr io.Writer
 		return 1
 	}
 
-	// The URL is the first line of stdout, before anything else is written
-	// there -- the demo script and board_test.go's --web tests both read
-	// exactly one line and expect a working URL. No "serving..." banner, no
-	// request log, ever on stdout: diagnostics go to stderr.
+	// The URL is the first line of stdout, before anything else is
+	// written there, because the demo script and board_test.go's --web
+	// tests both read exactly one line and expect a working URL. No
+	// "serving..." banner and no request log go to stdout; diagnostics go
+	// to stderr.
 	fmt.Fprintln(stdout, srv.URL())
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -249,7 +247,7 @@ type boardAllJSON struct {
 // and Backlog purely to take len() of each.
 //
 // The queue is ranked by score across all stores, exactly as ready --all
-// ranks it, because it IS ready --all's ranking -- the same registry.Merge
+// ranks it, because it is ready --all's ranking: the same registry.Merge
 // ordering, so the number in the counts line and the rows beneath it can
 // never come from two different ideas of what is workable.
 func runBoardAll(limit int, asJSON bool, stdout, stderr io.Writer) int {
@@ -273,7 +271,7 @@ func runBoardAll(limit int, asJSON bool, stdout, stderr io.Writer) int {
 	}
 
 	// The remaining three counts. Failures are already reported once, above,
-	// so these fan-outs report nothing -- a store that will not open would
+	// so these fan-outs report nothing; a store that will not open would
 	// otherwise be named four times for one glance.
 	inProgress := countAcross(ctx, func(ctx context.Context, st *store.Store) ([]model.Item, error) {
 		return st.ListItems(ctx, store.ListFilter{Status: model.StatusInProgress})

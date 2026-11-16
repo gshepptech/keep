@@ -22,27 +22,26 @@ const instructionRows = 5
 //
 // # Why this exists at all
 //
-// The argument for the SessionStart hook is that an instruction to a model
-// can be ignored while a hook fires regardless. That is true, and it is
-// also not the whole picture: the hook and this field both inject text,
-// and neither compels the model to act on it.
+// The case for the SessionStart hook is that an instruction to a model can
+// be ignored while a hook fires regardless. That is true, but the hook and
+// this field both inject text, and neither compels the model to act on it.
 //
 // This field looks like a cheap channel that covers every MCP client, but
 // clients differ (see internal/mcp's Options.Instructions for the detail):
 // Claude Code renders it under an "MCP Server Instructions" block, and
-// Codex does not put it in the model's prompt at all. It is the whole
-// delivery mechanism on one agent and nothing on the other.
+// Codex does not put it in the model's prompt at all. It is the only
+// delivery on one agent and none on the other.
 //
-// It stays because it is useful on the Claude Code side and costs
-// nothing elsewhere -- an MCP server that receives it but hides it is the
-// client's choice, not a bug here. It does not replace the hook.
+// It is kept because it is useful on the Claude Code side and costs nothing
+// elsewhere; a client that receives it but hides it is making its own
+// choice. It does not replace the hook.
 //
 // # Why it returns "" rather than an error
 //
 // Same rule the hook follows: silence in a repository that has nothing to
 // say. An empty store, or one whose counts cannot be read, must not turn
-// into a handshake that announces an empty queue -- that trains a reader to
-// skip the block, which defeats it. The caller passes the empty string
+// into a handshake that announces an empty queue, which trains a reader to
+// skip the block. The caller passes the empty string
 // straight through and the SDK omits the field.
 func mcpInstructions(ctx context.Context, s *store.Store) string {
 	ready, err := s.Ready(ctx, 0)
@@ -65,11 +64,10 @@ func mcpInstructions(ctx context.Context, s *store.Store) string {
 		return ""
 	}
 
-	// One Ready call, sliced in Go -- the same rule runBoard states at
-	// length: the count must be exact regardless of how many rows are
-	// shown, and the rows must be a prefix of the counted list. Two calls
-	// with different limits is how a count silently stops matching its
-	// queue.
+	// One Ready call, sliced in Go, by the same rule runBoard states: the
+	// count must be exact regardless of how many rows are shown, and the
+	// rows must be a prefix of the counted list. Two calls with different
+	// limits would let the count silently stop matching its queue.
 	top := ready
 	if len(top) > instructionRows {
 		top = top[:instructionRows]
@@ -126,7 +124,7 @@ func mcpInstructions(ctx context.Context, s *store.Store) string {
 // # Why explicit still wins
 //
 // $KEEP_ACTOR is how you say "record this as something other than the
-// tool you happen to be driving" -- a named human, a CI identity, a second
+// tool you happen to be driving": a named human, a CI identity, a second
 // agent behind a proxy. A client name that overrode it would make that
 // unsayable. Setups that set it keep working unchanged.
 //

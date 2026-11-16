@@ -41,11 +41,11 @@ func makeRepo(t *testing.T, bin, root, home, name string, n int) string {
 	return storePath
 }
 
-// TestReposListsCountsAndLastActivity proves the core of `keep repos`: two real
-// repos with different, known item counts show up in --json with the right
-// items/ready per row and a last_activity that parses with model.TimeFormat,
-// and the rendered output carries a row whose exact first field is the
-// repository name -- never a substring match.
+// TestReposListsCountsAndLastActivity checks that two real repos with
+// different, known item counts show up in `keep repos --json` with the
+// right items/ready per row and a last_activity that parses with
+// model.TimeFormat, and that the rendered output carries a row whose exact
+// first field is the repository name.
 func TestReposListsCountsAndLastActivity(t *testing.T) {
 	bin := buildKeep(t, "")
 	root := tempDir(t)
@@ -111,10 +111,10 @@ func TestReposListsCountsAndLastActivity(t *testing.T) {
 	}
 }
 
-// TestReposShowsErrorRowForBrokenStoreAndExitsZero: three registered repos,
-// one's store file deleted, still all appear,
-// the deleted one carrying a non-empty error and zeroed counts, the other
-// two carrying their real counts, and the command exits 0 regardless.
+// TestReposShowsErrorRowForBrokenStoreAndExitsZero checks that three
+// registered repos, one with its store file deleted, all still appear: the
+// deleted one with a non-empty error and zeroed counts, the other two with
+// their real counts, and the command exits 0 regardless.
 func TestReposShowsErrorRowForBrokenStoreAndExitsZero(t *testing.T) {
 	bin := buildKeep(t, "")
 	root := tempDir(t)
@@ -206,7 +206,7 @@ func TestReposAddAcceptsDirectoryOrStorePath(t *testing.T) {
 }
 
 // TestReposAddDoesNotValidateTheStore proves `repos add` on a directory with
-// no store at all still exits 0 and registers the row -- and that `keep
+// no store at all still exits 0 and registers the row, and that `keep
 // repos` then shows that row with an error rather than refusing to list it.
 func TestReposAddDoesNotValidateTheStore(t *testing.T) {
 	bin := buildKeep(t, "")

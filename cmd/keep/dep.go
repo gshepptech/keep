@@ -16,11 +16,11 @@ import (
 // parsing (fs.Arg(0..2)); anything else is a usage error.
 //
 // The dep type is validated against model.ValidDepTypes before the store is
-// even opened -- an unrecognized type exits 2 naming the four legal values.
-// `parent-child` IS in that closed vocabulary, so it
-// passes this check and reaches store.CreateDep, which is the single place
-// that refuses it (store.ErrParentChildViaDep, whose own message names
-// `keep add --parent`) -- exitFor maps that sentinel to exit 2, not 1,
+// even opened, and an unrecognized type exits 2 naming the four legal
+// values. `parent-child` is in that closed vocabulary, so it passes this
+// check and reaches store.CreateDep, which is the single place that refuses
+// it (store.ErrParentChildViaDep, whose own message names
+// `keep add --parent`). exitFor maps that sentinel to exit 2, not 1,
 // because it is a usage error, not an operational one.
 func runDep(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("dep", flag.ContinueOnError)
@@ -73,7 +73,7 @@ func runDep(args []string, stdout, stderr io.Writer) int {
 }
 
 // validDepTypesList renders model.ValidDepTypes as a stable, ordered,
-// human-readable list -- ranging over the map itself would produce a
+// human-readable list. Ranging over the map itself would produce a
 // different order on every process (same reasoning as add.go's
 // validTypesList/validStagesList).
 func validDepTypesList() string {

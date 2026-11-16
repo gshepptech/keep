@@ -9,8 +9,8 @@ import (
 // mustAdd runs `keep add [flags...] <title>` and fails the test immediately
 // if it does not succeed, returning the trimmed id. Flags must precede the
 // title (runAdd's documented invocation order), so callers pass flags first
-// in flagsAndTitle, title last -- exactly the shape every add_test.go/
-// dep_test.go call already uses.
+// in flagsAndTitle, title last, the shape every add_test.go/dep_test.go
+// call uses.
 func mustAdd(t *testing.T, bin, repo string, e []string, flagsAndTitle ...string) string {
 	t.Helper()
 	args := append([]string{"add"}, flagsAndTitle...)
@@ -50,10 +50,10 @@ func idsFromLines(stdout string) []string {
 }
 
 // TestReadyOrderAndLimit proves runReady renders store.Ready's own
-// score-descending order untouched -- items are added in an order that
-// deliberately does NOT match score order (so a created_at-based sort would
-// produce a different, wrong result), and
-// --limit trims the result without altering the order.
+// score-descending order untouched. Items are added in an order that does
+// not match score order (so a created_at-based sort would produce a
+// different, wrong result), and --limit trims the result without altering
+// the order.
 func TestReadyOrderAndLimit(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)
@@ -135,8 +135,8 @@ func TestReadyEmptyIsExitZero(t *testing.T) {
 }
 
 // TestReadyExcludesRawFromCLI proves an item added with --stage raw never
-// appears in ready output through the CLI -- raw is never workable, enforced end to end,
-// not just at the store layer.
+// appears in ready output through the CLI, so raw is never workable end to
+// end, not just at the store layer.
 func TestReadyExcludesRawFromCLI(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)
@@ -170,8 +170,8 @@ func TestReadyExcludesRawFromCLI(t *testing.T) {
 // TestBlockedNamesBlockerOnCLI proves end to end through the CLI:
 // after `dep <epic> blocks <blocker>`, the epic's child (blocked
 // transitively, through the parent-child tree) appears in `blocked` output
-// naming the EPIC's id, not the root blocker's id -- the nearest blocked
-// ancestor, matching store.Blocked's own documented behaviour.
+// naming the epic's id, not the root blocker's id: the nearest blocked
+// ancestor, matching store.Blocked's documented behaviour.
 func TestBlockedNamesBlockerOnCLI(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)
@@ -230,8 +230,8 @@ func TestBlockedNamesBlockerOnCLI(t *testing.T) {
 }
 
 // TestShowBodyVerbatim proves the body prints byte-for-byte after the "body"
-// header -- multi-line, a blank line, a non-ASCII character, and a trailing
-// newline all survive the round trip through `show`.
+// header: multi-line text, a blank line, a non-ASCII character, and a
+// trailing newline all survive the round trip through `show`.
 func TestShowBodyVerbatim(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)
@@ -280,8 +280,8 @@ func TestShowUnknownID(t *testing.T) {
 
 // TestListFiltersCompose proves list's filters compose as AND, asserted as
 // an exact id set. Every item `add` produces is status=open, so --stage
-// and --repo are the two axes exercised here -- both settable at `add`
-// time, giving a genuine two-filter AND composition through the real CLI.
+// and --repo are the two axes exercised here, both settable at `add` time,
+// giving a real two-filter AND composition through the CLI.
 func TestListFiltersCompose(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)
@@ -310,11 +310,10 @@ func TestListFiltersCompose(t *testing.T) {
 	}
 }
 
-// TestReadJSONStreamPurity is the --json test that matters most: for all
-// four read commands, --json's ENTIRE stdout must parse as JSON with no
-// leading or trailing non-JSON bytes, and stderr must be empty. Unmarshalling
-// the whole buffer (not a line, not a prefix) is what catches a stray
-// fmt.Println.
+// TestReadJSONStreamPurity checks that, for all four read commands,
+// --json's entire stdout parses as JSON with no leading or trailing
+// non-JSON bytes, and stderr is empty. Unmarshalling the whole buffer (not a
+// line, not a prefix) catches a stray fmt.Println.
 func TestReadJSONStreamPurity(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)

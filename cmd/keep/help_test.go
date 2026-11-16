@@ -16,15 +16,14 @@ import (
 // verbatim" branch into the positionals, to arrive at flag.Parse behind a
 // `--` and become the title.
 //
-// Two things make this worth a cross-process test rather than a unit test
-// on permuteArgs. It is a whole-binary behaviour -- parse, then write, then
-// exit code -- and the damage was to a store, so the assertion that matters
-// is that the store is still empty afterwards. A test that only checked the
-// exit code would have passed on a version that printed usage AND filed the
-// item.
+// It is a cross-process test rather than a unit test on permuteArgs because
+// it is a whole-binary behaviour (parse, then write, then exit code), and
+// the harm would be to a store, so the assertion that matters is that the
+// store is still empty afterwards. Checking only the exit code would pass a
+// binary that printed usage and also filed the item.
 //
-// Checked on every subcommand that takes a positional argument, because the
-// pre-pass is shared: a fix in one of them alone would not be a fix.
+// It is checked on every subcommand that takes a positional argument,
+// because the pre-pass is shared.
 func TestAskingForHelpDoesNotFileAnItem(t *testing.T) {
 	bin := buildKeep(t, "")
 
@@ -63,11 +62,10 @@ func TestAskingForHelpDoesNotFileAnItem(t *testing.T) {
 	}
 }
 
-// TestATitleThatLooksLikeAFlagStillWorks holds up the other side of the
-// fix. `keep add -- --weird-title` is documented and must keep working:
+// TestATitleThatLooksLikeAFlagStillWorks checks that
+// `keep add -- --weird-title` files an item with that title, as documented:
 // everything after `--` is positional by definition, including something
-// spelled like a flag. A guard that refused it would have traded one bug
-// for a smaller one.
+// spelled like a flag.
 func TestATitleThatLooksLikeAFlagStillWorks(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)
@@ -89,10 +87,10 @@ func TestATitleThatLooksLikeAFlagStillWorks(t *testing.T) {
 	}
 }
 
-// TestAnEmptyTitleIsRefusedAtTheCommandLine is the CLI end of the store's
-// ErrEmptyTitle. The store test proves the rule; this proves the exit code
-// a script would branch on, and that the message names the problem rather
-// than reporting an internal error.
+// TestAnEmptyTitleIsRefusedAtTheCommandLine checks the CLI end of the store's
+// ErrEmptyTitle. The store test proves the rule; this proves the exit code a
+// script would branch on, and that the message names the problem rather than
+// reporting an internal error.
 func TestAnEmptyTitleIsRefusedAtTheCommandLine(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)

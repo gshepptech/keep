@@ -12,15 +12,11 @@ import (
 	"testing"
 )
 
-// buildKeep builds the real binary with the given version string baked in
-// via -ldflags and returns its path. Every CLI test in this package goes
-// through it: these tests exist to prove process-level behaviour, so nothing
-// here may call runInit in-process.
 // tempDir is t.TempDir() with symlinks resolved.
 //
 // On macOS /var is a symlink to /private/var, so t.TempDir() hands back
-// /var/folders/... while keep -- correctly, because the registry needs one
-// canonical path per store -- reports /private/var/folders/.... A test
+// /var/folders/... while keep, correctly, because the registry needs one
+// canonical path per store, reports /private/var/folders/.... A test
 // comparing its own unresolved path against keep's resolved one fails on
 // the difference between two names for the same directory.
 //
@@ -41,8 +37,8 @@ func tempDir(t *testing.T) string {
 // buildKeep is called from most tests in this package. Running `go build`
 // on every call takes minutes, and on Windows, where spawning a process is
 // far more expensive, it can exceed `go test`'s 600-second timeout. The
-// binaries are identical per version -- nothing here mutates one -- so
-// building each exactly once is the same test with the waste removed.
+// binaries are identical per version (nothing here mutates one), so each is
+// built once.
 var (
 	builtMu       sync.Mutex
 	builtBinaries = map[string]string{}
@@ -65,6 +61,8 @@ func TestMain(m *testing.M) {
 
 // buildKeep returns the path to a keep binary built with the given
 // -ldflags version, compiling it the first time that version is asked for.
+// Every CLI test in this package goes through it: these tests prove
+// process-level behaviour, so nothing here calls runInit in-process.
 func buildKeep(t *testing.T, version string) string {
 	t.Helper()
 
@@ -91,7 +89,7 @@ func buildKeep(t *testing.T, version string) string {
 		args = append(args, "-ldflags", "-X main.version="+version)
 	}
 	// Most of this package's behaviour is tested in a subprocess, which
-	// the in-process coverage instrument cannot see -- `go test -cover`
+	// the in-process coverage instrument cannot see: `go test -cover`
 	// reports cmd/keep at a few percent and measures almost nothing. When
 	// scripts/coverage.sh sets $KEEP_COVERDIR the binary is built
 	// instrumented instead, so those runs report what they actually
@@ -111,8 +109,8 @@ func buildKeep(t *testing.T, version string) string {
 }
 
 // run executes bin with args, in dir, with env as its complete environment,
-// and returns its stdout, stderr (captured separately -- the split is a
-// requirement, not a formatting preference) and exit code.
+// and returns its stdout, stderr (captured separately, because tests assert
+// on which stream a line went to) and exit code.
 func run(t *testing.T, bin, dir string, env []string, args ...string) (stdout, stderr string, code int) {
 	t.Helper()
 
@@ -145,13 +143,13 @@ func run(t *testing.T, bin, dir string, env []string, args ...string) (stdout, s
 // runStdin is run's stdin-aware sibling: args is variadic-last
 // in run's signature, so a stdin parameter cannot be inserted into it
 // without touching every existing call site, and an unset cmd.Stdin
-// correctly defaults to os.DevNull for every other command's test -- so run
-// itself needs no change and stays correct.
+// defaults to os.DevNull for every other command's test, so run itself
+// needs no stdin parameter.
 //
 // A non-*os.File io.Reader (strings.NewReader here) is copied to the
 // child's stdin via an internal os/exec goroutine, so Wait() (inside
-// cmd.Run()) blocks until copying finishes -- no manual pipe/goroutine
-// plumbing is needed here, per os/exec's own documentation; a multi-megabyte
+// cmd.Run()) blocks until copying finishes, so no manual pipe/goroutine
+// plumbing is needed (per os/exec's documentation); a multi-megabyte
 // payload round-trips byte-identically through a real os/exec-spawned
 // process with no truncation.
 func runStdin(t *testing.T, bin, dir string, env []string, stdin string, args ...string) (stdout, stderr string, code int) {
@@ -186,10 +184,10 @@ func runStdin(t *testing.T, bin, dir string, env []string, stdin string, args ..
 
 // env returns a minimal, explicit environment for a subprocess: PATH, HOME,
 // USER, and KEEP_DB when non-empty, plus any extra entries appended
-// verbatim (e.g. "KEEP_SESSION=s1"). Deliberately not os.Environ() plus
-// overrides -- inheriting the developer's real HOME or a real KEEP_DB is
-// exactly the leak that makes these tests pass on one machine and fail on
-// another. USER is part of the base set (not left to extra) because
+// as given (e.g. "KEEP_SESSION=s1"). It is deliberately not os.Environ()
+// plus overrides, because inheriting the developer's real HOME or a real
+// KEEP_DB would make these tests pass on one machine and fail on another.
+// USER is part of the base set (not left to extra) because
 // mutating commands resolve an actor via resolveActor, which falls back to
 // $USER.
 func env(home, keepDB string, extra ...string) []string {

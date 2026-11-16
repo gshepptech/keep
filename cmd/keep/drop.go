@@ -31,7 +31,7 @@ func runDrop(args []string, stdout, stderr io.Writer) int {
 	id := fs.Arg(0)
 
 	// Same rule as close: an absent --reason and --reason "" are both
-	// exit 2 -- see close.go's identical check for the reasoning.
+	// exit 2 (close.go's identical check gives the reasoning).
 	if *reasonFlag == "" {
 		fmt.Fprintln(stderr, "keep: drop: --reason is required and cannot be empty")
 		return 2

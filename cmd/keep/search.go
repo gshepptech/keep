@@ -14,7 +14,7 @@ import (
 // runSearch implements the `search` subcommand: find an item by a word you
 // remember.
 //
-// `list` answers structural questions -- which tickets are open, what is
+// `list` answers structural questions: which tickets are open, what is
 // under this parent. It cannot answer "where is that thing about tokens",
 // which is the question anyone with more than a screenful of items actually
 // asks. The two are kept separate rather than adding a --text flag to list:
@@ -93,13 +93,13 @@ func runSearch(args []string, stdout, stderr io.Writer) int {
 
 	// Same renderer as ready and blocked, so search results line up with
 	// every other list this CLI prints, and the field the match came from
-	// goes after the title -- a result whose title lacks the word you
+	// goes after the title, because a result whose title lacks the word you
 	// searched for reads as a mistake until it says it matched the reason.
 	items := make([]model.Item, len(results))
 	matched := make(map[string]string, len(results))
 	for i, r := range results {
 		items[i] = r.Item
-		// A title match needs no explanation -- the title is right there.
+		// A title match needs no explanation, since the title is right there.
 		// Anything else does, and the snippet is what makes the row
 		// judgeable without opening the item.
 		if r.MatchedIn == "title" {
@@ -139,11 +139,10 @@ type searchAllJSON struct {
 // The cross-store rank is the single-store rank, applied again over the
 // merged set: which field matched first, then score, then repository and id
 // to make the order total. It uses store.SearchFieldRank rather than a copy
-// of the field order, so "title beats body" is defined once -- a second copy
-// here would silently disagree the first time a field is added to the
-// search.
+// of the field order, so "title beats body" is defined once; a second copy
+// here would silently disagree as soon as a field is added to the search.
 //
-// Each store is searched UNLIMITED and --limit slices the merged result, the
+// Each store is searched unlimited and --limit slices the merged result, the
 // same discipline ready --all follows: a per-store limit would let each
 // store's own tiebreak decide which rows even reach the cross-store ranking.
 func runSearchAll(query string, includeClosed bool, limit int, asJSON bool, stdout, stderr io.Writer) int {

@@ -16,11 +16,11 @@ import (
 	"github.com/gshepptech/keep/internal/store"
 )
 
-// runRepos is the project's first command with a sub-subcommand. The literal
+// runRepos dispatches `keep repos` and its sub-subcommands. The literal
 // string match on args[0] is safe because bare `keep repos` takes no
-// positional argument at all (it just lists), so there
-// is no ambiguity between the word "add" and a path that happens to be named
-// add. Keep the dispatch shape -- do not reach for a CLI framework.
+// positional argument at all (it just lists), so there is no ambiguity
+// between the word "add" and a path that happens to be named add. A literal
+// match is all this needs, so there is no CLI framework.
 func runRepos(args []string, stdout, stderr io.Writer) int {
 	if len(args) > 0 {
 		switch args[0] {
@@ -33,8 +33,8 @@ func runRepos(args []string, stdout, stderr io.Writer) int {
 	return runReposList(args, stdout, stderr)
 }
 
-// reposRow is one store's row in repos --json. A local wire type, not
-// registry.RepoResult directly -- RepoResult.Err cannot marshal, and its
+// reposRow is one store's row in repos --json. It is a local wire type, not
+// registry.RepoResult, because RepoResult.Err cannot marshal, and its
 // ItemCount/ReadyCount field names don't match this command's public
 // vocabulary (items/ready).
 type reposRow struct {
@@ -47,21 +47,18 @@ type reposRow struct {
 }
 
 // reposJSON is repos --json's whole (and only) stdout payload. Repos is
-// always a non-nil slice, never null -- the same discipline runReady already
-// applies to an empty queue.
+// always a non-nil slice, never null, as runReady does for an empty queue.
 type reposJSON struct {
 	Repos []reposRow `json:"repos"`
 }
 
 // runReposList implements the bare `keep repos`: load the registry, fan
 // out read-only counts for every registered store, and render one row per
-// store -- a failed row carries its error in place of the counts and is
-// never dropped, and the command exits 0 regardless. Deliberately
-// registers no --db: repos reads the registry, not one
-// store, and a --db flag here would do nothing. Enforced the way
-// `update --status` and `capture --stage` already are: by NOT registering
-// the flag, so flag's own "flag provided but not defined: -db" is the
-// enforcement.
+// store. A failed row carries its error in place of the counts and is never
+// dropped, and the command exits 0 regardless. It registers no --db: repos
+// reads the registry, not one store, and a --db flag here would do nothing.
+// As with `update --status` and `capture --stage`, the flag is simply not
+// registered, so flag's own "flag provided but not defined: -db" refuses it.
 func runReposList(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("repos", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -123,11 +120,11 @@ func runReposList(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-// renderRepos writes one line per store -- name, items, ready, last
-// activity, path -- with items/ready right-aligned and "-" standing in for
-// an absent last activity, columns aligned to the widest value in THIS
-// result set, never a fixed width. No colour, no box drawing, space padding
-// only, so awk/cut keep working.
+// renderRepos writes one line per store (name, items, ready, last activity,
+// path) with items/ready right-aligned and "-" standing in for an absent
+// last activity, columns aligned to the widest value in this result set,
+// never a fixed width. No colour, no box drawing, space padding only, so
+// awk/cut keep working.
 //
 // A failed row is never dropped and never collapses the whole command: it
 // prints "<name>  error: <message>" in place of the counts, since the error
@@ -179,15 +176,14 @@ func renderRepos(w io.Writer, rows []registry.RepoResult) {
 // normaliseStorePath turns a user-supplied argument into an absolute store
 // path. A path already ending in .rounce/db.sqlite is taken as-is; anything
 // else is treated as a repository directory and passed through
-// store.StorePathIn. The single definition both `repos add` and
-// `repos forget` call, so the two cannot disagree about what a path means.
+// store.StorePathIn. Both `repos add` and `repos forget` call it, so the two
+// cannot disagree about what a path means.
 //
-// It deliberately does NOT check that the path exists or that it holds a
-// real keep store. A registered-but-currently-broken store is a normal
-// case, not an error state at registration time -- validating here would
-// make `repos add` refuse exactly the situation the registry exists to handle
-// gracefully, and would make re-registering a store on a disconnected volume
-// impossible.
+// It does not check that the path exists or that it holds a real keep
+// store. A registered-but-currently-broken store is a normal case, not an
+// error at registration time; validating here would make `repos add` refuse
+// the situation the registry exists to handle, and would make
+// re-registering a store on a disconnected volume impossible.
 func normaliseStorePath(arg string) (string, error) {
 	clean := filepath.Clean(arg)
 	suffix := filepath.Join(store.StoreDirName, store.StoreFileName)
@@ -228,12 +224,12 @@ func runReposAdd(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	// Unlike `init`, a registry write failure here IS fatal (exit 1). init
-	// warns and exits 0 because the store it was asked to create WAS
-	// created -- there is a core operation behind the bookkeeping.
+	// Unlike `init`, a registry write failure here is fatal (exit 1). init
+	// warns and exits 0 because the store it was asked to create was
+	// created, so there is a core operation behind the bookkeeping.
 	// `repos add` has none: the registry write is the entire command, and
-	// reporting success after failing to do the only thing asked would be a
-	// lie. The asymmetry is deliberate; do not "fix" it into consistency.
+	// reporting success after failing to do the only thing asked would be
+	// false.
 	if err := registry.Register(home, path, registry.NameFor(path), model.Now()); err != nil {
 		fmt.Fprintf(stderr, "keep: %v\n", err)
 		return 1
@@ -293,15 +289,14 @@ func runReposForget(args []string, stdout, stderr io.Writer) int {
 
 // runReposForgetGone drops every registration whose store file is gone.
 //
-// `init` registers automatically and nothing ever unregistered, so the
-// registry only grew. A few days of scratch repositories under /tmp is
-// enough to bury the real rows, and every dead one prints a full error line
-// to stderr on each `ready --all` -- the command someone working across
-// repositories runs most.
+// `init` registers automatically, so without this the registry only grows.
+// A few days of scratch repositories under /tmp is enough to bury the real
+// rows, and every dead one prints a full error line to stderr on each
+// `ready --all`, the command someone working across repositories runs most.
 //
 // The test is os.Stat reporting IsNotExist, and nothing else. A store that
-// exists but will not open -- a permission, a half-written file, an
-// unmounted disk that is about to come back -- is left registered and keeps
+// exists but will not open (a permission, a half-written file, an unmounted
+// disk that is about to come back) is left registered and keeps
 // reporting its error. Forgetting a registration because a disk was
 // unplugged would lose the entry for good, which is a far worse outcome
 // than the noise this removes: the registry is the only record that the

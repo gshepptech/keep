@@ -19,15 +19,16 @@ import (
 // crashes mid-item, neither is true, and without this the only options
 // would be to pick one anyway or leave the item stuck out of `ready` forever.
 //
-// Shaped after close.go and drop.go deliberately -- same flag set, same
-// required --reason, same exit codes -- because it is the same kind of
-// operation: a state change that has to say why. What differs is what it
-// asserts, which is only that the claim ended.
+// It is shaped like close.go and drop.go (same flag set, same required
+// --reason, same exit codes) because it is the same kind of operation: a
+// state change that has to say why. What differs is what it asserts, which
+// is only that the claim ended.
 //
-// There is no `unclaim` MCP tool, and that is a decision rather than an
-// omission (see store.UnclaimItem's doc comment): a verb that can take work
-// away from a live agent belongs with whoever can look at the terminal, not
-// with another agent that has just been told the queue is empty.
+// The MCP `unclaim` tool is the narrow form that releases only the
+// caller's own claim (see store.UnclaimItem's doc comment). Releasing
+// someone else's claim can take work away from a live agent, so it belongs
+// with whoever can look at the terminal, not with another agent that has
+// just been told the queue is empty.
 func runUnclaim(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("unclaim", flag.ContinueOnError)
 	fs.SetOutput(stderr)

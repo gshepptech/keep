@@ -16,8 +16,8 @@ import (
 //
 // It is the shared half of every `--all`: the registry load, the fan-out,
 // the merge and the failure reporting, written once so no command copies
-// them and gets the reporting wrong -- a partial view reported as a
-// complete one is the failure this whole surface is shaped against.
+// them and gets the reporting wrong. A partial view reported as a complete
+// one is the failure the cross-repository commands are designed to prevent.
 //
 // A malformed registry is reported and survived, never fatal:
 // registry.Load hands back both a usable empty envelope and the error.
@@ -86,19 +86,18 @@ func repoErrorsJSON[T any](results []registry.Fanout[T]) []readyAllError {
 // byNewest orders rows by a timestamp, newest first, then by repository and
 // a stable key.
 //
-// Ordering ACROSS stores by a timestamp is exactly what merge.go's own
-// comment warns against for the ready queue -- and the distinction is worth
-// stating rather than looking like an oversight. For ranked WORK, two
-// stores' created_at values are wall-clock strings from unrelated
-// histories and ordering by them produces something meaningless. For "what
-// did I park recently" and "what happened", time IS the question being
-// asked, and every registered store is a file on this one machine, read by
-// this one process, stamped from this one clock.
+// Ordering across stores by a timestamp is what merge.go's comment warns
+// against for the ready queue, and the difference is deliberate. For
+// ranked work, two stores' created_at values are wall-clock strings from
+// unrelated histories and ordering by them produces something meaningless.
+// For "what did I park recently" and "what happened", time is the question
+// being asked, and every registered store is a file on this one machine,
+// read by this one process, stamped from this one clock.
 //
-// The repository and key tiebreaks make the order total, which is what
-// keeps output identical between runs -- sort.Slice is documented as
-// unstable, and a comparison that is false in both directions for two rows
-// is how that instability becomes visible.
+// The repository and key tiebreaks make the order total, which keeps output
+// identical between runs: sort.Slice is documented as unstable, and a
+// comparison that is false in both directions for two rows would make that
+// instability visible.
 func byNewest[T any](at func(T) string, key func(T) string) func(a, b registry.Tagged[T]) bool {
 	return func(a, b registry.Tagged[T]) bool {
 		if at(a.Row) != at(b.Row) {
@@ -113,13 +112,13 @@ func byNewest[T any](at func(T) string, key func(T) string) func(a, b registry.T
 
 // renderTagged prints one line per merged row: the repository name, then
 // whatever columns cols produces, every column padded to the widest value in
-// THIS result set.
+// this result set.
 //
-// One renderer for every `--all`, rather than one per command, and it works
-// off the slice index by index. That is not a convenience -- renderMerged's
-// own comment records why: item ids are NOT unique across stores, two
-// repositories can independently mint the same rnc-<6 hex>, and any
-// id-keyed map would silently attribute one repository's row to another.
+// One renderer serves every `--all`, and it works off the slice index by
+// index rather than by id, for the reason renderMerged's comment gives: item
+// ids are not unique across stores, two repositories can independently mint
+// the same rnc-<6 hex>, and any id-keyed map would silently attribute one
+// repository's row to another.
 //
 // The last column is the title, and it absorbs whatever width is left, so a
 // long title is truncated rather than wrapping into an unreadable block.

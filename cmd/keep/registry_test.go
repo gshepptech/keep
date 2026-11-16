@@ -13,8 +13,8 @@ import (
 )
 
 // readRegistry decodes home's repos.json. Every test in this file passes a
-// home inside tempDir(t) -- the developer's real ~/.rounce/repos.json must
-// never be read or written by `go test`, which is why cli_test.go's env
+// home inside tempDir(t), because the developer's real ~/.rounce/repos.json
+// must never be read or written by `go test`, which is why cli_test.go's env
 // helper sets an explicit HOME rather than inheriting os.Environ().
 func readRegistry(t *testing.T, home string) registry.Envelope {
 	t.Helper()
@@ -74,10 +74,10 @@ func TestInitRegistersStoreInRepoList(t *testing.T) {
 
 // TestInitRegistrationIsIdempotentAndRefreshesLastSeen proves registration
 // is idempotent: running `keep init` a second time in the same
-// repository leaves exactly ONE row, with a last_seen strictly greater than
-// the first run's. The row count is asserted, not only the timestamp -- a
-// bug that always appended would still refresh a *different* row's
-// timestamp and could slip past a value-only check.
+// repository leaves exactly one row, with a last_seen strictly greater than
+// the first run's. The row count is asserted, not only the timestamp,
+// because a bug that always appended would still write a newer timestamp
+// on a different row and could slip past a value-only check.
 func TestInitRegistrationIsIdempotentAndRefreshesLastSeen(t *testing.T) {
 	bin := buildKeep(t, "")
 	repoDir := tempDir(t)
@@ -95,7 +95,7 @@ func TestInitRegistrationIsIdempotentAndRefreshesLastSeen(t *testing.T) {
 
 	// model.TimeFormat is nanosecond-resolution, but consecutive real process
 	// runs are not guaranteed to land on different nanoseconds on every
-	// platform -- a short sleep makes the strictly-greater assertion below
+	// platform, so a short sleep makes the strictly-greater assertion below
 	// meaningful rather than flaky.
 	time.Sleep(2 * time.Millisecond)
 
@@ -113,12 +113,11 @@ func TestInitRegistrationIsIdempotentAndRefreshesLastSeen(t *testing.T) {
 }
 
 // TestInitRegistrationSurvivesUnwritableHome proves registration is
-// best-effort: with $HOME pointing at a REGULAR FILE
-// (so ~/.rounce cannot be created under it), `init` still exits 0, stdout is
-// still exactly the one store-path line, stderr carries a warning naming the
-// store path, and -- critically -- the store `init` created is real and
-// usable, proven by running `keep ready --db <that path>` and requiring
-// exit 0.
+// best-effort: with $HOME pointing at a regular file (so ~/.rounce cannot be
+// created under it), `init` still exits 0, stdout is still exactly the one
+// store-path line, stderr carries a warning naming the store path, and the
+// store `init` created is real and usable, proven by running
+// `keep ready --db <that path>` and requiring exit 0.
 //
 // $HOME being a regular file makes os.MkdirAll inside registry.Save fail
 // with ENOTDIR for root and non-root alike, so this test needs no
@@ -163,9 +162,9 @@ func TestInitRegistrationSurvivesUnwritableHome(t *testing.T) {
 }
 
 // TestGlobalInitRegistersStoreNotSpecialCased proves `keep init --global`
-// registers $HOME/.rounce/db.sqlite like
-// any other store -- one row whose path is that file -- with no special
-// case, and the registry file sits beside the store in the same directory.
+// registers $HOME/.rounce/db.sqlite like any other store (one row whose path
+// is that file) with no special case, and the registry file sits beside the
+// store in the same directory.
 func TestGlobalInitRegistersStoreNotSpecialCased(t *testing.T) {
 	bin := buildKeep(t, "")
 	repoDir := tempDir(t)

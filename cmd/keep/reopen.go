@@ -17,17 +17,15 @@ import (
 // agent that closed the wrong id could not undo it: the work would have to
 // be filed again under a new id, losing the event history and every
 // dependency edge that pointed at the original. Filing a duplicate is not a
-// recovery, it is
-// a second record of the same work with the first one still claiming to be
-// done.
+// recovery, it is a second record of the same work with the first one still
+// claiming to be done.
 //
-// Shaped after unclaim.go, which is itself shaped after close.go and drop.go
-// -- same flag set, same required --reason, same exit codes. Four verbs that
-// change status and have to say why should not each look different.
+// It is shaped like unclaim.go, close.go and drop.go: same flag set, same
+// required --reason, same exit codes. Four verbs that change status and
+// have to say why should not each look different.
 //
-// There is no `reopen` MCP tool, for the reason `update` has none: the
-// agent-facing surface stays narrow on purpose. A mis-close is something a
-// person notices, and the person can reach the CLI.
+// The MCP `reopen` tool calls the same store method, so an agent that
+// closed the wrong id can undo it the same way.
 func runReopen(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("reopen", flag.ContinueOnError)
 	fs.SetOutput(stderr)

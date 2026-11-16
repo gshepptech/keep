@@ -59,7 +59,8 @@ func TestReopenBringsBackAMisClose(t *testing.T) {
 	}
 }
 
-// TestReopenRefusesWhatItCannotUndo pins the exit codes a script branches on.
+// TestReopenRefusesWhatItCannotUndo checks the exit codes a script branches
+// on when reopen is refused.
 func TestReopenRefusesWhatItCannotUndo(t *testing.T) {
 	bin := buildKeep(t, "")
 	repo := tempDir(t)
