@@ -1,7 +1,7 @@
-/* internal/dash/style.css -- go:embed-ed, inlined into every page's <style>
+/* internal/dash/style.css: go:embed-ed, inlined into every page's <style>
    block by layout.html. Hand-written, no framework, no reset library, no
    at-rule import, and no CSS resource-fetching function of any kind, not
-   even a data URI -- there are no images on this page, and this file is
+   even a data URI. There are no images on this page, and this file is
    scanned by the off-host reference check, so it must never contain any of the
    four forbidden shapes itself. That constraint is the reason there is no
    web font here: every typeface below is one the machine already has.
@@ -12,15 +12,15 @@
    The subject is a work queue two agents are racing over, and a single row
    of it is two kinds of text at once. An item's title is prose, read along
    a line; its id, its paths and its counts are tokens, compared down a
-   column. So the chrome -- nav, headings, buttons, labels, prose -- takes
+   column. So the chrome (nav, headings, buttons, labels, prose) takes
    the newest grotesque the machine already has, and the tokens keep the
    monospace, where the alignment is a property of the typeface rather than
    something the table has to arrange. Setting the whole page in Menlo made
    every sentence read as program output; setting the whole page in a sans
    would make an id something you have to read twice.
 
-   Colour is spent in exactly one place. Three semantic states -- workable,
-   claimed, blocked -- carry the only hues on the page, and each appears as a
+   Colour is spent in exactly one place. Three semantic states (workable,
+   claimed, blocked) carry the only hues on the page, and each appears as a
    small dot rather than a filled row, because a page that shouts at you in
    three colours has told you nothing about which one matters. Everything
    else is greyscale, and hierarchy comes from weight and spacing.
@@ -40,7 +40,7 @@
   --line-soft: #edeae5;
 
   /* Every text token below clears 4.5:1 against both the panel and the
-     canvas -- measured, not assumed (contrast_test.go). --fg-faint carries
+     canvas, measured rather than assumed (contrast_test.go). --fg-faint carries
      table headers, timestamps and every hint on the page, so "faint" is a
      contrast budget, not a look. */
   --fg: #16161a;
@@ -49,8 +49,8 @@
 
   /* Colour marks an exception, and nothing else.
      
-     "Workable" is the ordinary state of the queue -- most of the page, most
-     of the time -- so it takes the body colour and no hue at all. Painting
+     "Workable" is the ordinary state of the queue (most of the page, most
+     of the time), so it takes the body colour and no hue at all. Painting
      the happy path green made a healthy board look like a status dashboard
      and spent the page's only signal on the thing that needs no signal.
      What is left is amber for work someone has taken, and red for work that
@@ -67,7 +67,7 @@
 
   /* Both stacks name the contemporary faces first and fall back through the
      platform ones, so a machine with Inter or Cascadia installed gets them
-     and a machine without gets its own current UI face -- ui-sans-serif and
+     and a machine without gets its own current UI face: ui-sans-serif and
      ui-monospace resolve to whatever the OS ships today, which is the only
      way to stay current without fetching a file. */
   --mono: ui-monospace, "SF Mono", SFMono-Regular, "Cascadia Mono",
@@ -77,7 +77,7 @@
     "Helvetica Neue", Arial, sans-serif;
 
   /* Headings take the platform's DISPLAY cut, which is a genuinely
-     different typeface from its text cut -- tighter apertures, less
+     different typeface from its text cut: tighter apertures, less
      spacing, drawn to be set large. It is the one typographic distinction
      available without fetching a file, which the page never does, and it is
      why the page titles do not look like the body text scaled up.
@@ -118,7 +118,7 @@
      response; anything longer than this on a hover is in the way. */
   --tempo: 150ms;
 
-  /* Three named curves, and no fourth. `ease` is the browser's default --
+  /* Three named curves, and no fourth. `ease` is the browser's default:
      symmetric, slightly sluggish leaving, and the curve a page gets when
      nobody chose one. These are asymmetric on purpose: something arriving
      decelerates into place, something leaving accelerates away, and only a
@@ -157,8 +157,8 @@
     --blocked: #f85149;
     /* Dark, not near-white. The light theme's danger red is dark enough to
        carry white text at 6.15:1; this one is a LIGHTER red, chosen to be
-       visible on a near-black canvas, and near-white on it measures 3.14:1
-       -- under the 4.5 that 14px text needs. An on-colour is a function of
+       visible on a near-black canvas, and near-white on it measures 3.14:1,
+       under the 4.5 that 14px text needs. An on-colour is a function of
        the colour it sits on, and the two reds are on opposite sides of the
        point where that answer flips. */
     --on-danger: #1a0403;
@@ -187,7 +187,7 @@ body {
 }
 
 /* The token surfaces. Every one of these carries an id, a path, a count or
-   a timestamp -- the things that have to line up with the row above. They
+   a timestamp: the things that have to line up with the row above. They
    are listed here once rather than tagged rule by rule, so a new cell that
    holds a token joins the set by taking one of these classes. */
 .mono, .sub, .path, code, pre, .pip,
@@ -252,7 +252,7 @@ td[class*="depth-"] { font-family: var(--mono); }
    imposes. 100vw minus the 24px the bar is inset by, on each side.
 
    The cap alone is not enough at phone widths, because `left: 0` is the
-   switcher's left edge and the switcher already sits 104px in -- a menu
+   switcher's left edge and the switcher already sits 104px in, so a menu
    that fits the window still does not fit the window *from there*. Below
    the phone breakpoint it stops being a popover and becomes what a
    disclosure widget is in normal flow: a block that opens underneath and
@@ -304,7 +304,7 @@ td[class*="depth-"] { font-family: var(--mono); }
 
 /* Tabs, not a stack of rows. Four destinations do not need a column. */
 /* The nav wraps. It has flex: 1 and min-width: 0 so it yields space to the
-   wordmark and the switcher beside it -- but yielding space to a row of
+   wordmark and the switcher beside it, but yielding space to a row of
    nowrap pills does not shrink them, it pushes them out of the box, and
    `html { overflow-x: clip }` then hides them with no scrollbar to reach
    them. Wrapping costs a second line at a width where the bar is already
@@ -382,7 +382,7 @@ input:disabled, select:disabled, textarea:disabled {
 .btn-danger:hover { color: var(--blocked); border-color: var(--blocked); background: transparent; }
 
 /* ---------------------------------------------------------------------
-   Cards. Everything on the page lives in one -- a table floating on the
+   Cards. Everything on the page lives in one; a table floating on the
    canvas reads as a document, and this is an instrument panel.
    --------------------------------------------------------------------- */
 
@@ -454,7 +454,7 @@ tr.group th {
   border-top: 1px solid var(--line-soft);
 }
 /* A left bar on the rows that need you. Reading down a long table, an edge
-   marker is found before any cell is read -- which is the point, since the
+   marker is found before any cell is read, which is the point, since the
    reason a row is here is usually in a column further right. */
 
 .right { text-align: right; }
@@ -483,8 +483,8 @@ td.score {
 
 /* Status is a pill with a tinted ground, not a bare dot: at a glance across
    a long table the ground is what separates the rows that need you. */
-/* A state is a glyph and a word. The glyph carries the state by SHAPE --
-   open ring, half ring, barred ring, dashed ring, filled check -- so the
+/* A state is a glyph and a word. The glyph carries the state by SHAPE
+   (open ring, half ring, barred ring, dashed ring, filled check), so the
    row still reads without colour, and the colour is left to do one job
    rather than paint a lozenge behind every line. */
 .state {
@@ -600,7 +600,7 @@ textarea { resize: vertical; line-height: 1.55; }
 
 /* A textarea grows to what is in it. `rows` is a guess at how much a field
    usually holds, and on the item page it guesses two for a reason that runs
-   to four lines -- so the text a person came to read is behind a scroll
+   to four lines, so the text a person came to read is behind a scroll
    inside a box, on a page that already scrolls. field-sizing is the CSS-only
    answer; the alternative is a script, and there is none on this board.
 
@@ -750,7 +750,7 @@ tbody tr:hover td { background: color-mix(in srgb, var(--fg) 4%, transparent); }
 /* ---------------------------------------------------------------------
    The queue. Each row is one object rather than four table cells: the
    score, the thing to do, where it lives, and what you can do about it.
-   A table forced those four to share a grid none of them wanted -- the
+   A table forced those four to share a grid none of them wanted: the
    score cramped into a numeric column, the path truncated to fit, the
    controls squeezed against the right edge.
    --------------------------------------------------------------------- */
@@ -795,7 +795,7 @@ tbody tr:hover td { background: color-mix(in srgb, var(--fg) 4%, transparent); }
    The 64px above aligns them under the title rather than the score, which
    is right at tablet width and unaffordable at 375px: the select and three
    buttons need more than the 311px it leaves them, so Close hung 29px past
-   the edge -- and the page cannot scroll sideways to reach it, by design.
+   the edge, and the page cannot scroll sideways to reach it, by design.
    Wrapping is the only fix that keeps every control on the page; making
    them smaller would walk straight back into the 44px minimum above. */
 @media (max-width: 560px) {
@@ -811,7 +811,7 @@ tbody tr:hover td { background: color-mix(in srgb, var(--fg) 4%, transparent); }
 
 /* ---------------------------------------------------------------------
    Day one. The only screen a person sees before they have put anything in,
-   so it is the one that has to explain what this is -- and the only thing
+   so it is the one that has to explain what this is, and the only thing
    on the page, because a row of zeros and a second empty state underneath
    would be competing with the answer.
    --------------------------------------------------------------------- */
@@ -848,7 +848,7 @@ tbody tr:hover td { background: color-mix(in srgb, var(--fg) 4%, transparent); }
 /* ---------------------------------------------------------------------
    Motion. Everything below is a state change the person caused, arriving over one
    or two frames instead of none. Nothing loops, nothing animates on its own
-   schedule, and nothing moves that a person did not just act on -- an
+   schedule, and nothing moves that a person did not just act on; an
    interface that fidgets while you read it is worse than a still one.
    --------------------------------------------------------------------- */
 
@@ -871,7 +871,7 @@ tbody tr:hover td { background: color-mix(in srgb, var(--fg) 4%, transparent); }
 .nav-item, .project-item { transition: background var(--tempo) var(--ease-out), color var(--tempo) var(--ease-out); }
 
 /* A banner is the answer to something you just did, so it arrives rather
-   than being already there -- 180ms, once, no loop. */
+   than being already there: 180ms, once, no loop. */
 .banner { animation: rise 180ms var(--ease-out) both; }
 @keyframes rise {
   from { opacity: 0; transform: translateY(-4px); }
@@ -886,7 +886,7 @@ tbody tr:hover td { background: color-mix(in srgb, var(--fg) 4%, transparent); }
 .ways li:nth-child(3) { animation-delay: 140ms; }
 .firstrun-aside { animation: rise 260ms var(--ease-out) 210ms both; }
 
-/* Reduced motion means none of it -- including the arrivals above, which
+/* Reduced motion means none of it, including the arrivals above, which
    the blanket rule at the top of this block does not cover because they are
    animations rather than transitions. */
 @media (prefers-reduced-motion: reduce) {
@@ -899,8 +899,8 @@ tbody tr:hover td { background: color-mix(in srgb, var(--fg) 4%, transparent); }
 
 /* Row variants for the pages that are not the board: a group heading in the
    pen, an event kind in the log, the repository name in the merged queue,
-   and the matched text under a search hit. Same row, different second line
-   -- which is the point of having one row shape at all. */
+   and the matched text under a search hit. Same row, different second line,
+   which is the point of having one row shape at all. */
 .qgroup {
   list-style: none; padding: 24px 2px 8px;
   font-size: var(--text-sm); color: var(--fg-faint);
@@ -945,7 +945,7 @@ label.inline { display: inline-flex; align-items: center; gap: 8px; cursor: poin
 
 /* The confirmation step. Narrow, so it reads as a stop rather than another
    list, and the subject of the action is shown in the same row shape it had
-   on the page you came from -- you should not have to trust that the id in
+   on the page you came from; you should not have to trust that the id in
    the URL is the thing you meant. */
 .confirm { max-width: 60ch; padding: 4px 0 40px; }
 .confirm-lede { margin: 0 0 24px; color: var(--fg-muted); font-size: var(--text-base); line-height: 1.6; }
@@ -964,7 +964,7 @@ label.inline { display: inline-flex; align-items: center; gap: 8px; cursor: poin
 .confirm-acts { display: flex; align-items: center; gap: 12px; margin-top: 24px; }
 /* The destructive button is filled here and only here. Everywhere else it
    is an outline that colours on hover, so a row of them does not read as a
-   row of warnings -- but on this page the warning is the point. */
+   row of warnings, but on this page the warning is the point. */
 .btn-danger.btn-solid {
   background: var(--blocked); border-color: var(--blocked);
   color: var(--on-danger); font-weight: 500;
@@ -994,13 +994,13 @@ input:user-valid, textarea:user-valid {
   border-color: color-mix(in srgb, var(--workable) 45%, transparent);
 }
 /* The page-level answer to an action. These are the success and error
-   surfaces -- a control does not need its own, because the outcome is
+   surfaces; a control does not need its own, because the outcome is
    reported where the eye already is. */
 .banner-bad { border-left: 2px solid var(--blocked); }
 .banner-good { border-left: 2px solid var(--workable); }
 
-/* The skip link. Off-screen until focused, then the first thing on the page
-   -- not hidden with display:none, which takes it out of the tab order and
+/* The skip link. Off-screen until focused, then the first thing on the page,
+   not hidden with display:none, which takes it out of the tab order and
    defeats the point. */
 .skip {
   position: absolute; left: -9999px; top: 0; z-index: 10;
@@ -1014,8 +1014,8 @@ input:user-valid, textarea:user-valid {
    a fix: the attribute and the highlight must mean the same thing. */
 .nav-item[aria-current="page"], .project-item[aria-current="page"] { font-weight: 500; }
 
-/* The row controls are Start agent, Claim and Close -- the primary actions
-   of the page -- and a finger needs about 44px. Padding grows them on
+/* The row controls are Start agent, Claim and Close (the primary actions
+   of the page), and a finger needs about 44px. Padding grows them on
    coarse pointers only, so the dense desktop row is unchanged. */
 @media (pointer: coarse) {
   .btn-sm { padding: 12px 16px; }
@@ -1029,12 +1029,12 @@ input:user-valid, textarea:user-valid {
 .backlink:hover { color: var(--fg); }
 
 /* The body's 1.5 leading is right for a paragraph and loose for a 26px
-   title -- leading and size move in opposite directions. */
+   title; leading and size move in opposite directions. */
 h1, h2, h3, .panel-head h2, .qbody .title, .firstrun h2 { line-height: 1.25; }
 .topbar h1 { line-height: 1.1; }
 
 /* The bar's own controls grow on coarse pointers only, so the dense desktop
-   bar is untouched -- same rule the row buttons follow. */
+   bar is untouched, the same rule the row buttons follow. */
 @media (pointer: coarse) {
   .tab { padding: 12px 16px; }
   .switcher summary { padding: 10px 16px; }
@@ -1046,7 +1046,7 @@ h1, h2, h3, .panel-head h2, .qbody .title, .firstrun h2 { line-height: 1.25; }
 .searchbar input[type="search"], .searchbar .btn { min-height: 44px; }
 .prompt-side .btn, .prompt-side select { min-height: 40px; }
 
-/* Controls that sit in the same row share a height, exactly -- not a
+/* Controls that sit in the same row share a height, exactly, not a
    minimum, which still lets a select grow past a button beside it. */
 .qacts .btn, .qacts select, .acts .btn, .acts select {
   height: 32px; min-height: 32px; padding-top: 0; padding-bottom: 0;
@@ -1088,7 +1088,7 @@ input, textarea { caret-color: var(--fg); }
 
 /* The bar's controls, unconditionally rather than behind a pointer query.
    32px tabs are fine under a mouse and wrong under a thumb, and a narrow
-   window on a touch laptop is both -- there is no media query that catches
+   window on a touch laptop is both. There is no media query that catches
    it, so they are simply big enough. */
 .tab { min-height: 44px; padding: 0 14px; }
 .switcher summary { min-height: 44px; }
