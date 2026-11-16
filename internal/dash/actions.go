@@ -496,10 +496,8 @@ func (s *Server) doWatch(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, s.flashURL(r, "/", "problem", err.Error()), http.StatusSeeOther)
 		return
 	}
-	// Confirm rather than assume. The first version of this reported
-	// success on an exit code alone and was wrong -- it had run init
-	// against a check that tested for something init does not create, so
-	// the board said coordination was on while still showing it as off.
+	// Confirm rather than assume: init exiting 0 does not prove the hooks
+	// are wired, so ask Watches before reporting success.
 	if !interlock.Watches(dir) {
 		http.Redirect(w, r, s.flashURL(r, "/", "problem",
 			"Ran interlock init, but coordination still is not active here. Run `interlock doctor` in "+dir+" to see what it is missing."),

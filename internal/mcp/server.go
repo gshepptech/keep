@@ -32,13 +32,11 @@ type Options struct {
 	// handshake. Every mutating handler calls it, per call, on its own
 	// session's params. It MUST be non-nil.
 	//
-	// Per call rather than captured once at `initialized`: that was the
-	// first attempt and a test caught it. Nothing orders the SDK's
-	// InitializedHandler before the first tools/call, so the first call
-	// raced and fell back to Actor -- reproducibly, through the SDK client,
-	// while a hand-driven stdio session happened to win the race and looked
-	// correct. Reading the session that is actually making the call has no
-	// ordering to get wrong and needs no atomic.
+	// It is resolved per call, not captured at `initialized`, because
+	// nothing orders the SDK's InitializedHandler before the first
+	// tools/call, so a captured value can race and fall back to Actor.
+	// Reading the session that is making the call has no ordering to get
+	// wrong and needs no atomic.
 	//
 	// A default that has to be spelled out in each agent's manifest will
 	// drift between them, so one store ends up recording one agent under

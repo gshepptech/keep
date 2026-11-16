@@ -51,10 +51,9 @@ func TestAnonymousClaimsAreRefused(t *testing.T) {
 	}
 }
 
-// TestASecondWorkerIsNeverHandedTheFirstsClaim is the collapse itself,
-// stated as the behaviour that must hold. With sessions set it always did;
-// the bug was that without them the idempotent-retry arm swallowed the
-// conflict.
+// TestASecondWorkerIsNeverHandedTheFirstsClaim checks that a second worker
+// is refused the first worker's claim even when no session ids are set, so
+// the idempotent-retry path cannot swallow the conflict.
 func TestASecondWorkerIsNeverHandedTheFirstsClaim(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)

@@ -182,13 +182,11 @@ func TestHandlerRootRefusesPOST(t *testing.T) {
 //
 // http.Error writes an unstyled sentence with no nav and no way back. A
 // board whose URLs carry ids is a board people edit URLs on, so this is
-// reached by ordinary use, and it was a dead end.
+// reached by ordinary use and must not be a dead end.
 //
-// It regressed once while being written: execute() wraps whatever it is
-// given in a fresh page, so handing it an already-built page buried that
-// page inside its own Data and the template silently fell back to the bare
-// text it was meant to replace. The status assertion alone would have
-// passed against that.
+// execute() wraps its argument in a fresh page, so passing an already-built
+// page nests it inside Data and the template falls back to bare text. The
+// body assertion catches that; the status code alone would not.
 func TestAMissingIdGetsAPageNotBareText(t *testing.T) {
 	s, _ := writableFixture(t)
 

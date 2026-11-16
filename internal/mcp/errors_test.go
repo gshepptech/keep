@@ -124,12 +124,9 @@ func TestResultFor(t *testing.T) {
 	// structurally never reaches this function -- see resultFor's doc
 	// comment classification table.
 	//
-	// This count is the guard that caught ErrEmptyTitle. It was added to
-	// internal/store as the tenth sentinel and never classified here, so
-	// `add` and `capture` returned it as a raw protocol error instead of a
-	// tool error an agent could read and retry from. The table above says to
-	// add a row here first; that did not happen, and this assertion is what
-	// noticed.
+	// Every store sentinel must have a row in resultFor's table. Without
+	// one, it reaches the agent as a raw protocol error instead of a tool
+	// error it can retry from.
 	t.Run("every sentinel is named", func(t *testing.T) {
 		named := map[string]bool{
 			"ErrInvalidDepType": true, // protocol error, tested separately above

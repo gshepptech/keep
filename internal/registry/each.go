@@ -65,12 +65,11 @@ func FetchEach[T any](ctx context.Context, repos []Repo, query func(context.Cont
 // from.
 //
 // The json tag is "repository", NOT "repo", for the reason MergedItem's own
-// comment sets out at length: a row type that embeds model.Item already has
-// a promoted field tagged "repo", and encoding/json resolves that collision
-// silently by depth -- the shallower field wins and the item's own repo
-// value vanishes from the output with no error. That is a real bug this
-// codebase already has a permanent test against; do not rename this for
-// symmetry.
+// comment sets out: a row type that embeds model.Item already has a
+// promoted field tagged "repo", and encoding/json resolves that collision
+// silently by depth. The shallower field wins and the item's own repo value
+// vanishes from the output with no error, so this tag must stay
+// "repository".
 type Tagged[T any] struct {
 	Row        T      `json:"row"`
 	Repository string `json:"repository"`
