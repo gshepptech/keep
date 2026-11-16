@@ -36,10 +36,10 @@ type SearchResult struct {
 	MatchedIn string `json:"matched_in"`
 
 	// Snippet is the text around the match, when the match is somewhere you
-	// cannot already see. Found by using this against a real store: one
-	// captured document whose body is a whole roadmap matched almost every
-	// query, and "matched in body" gave no way to tell a real hit from a
-	// passing mention. A window of the actual text does.
+	// cannot already see. A captured document whose body is a whole plan
+	// matches almost every query, and "matched in body" alone gives no way
+	// to tell a real hit from a passing mention. A window of the actual text
+	// does.
 	Snippet string `json:"snippet,omitempty"`
 }
 

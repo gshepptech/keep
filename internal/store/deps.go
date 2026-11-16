@@ -117,7 +117,7 @@ func (s *Store) CreateDep(ctx context.Context, in DepInput) error {
 
 		// The event lands on ItemID, not DependsOnID: the edge is a fact
 		// about the dependent item's workability, which is what `show <a>`
-		// (a later plan) will want to display alongside the item itself.
+		// displays alongside the item itself.
 		payload := depEventPayload{DependsOnID: in.DependsOnID, Type: in.Type}
 		return writeEvent(ctx, tx, in.ItemID, "dep", in.Actor, in.SessionID, payload)
 	})

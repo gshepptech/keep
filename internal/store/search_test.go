@@ -126,8 +126,7 @@ func TestSearchRefusesAnEmptyQuery(t *testing.T) {
 //
 // A result whose title does not contain the word you searched for reads as
 // a mistake until it can tell you it matched the reason, or a path, or the
-// body. Found by looking at the rendered page: the one hit was an item
-// whose title had nothing to do with the query.
+// body.
 func TestSearchSaysWhereTheMatchCameFrom(t *testing.T) {
 	st, ctx := openTestStore(t), context.Background()
 	mustAdd(t, st, AddItemInput{Title: "token expiry", Actor: "a"})
@@ -156,11 +155,10 @@ func TestSearchSaysWhereTheMatchCameFrom(t *testing.T) {
 // TestSearchShowsTheTextAroundAMatch checks that a search result carries the
 // text around the match.
 //
-// Found by running search against a real store: one captured document whose
-// body was an entire roadmap matched almost every query, and "matched in
-// body" gave no way at all to tell a real hit from a passing mention. The
-// window of surrounding text is what makes a result judgeable without
-// opening it.
+// A captured document whose body is an entire plan matches almost every
+// query, and "matched in body" alone gives no way to tell a real hit from a
+// passing mention. The window of surrounding text makes a result judgeable
+// without opening it.
 func TestSearchShowsTheTextAroundAMatch(t *testing.T) {
 	st, ctx := openTestStore(t), context.Background()
 	long := strings.Repeat("padding text that is not interesting. ", 12) +
