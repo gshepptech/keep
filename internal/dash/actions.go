@@ -50,7 +50,7 @@ func newToken() (string, error) {
 }
 
 // checkOrigin refuses a request whose Origin or Referer names a different
-// host. A request carrying neither is allowed through to the token check --
+// host. A request carrying neither is allowed through to the token check:
 // some clients omit both, and refusing them here would break `curl` against
 // a person's own dashboard while stopping no attack the token does not.
 func (s *Server) checkOrigin(r *http.Request) error {

@@ -286,7 +286,7 @@ func TestCreateRefusesAMissingDirectory(t *testing.T) {
 
 // TestActionsWriteToTheProjectTheyCameFrom proves every mutating action
 // resolves the store from the form, not from startup. Otherwise filing an
-// item while looking at one project's board would put it in another's --
+// item while looking at one project's board would put it in another's,
 // silently, since the item lands somewhere real, just not where the person
 // was looking.
 func TestActionsWriteToTheProjectTheyCameFrom(t *testing.T) {

@@ -10,7 +10,7 @@ import (
 // allPage is /all's page data.
 //
 // It lives here rather than in render.go because render.go states, and a
-// reader relies on, that its only non-stdlib import is internal/model --
+// reader relies on, that its only non-stdlib import is internal/model,
 // which is what makes every function there fixturable from struct literals
 // with no database and no wall clock. The cross-repo view does need
 // registry's types, so it takes its own file rather than quietly widening

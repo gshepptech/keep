@@ -284,7 +284,7 @@ func TestReposForgetRemovesRowAndLeavesStoreOnDisk(t *testing.T) {
 
 // TestReposMalformedRegistryIsNotFatal proves the registry's never-fatal
 // contract end to end: a malformed ~/.rounce/repos.json makes
-// `keep repos` exit 0 with a warning on stderr and no rows on stdout --
+// `keep repos` exit 0 with a warning on stderr and no rows on stdout,
 // and, the more important half, does not stop `keep ready` from working
 // in the repository the user is standing in.
 func TestReposMalformedRegistryIsNotFatal(t *testing.T) {

@@ -12,7 +12,7 @@ import (
 )
 
 // ErrNoFieldsToUpdate is returned by UpdateItem when the caller sets no
-// fields at all. A no-flag update is a caller error, not a silent no-op --
+// fields at all. A no-flag update is a caller error, not a silent no-op;
 // the CLI maps this to a usage
 // error (exit 2), the same treatment `add` with no title would get.
 var ErrNoFieldsToUpdate = errors.New("update: no fields supplied")

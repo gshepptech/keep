@@ -109,8 +109,8 @@ func resolveClaimSession() string {
 }
 
 // openStore resolves flagDB the way every subcommand needs (store.Resolve's
-// four-rule precedence: --db > KEEP_DB > walk-up > home) and opens it --
-// the store.Resolve/store.Open pairing lives in exactly this one place so it
+// four-rule precedence: --db > KEEP_DB > walk-up > home) and opens it.
+// The store.Resolve/store.Open pairing lives in exactly this one place so it
 // cannot drift between commands.
 func openStore(flagDB string) (*store.Store, error) {
 	return openStoreWith(flagDB, store.OpenOptions{})

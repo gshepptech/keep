@@ -162,7 +162,7 @@ func Save(home string, env Envelope) error {
 // second row, so `keep init` run twice
 // in one repository leaves one entry, not two.
 //
-// storePath is stored exactly as given. Register does not absolutize it --
+// storePath is stored exactly as given. Register does not absolutize it:
 // filepath.Abs consults the process's working directory, which is a property
 // of the caller, not of the registry. Every caller in cmd/keep passes an
 // already-absolute path; matching here is plain string equality on that

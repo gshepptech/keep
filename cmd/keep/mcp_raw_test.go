@@ -25,7 +25,7 @@ import (
 // prove:
 //
 //   - pipelined calls not racing needs both requests WRITTEN before either
-//     response is READ, which a request/response client will not do --
+//     response is READ, which a request/response client will not do:
 //     mcp.ClientSession's CallTool blocks until its own response arrives.
 //   - "stdout is protocol bytes only" needs the raw stdout bytes, captured
 //     independently of the
@@ -33,16 +33,16 @@ import (
 //     pollution before a test ever saw it.
 //
 // rawOut is a tee'd copy of every byte read from the child's stdout,
-// accumulated for exactly that assertion. It and stderr are only read by
-// this file's tests AFTER the subprocess has fully exited (i.e. after
-// closeAndWait, or after the t.Cleanup kill-and-Wait fallback below) --
-// os/exec's own documented guarantee is that Wait does not return until
-// the goroutines copying into a plain io.Writer (stderr here) or draining a
-// Std*Pipe (stdout here, via this file's own read loop) have finished, so
-// reading either buffer only after Wait has returned is race-free without
-// an additional mutex. Reading either buffer WHILE the process might still
-// be writing would be a genuine data race on *bytes.Buffer, not just a
-// -race false positive, so no test in this file does that.
+// accumulated for exactly that assertion. It and stderr are only read by this
+// file's tests AFTER the subprocess has fully exited (i.e. after closeAndWait,
+// or after the t.Cleanup kill-and-Wait fallback below). os/exec documents that
+// Wait does not return until the goroutines copying into a plain io.Writer
+// (stderr here) or draining a Std*Pipe (stdout here, via this file's own read
+// loop) have finished, so reading either buffer only after Wait has returned
+// is race-free without an additional mutex. Reading either buffer WHILE the
+// process might still be writing would be a genuine data race on
+// *bytes.Buffer, not just a -race false positive, so no test in this file does
+// that.
 type rawMCPConn struct {
 	cmd    *exec.Cmd
 	stdin  io.WriteCloser
@@ -224,7 +224,7 @@ func (c *rawMCPConn) awaitID(t *testing.T, ids ...int) map[int]rawResponse {
 	return got
 }
 
-// sortedIntKeys is a small logging helper for awaitID's failure messages --
+// sortedIntKeys is a small logging helper for awaitID's failure messages;
 // deterministic output makes a flaky-looking failure easier to read twice
 // and compare.
 func sortedIntKeys(m map[int]rawResponse) []int {

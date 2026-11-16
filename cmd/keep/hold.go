@@ -40,7 +40,7 @@ func heldBack(ctx context.Context, items []model.Item) ([]model.Item, []interloc
 // agent and the session.
 //
 // stderr, never stdout: stdout carries the queue or the item, and an agent
-// piping it must not have to strip prose. Naming the holder is the point --
+// piping it must not have to strip prose. Naming the holder is the point:
 // an item that merely vanished would be indistinguishable from one that was
 // closed.
 func explainHolds(stderr io.Writer, verb string, held []interlock.Collision) {

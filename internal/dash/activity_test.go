@@ -19,7 +19,7 @@ import (
 // its own add-then-close history, and a board started in the first.
 //
 // It is deliberately not twoProjects: the activity page's whole content is
-// the event log, and twoProjects' projects have exactly one event each --
+// the event log, and twoProjects' projects have exactly one event each,
 // which cannot tell "this project's history" apart from "the first event of
 // every project", nor rendering newest-first apart from rendering one row.
 // Every marker below is unique to its project and shares no substring with

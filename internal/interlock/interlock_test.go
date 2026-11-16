@@ -88,7 +88,7 @@ func TestExcludeDropsOnlyItemsWhosePathIsHeld(t *testing.T) {
 }
 
 // TestExcludeKeepsItemsWithNoPaths states the failure direction this must
-// take. An item that declares no paths is one keep knows nothing about --
+// take. An item that declares no paths is one keep knows nothing about:
 // treating unknown as collided would hide workable work, and a queue that
 // hides work is worse than a queue that occasionally offers work someone
 // else is already doing. Interlock's own hook blocks that write anyway.

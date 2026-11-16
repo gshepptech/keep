@@ -301,7 +301,7 @@ func open(path string, opts OpenOptions) (*Store, error) {
 
 // initDDLMaxAttempts bounds the SQLITE_BUSY retry described below. Each
 // retry's own backoff is a few milliseconds, so even the worst case (every
-// attempt but the last hits the race) adds well under a tenth of a second --
+// attempt but the last hits the race) adds well under a tenth of a second;
 // this is not a substitute for busy_timeout, it covers a narrower window
 // busy_timeout does not.
 const initDDLMaxAttempts = 8
@@ -386,7 +386,7 @@ func isSQLiteBusy(err error) bool {
 
 // Init creates (or idempotently re-verifies) the schema at path: items,
 // deps, events, meta, and the ready view, all in one transaction, plus the
-// meta.schema_version row. Init does not create path's parent directory --
+// meta.schema_version row. Init does not create path's parent directory:
 // internal/store takes a path and does not invent filesystem layout; that is
 // the CLI's job.
 func Init(path string) (*Store, error) {

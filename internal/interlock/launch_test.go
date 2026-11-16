@@ -103,10 +103,10 @@ func TestLaunchPassesNoPromptSentinel(t *testing.T) {
 	}
 }
 
-// TestLaunchRunsInTheProjectDirectory. Interlock's own --cwd is relative to
-// the repository it resolves, so an absolute path is rejected outright --
-// which is why the directory is set on the process instead. Discovered by
-// running it rather than by stubbing it.
+// TestLaunchRunsInTheProjectDirectory checks that the launched process runs
+// in the project directory. Interlock's own --cwd is relative to the
+// repository it resolves, so an absolute path is rejected outright, which
+// is why the directory is set on the process instead.
 func TestLaunchRunsInTheProjectDirectory(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
 	// Windows cannot execute. Without a Windows stub the test is skipped

@@ -20,7 +20,7 @@ func mustCapture(t *testing.T, bin, repo string, e []string, stdin, title string
 
 // firstDiffOffset returns the byte offset of the first difference between a
 // and b, or the length of the shorter string when one is a prefix of the
-// other (the append/truncation point). Used only to report a mismatch --
+// other (the append/truncation point). Used only to report a mismatch,
 // dumping a full 1MB document into a test log is unreadable, and length plus
 // offset is what actually identifies a trailing-newline or CRLF bug.
 func firstDiffOffset(a, b string) int {

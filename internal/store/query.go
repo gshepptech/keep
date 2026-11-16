@@ -138,9 +138,9 @@ type ListFilter struct {
 
 	// ExcludeClosed adds `status NOT IN ('closed', 'dropped')` to the WHERE
 	// clause when true. It exists for callers that need an exclusion rather
-	// than an equality filter: "every raw item still parked" means "not explicitly
-	// discarded", which Status (a single `col = ?`) cannot express. The zero
-	// value (false) changes nothing for every existing caller.
+	// than an equality filter: "every raw item still parked" means "not
+	// explicitly discarded", which Status (a single `col = ?`) cannot express.
+	// The zero value (false) changes nothing for every existing caller.
 	//
 	// This is the exact literal already shipped in schema.go's `ready` view
 	// (`blocked_directly`'s `b.status NOT IN ('closed', 'dropped')`) --

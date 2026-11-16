@@ -79,7 +79,7 @@ func withLock(home string, fn func() error) error {
 }
 
 // acquire tries to take the lock until lockTimeout elapses, reclaiming it
-// once if the holder looks dead. It reports whether the lock is held --
+// once if the holder looks dead. It reports whether the lock is held,
 // never an error, because not holding it is a degraded mode rather than a
 // failure (see withLock).
 func acquire(path string) bool {

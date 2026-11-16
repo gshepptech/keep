@@ -32,8 +32,8 @@ func addItem(t *testing.T, st *store.Store, in store.AddItemInput) model.Item {
 // ---- classify ----
 
 // TestClassify covers all six behaviours of classify: the three
-// unreadable-store failure modes classify distinctly (and pairwise differently), and
-// a clean stat leaves the deeper failure to store.Open.
+// unreadable-store failure modes classify distinctly (and pairwise
+// differently), and a clean stat leaves the deeper failure to store.Open.
 func TestClassify(t *testing.T) {
 	t.Run("missing file, parent directory exists", func(t *testing.T) {
 		dir := t.TempDir()

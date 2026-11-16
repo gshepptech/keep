@@ -20,7 +20,7 @@ import (
 // was generated.
 
 // renderReady renders the ready-queue view: the id (linked to /item/{{.ID}}),
-// score, type, and title, in the order items is already in. No sort --
+// score, type, and title, in the order items is already in. No sort:
 // ordering is store.Ready's job, not this package's.
 func renderReady(items []model.Item) ([]byte, error) {
 	return execute("board", boardData{Ready: items, Counts: boardCounts{Ready: len(items)}})

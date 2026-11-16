@@ -13,8 +13,8 @@ import (
 
 // forbiddenTemplateTrustCalls are template.* constructors that fully defeat
 // html/template's contextual escaping. Wrapping agent-supplied data in any
-// of these tells the template engine to trust the string literally --
-// exactly the thing the rendered-output scan depends on never happening.
+// of these tells the template engine to trust the string literally, which
+// the rendered-output scan depends on never happening.
 // template.CSS is deliberately absent from this set: it has its own,
 // narrower check below (allowed at most once, and only in one documented
 // file).

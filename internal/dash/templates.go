@@ -8,7 +8,7 @@ import (
 	"github.com/gshepptech/keep/internal/model"
 )
 
-// styleCSS is the whole embedded stylesheet, compiled into the binary --
+// styleCSS is the whole embedded stylesheet, compiled into the binary,
 // the page fetches nothing (no external assets).
 //
 //go:embed style.css

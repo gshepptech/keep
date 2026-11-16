@@ -5,7 +5,7 @@ import "time"
 // TimeFormat is the layout every timestamp keep writes uses. It is
 // deliberately NOT time.RFC3339Nano: RFC3339Nano trims trailing zeros from the
 // fractional second, which makes its output variable-width, and variable-width
-// timestamps do not sort lexically in the order they occurred --
+// timestamps do not sort lexically in the order they occurred:
 // "2026-01-01T00:00:00Z" sorts AFTER "2026-01-01T00:00:00.5Z" because '.'
 // (0x2E) precedes 'Z' (0x5A). The ready view orders by created_at ASC on a
 // TEXT column (see internal/store/schema.go), so a variable-width format would
@@ -103,7 +103,7 @@ type BlockedItem struct {
 
 // TreeNode is one row of a parent-child subtree walk (store.Tree): the item,
 // how deep beneath the requested root it sits, and whether it is blocked.
-// It lives here, beside BlockedItem, for the same reason BlockedItem does --
+// It lives here, beside BlockedItem, for the same reason BlockedItem does:
 // it is an Item plus one annotation, returned by a store method and rendered
 // by a caller. Keeping it in internal/model is what lets internal/dash's
 // render functions be pure (model in, HTML out) with no internal/store

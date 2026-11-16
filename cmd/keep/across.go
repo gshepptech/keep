@@ -44,7 +44,7 @@ func acrossRepos[T any](
 }
 
 // reportRepoFailures writes the unreadable repositories to stderr, never to
-// stdout, which carries the rows only. Exit code is unaffected --
+// stdout, which carries the rows only. Exit code is unaffected:
 // a partial view is reported, not fatal, matching `repos`.
 //
 // One failure is named in full, because it is probably the thing the person

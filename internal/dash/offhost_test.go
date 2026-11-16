@@ -206,16 +206,15 @@ func stripCSSComments(s string) string {
 }
 
 // The six hostile values below are planted into a real store fixture's
-// Title/Body/Why/Acceptance/Repo fields (never into a struct literal --
-// see newOffhostFixture's own comment for why that distinction matters
-// here specifically). hostileImgTagMarker is checked for presence using a
-// metachar-free substring ("evil.example/z.png") rather than the literal
-// tag text, because html/template's own escaping of "<img src=\"...\">"
-// inside a <pre> turns the angle brackets and quotes into entities --
-// which is the correct, desired behaviour (the tag must render as inert
-// text, not become a live element), so the presence check must survive
-// that escaping rather than defeat the point of the test by asserting
-// against unescaped markup.
+// Title/Body/Why/Acceptance/Repo fields, never into a struct literal
+// (newOffhostFixture's comment explains why that matters here).
+// hostileImgTagMarker is checked for presence using a metachar-free substring
+// ("evil.example/z.png") rather than the literal tag text, because
+// html/template's own escaping of "<img src=\"...\">" inside a <pre> turns the
+// angle brackets and quotes into entities, which is the correct, desired
+// behaviour (the tag must render as inert text, not become a live element), so
+// the presence check must survive that escaping rather than defeat the point
+// of the test by asserting against unescaped markup.
 const (
 	hostileHTTP          = "http://evil.example/x.png"
 	hostileProtoRelative = "//evil.example/y.png"
