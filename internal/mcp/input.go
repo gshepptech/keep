@@ -52,8 +52,9 @@ type BacklogInput struct {
 }
 
 // schemaSet collects the generated schemas and every generation error, so
-// BuildSchemas needs one error check rather than ten. errors.Join returns
-// nil when every element is nil, so no conditional is needed here either.
+// BuildSchemas needs one error check rather than one per tool. errors.Join
+// returns nil when every element is nil, so no conditional is needed here
+// either.
 type schemaSet struct {
 	m    map[string]*jsonschema.Schema
 	errs []error
@@ -67,7 +68,7 @@ func (s *schemaSet) put(name string, sc *jsonschema.Schema, err error) {
 	s.errs = append(s.errs, err)
 }
 
-// err reports whether any of the ten schemaSet.put calls failed.
+// err reports whether any schemaSet.put call failed.
 // errors.Join(nil, nil, ..., nil) is nil, so a fully successful accumulation
 // needs no conditional to detect.
 func (s *schemaSet) err() error {
@@ -148,31 +149,29 @@ var ToolNames = []string{
 	"blocked", "ready_all", "why_not", "next", "unclaim", "reopen",
 }
 
-// BuildSchemas generates every tool's InputSchema value via
-// jsonschema.For[T], the reflection helper the SDK's generic
-// AddTool[In,Out] uses internally. It decorates every closed-vocabulary
-// property with its enum, read from internal/model's ordered slices (never
-// a local literal list, never a range over a Valid* map, whose iteration
-// order differs per process and would make a tools/list assertion flaky).
+// BuildSchemas returns the InputSchema for every tool in ToolNames, keyed by
+// tool name. Each schema comes from jsonschema.For[T], the reflection helper
+// the SDK's generic AddTool[In,Out] uses internally. BuildSchemas then
+// decorates the result: every closed-vocabulary property (type, stage,
+// status, dep type) gets an enum read from internal/model's ordered slices,
+// so tools/list output is the same in every process, and the three scoring
+// inputs on add, capture and update get model's score range. The error is
+// every generation error joined, or nil.
 //
-// Ordered as ToolNames lists them.
-//
-// capture and add both reuse store.AddItemInput unmodified: the same
-// struct, two independent jsonschema.For calls, each producing its own
-// *jsonschema.Schema (two calls for the same type return distinct pointers,
-// so decorating one cannot leak into the other). Their wire shape is
-// identical by construction: title required, session_id and stage both
-// absent. The one behavioural difference between the two tools
-// (capture always writes stage=raw, add defaults to stage=ticket) lives in
-// the handler that pre-seeds AddItemInput.Stage before unmarshalling,
-// never in the schema.
+// capture and add share store.AddItemInput, but each gets its own
+// jsonschema.For call and so its own *jsonschema.Schema, which keeps a
+// decoration on one from leaking into the other. Their wire shapes are
+// identical: title is required, and session_id and stage are not exposed.
+// The one difference between the two tools, capture writing stage=raw where
+// add takes the store's default of ticket, is set by the capture handler
+// before it unmarshals, not by the schema.
 func BuildSchemas() (map[string]*jsonschema.Schema, error) {
 	set := &schemaSet{m: make(map[string]*jsonschema.Schema)}
 
 	// Go does not allow a multi-value call to stand in for two of three
 	// arguments to put: the "call g() as f's sole argument list" special
 	// case only applies when g's call is f's only argument. sc/err are
-	// reused across all ten pairs instead, which still adds no conditional.
+	// reused across every pair instead, which still adds no conditional.
 	sc, err := jsonschema.For[store.AddItemInput](nil)
 	set.put("capture", sc, err)
 	sc, err = jsonschema.For[store.AddItemInput](nil)
