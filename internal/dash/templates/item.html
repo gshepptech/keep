@@ -1,8 +1,8 @@
-{{/* item.html -- one item in full. Data: model.ItemDetail.
+{{/* item.html: one item in full. Data: model.ItemDetail.
 
      Field order follows show's own precedent (cmd/keep/show.go). The body
-     is rendered verbatim inside <pre> as plain text -- never
-     markdown-to-HTML, never template.HTML. A parent id and each dep's other
+     is rendered verbatim inside <pre> as plain text, never
+     markdown-to-HTML and never template.HTML. A parent id and each dep's other
      end are links built from the id field alone, never from title, body or
      why. */}}
 {{define "item"}}{{template "head" (titled . "Item" .Data.Title "")}}

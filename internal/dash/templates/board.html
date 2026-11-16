@@ -1,4 +1,4 @@
-{{/* board.html -- the whole picture on one page. Data: boardData.
+{{/* board.html: the whole picture on one page. Data: boardData.
 
      The queue and the agents holding it up are the same question asked from
      two sides, so they share a page: a person who has to switch views to
@@ -10,7 +10,7 @@
 {{/* Day one. The ordinary empty state says "nothing is workable", which is
      true and useless to someone who has not yet learned what this holds or
      how work gets into it. This screen answers the only two questions a new
-     store raises -- what is it for, and how do I put something in it -- and
+     store raises (what is it for, and how do I put something in it), and
      it is the only thing on the page, because a row of zeros and a second
      empty state underneath would be competing with the answer. */}}
 <section class="firstrun">
@@ -105,8 +105,8 @@
     <span class="hint">{{len $d.Ready}} ranked by value plus confidence, less effort</span>
   </div>
   {{if $d.Ready}}
-  {{/* Rows, not a table. A queue row is one object -- a score, a thing to
-       do, where it lives, and what you can do about it -- and table columns
+  {{/* Rows, not a table. A queue row is one object (a score, a thing to
+       do, where it lives, and what you can do about it), and table columns
        would force those four into one shared shape. A column header over
        the scores would only label the obvious. */}}
   <ol class="queue">

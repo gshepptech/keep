@@ -1,9 +1,9 @@
-{{/* activity.html -- what happened, newest first. Data: []store.FeedEntry.
+{{/* activity.html: what happened, newest first. Data: []store.FeedEntry.
 
      The board's other pages answer "what is true now". This one answers
      "what did they do", which is the question you have when you sit back
      down after leaving agents running. It reads the events table, which is
-     already the complete record of every mutation -- nothing here can
+     already the complete record of every mutation, so nothing here can
      disagree with what actually happened. */}}
 {{define "activity"}}{{template "head" (titled . "Activity" "Activity" "Everything that has happened in this project, newest first.")}}
 {{$p := .}}

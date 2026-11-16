@@ -1,17 +1,17 @@
 {{/*
   The application shell: one bar across the top, and a single column of
-  content beneath it, held to a measure.
-  header. Every view fills the region; none of them draws chrome.
+  content beneath it, held to a measure. Every view fills the column; none
+  of them draws chrome.
 
   Why there is no shared {{define "layout"}}: html/template parses every
-  *.html file here into ONE associated set, and two files defining the same
+  *.html file here into one associated set, and two files defining the same
   block name silently keep only the last parsed. So each view defines its
   own uniquely-named top-level template and calls these shared blocks
   directly.
 
   Icons are inline SVG, drawn here rather than fetched: rendered output may
   hold no off-host reference, so an icon font or a sprite sheet
-  is not available. They are 16px, 1.5px stroke, currentColor -- one visual
+  is not available. They are 16px, 1.5px stroke, currentColor: one visual
   weight across the whole nav.
 */}}
 {{define "head"}}<!doctype html>
@@ -27,7 +27,7 @@
      because the off-host scanner rejects that substring in a resource
      attribute, and it is right to: it cannot tell a namespace from a URL.
 
-     The mark is a keep -- three merlons, two embrasures, filled rather
+     The mark is a keep: three merlons, two embrasures, filled rather
      than stroked. At favicon size a stroked outline collapses into a
      generic shape, so the mark is solid. */}}
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%27http%3A//www.w3.org/2000/svg%27%20viewBox=%270%200%2032%2032%27%3E%3Crect%20width=%2732%27%20height=%2732%27%20rx=%277%27%20fill=%27%23101013%27/%3E%3Cpath%20d=%27M6%206h4v4h4V6h4v4h4V6h4v19H6z%27%20fill=%27%233fb950%27/%3E%3C/svg%3E">
@@ -41,17 +41,16 @@
      its controls stay close.
 
      The project switcher is a <details>, which is a disclosure widget with
-     no JavaScript -- keyboard-operable and screen-reader-announced by the
-     browser, for free. */}}
+     no JavaScript, keyboard-operable and screen-reader-announced by the
+     browser for free. */}}
 <div class="app">
 
 <header class="bar">
   <a class="brand" href="{{if .Page.Prefix}}{{.Page.Prefix}}{{else}}/{{end}}">
     {{/* A keep: the tower you put the thing you cannot afford to lose in.
-         Filled and solid, unlike every other icon on this board, and that
-         is the point -- the nav icons are 1.5px strokes that agree with
-         each other, and a brand mark that joins that chorus stops being a
-         brand mark. It is also the only shape here that survives 16px. */}}
+         Filled and solid, unlike every other icon on this board, on
+         purpose: the nav icons are 1.5px strokes that agree with each
+         other, and a brand mark that joins them stops being a brand mark. It is also the only shape here that survives 16px. */}}
     <span class="brand-mark"><svg viewBox="0 0 16 16" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M3 5h2v2h2V5h2v2h2V5h2v9H3V5z"/></svg></span>
     <span class="brand-name">keep</span>
   </a>
