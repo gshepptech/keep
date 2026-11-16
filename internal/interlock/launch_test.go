@@ -31,13 +31,15 @@ func argv(t *testing.T, log string) []string {
 	return strings.Split(strings.TrimRight(string(raw), "\n"), "\n")
 }
 
-// TestPromptCannotSmuggleFlags is the whole reason the sentinel exists.
+// TestPromptCannotSmuggleFlags checks that a prompt beginning with a dash
+// reaches Interlock as the prompt, after the "--" sentinel, and not as
+// flags.
 //
 // A prompt is whatever a person typed into a web form. Passed as a bare
 // argument it is parsed as flags, so --env and --model become injectable
-// and the prompt itself is discarded -- the run then does something other
-// than what was asked, which is worse than refusing. Quoting cannot fix it
-// from this side: argv carries no quoting.
+// and the prompt itself is discarded. The run would then do something
+// other than what was asked. Quoting cannot fix it from this side: argv
+// carries no quoting.
 func TestPromptCannotSmuggleFlags(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
 	// Windows cannot execute. Without a Windows stub the test is skipped
@@ -192,8 +194,9 @@ func TestLaunchReportsARunThatDiedImmediately(t *testing.T) {
 	}
 }
 
-// TestLaunchAcceptsARunThatIsStillGoing. The outcome of a live run belongs
-// in Interlock, not in a redirect -- the board's job is to say it started.
+// TestLaunchAcceptsARunThatIsStillGoing checks that a run still alive after
+// the startup wait is reported as started. The outcome of a live run
+// belongs in Interlock, not in a redirect.
 func TestLaunchAcceptsARunThatIsStillGoing(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
 	// Windows cannot execute. Without a Windows stub the test is skipped
