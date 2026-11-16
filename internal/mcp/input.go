@@ -29,14 +29,13 @@ type ShowInput struct {
 // handler has something to unmarshal into and therefore has the same shape
 // as every other handler in this package: one unmarshal, one store call,
 // one resultFor. A handler that skipped the unmarshal would be the only one
-// without it, and internal/mcp/structure_test.go asserts the shape rather
-// than trusting it.
+// without it.
 type BlockedInput struct{}
 
 // ReadyAllInput is the `ready_all` tool's argument shape. It is empty for
 // the same reason BlockedInput is: the underlying read takes no arguments,
 // and a handler with nothing to unmarshal would be the only one in this
-// package without the shape structure_test.go asserts.
+// package without that shape.
 type ReadyAllInput struct{}
 
 // WhyNotInput is the `why_not` tool's argument shape. store.WhyNot takes a
@@ -142,12 +141,9 @@ func depTypesForWire() []string {
 // ToolNames is every tool this server registers, in registration order,
 // which is the order tools/list returns.
 //
-// It is the one place the tool set is written down. The schema test, the AST
-// handler count and the wire-level tools/list assertion all derive from it,
-// and each still checks something independent: BuildSchemas is checked against
-// it by map key, the AST walk counts real function literals, and cmd/keep's
-// MCP test reads the list back over a real stdio session. Agreeing with this
-// slice is a claim about three different mechanisms, not one.
+// It is the one place the tool set is written down. The schema test checks
+// BuildSchemas against it by map key, and cmd/keep's MCP test reads the
+// list back over a real stdio session.
 var ToolNames = []string{
 	"capture", "add", "ready", "backlog", "show", "list", "search", "log",
 	"stale", "dep", "start", "close", "drop", "update",

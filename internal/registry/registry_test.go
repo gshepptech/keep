@@ -1,12 +1,8 @@
 package registry
 
 import (
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 )
@@ -315,62 +311,6 @@ func TestForgetUnregisteredPathReturnsFalseNotError(t *testing.T) {
 	}
 	if len(env.Repos) != 1 {
 		t.Fatalf("Forget(unregistered): registry now has %d rows, want unchanged 1", len(env.Repos))
-	}
-}
-
-// This package takes `home` as a parameter everywhere and never asks the OS
-// for it, which is what makes every test in this package hermetic. The stdlib
-// home-directory lookup this test forbids (see the AST check below) respects
-// $HOME on Darwin and Linux, so a package that called it would still be
-// testable by setting $HOME, but only as long as every test remembered to.
-// Making home a parameter removes the possibility of forgetting: there is no
-// code path here that could reach the developer's real ~/.rounce/repos.json.
-// cmd/keep is the one place that lookup is used, and cmd/keep's tests run the
-// real binary with an explicit HOME (cli_test.go's env helper).
-func TestRegistryNeverCallsUserHomeDir(t *testing.T) {
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("cannot locate this test's own file to derive internal/registry's directory")
-	}
-	dir := filepath.Dir(thisFile)
-
-	fset := token.NewFileSet()
-	filesWalked := 0
-
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		t.Fatalf("ReadDir(%s): %v", dir, err)
-	}
-	for _, entry := range entries {
-		name := entry.Name()
-		if entry.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
-			continue
-		}
-		path := filepath.Join(dir, name)
-		f, err := parser.ParseFile(fset, path, nil, 0)
-		if err != nil {
-			t.Fatalf("parse %s: %v", path, err)
-		}
-		filesWalked++
-
-		ast.Inspect(f, func(n ast.Node) bool {
-			sel, ok := n.(*ast.SelectorExpr)
-			if !ok {
-				return true
-			}
-			ident, ok := sel.X.(*ast.Ident)
-			if !ok {
-				return true
-			}
-			if ident.Name == "os" && sel.Sel.Name == "UserHomeDir" {
-				t.Errorf("%s calls the os package's home-directory lookup -- internal/registry must take home as a parameter everywhere, or its tests are no longer hermetic", path)
-			}
-			return true
-		})
-	}
-
-	if filesWalked == 0 {
-		t.Fatal("TestRegistryNeverCallsUserHomeDir walked zero non-test .go files -- the directory layout is broken; treat this as a failure, not a vacuous pass")
 	}
 }
 

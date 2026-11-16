@@ -43,10 +43,9 @@ type Options struct {
 	// is calling.
 	//
 	// The parameter is the raw *mcp.InitializeParams, nil and all, because
-	// deciding what to do with a nil ClientInfo needs conditionals and this
-	// package is not allowed any (structure_test.go permits *ast.IfStmt
-	// only in NewServer and resultFor). cmd/keep/mcp.go does that part,
-	// the same way it composes Instructions and resolves Session.
+	// deciding what to do with a nil ClientInfo needs conditionals, and this
+	// package keeps them to NewServer and resultFor. cmd/keep/mcp.go does
+	// that part, the same way it composes Instructions and resolves Session.
 	ActorFor func(*mcp.InitializeParams) string
 
 	// Session is fixed for the process lifetime, because one MCP server
@@ -79,10 +78,10 @@ type Options struct {
 	// instead.
 	//
 	// The caller builds it, never this package. Rendering a queue needs
-	// loops and branches, and internal/mcp's structure_test.go permits
-	// neither outside NewServer's schema check and resultFor, which keeps
-	// logic in the store. cmd/keep/mcpinstructions.go composes the text the
-	// same way it resolves Actor and Session.
+	// loops and branches, and this package has none outside NewServer's
+	// schema check and resultFor, which keeps logic in the store.
+	// cmd/keep/mcpinstructions.go composes the text the same way it resolves
+	// Actor and Session.
 	//
 	// Empty is the correct value for an empty or unreachable store: the
 	// SDK omits the field entirely (json:"instructions,omitempty"), which

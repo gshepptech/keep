@@ -19,9 +19,7 @@ var styleCSS string
 // a compile-time go:embed of a static file living in this repository: it is
 // not agent data, cannot become agent data (no code in this package ever
 // writes to it), and is reviewable once by a human rather than scanned per
-// render. structure_test.go's check for template.HTML/HTMLAttr/URL/JS/CSS
-// cannot tell this line from a genuine violation, so the exception is named
-// here, at the declaration, and allowed by file there.
+// render.
 var styleInline = template.CSS(styleCSS)
 
 // templateFS is every *.html template this package parses. Kept as an

@@ -20,8 +20,8 @@ var errNoRegistry = errors.New("this keep mcp server was started without registr
 // resultFor is the package's one permitted conditional. The rule is that no
 // tool handler branches on business state, and formatting a known, closed
 // sentinel set for the wire is not business logic. It lives in one shared
-// helper, not one switch per handler, so "the only branch in the package"
-// can be checked mechanically (internal/mcp/structure_test.go).
+// helper, not one switch per handler, so the package has exactly one
+// branch to review.
 //
 // The signature is (v any, err error) on purpose: Go lets a two-value call
 // stand in for an entire argument list, so a handler's last line reads
@@ -35,8 +35,7 @@ var errNoRegistry = errors.New("this keep mcp server was started without registr
 //
 // The switch below implements exactly this table. A new sentinel in
 // internal/store needs a row here and in errors_test.go's isErrorSentinels
-// table, the same way internal/store/mutating_scan_test.go's
-// wantMutating/wantReadOnly maps track store methods.
+// table.
 //
 //	Sentinel             | Arm                     | Why
 //	---------------------|-------------------------|----

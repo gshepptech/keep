@@ -82,9 +82,7 @@ func TestResultFor(t *testing.T) {
 	// isError:true tool results, the legitimate outcome of a well-formed
 	// call. Go has no reflection-based way to enumerate a package's exported
 	// error vars, so a new store sentinel missing from this table is
-	// invisible to this test. internal/store/mutating_scan_test.go's
-	// wantMutating/wantReadOnly maps accept the same hand-maintained-table
-	// tradeoff for the same reason.
+	// invisible to this test.
 	isErrorSentinels := map[string]error{
 		"ErrNotFound":          store.ErrNotFound,
 		"ErrCycle":             store.ErrCycle,

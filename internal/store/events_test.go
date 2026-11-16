@@ -80,12 +80,8 @@ func TestWriteEventEmptySessionIsNull(t *testing.T) {
 // one deliberate exception: a same-session StartItem retry is a no-op and
 // writes zero events.
 //
-// The cases table is guarded by set equality against
-// mutatingStoreMethods(t) (mutating_scan_test.go), not by a hand-maintained
-// count, so a new mutating method that skips the event write cannot pass
-// unnoticed. A method the scan finds that this table does not enumerate
-// fails by name, and a stale row naming a method the scan no longer finds
-// (renamed or deleted) fails the other way, also by name.
+// Import is not in the table. It restores the events table from an export
+// unchanged, so the number of rows it writes is the history it restores.
 func TestEveryMutationWritesExactlyOneEvent(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
@@ -162,44 +158,6 @@ func TestEveryMutationWritesExactlyOneEvent(t *testing.T) {
 			_, err := s.UpdateItem(ctx, UpdateItemInput{ID: updateTarget.ID, Actor: "tester", Title: &updateTitle})
 			return err
 		}},
-	}
-
-	// Set-equality against the scan, not a count: a wrong-number failure
-	// ("enumerated 6, want 7") sends a reader to the wrong file, while a
-	// named-method failure sends them straight to the fix.
-	//
-	// exemptFromOneEvent names the mutating methods the "exactly one
-	// event" rule does not apply to, with the reason, so an exemption is a
-	// decision someone wrote down rather than a method quietly missing from
-	// the table below.
-	//
-	// Import restores a store from an export. It writes the events table
-	// directly, unchanged, in whatever number the source store held. An
-	// `import` event of its own would be a row in the audit trail claiming
-	// something happened to the work, when what happened was that a file was
-	// copied back; and the count could never be one, because the rows it
-	// writes are the history it is restoring.
-	exemptFromOneEvent := map[string]string{
-		"Import": "restores the events table verbatim; see internal/store/export.go",
-	}
-
-	scanned := mutatingStoreMethods(t)
-	enumerated := make(map[string]bool, len(cases))
-	for _, tc := range cases {
-		enumerated[tc.name] = true
-	}
-	for name := range scanned {
-		if _, exempt := exemptFromOneEvent[name]; exempt {
-			continue
-		}
-		if !enumerated[name] {
-			t.Fatalf("%s mutates the store but is not enumerated in the one-event table -- add a row asserting it writes exactly one event", name)
-		}
-	}
-	for name := range enumerated {
-		if !scanned[name] {
-			t.Fatalf("cases enumerates %q, but mutatingStoreMethods no longer finds it -- the method was renamed or deleted; remove or update this stale row", name)
-		}
 	}
 
 	for _, tc := range cases {

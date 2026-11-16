@@ -22,10 +22,6 @@ import (
 // A caller who types --status gets flag's own "flag provided but not
 // defined: -status" on stderr and exit 2 from fs.Parse's ContinueOnError
 // failure, which says plainly that the flag does not exist.
-//
-// cmd/keep contains no SQL: every flag's help text below says "change
-// fields on an existing item", never a fragment resembling a SQL statement,
-// so TestNoSQLAboveStore's literal scan does not trip on it.
 func runUpdate(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("update", flag.ContinueOnError)
 	fs.SetOutput(stderr)

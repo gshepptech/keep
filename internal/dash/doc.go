@@ -26,6 +26,5 @@
 // template.CSS are forbidden in this package, with exactly one documented
 // exception (templates.go's styleInline). Each of these types tells the
 // engine to trust a string literally, which is the bypass this rule exists
-// to rule out. structure_test.go must find zero occurrences outside that
-// one exception.
+// to rule out.
 package dash
