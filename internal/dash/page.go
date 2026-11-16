@@ -155,8 +155,8 @@ type boardCounts struct {
 	Ready, InProgress, Blocked, Backlog, Agents, Holding int
 }
 
-// boardData assembles the whole board in one pass.
-// boardDataFrom assembles the board from one project's store.
+// boardDataFrom assembles the whole board from one project's store, in one
+// pass.
 //
 // The store is a parameter rather than read off the server, because two
 // requests can be in flight against two different projects and a field
@@ -239,7 +239,7 @@ func typeNames() []string {
 	return out
 }
 
-// titled pairs a page with its browser title, so "head" can take one value.
+// titledPage pairs a page with its browser title, so "head" can take one value.
 type titledPage struct {
 	Page page
 
@@ -265,12 +265,10 @@ type actionArgs struct {
 	Danger bool
 }
 
-// holdsFor names the files one session is holding, for the agents table.
-// Presentation only: it joins facts Interlock already reported.
 // itemView is one item's page: its detail, and the lease holding it back
-// if there is one. The board hides a held item from the queue; without this
-// the item page offered Claim on it as though it were free, and said
-// nothing about why it had vanished from the list you came from.
+// if there is one. The board hides a held item from the queue, so without
+// this the item page would offer Claim on it as though it were free, and
+// say nothing about why it vanished from the list you came from.
 type itemView struct {
 	model.ItemDetail
 	Held *interlock.Collision
@@ -299,6 +297,8 @@ func holdCount(st *interlock.Status, session string) int {
 	return n
 }
 
+// holdsFor names the files one session is holding, for the agents table.
+// Presentation only: it joins facts Interlock already reported.
 func holdsFor(st *interlock.Status, session string) string {
 	if st == nil {
 		return ""
