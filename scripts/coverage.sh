@@ -2,12 +2,11 @@
 #
 # What the tests actually cover, including the parts that run in a subprocess.
 #
-# `go test ./... -cover` reports cmd/keep at a few percent. That number is not
-# a gap, it is a blind spot: most of this package's behaviour is tested in a
-# real built binary driven through os/exec, and the in-process coverage
-# instrument cannot see into another process. A figure that reads as "barely
-# tested" where the truth is "tested somewhere the meter cannot reach" is worse
-# than no figure -- it hides any real gap underneath a number nobody trusts.
+# `go test ./... -cover` reports cmd/keep at a few percent. That number is a
+# blind spot, not a gap: most of this package's behaviour is tested in a real
+# built binary driven through os/exec, and the in-process coverage instrument
+# cannot see into another process. A misleading figure would hide any real
+# gap under a number nobody trusts.
 #
 # So this builds the binary with -cover (Go 1.20+), points the cross-process
 # tests at a GOCOVERDIR, and reports both halves:

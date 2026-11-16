@@ -71,7 +71,7 @@ def main() -> int:
         if not ok:
             failures.append(label)
 
-    # What the CLI says, read first and independently -- the MCP answer is
+    # What the CLI says, read first and independently. The MCP answer is
     # compared against this, never the other way round.
     cli = json.loads(subprocess.run(
         ["keep", "ready", "--json"], cwd=REPO,
@@ -92,7 +92,7 @@ def main() -> int:
         if keep is None:
             return 1
 
-        # Every tool, by name -- a count alone would pass if the server
+        # Every tool, by name. A count alone would pass if the server
         # advertised the right number of something else after a refactor.
         # Mirrors internal/mcp.ToolNames.
         want = sorted(["capture", "add", "ready", "backlog", "show", "list",

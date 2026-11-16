@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# docs-scene.sh -- build the scene the README and guide are photographed
-# against, and serve it.
+# docs-scene.sh builds the scene the README and guide are photographed
+# against, and serves it.
 #
 # The hard part of a screenshot is not the screenshot but rebuilding the
 # situation: two repositories, a ranked queue with a real spread of scores,
@@ -153,11 +153,9 @@ fi
 PORT="${PORT:-7788}"
 
 # Refuse a port that is already answering. Without this check the wait loop
-# below succeeds against whatever is already there -- which is exactly what
-# happened the first time this script ran, against a board left over from
-# three hours earlier, and the screenshots taken from it were of the old
-# build. A scene script that photographs the wrong process is worse than no
-# scene script.
+# below succeeds against whatever is already there, such as a board left
+# running from an earlier session, and the screenshots would show that
+# build instead of this one.
 if curl -fsS -m 1 "http://127.0.0.1:$PORT/" >/dev/null 2>&1; then
   echo "port $PORT is already answering -- something else is serving there." >&2
   echo "stop it, or run with PORT=<other> scripts/docs-scene.sh" >&2
