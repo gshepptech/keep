@@ -158,8 +158,8 @@ func TestResolveBody(t *testing.T) {
 	t.Run("non-dash values are returned unchanged and never touch stdin", func(t *testing.T) {
 		// A pipe whose writer is deliberately never closed: any real read
 		// from it blocks forever. If resolveBody touched stdin for a
-		// non-"-" value, this test would hang rather than fail cleanly --
-		// exactly the signal that matters here.
+		// non-"-" value, this test would hang rather than fail cleanly,
+		// which is the signal that matters here.
 		r, w, err := os.Pipe()
 		if err != nil {
 			t.Fatalf("os.Pipe: %v", err)

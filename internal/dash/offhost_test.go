@@ -313,7 +313,7 @@ func TestNoExternalReferencesInRenderedViews(t *testing.T) {
 			"item detail", "/item/" + ids.grandchild,
 			[]string{hostileJS, hostileImgTagMarker, hostileStyleURL, hostileImportCSS, hostileHTTP, hostileProtoRelative},
 		},
-		// tree.html renders only Title (never Body/Why/Acceptance/Repo) --
+		// tree.html renders only Title (never Body/Why/Acceptance/Repo):
 		// epic's and child's titles carry hostileHTTP/hostileProtoRelative;
 		// grandchild's own hostile fields (checked above, under item detail)
 		// are Body-only and therefore not expected to appear in this view.

@@ -38,8 +38,8 @@ func runClose(args []string, stdout, stderr io.Writer) int {
 	id := fs.Arg(0)
 
 	// An absent --reason and an explicit --reason "" are indistinguishable
-	// through flag's *string default (both leave *reasonFlag == "") --
-	// both must exit 2. The command records WHY; a blank
+	// through flag's *string default (both leave *reasonFlag == ""),
+	// so both must exit 2. The command records WHY; a blank
 	// reason is an audit trail that records that something happened and
 	// nothing else.
 	if *reasonFlag == "" {

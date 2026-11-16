@@ -126,9 +126,7 @@ func queryEvents(ctx context.Context, db *sql.DB, itemID string) ([]model.Event,
 //
 // json tags: this struct doubles as the `list` MCP tool's wire type
 // directly (internal/mcp). Every field is optional, so a bare `list` with no
-// arguments is legal and matches every existing caller's zero-value use.
-// Tags are additive and behaviourally inert for Go callers, all of which
-// construct this struct with named fields.
+// arguments is legal; the zero value applies no filter.
 type ListFilter struct {
 	Stage    string `json:"stage,omitempty"`
 	Status   string `json:"status,omitempty"`
@@ -140,12 +138,11 @@ type ListFilter struct {
 	// clause when true. It exists for callers that need an exclusion rather
 	// than an equality filter: "every raw item still parked" means "not
 	// explicitly discarded", which Status (a single `col = ?`) cannot express.
-	// The zero value (false) changes nothing for every existing caller.
+	// The zero value applies no filter.
 	//
-	// This is the exact literal already shipped in schema.go's `ready` view
-	// (`blocked_directly`'s `b.status NOT IN ('closed', 'dropped')`) --
-	// copied verbatim, not re-derived, so the two predicates cannot drift
-	// apart unnoticed.
+	// This is the same literal schema.go's `ready` view uses
+	// (`blocked_directly`'s `b.status NOT IN ('closed', 'dropped')`), so the
+	// two predicates agree.
 	ExcludeClosed bool `json:"exclude_closed,omitempty"`
 
 	Limit int `json:"limit,omitempty"`

@@ -29,7 +29,7 @@ var (
 	// ErrTooDeep is returned when a parent-child edge would put an item
 	// deeper than MaxDepth. Every recursive query in this package stops
 	// extending at that bound and returns a SHORTER answer rather than an
-	// error when it is hit, so the bound is enforced at write time instead --
+	// error when it is hit, so the bound is enforced at write time instead;
 	// see depth.go.
 	ErrTooDeep = errors.New("tree too deep")
 

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Verify keep's MCP tools load inside Codex and answer, without a turn.
 
-This checks the Codex MCP registration against a live binary. The obvious
-way -- run `codex exec` and watch it call a tool -- needs authentication and
-spends a model turn, and fails before any tool is exercised if the session
-is not authenticated.
+This checks the Codex MCP registration against a live binary. Running
+`codex exec` and watching it call a tool needs authentication and spends a
+model turn, and fails before any tool is exercised if the session is not
+authenticated.
 
 codex app-server sidesteps that entirely: mcpServerStatus/list reports what
 Codex thinks of each configured server, and mcpServer/tool/call invokes a

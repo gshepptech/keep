@@ -153,7 +153,7 @@ func runBoard(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 
-	// No colour, no box drawing: the terminal already has the better signal --
+	// No colour, no box drawing: the terminal already has the better signal.
 	// renderItems' "<- blocked by <id>" names the blocker, which colour
 	// cannot. Three spaces between count pairs.
 	fmt.Fprintf(stdout, "ready %d   in progress %d   blocked %d   backlog %d\n",

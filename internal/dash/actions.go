@@ -141,9 +141,9 @@ func (s *Server) mutate(w http.ResponseWriter, r *http.Request, done string, fn 
 	}
 
 	// The project comes from the form, not from startup. Without this a
-	// person looking at one project's board files into another's store --
-	// which is exactly what happened, and it is silent: the item lands
-	// somewhere real, just not where they were looking.
+	// person looking at one project's board files into another's store,
+	// and silently: the item lands somewhere real, just not where they were
+	// looking.
 	path, err := s.writablePathFor(r)
 	if err != nil {
 		s.fail(w, err)

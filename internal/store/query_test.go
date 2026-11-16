@@ -271,8 +271,8 @@ func TestListItemsExcludeClosed(t *testing.T) {
 		t.Fatalf("ListItems(Stage: raw, ExcludeClosed: true) ids = %v, want %v", gotIDs, wantIDs)
 	}
 
-	// The zero value (ExcludeClosed unset) must change nothing for every
-	// existing caller: all four raw items still come back.
+	// The zero value (ExcludeClosed unset) applies no filter: all four raw
+	// items still come back.
 	allGot, err := s.ListItems(ctx, ListFilter{Stage: model.StageRaw})
 	if err != nil {
 		t.Fatalf("ListItems(Stage: raw): %v", err)

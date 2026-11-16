@@ -132,7 +132,7 @@ type MigrationPlan struct {
 	// Names are the rungs still to climb, in order.
 	Names []string
 	// Backup is where Migrate copied the store before touching it. Empty
-	// when nothing had to be done, and on the plan PlanMigration returns --
+	// when nothing had to be done, and on the plan PlanMigration returns:
 	// planning takes no copy because it writes nothing.
 	Backup string
 }

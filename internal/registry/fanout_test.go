@@ -137,7 +137,7 @@ func TestClassify(t *testing.T) {
 		// would hold trivially even if classify used one single generic
 		// "store at %s: %w" template for every failure mode. What must
 		// actually be tested is that the WORDING is categorised: the two
-		// fs.ErrNotExist cases (missing file, missing parent directory --
+		// fs.ErrNotExist cases (missing file, missing parent directory;
 		// "deleted or moved", indistinguishable from each other by this
 		// classifier by design) share the same category phrase, and the
 		// fs.ErrPermission case ("not readable") uses a different one.

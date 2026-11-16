@@ -105,7 +105,7 @@ func runStart(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 
-	// A same-session retry returns success with the item UNCHANGED --
+	// A same-session retry returns success with the item UNCHANGED.
 	// StartItem deliberately does not report which case fired (fresh claim
 	// vs idempotent retry), since telling the two apart would require the
 	// store to return state it does not track (restated here because the

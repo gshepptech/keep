@@ -147,7 +147,7 @@ func TestTxlockImmediateHonored(t *testing.T) {
 	}
 	t.Logf("connB correctly failed with SQLITE_BUSY while connA held the lock: %v", err)
 
-	// Step 3: release, and prove this isn't a permanent/false failure --
+	// Step 3: release, and prove this isn't a permanent/false failure:
 	// connB must now succeed immediately.
 	if err := txA.Rollback(); err != nil {
 		t.Fatal(err)

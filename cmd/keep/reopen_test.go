@@ -44,7 +44,7 @@ func TestReopenBringsBackAMisClose(t *testing.T) {
 
 	// The close is still on the record with the reason it was given.
 	// Reopening says the close was wrong; it does not pretend it never
-	// happened. `log` is the surface that renders reasons --
+	// happened. `log` is the surface that renders reasons;
 	// `show` lists the events but not their payloads.
 	closeLog, _, _ := run(t, bin, repo, e, "log", "--kind", "close")
 	if !strings.Contains(closeLog, "wrong id, meant the other one") {

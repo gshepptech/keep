@@ -110,7 +110,7 @@ func TestCaptureShowBodyRoundTripsByteIdentical(t *testing.T) {
 				t.Fatalf("show --body: stderr = %q, want empty", stderr)
 			}
 
-			// No trimming or normalising on either side of this comparison --
+			// No trimming or normalising on either side of this comparison:
 			// that would hide precisely the class of bug (an added or
 			// stripped trailing newline, mangled CRLF) this test exists to
 			// catch. A raw string != is deliberately stricter than a

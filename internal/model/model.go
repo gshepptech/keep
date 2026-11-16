@@ -86,7 +86,7 @@ type ItemDetail struct {
 	// this item points from, which are what it depends on.
 	DependsOn []Dep `json:"depends_on"`
 
-	// DependedOnBy holds the deps rows where this item is depends_on_id --
+	// DependedOnBy holds the deps rows where this item is depends_on_id:
 	// the edges this item points TO it, i.e. what depends on this item.
 	DependedOnBy []Dep `json:"depended_on_by"`
 

@@ -147,18 +147,15 @@ const ftsDDL = `-- The full-text index over the five columns Search matches on. 
 -- reads the text back out of items, so a captured roadmap's body is not
 -- held twice and cannot drift between two copies.
 --
--- tokenize='trigram' rather than the default unicode61, and that choice is
--- what preserves the contract Search has always had. The default tokenizer
--- matches WORDS, so a search for "oken" would stop finding "token" -- a
--- silent narrowing of what the command does, dressed up as a performance
--- fix. Trigram indexes every three-character run, which makes MATCH an
--- arbitrary case-insensitive SUBSTRING search: the same thing LIKE '%x%'
--- does, and the same thing the doc comment on SearchFilter.Query promises
--- ("A person searching for 'token expiry' means those characters, and a
--- search syntax is a thing to learn before you can find your own note").
--- Verified against this module's pinned driver (SQLite 3.53.3) before it
--- was relied on: infix 'oken' matches, and 'REFRESH TOK' matches
--- lower-case text.
+-- tokenize='trigram' rather than the default unicode61, because Search is a
+-- substring search. The default tokenizer matches WORDS, so a search for
+-- "oken" would not find "token". Trigram indexes every three-character run,
+-- which makes MATCH an arbitrary case-insensitive SUBSTRING search: the same
+-- thing LIKE '%x%' does, and the same thing the doc comment on
+-- SearchFilter.Query promises ("A person searching for 'token expiry' means
+-- those characters, and a search syntax is a thing to learn before you can
+-- find your own note"). With the pinned driver, infix 'oken' matches, and
+-- 'REFRESH TOK' matches lower-case text.
 CREATE VIRTUAL TABLE IF NOT EXISTS items_fts USING fts5(
     title, why, acceptance, paths, body,
     content='items', content_rowid='rowid', tokenize='trigram'
