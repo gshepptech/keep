@@ -29,8 +29,7 @@ The Interlock integration test (`cmd/keep/join_test.go`) builds Interlock from
 ## Ground rules
 
 - All SQL lives in `internal/store`. The CLI, the MCP server and the
-  dashboard call store methods and carry no behaviour of their own. Tests
-  enforce both rules.
+  dashboard call store methods and carry no behaviour of their own.
 - A new concept gets a new table, not a new column on `items`.
 - A new MCP tool needs a matching CLI command, and goes in
   `internal/mcp.ToolNames`.
