@@ -53,9 +53,7 @@ type BacklogInput struct {
 
 // schemaSet collects the generated schemas and every generation error, so
 // BuildSchemas needs one error check rather than ten. errors.Join returns
-// nil when every element is nil, so no conditional is needed here either,
-// and the structural test can still say the error switch in errors.go is
-// the only branch in this package.
+// nil when every element is nil, so no conditional is needed here either.
 type schemaSet struct {
 	m    map[string]*jsonschema.Schema
 	errs []error
@@ -251,8 +249,8 @@ type StaleInput struct {
 // After turns the wire value into a duration. It does not apply a default:
 // StaleClaims already treats a non-positive duration as its own default, so
 // an omitted field arrives as zero and means exactly that. Defaulting here
-// too would be a second copy of one policy, and it would need a branch the
-// structure test forbids outside the two places this package allows them.
+// too would be a second copy of one policy, and it would need a branch,
+// which this package keeps to NewServer and resultFor.
 func (in StaleInput) After() time.Duration {
 	return time.Duration(in.SilentHours * float64(time.Hour))
 }

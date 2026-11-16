@@ -9,15 +9,12 @@ import (
 	"github.com/gshepptech/keep/internal/model"
 )
 
-// This file's only non-stdlib import is internal/model. The store package
-// is absent, which a grep for its import path confirms (this comment avoids
-// spelling it out so the check does not trip on its own description). So
-// every render function below can be fixtured from struct literals alone,
-// which lets the tree view's golden test run without a live database or a
-// wall clock: rnc- ids are sha256(title, createdAt, attempt)-derived, and
-// createdAt is wall-clock time, so a golden file built by round-tripping
-// through a live store.AddItem would pass only on the machine and moment it
-// was generated.
+// This file's only non-stdlib import is internal/model, so every render
+// function below can be fixtured from struct literals alone. That lets the
+// tree view's golden test run without a live database or a wall clock: rnc-
+// ids are sha256(title, createdAt, attempt)-derived, and createdAt is
+// wall-clock time, so a golden file built by round-tripping through a live
+// store.AddItem would pass only on the machine and moment it was generated.
 
 // renderReady renders the ready-queue view: the id (linked to /item/{{.ID}}),
 // score, type, and title, in the order items is already in. No sort:

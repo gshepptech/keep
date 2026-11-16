@@ -250,8 +250,9 @@ func TestBoardRefusesAnEmptyPrompt(t *testing.T) {
 }
 
 // TestTheAgentStartingRoutesAreAllGuarded checks that every route that
-// starts a process or releases another agent's holds is behind the guard. A missing token must stop the request
-// before anything is executed, not merely fail to persist afterwards.
+// starts a process or releases another agent's holds is behind the guard.
+// A missing token must stop the request before anything is executed, not
+// merely fail to persist afterwards.
 func TestTheAgentStartingRoutesAreAllGuarded(t *testing.T) {
 	for _, route := range []struct {
 		path string
