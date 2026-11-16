@@ -78,14 +78,13 @@ func TestResultFor(t *testing.T) {
 		}
 	})
 
-	// isErrorSentinels is the single source of truth for the sentinels
-	// resultFor classifies as isError:true tool results -- "the legitimate
-	// outcome of a well-formed call". If a new store
-	// sentinel is ever added and not added here, it is invisible to this
-	// test by construction (Go has no reflection-based way to enumerate a
-	// package's exported error vars) -- the same hand-maintained-table
-	// tradeoff internal/store/mutating_scan_test.go's wantMutating/
-	// wantReadOnly maps already accept, for the same reason.
+	// isErrorSentinels lists the sentinels resultFor classifies as
+	// isError:true tool results, the legitimate outcome of a well-formed
+	// call. Go has no reflection-based way to enumerate a package's exported
+	// error vars, so a new store sentinel missing from this table is
+	// invisible to this test. internal/store/mutating_scan_test.go's
+	// wantMutating/wantReadOnly maps accept the same hand-maintained-table
+	// tradeoff for the same reason.
 	isErrorSentinels := map[string]error{
 		"ErrNotFound":          store.ErrNotFound,
 		"ErrCycle":             store.ErrCycle,
@@ -115,14 +114,13 @@ func TestResultFor(t *testing.T) {
 		})
 	}
 
-	// ErrInvalidDepType (the eighth sentinel) is exercised above, separately,
-	// with its jsonrpc.Error assertion -- it does not belong in
-	// isErrorSentinels.
+	// ErrInvalidDepType is exercised above, separately, with its
+	// jsonrpc.Error assertion, so it does not belong in isErrorSentinels.
 	//
-	// ErrSchemaVersion is deliberately NOT exercised here: it is produced
-	// only by store.Open, never by any tool call resultFor wraps, so it
-	// structurally never reaches this function -- see resultFor's doc
-	// comment classification table.
+	// ErrSchemaVersion is not exercised here: it is produced only by
+	// store.Open, never by any tool call resultFor wraps, so it cannot reach
+	// this function (see the classification table in resultFor's doc
+	// comment).
 	//
 	// Every store sentinel must have a row in resultFor's table. Without
 	// one, it reaches the agent as a raw protocol error instead of a tool

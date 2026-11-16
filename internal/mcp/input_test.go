@@ -10,9 +10,9 @@ import (
 )
 
 // wantRequired is the exact `required` set BuildSchemas must produce for
-// each tool. ready/backlog/
-// list have no required fields -- []string{} rather than nil so the
-// comparison below is order-independent and nil-tolerant either way.
+// each tool. ready, backlog and list have no required fields; they use
+// []string{} rather than nil so the comparison below is order-independent
+// and nil-tolerant either way.
 var wantRequired = map[string][]string{
 	"capture": {"title"},
 	"add":     {"title"},
@@ -33,14 +33,12 @@ func sortedCopy(s []string) []string {
 }
 
 // TestBuildSchemasCoversExactlyToolNames proves BuildSchemas produces a
-// schema for every registered tool and for nothing else, and that generation
-// itself returns no error -- the schemaSet accumulator's single error check
-// covers them all.
+// schema for every registered tool and for nothing else, and that
+// generation itself returns no error. The schemaSet accumulator's single
+// error check covers them all.
 //
-// It compares against ToolNames rather than a number. The number was written
-// out here, in structure_test.go, in cmd/keep/mcp_test.go and in prose in
-// server.go, and adding a tool meant remembering four places; it had already
-// drifted in two of them.
+// It compares against ToolNames rather than a number, so adding a tool
+// needs no second place updated.
 func TestBuildSchemasCoversExactlyToolNames(t *testing.T) {
 	schemas, err := BuildSchemas()
 	if err != nil {
@@ -75,9 +73,9 @@ func TestSchemaTypeIsObject(t *testing.T) {
 	}
 }
 
-// TestSchemaPropertiesAreSnakeCase catches a PascalCase regression (a
-// missing json tag) in one assertion across every schema: no property name
-// may contain an uppercase letter.
+// TestSchemaPropertiesAreSnakeCase checks that no property name in any
+// schema contains an uppercase letter, which is what a missing json tag
+// produces.
 func TestSchemaPropertiesAreSnakeCase(t *testing.T) {
 	schemas, err := BuildSchemas()
 	if err != nil {
@@ -110,9 +108,9 @@ func TestSchemaSessionIDNeverAppears(t *testing.T) {
 }
 
 // TestSchemaStageAbsentOnAddAndCapture proves the verb chooses the stage,
-// not an argument -- capture's whole contract is "this is raw" and add's is
-// "this is a ticket"; a wire-settable stage would let capture be told to
-// make a ticket.
+// not an argument. capture's contract is "this is raw" and add's is "this
+// is a ticket"; a wire-settable stage would let capture be told to make a
+// ticket.
 func TestSchemaStageAbsentOnAddAndCapture(t *testing.T) {
 	schemas, err := BuildSchemas()
 	if err != nil {
@@ -130,8 +128,8 @@ func TestSchemaStageAbsentOnAddAndCapture(t *testing.T) {
 }
 
 // TestSchemaRequiredFields proves each tool's required set is exactly as
-// intended -- in particular, that parent_id is NOT required on add, which
-// is what jsonschema.For produces for a field without omitempty.
+// intended. In particular parent_id must not be required on add, which is
+// what jsonschema.For would produce for a field without omitempty.
 func TestSchemaRequiredFields(t *testing.T) {
 	schemas, err := BuildSchemas()
 	if err != nil {
@@ -150,9 +148,9 @@ func TestSchemaRequiredFields(t *testing.T) {
 	}
 }
 
-// TestSchemaAddParentIDNotRequired is kept separate from the table-driven
-// check above so a regression here fails with a message naming the exact
-// defect, not just a set diff.
+// TestSchemaAddParentIDNotRequired checks that parent_id is optional on
+// add. It is separate from the table-driven check above so a failure names
+// the exact defect, not just a set diff.
 func TestSchemaAddParentIDNotRequired(t *testing.T) {
 	schemas, err := BuildSchemas()
 	if err != nil {
@@ -178,9 +176,9 @@ func stringsToAny(ss []string) []any {
 }
 
 // TestSchemaEnums proves every closed-vocabulary property carries a JSON
-// Schema enum sourced from internal/model's ordered slices -- by value AND
-// by order, never a local literal list and never a range over a Valid* map
-// (whose iteration order is per-process and would make this flaky).
+// Schema enum sourced from internal/model's ordered slices, matching by
+// value and by order. A local literal list or a range over a Valid* map
+// (whose iteration order is per-process) would fail it.
 func TestSchemaEnums(t *testing.T) {
 	schemas, err := BuildSchemas()
 	if err != nil {
