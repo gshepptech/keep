@@ -7,6 +7,9 @@ import (
 	"testing"
 )
 
+// TestReposForgetGoneDropsOnlyWhatIsGone checks that `repos forget --gone`
+// drops the rows whose stores no longer exist and keeps the rest.
+//
 // `init` registers a store automatically, so without `repos forget --gone`
 // the registry would only grow: a few days of scratch repositories under
 // /tmp is enough to bury the real rows, and every dead one prints an error
@@ -114,6 +117,9 @@ func TestReposForgetGoneTakesNoPath(t *testing.T) {
 	}
 }
 
+// TestReadyAllSummarisesManyBrokenStores checks that `ready --all` names one
+// broken store in full and summarises the rest.
+//
 // A dozen dead registrations printing a dozen paragraphs above every queue is
 // how a person learns to stop reading stderr. One is named in full because it
 // is probably what they need to see; several are summarised.

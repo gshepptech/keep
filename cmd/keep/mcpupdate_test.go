@@ -11,9 +11,8 @@ import (
 )
 
 // TestMCPUpdateLetsAnAgentCorrectItsOwnWork drives a real `keep mcp`
-// subprocess. Without `update`, an agent could file an item but never fix
-// one: a wrong title or score had to go back through `add`, which produces a
-// second item with a second id and leaves the first one standing.
+// subprocess and checks that an agent can correct an item in place over MCP,
+// keeping its id, rather than filing a second item.
 func TestMCPUpdateLetsAnAgentCorrectItsOwnWork(t *testing.T) {
 	bin := buildKeep(t, "")
 	dir := tempDir(t)

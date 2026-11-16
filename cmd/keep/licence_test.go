@@ -62,10 +62,9 @@ func TestEveryDeclaredLicenceAgreesWithTheLicenceFile(t *testing.T) {
 			return err
 		}
 		if d.IsDir() {
-			// .git is huge and .agents holds vendored third-party skills
-			// whose licences are their authors' business, not ours.
+			// .git and node_modules are not ours to check.
 			switch d.Name() {
-			case ".git", ".agents", "node_modules":
+			case ".git", "node_modules":
 				return filepath.SkipDir
 			}
 			return nil

@@ -148,8 +148,8 @@ else
   echo "note: interlock is not on PATH -- the held-file rows will be empty" >&2
 fi
 
-# Serve. --web prints the URL it chose; --port pins it so the shot script
-# and the person reading this output are looking at the same place.
+# Serve. --web prints the URL it chose; --port pins it so the printed URLs
+# are stable.
 PORT="${PORT:-7788}"
 
 # Refuse a port that is already answering. Without this check the wait loop

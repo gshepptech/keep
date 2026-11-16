@@ -69,9 +69,10 @@ func TestWithLockRunsFnEvenWhenTheLockIsHeld(t *testing.T) {
 	}
 }
 
-// TestAcquireReclaimsAStaleLock: O_EXCL's one weakness against flock is that
-// a process dying mid-write leaves the lock forever. Reclaiming after
-// lockStale is what keeps that from being permanent.
+// TestAcquireReclaimsAStaleLock checks that a lock older than lockStale is
+// reclaimed. O_EXCL's one weakness against flock is that a process dying
+// mid-write leaves the lock forever; reclaiming it keeps that from being
+// permanent.
 func TestAcquireReclaimsAStaleLock(t *testing.T) {
 	home := t.TempDir()
 	if err := os.MkdirAll(filepath.Dir(PathIn(home)), 0o755); err != nil {

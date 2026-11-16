@@ -80,8 +80,9 @@ func TestPromptCannotSmuggleFlags(t *testing.T) {
 	}
 }
 
-// TestLaunchPassesNoPromptSentinel: an item launch has no untrusted text,
-// so it carries no sentinel and nothing after the flags.
+// TestLaunchPassesNoPromptSentinel checks that an item launch carries no
+// prompt sentinel and nothing after the flags, because it has no untrusted
+// text.
 func TestLaunchPassesNoPromptSentinel(t *testing.T) {
 	// The fake interlock these tests drive is a /bin/sh script, which
 	// Windows cannot execute. Without a Windows stub the test is skipped

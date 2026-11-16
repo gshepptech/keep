@@ -113,10 +113,11 @@ func TestExcludeWithNoLeasesChangesNothing(t *testing.T) {
 	}
 }
 
-// TestExcludeReturnsEmptyNotNil: `ready --json` substitutes an empty slice
-// for nil so an agent doing `jq '.[]'` does not break on null. That
-// substitution happens in cmd/keep, but a filter that turned a non-nil
-// slice into nil would reintroduce the case just upstream of it.
+// TestExcludeReturnsEmptyNotNil checks that Exclude returns an empty slice
+// rather than nil. `ready --json` substitutes an empty slice for nil so an
+// agent doing `jq '.[]'` does not break on null. That substitution happens in
+// cmd/keep, but a filter that turned a non-nil slice into nil would
+// reintroduce the case just upstream of it.
 func TestExcludeReturnsEmptyNotNil(t *testing.T) {
 	kept, _ := Exclude([]model.Item{item("only", "x.go")}, held("x.go"))
 	if kept == nil {

@@ -12,12 +12,7 @@ import (
 // `status --json` with the given envelope.
 //
 // A stub rather than the real binary because keep must build and test on a
-// machine that has never heard of Interlock, which is why keep shells out
-// instead of importing it. The join was also verified against
-// the real binary by hand (a lease taken through `interlock hook PreToolUse
-// claude`, the top-scoring item vanishing from `ready`, and returning after
-// `interlock lease release`); what these tests lock is keep's half, which
-// is the half that can regress here.
+// machine without Interlock.
 func fakeInterlock(t *testing.T, statusJSON string) string {
 	t.Helper()
 	dir := tempDir(t)
