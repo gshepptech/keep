@@ -475,9 +475,8 @@ func callToolExpectingToolError(t *testing.T, cs *mcp.ClientSession, name string
 }
 
 // callToolExpectingError returns the message of a JSON-RPC protocol error.
-// A value outside a closed vocabulary is a malformed argument, which is the
-// row ErrInvalidDepType has always occupied and which ErrInvalidType and
-// ErrInvalidStage now share.
+// A value outside a closed vocabulary is a malformed argument, the row
+// ErrInvalidDepType, ErrInvalidType and ErrInvalidStage share.
 func callToolExpectingError(t *testing.T, cs *mcp.ClientSession, name string, args map[string]any) string {
 	t.Helper()
 
