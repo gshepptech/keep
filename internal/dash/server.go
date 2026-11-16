@@ -129,11 +129,6 @@ func (s *Server) URL() string {
 	return "http://" + s.ln.Addr().String()
 }
 
-// Addr returns the bound address.
-func (s *Server) Addr() net.Addr {
-	return s.ln.Addr()
-}
-
 // Handler returns the server's route table, for httptest-driven tests that
 // never bind a real port.
 func (s *Server) Handler() http.Handler {
@@ -157,8 +152,7 @@ func (s *Server) Close() error {
 }
 
 // Option configures a Server at construction. There are two, both about
-// writing, and both default to off: a board built without them behaves
-// exactly as the read-only one did.
+// writing, and both default to off: without them the board is read-only.
 type Option func(*Server)
 
 // Writable lets the board act on the store. path is reopened per action, so
@@ -227,7 +221,3 @@ func (s *Server) writableAt(path string) (*store.Store, error) {
 	}
 	return store.Open(path, store.OpenOptions{})
 }
-
-// CSRF is the token every mutating form must carry. Exported for the
-// templates' page data, not for callers.
-func (s *Server) CSRF() string { return s.csrf }
