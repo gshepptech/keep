@@ -33,8 +33,8 @@ func TestAnonymousClaimsAreRefused(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetItem: %v", err)
 	}
-	if detail.Item.Status != model.StatusOpen {
-		t.Errorf("status = %q after a refused claim, want %q", detail.Item.Status, model.StatusOpen)
+	if detail.Status != model.StatusOpen {
+		t.Errorf("status = %q after a refused claim, want %q", detail.Status, model.StatusOpen)
 	}
 
 	// next is the same claim by another route, and refuses before it reads

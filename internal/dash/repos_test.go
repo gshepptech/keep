@@ -98,7 +98,7 @@ func TestAllRanksAcrossRepositories(t *testing.T) {
 		}
 		at = append(at, i)
 	}
-	if !(at[0] < at[1] && at[1] < at[2]) {
+	if at[0] >= at[1] || at[1] >= at[2] {
 		t.Errorf("rows are not in cross-repo score order %v -- offsets %v.\nA per-repository concatenation would also contain every row, which is why the order is the assertion.", want, at)
 	}
 

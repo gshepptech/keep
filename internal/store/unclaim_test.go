@@ -200,11 +200,11 @@ func TestUnclaimRequireOwnClaimRefusesAnotherSessionsClaim(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetItem: %v", err)
 	}
-	if after.Item.Status != model.StatusInProgress {
-		t.Errorf("status = %q after a refused unclaim, want it still %q", after.Item.Status, model.StatusInProgress)
+	if after.Status != model.StatusInProgress {
+		t.Errorf("status = %q after a refused unclaim, want it still %q", after.Status, model.StatusInProgress)
 	}
-	if after.Item.ClaimedBySession == nil || *after.Item.ClaimedBySession != "sess-a" {
-		t.Errorf("claimed_by_session = %v after a refused unclaim, want sess-a", after.Item.ClaimedBySession)
+	if after.ClaimedBySession == nil || *after.ClaimedBySession != "sess-a" {
+		t.Errorf("claimed_by_session = %v after a refused unclaim, want sess-a", after.ClaimedBySession)
 	}
 
 	// The same session releasing its own claim is allowed.

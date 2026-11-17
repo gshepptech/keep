@@ -60,7 +60,7 @@ func runBlocked(args []string, stdout, stderr io.Writer) int {
 	blockedBy := make(map[string]string, len(blockedItems))
 	for i, bi := range blockedItems {
 		items[i] = bi.Item
-		blockedBy[bi.Item.ID] = bi.BlockedBy
+		blockedBy[bi.ID] = bi.BlockedBy
 	}
 	renderItems(stdout, items, renderOpts{blockedBy: blockedBy})
 	return 0

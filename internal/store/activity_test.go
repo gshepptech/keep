@@ -92,7 +92,7 @@ func TestLastActivityAfterCreateDepStrictlyExceedsItemsUpdatedAt(t *testing.T) {
 		t.Fatalf("LastActivity: ok = false, want true")
 	}
 
-	if !(at > maxItemsUpdatedAt) {
+	if at <= maxItemsUpdatedAt {
 		t.Fatalf("LastActivity = %q is NOT strictly greater than max(items.updated_at) = %q -- CreateDep's event should postdate both items' last update, since CreateDep never touches items", at, maxItemsUpdatedAt)
 	}
 
