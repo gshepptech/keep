@@ -83,7 +83,7 @@ def main() -> int:
         return 0
 
     lines = [
-        "## keep — the work queue for this repository",
+        "## keep: the work queue for this repository",
         "",
         f"**ready {ready}** · in progress {in_progress} · "
         f"blocked {blocked} · backlog {backlog}",
@@ -108,7 +108,7 @@ def main() -> int:
     lines += [
         "",
         "Use the keep tools rather than tracking this yourself:",
-        "`ready` before starting work — it already excludes anything blocked. "
+        "`ready` before starting work. It already excludes anything blocked. "
         "`start` when you pick something up, `close` with a reason when it lands. "
         "File what you notice with `add`, or `capture` if it is still rough, "
         "instead of mentioning it and moving on.",
@@ -116,7 +116,7 @@ def main() -> int:
 
     if blocked:
         lines.append(
-            f"{blocked} item(s) are blocked and deliberately absent from `ready` — "
+            f"{blocked} item(s) are blocked and deliberately absent from `ready`. "
             "`blocked` names what is holding each one."
         )
 
