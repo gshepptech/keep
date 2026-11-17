@@ -173,7 +173,7 @@ func (s *Server) failPage(w http.ResponseWriter, code int, heading, body string)
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(code)
-	w.Write(buf.Bytes())
+	_, _ = w.Write(buf.Bytes()) // headers are sent; a client that hung up cannot be told
 }
 
 // errorData is what the failure page renders.
@@ -186,7 +186,7 @@ type errorData struct {
 // http.DetectContentType, then writes b.
 func writeHTML(w http.ResponseWriter, b []byte) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write(b)
+	_, _ = w.Write(b) // a client that hung up cannot be told
 }
 
 // handleNew renders the filing form. Its own page rather than a drawer on

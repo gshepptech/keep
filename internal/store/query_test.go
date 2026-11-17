@@ -136,7 +136,7 @@ func TestGetItemEventHistoryOldestFirst(t *testing.T) {
 	if detail.Events[1].Kind != "dep" || detail.Events[2].Kind != "dep" {
 		t.Fatalf("Events[1:3].Kind = %q, %q, want both %q", detail.Events[1].Kind, detail.Events[2].Kind, "dep")
 	}
-	if !(detail.Events[0].ID < detail.Events[1].ID && detail.Events[1].ID < detail.Events[2].ID) {
+	if detail.Events[0].ID >= detail.Events[1].ID || detail.Events[1].ID >= detail.Events[2].ID {
 		t.Fatalf("Events ids = %d, %d, %d, want strictly increasing", detail.Events[0].ID, detail.Events[1].ID, detail.Events[2].ID)
 	}
 }

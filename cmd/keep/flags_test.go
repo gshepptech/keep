@@ -142,7 +142,8 @@ func TestResolveBody(t *testing.T) {
 
 		want := "line one\nline two, no trailing newline"
 		go func() {
-			w.WriteString(want)
+			// A short write shows up as a mismatch in the comparison below.
+			_, _ = w.WriteString(want)
 			w.Close()
 		}()
 

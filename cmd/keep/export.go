@@ -41,15 +41,16 @@ func runExport(args []string, stdout, stderr io.Writer) int {
 	defer s.Close()
 
 	w := stdout
+	var f *os.File
 	if *out != "" {
 		// O_EXCL: an export that silently overwrote yesterday's backup
 		// would destroy the thing it exists to protect.
-		f, err := os.OpenFile(*out, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+		f, err = os.OpenFile(*out, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
 		if err != nil {
 			fmt.Fprintf(stderr, "keep: export: %v\n", err)
 			return 1
 		}
-		defer f.Close()
+		defer f.Close() // a second Close after the checked one below is harmless
 		w = f
 	}
 
@@ -57,6 +58,14 @@ func runExport(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		fmt.Fprintf(stderr, "keep: export: %v\n", err)
 		return 1
+	}
+	// A backup whose final write failed at close is not a backup, so the
+	// close error is checked rather than left to the deferred call.
+	if f != nil {
+		if err := f.Close(); err != nil {
+			fmt.Fprintf(stderr, "keep: export: %v\n", err)
+			return 1
+		}
 	}
 
 	fmt.Fprintf(stderr, "keep: export: %d items, %d deps, %d events (schema_version %d)\n",

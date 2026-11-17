@@ -1,0 +1,23 @@
+version: "2"
+
+run:
+  timeout: 15m
+  modules-download-mode: readonly
+
+linters:
+  default: standard
+  exclusions:
+    # Excludes the conventional errcheck noise: fmt.Fprint* to an output
+    # stream, Close, and os.Remove. A Close that finishes a write the user
+    # depends on (keep export --out) is still checked by hand.
+    presets:
+      - std-error-handling
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/gshepptech/keep

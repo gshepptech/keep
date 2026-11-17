@@ -351,19 +351,19 @@ func startBoardWeb(t *testing.T, bin, repo string, e []string, extraArgs ...stri
 
 	t.Cleanup(func() {
 		if !p.waited.Load() {
-			cmd.Process.Kill()
+			_ = cmd.Process.Kill()
 		}
 	})
 
 	r := bufio.NewReader(stdout)
 	line, err := r.ReadString('\n')
 	if err != nil {
-		cmd.Process.Kill()
+		_ = cmd.Process.Kill()
 		t.Fatalf("board --web: reading first stdout line: %v (stderr so far: %q)", err, stderrBuf.String())
 	}
 	u, err := url.Parse(strings.TrimSpace(line))
 	if err != nil {
-		cmd.Process.Kill()
+		_ = cmd.Process.Kill()
 		t.Fatalf("board --web: first stdout line %q is not a URL: %v", line, err)
 	}
 
@@ -474,8 +474,12 @@ func TestBoardWebPortOverride(t *testing.T) {
 	}
 	resp.Body.Close()
 
-	p.cmd.Process.Signal(os.Interrupt)
-	p.wait()
+	if err := p.cmd.Process.Signal(os.Interrupt); err != nil {
+		t.Fatalf("signal SIGINT: %v", err)
+	}
+	if err := p.wait(); err != nil {
+		t.Fatalf("board --web --port: want clean exit after SIGINT, got %v", err)
+	}
 }
 
 // TestBoardWebRejectsJSON proves --web --json exits 2 and prints nothing on

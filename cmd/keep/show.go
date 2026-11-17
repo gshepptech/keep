@@ -62,7 +62,10 @@ func runShow(args []string, stdout, stderr io.Writer) int {
 	// only after a successful GetItem, so an unknown id already exits 1
 	// with nothing on stdout, and no special case is needed here.
 	if *bodyFlag {
-		io.WriteString(stdout, detail.Body)
+		if _, err := io.WriteString(stdout, detail.Body); err != nil {
+			fmt.Fprintf(stderr, "keep: show: %v\n", err)
+			return 1
+		}
 		return 0
 	}
 
@@ -84,7 +87,10 @@ func runShow(args []string, stdout, stderr io.Writer) int {
 	// `keep show <id> | tail -n +N` gets the document back intact.
 	fmt.Fprintln(stdout)
 	fmt.Fprintln(stdout, "body")
-	io.WriteString(stdout, detail.Body)
+	if _, err := io.WriteString(stdout, detail.Body); err != nil {
+		fmt.Fprintf(stderr, "keep: show: %v\n", err)
+		return 1
+	}
 
 	return 0
 }

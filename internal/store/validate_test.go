@@ -205,5 +205,5 @@ func statusOf(t *testing.T, s *Store, id string) string {
 	if err != nil {
 		t.Fatalf("GetItem(%s): %v", id, err)
 	}
-	return detail.Item.Status
+	return detail.Status
 }

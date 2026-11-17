@@ -26,7 +26,7 @@
      disagree about what is held. */}}
 <div class="banner banner-notice" role="status">
   {{template "icon-clock"}}
-  <span class="grow">Held back — <span class="path">{{.Path}}</span> is open in
+  <span class="grow">Held back: <span class="path">{{.Path}}</span> is open in
   {{.Lease.Agent}}'s session, so this is out of the queue until the lease frees up
   {{until .Lease.ExpiresAt}}. You can still claim it; Interlock will refuse the write.</span>
 </div>
@@ -54,7 +54,7 @@
   <tbody>
   <tr><th>Why it matters</th><td>{{if .Why}}{{.Why}}{{else}}<span class="faint">not given</span>{{end}}</td></tr>
   <tr><th>Done when</th><td>{{if .Acceptance}}{{.Acceptance}}{{else}}<span class="faint">not given</span>{{end}}</td></tr>
-  <tr><th>Files it touches</th><td class="path">{{if .Paths}}{{.Paths}}{{else}}<span class="faint">not declared — it will never be held back</span>{{end}}</td></tr>
+  <tr><th>Files it touches</th><td class="path">{{if .Paths}}{{.Paths}}{{else}}<span class="faint">not declared, so it will never be held back</span>{{end}}</td></tr>
   <tr><th>Assignee</th><td>{{if .Assignee}}{{.Assignee}}{{else}}<span class="faint">nobody</span>{{end}}</td></tr>
   {{if .Repo}}<tr><th>Repository</th><td class="path">{{.Repo}}</td></tr>{{end}}
   </tbody>

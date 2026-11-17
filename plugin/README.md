@@ -12,7 +12,7 @@ These plugins use a `SessionStart` hook instead. The hook runs before the
 agent reads your first message, so the queue is already in its context:
 
 ```
-## keep — the work queue for this repository
+## keep: the work queue for this repository
 
 **ready 2** · in progress 0 · blocked 2 · backlog 1
 
@@ -20,7 +20,7 @@ Top of the ranked queue:
 rnc-684175      25  bug    Retry drops last error
 rnc-4b0d0e      13  task   Rename the flag
 
-2 item(s) are blocked and deliberately absent from `ready` —
+2 item(s) are blocked and deliberately absent from `ready`.
 `blocked` names what is holding each one.
 ```
 

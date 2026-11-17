@@ -22,7 +22,7 @@ func TestTimeFormat_FixedWidthAndOrdered(t *testing.T) {
 		t.Fatalf("expected equal-length strings, got %d (%q) and %d (%q)",
 			len(earlier), earlier, len(later), later)
 	}
-	if !(earlier < later) {
+	if earlier >= later {
 		t.Fatalf("expected earlier %q to sort before later %q", earlier, later)
 	}
 }
