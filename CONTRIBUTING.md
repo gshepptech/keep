@@ -19,7 +19,8 @@ Run these before opening a pull request:
 ```bash
 gofmt -l .        # should print nothing
 go vet ./...
-go test ./...
+go test -race ./...
+golangci-lint run  # v2, configured in .golangci.yml
 ```
 
 Most CLI tests build the real binary and run it against a temporary store.

@@ -1,0 +1,22 @@
+version: "2"
+
+run:
+  timeout: 15m
+  modules-download-mode: readonly
+
+linters:
+  default: standard
+  exclusions:
+    # Unchecked fmt.Fprint* to an output stream and deferred Close on a
+    # read-only handle are the conventional exceptions to errcheck.
+    presets:
+      - std-error-handling
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/gshepptech/keep
