@@ -5,7 +5,6 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"os"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -37,19 +36,22 @@ func TestNoConditionalInToolHandlers(t *testing.T) {
 	}
 	dir := filepath.Dir(thisFile)
 
-	fset := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fset, dir, func(fi os.FileInfo) bool {
-		return !strings.HasSuffix(fi.Name(), "_test.go")
-	}, 0)
+	paths, err := filepath.Glob(filepath.Join(dir, "*.go"))
 	if err != nil {
-		t.Fatalf("parser.ParseDir(%s): %v", dir, err)
+		t.Fatalf("glob %s: %v", dir, err)
 	}
 
+	fset := token.NewFileSet()
 	var files []*ast.File
-	for _, pkg := range pkgs {
-		for _, f := range pkg.Files {
-			files = append(files, f)
+	for _, path := range paths {
+		if strings.HasSuffix(path, "_test.go") {
+			continue
 		}
+		f, err := parser.ParseFile(fset, path, nil, 0)
+		if err != nil {
+			t.Fatalf("parse %s: %v", path, err)
+		}
+		files = append(files, f)
 	}
 	// A walk that finds nothing must fail, or the test passes forever
 	// without checking anything.

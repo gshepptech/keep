@@ -4,7 +4,6 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -50,23 +49,26 @@ func TestDashHasNoStoreBehaviour(t *testing.T) {
 	}
 	dir := filepath.Dir(thisFile)
 
-	fset := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fset, dir, func(fi os.FileInfo) bool {
-		return !strings.HasSuffix(fi.Name(), "_test.go")
-	}, 0)
+	paths, err := filepath.Glob(filepath.Join(dir, "*.go"))
 	if err != nil {
-		t.Fatalf("parser.ParseDir(%s): %v", dir, err)
+		t.Fatalf("glob %s: %v", dir, err)
 	}
 
 	type fileEntry struct {
 		name string
 		file *ast.File
 	}
+	fset := token.NewFileSet()
 	var files []fileEntry
-	for _, pkg := range pkgs {
-		for name, f := range pkg.Files {
-			files = append(files, fileEntry{filepath.Base(name), f})
+	for _, path := range paths {
+		if strings.HasSuffix(path, "_test.go") {
+			continue
 		}
+		f, err := parser.ParseFile(fset, path, nil, 0)
+		if err != nil {
+			t.Fatalf("parse %s: %v", path, err)
+		}
+		files = append(files, fileEntry{filepath.Base(path), f})
 	}
 	// A walk that finds nothing must fail, or the test passes forever
 	// without checking anything.
