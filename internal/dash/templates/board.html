@@ -85,7 +85,7 @@
 {{if $d.Held}}
 <div class="banner banner-notice">
   {{template "icon-clock"}}
-  <span class="grow">{{len $d.Held}} item{{if ne (len $d.Held) 1}}s{{end}} held back — an agent has the files open. They return on their own when the lease expires.</span>
+  <span class="grow">{{len $d.Held}} item{{if ne (len $d.Held) 1}}s{{end}} held back: an agent has the files open. They return on their own when the lease expires.</span>
 </div>
 {{end}}
 
@@ -273,7 +273,7 @@
   <div class="blank">
     {{template "icon-agent"}}
     <h3>Agent coordination is off for this project</h3>
-    <p>The queue above is unfiltered, so two agents can be handed the same work — and no agent can be started from here. Turning it on wires Interlock's hooks into your agents' own settings for this repository.</p>
+    <p>The queue above is unfiltered, so two agents can be handed the same work, and no agent can be started from here. Turning it on wires Interlock's hooks into your agents' own settings for this repository.</p>
     {{if $p.Writable}}
     <form method="post" action="/do/watch">
       <input type="hidden" name="csrf" value="{{$p.CSRF}}">
