@@ -7,8 +7,9 @@ run:
 linters:
   default: standard
   exclusions:
-    # Unchecked fmt.Fprint* to an output stream and deferred Close on a
-    # read-only handle are the conventional exceptions to errcheck.
+    # Excludes the conventional errcheck noise: fmt.Fprint* to an output
+    # stream, Close, and os.Remove. A Close that finishes a write the user
+    # depends on (keep export --out) is still checked by hand.
     presets:
       - std-error-handling
 
