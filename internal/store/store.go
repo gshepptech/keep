@@ -92,7 +92,8 @@ func (s *Store) withTx(ctx context.Context, fn func(*sql.Tx) error) (err error) 
 	}
 	defer func() {
 		if err != nil {
-			tx.Rollback()
+			// The error that caused the rollback is the one worth reporting.
+			_ = tx.Rollback()
 		}
 	}()
 	if err = fn(tx); err != nil {

@@ -86,7 +86,11 @@ func TestClassify(t *testing.T) {
 		if err := os.Chmod(path, 0o000); err != nil {
 			t.Fatalf("chmod 000: %v", err)
 		}
-		t.Cleanup(func() { os.Chmod(path, 0o600) }) // so t.TempDir() can remove it
+		t.Cleanup(func() { // so t.TempDir() can remove it
+			if err := os.Chmod(path, 0o600); err != nil {
+				t.Errorf("restore mode: %v", err)
+			}
+		})
 
 		err = classify(path)
 		if err == nil {
@@ -125,7 +129,11 @@ func TestClassify(t *testing.T) {
 		if err := os.Chmod(unreadablePath, 0o000); err != nil {
 			t.Fatalf("chmod 000: %v", err)
 		}
-		t.Cleanup(func() { os.Chmod(unreadablePath, 0o600) })
+		t.Cleanup(func() {
+			if err := os.Chmod(unreadablePath, 0o600); err != nil {
+				t.Errorf("restore mode: %v", err)
+			}
+		})
 
 		msg1 := classify(missingPath).Error()
 		msg2 := classify(missingParentPath).Error()

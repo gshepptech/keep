@@ -196,7 +196,7 @@ func mcpServerVersion(t *testing.T, bin, dir string, environ []string) string {
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("start: %v", err)
 	}
-	t.Cleanup(func() { stdin.Close(); cmd.Process.Kill(); cmd.Wait() })
+	t.Cleanup(func() { stdin.Close(); _ = cmd.Process.Kill(); _ = cmd.Wait() })
 
 	req := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":` +
 		`{"protocolVersion":"2025-11-25","capabilities":{},` +
